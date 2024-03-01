@@ -1,0 +1,24 @@
+logs avg cpu percent between t-1 and t seconds, and mem percent in t second
+waited for 4.8177330493927 seconds
+{"time": -1, "memcached": {"cpu": 0.0, "mem": 266268672.0}, "memcached.replica": {"cpu": 0.0, "mem": 73879552.0}}
+{"time": 0, "memcached": {"cpu": 23.9, "mem": 267317248.0}, "memcached.replica": {"cpu": 0.0, "mem": 74928128.0}}
+{"time": 1, "memcached": {"cpu": 29.0, "mem": 267317248.0}, "memcached.replica": {"cpu": 0.0, "mem": 74928128.0}}
+{"time": 2, "memcached": {"cpu": 29.0, "mem": 267317248.0}, "memcached.replica": {"cpu": 0.0, "mem": 74928128.0}}
+{"time": 3, "memcached": {"cpu": 31.0, "mem": 267317248.0}, "memcached.replica": {"cpu": 0.0, "mem": 74928128.0}}
+{"time": 4, "memcached": {"cpu": 33.0, "mem": 267317248.0}, "memcached.replica": {"cpu": 0.0, "mem": 74928128.0}}
+process not found: memcached
+{"time": 5, "memcached.replica": {"cpu": 1.0, "mem": 74928128.0}}
+{"time": 6, "memcached.replica": {"cpu": 14.0, "mem": 74928128.0}}
+{"time": 7, "memcached.replica": {"cpu": 13.0, "mem": 74928128.0}}
+{"time": 8, "memcached.replica": {"cpu": 19.0, "mem": 74928128.0}}
+{"time": 9, "memcached.replica": {"cpu": 21.0, "mem": 74928128.0}}
+{"time": 10, "memcached.replica": {"cpu": 14.0, "mem": 74928128.0}}
+{"time": 11, "memcached.replica": {"cpu": 16.0, "mem": 74928128.0}}
+{"time": 12, "memcached.replica": {"cpu": 14.0, "mem": 74928128.0}}
+{"time": 13, "memcached.replica": {"cpu": 15.0, "mem": 74928128.0}}
+{"time": 14, "memcached.replica": {"cpu": 15.0, "mem": 75976704.0}}
+{"time": 15, "memcached.replica": {"cpu": 16.0, "mem": 75976704.0}}
+{"time": 16, "memcached.replica": {"cpu": 14.0, "mem": 75976704.0}}
+{"time": 17, "memcached.replica": {"cpu": 15.0, "mem": 75976704.0}}
+{"time": 18, "memcached.replica": {"cpu": 16.0, "mem": 75976704.0}}
+{"time": 19, "memcached.replica": {"cpu": 18.0, "mem": 75976704.0}}

@@ -1,0 +1,7 @@
+20s
+1500
+entries 140000 (1960000 in database)
+weight 100
+concurrency default
+
+python3 run_experiment.py 1500 0 20 1.00001 12 5 False 1 lite

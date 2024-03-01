@@ -1,0 +1,78 @@
+services:
+  client:
+    container_name: client
+    image: ubuntu:18.04
+    # image: meta-client:v0
+    tty: true
+    privileged: true
+    networks:
+      local_net:
+        ipv4_address: 10.0.233.3
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+  web:
+    container_name: web
+    # image: ubuntu/nginx:1.18-20.04_beta
+    image: wyveo/nginx-php-fpm:php72
+    # image: meta-web:v0
+    command: ["/start.sh"]
+    tty: true
+    privileged: true
+    networks:
+      local_net:
+        ipv4_address: 10.0.233.4
+    environment:
+      - TZ=America/Detroit
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+  mysql:
+    container_name: mysql
+    image: ubuntu/mysql:8.0-20.04_beta
+    tty: true
+    privileged: true
+    networks:
+      local_net:
+        ipv4_address: 10.0.233.5
+    environment:
+      - MYSQL_ROOT_PASSWORD=hello@123
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+  memcached:
+    container_name: memcached
+    # image: ubuntu:18.04
+    image: debian:12-slim
+    # image: meta-memcached:v0
+    tty: true
+    privileged: true
+    networks:
+      local_net:
+        ipv4_address: 10.0.233.6
+        # and manually configure 10.0.233.7
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+networks:
+  local_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.233.0/24

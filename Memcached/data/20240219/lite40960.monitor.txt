@@ -1,0 +1,24 @@
+logs avg cpu percent between t-1 and t seconds, and mem percent in t second
+waited for 4.812755823135376 seconds
+{"time": -1, "memcached_reference_model": {"cpu": 0.0, "mem": 71041024.0}, "memcached": {"cpu": 0.0, "mem": 265932800.0}}
+{"time": 0, "memcached_reference_model": {"cpu": 0.0, "mem": 71041024.0}, "memcached": {"cpu": 23.9, "mem": 267243520.0}}
+{"time": 1, "memcached_reference_model": {"cpu": 0.0, "mem": 71041024.0}, "memcached": {"cpu": 27.0, "mem": 267243520.0}}
+{"time": 2, "memcached_reference_model": {"cpu": 0.0, "mem": 71041024.0}, "memcached": {"cpu": 28.0, "mem": 267243520.0}}
+{"time": 3, "memcached_reference_model": {"cpu": 0.0, "mem": 71041024.0}, "memcached": {"cpu": 32.0, "mem": 267243520.0}}
+{"time": 4, "memcached_reference_model": {"cpu": 0.0, "mem": 71041024.0}, "memcached": {"cpu": 24.0, "mem": 267243520.0}}
+process not found: memcached
+{"time": 5, "memcached_reference_model": {"cpu": 0.0, "mem": 71303168.0}}
+{"time": 6, "memcached_reference_model": {"cpu": 12.0, "mem": 71565312.0}}
+{"time": 7, "memcached_reference_model": {"cpu": 15.0, "mem": 71565312.0}}
+{"time": 8, "memcached_reference_model": {"cpu": 15.0, "mem": 72351744.0}}
+{"time": 9, "memcached_reference_model": {"cpu": 19.0, "mem": 72351744.0}}
+{"time": 10, "memcached_reference_model": {"cpu": 16.0, "mem": 72613888.0}}
+{"time": 11, "memcached_reference_model": {"cpu": 17.0, "mem": 73138176.0}}
+{"time": 12, "memcached_reference_model": {"cpu": 13.0, "mem": 73400320.0}}
+{"time": 13, "memcached_reference_model": {"cpu": 15.0, "mem": 73400320.0}}
+{"time": 14, "memcached_reference_model": {"cpu": 16.0, "mem": 73662464.0}}
+{"time": 15, "memcached_reference_model": {"cpu": 14.0, "mem": 74186752.0}}
+{"time": 16, "memcached_reference_model": {"cpu": 14.0, "mem": 74711040.0}}
+{"time": 17, "memcached_reference_model": {"cpu": 17.0, "mem": 74711040.0}}
+{"time": 18, "memcached_reference_model": {"cpu": 16.0, "mem": 74711040.0}}
+{"time": 19, "memcached_reference_model": {"cpu": 14.0, "mem": 74973184.0}}

@@ -1,0 +1,24 @@
+logs avg cpu percent between t-1 and t seconds, and mem percent in t second
+waited for 4.810826063156128 seconds
+{"time": -1, "memcached": {"cpu": 0.0, "mem": 266145792.0}}
+{"time": 0, "memcached": {"cpu": 29.3, "mem": 267456512.0}}
+{"time": 1, "memcached": {"cpu": 33.0, "mem": 267456512.0}}
+{"time": 2, "memcached": {"cpu": 31.0, "mem": 267456512.0}}
+{"time": 3, "memcached": {"cpu": 34.0, "mem": 267456512.0}}
+{"time": 4, "memcached": {"cpu": 31.0, "mem": 267456512.0}}
+process not found: memcached
+{"time": 5, "memcached": {"cpu": 0.0, "mem": 5722112.0}}
+{"time": 6, "memcached": {"cpu": 9.0, "mem": 5722112.0}}
+{"time": 7, "memcached": {"cpu": 10.0, "mem": 5722112.0}}
+{"time": 8, "memcached": {"cpu": 9.0, "mem": 7819264.0}}
+{"time": 9, "memcached": {"cpu": 7.0, "mem": 7819264.0}}
+{"time": 10, "memcached": {"cpu": 9.0, "mem": 7819264.0}}
+{"time": 11, "memcached": {"cpu": 10.0, "mem": 7819264.0}}
+{"time": 12, "memcached": {"cpu": 8.0, "mem": 8867840.0}}
+{"time": 13, "memcached": {"cpu": 7.0, "mem": 8867840.0}}
+{"time": 14, "memcached": {"cpu": 10.0, "mem": 8867840.0}}
+{"time": 15, "memcached": {"cpu": 10.0, "mem": 8867840.0}}
+{"time": 16, "memcached": {"cpu": 11.0, "mem": 9916416.0}}
+{"time": 17, "memcached": {"cpu": 12.0, "mem": 9916416.0}}
+{"time": 18, "memcached": {"cpu": 11.0, "mem": 9916416.0}}
+{"time": 19, "memcached": {"cpu": 9.0, "mem": 10964992.0}}

@@ -1,0 +1,24 @@
+logs avg cpu percent between t-1 and t seconds, and mem percent in t second
+waited for 4.8092803955078125 seconds
+{"time": -1, "memcached_reference_model": {"cpu": 0.0, "mem": 12320768.0}, "memcached": {"cpu": 0.0, "mem": 266219520.0}}
+{"time": 0, "memcached_reference_model": {"cpu": 0.0, "mem": 12320768.0}, "memcached": {"cpu": 27.0, "mem": 267530240.0}}
+{"time": 1, "memcached_reference_model": {"cpu": 0.0, "mem": 12320768.0}, "memcached": {"cpu": 27.0, "mem": 267530240.0}}
+{"time": 2, "memcached_reference_model": {"cpu": 0.0, "mem": 12320768.0}, "memcached": {"cpu": 29.0, "mem": 267530240.0}}
+{"time": 3, "memcached_reference_model": {"cpu": 0.0, "mem": 12320768.0}, "memcached": {"cpu": 30.6, "mem": 267530240.0}}
+{"time": 4, "memcached_reference_model": {"cpu": 0.0, "mem": 12320768.0}, "memcached": {"cpu": 30.0, "mem": 267530240.0}}
+process not found: memcached
+{"time": 5, "memcached_reference_model": {"cpu": 5.0, "mem": 12320768.0}}
+{"time": 6, "memcached_reference_model": {"cpu": 10.0, "mem": 12582912.0}}
+{"time": 7, "memcached_reference_model": {"cpu": 9.0, "mem": 13107200.0}}
+{"time": 8, "memcached_reference_model": {"cpu": 11.0, "mem": 13107200.0}}
+{"time": 9, "memcached_reference_model": {"cpu": 10.0, "mem": 13369344.0}}
+{"time": 10, "memcached_reference_model": {"cpu": 10.0, "mem": 13369344.0}}
+{"time": 11, "memcached_reference_model": {"cpu": 11.0, "mem": 13369344.0}}
+{"time": 12, "memcached_reference_model": {"cpu": 9.0, "mem": 13893632.0}}
+{"time": 13, "memcached_reference_model": {"cpu": 9.0, "mem": 13893632.0}}
+{"time": 14, "memcached_reference_model": {"cpu": 8.0, "mem": 14155776.0}}
+{"time": 15, "memcached_reference_model": {"cpu": 12.0, "mem": 14417920.0}}
+{"time": 16, "memcached_reference_model": {"cpu": 11.0, "mem": 14680064.0}}
+{"time": 17, "memcached_reference_model": {"cpu": 8.0, "mem": 14680064.0}}
+{"time": 18, "memcached_reference_model": {"cpu": 12.0, "mem": 14680064.0}}
+{"time": 19, "memcached_reference_model": {"cpu": 11.0, "mem": 14680064.0}}
