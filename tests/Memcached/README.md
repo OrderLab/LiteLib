@@ -5,6 +5,7 @@ Files for Memcached in the [Metastability settings](https://www.usenix.org/confe
 ## Directories
 
 * `src`: source code and experiment scripts
-  * `lite-version`: source code for lite version
+  * `lite-version`: source code for the lite version
+  * `lite-version-coupled`: source code for the old lite version (coupled with Memcached)
   * `Metastability`: experiment scripts
 * `data`: raw experiment data
