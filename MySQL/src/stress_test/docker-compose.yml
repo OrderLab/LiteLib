@@ -1,0 +1,12 @@
+version: '3.1'
+
+services:
+  mysql:
+    image: mysql:8.3.0
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: passwd
+      MYSQL_DATABASE: stress_test
+    ports:
+      - 3306:3306
