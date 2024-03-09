@@ -1,0 +1,58 @@
+#pragma once
+
+#include <atomic>
+#include <concepts>
+
+#include "cache.hpp"
+
+namespace lite {
+
+template <typename Service, typename Packet, typename Client, typename Backend>
+concept IsService = requires(Service service, Packet p, Client c, Backend b) {
+  // Whether it's an operation that contains state info and thus needs to be
+  // cached e.g. UPDATE -> true, READ -> false
+  { service.Filter(p) } -> std::convertible_to<bool>;
+
+  // Perform the cachable operation during normal time
+  { service.NormalUpdate(std::move(p)) };
+
+  // Forward any operation to the backend, get the response and return it to the
+  // client during normal time
+  { service.NormalForwardAndProxyBack(std::move(p), c, b) };
+
+  // Perform any operation during emergency time
+  { service.EmergencyServe(std::move(p)) };
+
+  // Sync the state changes during emergency time to the recovered full version
+  { service.Replay() };
+};
+
+template <typename S, typename Packet, typename Client, typename Backend>
+  requires IsService<S, Packet, Client, Backend>
+class LiteServer {
+ public:
+  LiteServer(S &service) : service_(service) {}
+
+  void Init() {
+    // TODO: should be able to answer external Switch & Replay commands
+  }
+
+  void Serve(Packet p, Client c, Backend backend) {
+    if (emergency_mode_) {
+      service_.EmergencyServe(std::move(p));
+    } else {
+      if (service_.Filter(p)) {
+        service_.NormalUpdate(std::move(p));
+      }
+      service_.NormalForwardAndProxyBack(std::move(p), c, backend);
+    }
+  }
+
+  bool IsInEmergencyMode() { return emergency_mode_; }
+
+ private:
+  std::atomic<bool> emergency_mode_ = false;
+  S &service_;
+};
+
+}  // namespace lite

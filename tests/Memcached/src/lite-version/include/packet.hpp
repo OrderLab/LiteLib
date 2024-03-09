@@ -1,0 +1,243 @@
+#pragma once
+
+#include <cstdint>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
+struct Packet {
+  // size_t length;
+  std::unique_ptr<std::vector<uint8_t>> buffer;
+  Packet() : buffer(std::make_unique<std::vector<uint8_t>>()) {}
+};
+
+struct Header {
+  uint8_t magic = 0;
+  uint8_t opcode = 0;
+  uint16_t key_length = 0;
+  uint8_t extras_length = 0;
+  uint8_t data_type = 0;
+  uint16_t status = 0;
+  uint32_t total_body_length = 0;
+  uint32_t opaque = 0;
+  uint64_t CAS = 0;
+
+  Header() = default;
+
+  enum Opcode {
+    kGet = 0,
+    kSet,
+    kAdd,
+    kReplace,
+    kDelete,
+    kIncrement,
+    kDecrement,
+    kQuit,
+    kFlush,
+    kGetQ,
+    kNoOp,
+    kVersion,
+    kGetK,
+    kGetKQ,
+    kAppend,
+    kPrepend,
+    kStat,
+    kSetQ,
+    kAddQ,
+    kReplaceQ,
+    kDeleteQ,
+    kIncrementQ,
+    kDecrementQ,
+    kQuitQ,
+    kFlushQ,
+    kAppendQ,
+    kPrependQ,
+  };
+
+  friend std::ostream &operator<<(std::ostream &os, const Header &rhs) {
+    os << "Header: " << std::endl;
+    os << "\tmagic: " << uint16_t(rhs.magic) << std::endl;
+    os << "\topcode: " << uint16_t(rhs.opcode) << std::endl;
+    os << "\tkey_length: " << rhs.key_length << std::endl;
+    os << "\textras_length: " << uint16_t(rhs.extras_length) << std::endl;
+    os << "\tdata_type: " << uint16_t(rhs.data_type) << std::endl;
+    os << "\tstatus/reserved: " << rhs.status << std::endl;
+    os << "\ttotal_body_length: " << rhs.total_body_length << std::endl;
+    os << "\topaque: " << rhs.opaque << std::endl;
+    os << "\tCAS: " << rhs.CAS << std::endl;
+    return os;
+  }
+};
+
+struct ParsedPacket : public Packet {
+  Header header = {};
+  std::shared_ptr<std::vector<uint8_t>> extra = {};
+  std::shared_ptr<std::vector<uint8_t>> key = {};
+  std::shared_ptr<std::vector<uint8_t>> value = nullptr;
+
+  ParsedPacket() = default;
+
+  /// Append the response into a vector of buffers.
+  void ToBuffers(std::vector<uint8_t> &buffers);
+
+  friend std::ostream &operator<<(std::ostream &os, const ParsedPacket &rhs) {
+    os << rhs.header;
+    // os << "extra: \n" << ToString(rhs.extra) << std::endl;
+    os << "extra: \n";
+    for (const auto byte : *rhs.extra)
+      os << std::hex << "0x" << uint32_t(byte) << std::dec << " ";
+    os << std::endl;
+    os << "key: \n" << ToString(rhs.key.get()) << std::endl;
+    os << "value: \n" << ToString(rhs.value.get()) << std::endl;
+    return os;
+  }
+
+  enum Status {
+    kNoError = 0x0000,
+    kKeyNotFound,
+    kKeyExists,
+    kValueTooLarge,
+    kInvalidArguments,
+    kItemNotStored,
+    kIncrDecrOnNonNumericValue,
+    kUnknownCommand = 0x0081,
+    kOutOfMemory
+  };
+
+ private:
+  static std::string ToString(const std::vector<uint8_t> &v) {
+    return std::string(v.begin(), v.end());
+  }
+  static std::string ToString(const std::vector<uint8_t> *v) {
+    return std::string(v->begin(), v->end());
+  }
+};
+
+class SimpleParser {
+ public:
+  enum ResultType { kGood, kBad, kIndeterminate };
+
+  void Reset() { state_ = kMagic; }
+
+#define digest_remaining()             \
+  if (remaining_len_ <= end - begin) { \
+    begin += remaining_len_;           \
+    remaining_len_ = 0;                \
+  } else {                             \
+    remaining_len_ -= end - begin;     \
+    begin = end;                       \
+  }
+#define input (*begin++)
+
+  template <typename InputIterator>
+  ResultType Parse(InputIterator &begin, InputIterator end) {
+    while (begin != end) {
+      switch (state_) {
+        case kMagic:
+          input;
+          state_ = kOpcode;
+          break;
+        case kOpcode:
+          input;
+          state_ = kKeyLength;
+          remaining_len_ = 2;
+          key_length_ = 0;
+          break;
+        case kKeyLength:
+          key_length_ = (key_length_ << 8) + input;
+          remaining_len_--;
+          if (!remaining_len_) state_ = kExtrasLength;
+          break;
+        case kExtrasLength:
+          extras_length_ = input;
+          state_ = kDataType;
+          break;
+        case kDataType:
+          input;
+          state_ = kReserved;
+          remaining_len_ = 2;
+          break;
+        case kReserved:
+          digest_remaining();
+          if (!remaining_len_) {
+            state_ = kTotalBodyLength;
+            remaining_len_ = 4;
+            total_body_length_ = 0;
+          }
+          break;
+        case kTotalBodyLength:
+          total_body_length_ = (total_body_length_ << 8) + input;
+          remaining_len_--;
+          if (!remaining_len_) {
+            state_ = kOpaqueAndCAS;
+            remaining_len_ = 12;
+          }
+          break;
+        case kOpaqueAndCAS:
+          digest_remaining();
+          if (!remaining_len_) {
+            if (extras_length_ == 0) goto extra_finished;
+            state_ = kExtras;
+            remaining_len_ = extras_length_;
+          }
+          break;
+        case kExtras:
+          digest_remaining();
+          if (!remaining_len_) {
+          extra_finished:
+            if (key_length_ == 0) goto key_finished;
+            state_ = kKey;
+            remaining_len_ = key_length_;
+          }
+          break;
+        case kKey:
+          digest_remaining();
+          if (!remaining_len_) {
+          key_finished:
+            state_ = kValue;
+            remaining_len_ = total_body_length_ - extras_length_ - key_length_;
+            if (remaining_len_ == 0) {
+              state_ = kMagic;
+              return kGood;
+            }
+          }
+          break;
+        case kValue:
+          digest_remaining();
+          if (!remaining_len_) {
+            state_ = kMagic;
+            return kGood;
+          }
+          break;
+        default:
+          return kBad;
+      }
+    }
+    return kIndeterminate;
+  }
+
+#undef input
+#undef digest_remaining
+
+ private:
+  enum state {
+    kMagic,
+    kOpcode,
+    kKeyLength,
+    kExtrasLength,
+    kDataType,
+    kReserved,
+    kTotalBodyLength,
+    kOpaqueAndCAS,
+    kExtras,
+    kKey,
+    kValue,
+  } state_ = kMagic;
+
+  uint32_t remaining_len_;
+
+  uint16_t key_length_;
+  uint8_t extras_length_;
+  uint32_t total_body_length_;
+};

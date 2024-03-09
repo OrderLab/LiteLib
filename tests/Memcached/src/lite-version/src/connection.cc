@@ -1,0 +1,122 @@
+#include "connection.hpp"
+
+#include <vector>
+
+Connection::Connection(const evutil_socket_t sfd, const int event_flags,
+                       struct event_base* base, EventHandler event_handler,
+                       MemcachedLiteServer& lite_server,
+                       bool is_client_connection, const char* backend_addr,
+                       const char* backend_port)
+    : client_fd_(sfd),
+      request_(std::make_unique<Packet>()),
+      lite_server_(lite_server) {
+  event_set(&client_event_, sfd, event_flags, event_handler, static_cast<void*>(this));
+  event_base_set(base, &client_event_);
+  if (event_add(&client_event_, 0) == -1) {
+    perror("event_add");
+    throw std::runtime_error("event_add");
+  }
+
+  if (is_client_connection) {
+    // TODO: handle backend failure
+    // Set up a socket connection to the backend server
+    struct addrinfo hints, *res;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (getaddrinfo(backend_addr, backend_port, &hints, &res) != 0) {
+      perror("getaddrinfo");
+      throw std::runtime_error("getaddrinfo");
+    }
+
+    bool connected = false;
+    for (;; res = res->ai_next) {
+      backend_fd_ = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+      if (backend_fd_ == -1) {
+        // perror("failed to connect backend");
+        // goto is_client_connection_exit;
+        continue;
+      }
+
+      if (connect(backend_fd_, res->ai_addr, res->ai_addrlen) == -1) {
+        // perror("failed to connect backend");
+        // goto is_client_connection_exit;
+        continue;
+      }
+
+      connected = true;
+      break;
+    }
+
+    if (!connected) {
+      perror("failed to connect backend");
+      goto is_client_connection_exit;
+    }
+
+    // Add an event that listens to the backend server's messages
+    event_set(&backend_event_, backend_fd_, event_flags,
+              MemcachedService::BackendHandler, static_cast<void*>(this));
+    event_base_set(base, &backend_event_);
+    if (event_add(&backend_event_, 0) == -1) {
+      perror("event_add");
+      throw std::runtime_error("event_add");
+    }
+
+  is_client_connection_exit:
+    freeaddrinfo(res);
+  }
+}
+
+Connection::~Connection() {
+  /* delete the event, the socket and the conn */
+  event_del(&client_event_);
+  event_del(&backend_event_);
+  return;
+}
+
+int Connection::Accept() {
+  socklen_t addrlen;
+  struct sockaddr_storage addr;
+  addrlen = sizeof(addr);
+  return accept4(client_fd_, (struct sockaddr*)&addr, &addrlen, SOCK_NONBLOCK);
+}
+
+#define unlikely(x) __builtin_expect((x), 0)
+bool Connection::Read() {
+  ssize_t bytes_transferred;
+  if (unlikely((bytes_transferred = read(client_fd_, buffer_.data(), 16384)) <=
+               0)) {
+    // connection closed or error
+    return false;
+  }
+  // // std::cerr << "Connection::AsyncRead: " << e.message() << std::endl;
+  uint8_t* begin = buffer_.data();
+  for (;;) {
+    const auto old_begin = begin;
+    auto result =
+        request_parser_.Parse(begin, buffer_.data() + bytes_transferred);
+    request_->buffer->insert(request_->buffer->end(), old_begin, begin);
+    if (result == SimpleParser::kGood) {
+      lite_server_.Serve(std::move(request_), 0, backend_fd_);
+      request_ = std::make_unique<Packet>();
+      request_parser_.Reset();
+      // requests might be coalesced
+    } else if (result == SimpleParser::kBad) {
+      // TODO: error handling
+      std::cerr << "bad client request:\n" << request_ << std::endl;
+      break;
+    } else {
+      // RequestParser::kIndeterminate
+      break;
+    }
+  }
+  return true;
+}
+
+void Connection::Write(std::unique_ptr<std::vector<uint8_t>> buffer) {
+  // TODO: async to reduce latency
+  // TODO: use transmit in the full version
+  write(client_fd_, buffer->data(), buffer->size());
+}
