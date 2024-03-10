@@ -21,9 +21,12 @@ endif()
 
 add_library(${PROJECT_NAME} STATIC)
 
-file(GLOB ALL_CC_FILES
+file(GLOB_RECURSE ALL_CC_FILES
   "src/*.cc"
 )
+
+list(FILTER ALL_CC_FILES EXCLUDE REGEX "src/cli.cc")
+# message(STATUS "ALL_CC_FILES: ${ALL_CC_FILES}")
 
 target_sources(${PROJECT_NAME}
   PRIVATE
@@ -70,3 +73,12 @@ set(public_headers
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 include(Installing)
+
+
+# CLI tool
+add_executable(lite_cli src/cli.cc)
+target_include_directories(lite_cli
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_link_libraries(lite_cli PRIVATE ${PROJECT_NAME})

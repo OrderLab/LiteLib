@@ -1,9 +1,9 @@
 #pragma once
 
-#include <atomic>
 #include <concepts>
 
 #include "cache.hpp"
+#include "daemon.hpp"
 
 namespace lite {
 
@@ -29,16 +29,13 @@ concept IsService = requires(Service service, Packet p, Client c, Backend b) {
 
 template <typename S, typename Packet, typename Client, typename Backend>
   requires IsService<S, Packet, Client, Backend>
-class LiteServer {
+class LiteServer : public Daemon {
  public:
-  LiteServer(S &service) : service_(service) {}
-
-  void Init() {
-    // TODO: should be able to answer external Switch & Replay commands
-  }
+  LiteServer(S &service, const char pipe_path[])
+      : Daemon([&] { service_.Replay(); }, pipe_path), service_(service) {}
 
   void Serve(Packet p, Client c, Backend backend) {
-    if (emergency_mode_) {
+    if (IsInEmergencyMode()) {
       service_.EmergencyServe(std::move(p));
     } else {
       if (service_.Filter(p)) {
@@ -48,10 +45,7 @@ class LiteServer {
     }
   }
 
-  bool IsInEmergencyMode() { return emergency_mode_; }
-
  private:
-  std::atomic<bool> emergency_mode_ = false;
   S &service_;
 };
 
