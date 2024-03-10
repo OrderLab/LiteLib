@@ -14,7 +14,7 @@ MemcachedServer::MemcachedServer(const size_t &nthreads,
                                  const std::string &backend_addr,
                                  const std::string &backend_port)
     : service_(max_item_count),
-      lite_server_(service_),
+      lite_server_(service_, "/tmp/lite_memcached"),
       backend_addr_(backend_addr),
       backend_port_(backend_port) {
   struct event_config *ev_config;
