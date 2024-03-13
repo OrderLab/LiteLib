@@ -1,6 +1,11 @@
 #include "packet.hpp"
 
+#include <arpa/inet.h>
+
 #include <string>
+
+std::vector<uint8_t> Header::kNotFound = {'N', 'o', 't', ' ', 'F',
+                                          'o', 'u', 'n', 'd'};
 
 // template <typename T>
 // T ReverseBuffer(T buf, size_t len) {
@@ -27,6 +32,37 @@ inline void AppendBuffer(std::vector<uint8_t> &buffer,
                          std::vector<uint8_t> *data) {
   if (!data) return;
   buffer.insert(buffer.end(), data->begin(), data->end());
+}
+
+inline uint64_t ntohll(const uint64_t &x) {
+  return (((uint64_t)htonl(x)) << 32) + (htonl((x) >> 32));
+}
+
+ParsedPacket::ParsedPacket(const Packet &packet) {
+  const auto &data = *(packet.buffer);
+  header.magic = data[0];
+  header.opcode = data[1];
+  header.key_length = ntohs(*reinterpret_cast<const uint16_t *>(&data[2]));
+  header.extras_length = data[4];
+  header.data_type = data[5];
+  header.status = ntohs(*reinterpret_cast<const uint16_t *>(&data[6]));
+  header.total_body_length =
+      ntohl(*reinterpret_cast<const uint32_t *>(&data[8]));
+  header.opaque = ntohl(*reinterpret_cast<const uint32_t *>(&data[12]));
+  header.CAS = ntohll(*reinterpret_cast<const uint64_t *>(&data[16]));
+  extra = std::make_shared<std::vector<uint8_t>>(
+      data.begin() + 24, data.begin() + 24 + header.extras_length);
+  key = std::make_shared<std::vector<uint8_t>>(
+      data.begin() + 24 + header.extras_length,
+      data.begin() + 24 + header.extras_length + header.key_length);
+  value = std::make_shared<std::vector<uint8_t>>(
+      data.begin() + 24 + header.extras_length + header.key_length, data.end());
+}
+
+std::vector<uint8_t> ParsedPacket::ToBuffers() {
+  std::vector<uint8_t> buffers;
+  ToBuffers(buffers);
+  return buffers;
 }
 
 void ParsedPacket::ToBuffers(std::vector<uint8_t> &buffers) {

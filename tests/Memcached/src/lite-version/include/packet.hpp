@@ -2,15 +2,10 @@
 
 #include <cstdint>
 #include <iostream>
+#include <magic_enum.hpp>
 #include <memory>
 #include <string>
 #include <vector>
-
-struct Packet {
-  // size_t length;
-  std::unique_ptr<std::vector<uint8_t>> buffer;
-  Packet() : buffer(std::make_unique<std::vector<uint8_t>>()) {}
-};
 
 struct Header {
   uint8_t magic = 0;
@@ -25,7 +20,7 @@ struct Header {
 
   Header() = default;
 
-  enum Opcode {
+  enum class Opcode : uint8_t {
     kGet = 0,
     kSet,
     kAdd,
@@ -55,6 +50,20 @@ struct Header {
     kPrependQ,
   };
 
+  enum class Status : uint16_t {
+    kNoError = 0x0000,
+    kKeyNotFound,
+    kKeyExists,
+    kValueTooLarge,
+    kInvalidArguments,
+    kItemNotStored,
+    kIncrDecrOnNonNumericValue,
+    kUnknownCommand = 0x0081,
+    kOutOfMemory
+  };
+
+  static std::vector<uint8_t> kNotFound;
+
   friend std::ostream &operator<<(std::ostream &os, const Header &rhs) {
     os << "Header: " << std::endl;
     os << "\tmagic: " << uint16_t(rhs.magic) << std::endl;
@@ -70,6 +79,16 @@ struct Header {
   }
 };
 
+struct Packet {
+  // size_t length;
+  std::unique_ptr<std::vector<uint8_t>> buffer;
+  Packet() : buffer(std::make_unique<std::vector<uint8_t>>()) {}
+
+  std::optional<Header::Opcode> GetOpcode() const {
+    return magic_enum::enum_cast<Header::Opcode>((*buffer)[1]);
+  }
+};
+
 struct ParsedPacket : public Packet {
   Header header = {};
   std::shared_ptr<std::vector<uint8_t>> extra = {};
@@ -77,6 +96,10 @@ struct ParsedPacket : public Packet {
   std::shared_ptr<std::vector<uint8_t>> value = nullptr;
 
   ParsedPacket() = default;
+
+  ParsedPacket(const Packet &packet);
+
+  std::vector<uint8_t> ToBuffers();
 
   /// Append the response into a vector of buffers.
   void ToBuffers(std::vector<uint8_t> &buffers);
@@ -92,18 +115,6 @@ struct ParsedPacket : public Packet {
     os << "value: \n" << ToString(rhs.value.get()) << std::endl;
     return os;
   }
-
-  enum Status {
-    kNoError = 0x0000,
-    kKeyNotFound,
-    kKeyExists,
-    kValueTooLarge,
-    kInvalidArguments,
-    kItemNotStored,
-    kIncrDecrOnNonNumericValue,
-    kUnknownCommand = 0x0081,
-    kOutOfMemory
-  };
 
  private:
   static std::string ToString(const std::vector<uint8_t> &v) {

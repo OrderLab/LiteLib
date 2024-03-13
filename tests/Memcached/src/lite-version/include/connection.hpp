@@ -53,9 +53,10 @@ class Connection {
   SimpleParser request_parser_;
 
   /// Handle completion of a write operation.
+  std::unique_ptr<std::vector<uint8_t>> response_buffer_;
+  void FlushBuffer();
+
   void Write(std::unique_ptr<std::vector<uint8_t>> buffer);
 
   friend class MemcachedService;
 };
-
-typedef std::shared_ptr<Connection> connection_ptr;

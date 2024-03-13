@@ -99,8 +99,10 @@ class Cache {
     bool ret = false;
     cache_.visit(key, [this, &value, &ret](auto &element) {
       element.second.value_ = value;
-      typename std::enable_if<HasGetSize<CacheEntry>, const size_t>::type
-          new_size = value.GetSize();
+      size_t new_size;
+      if constexpr (HasGetSize<CacheEntry>) {
+        new_size = value.GetSize();
+      }
       ret = true;
 
       std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);

@@ -9,8 +9,10 @@ Connection::Connection(const evutil_socket_t sfd, const int event_flags,
                        const char* backend_port)
     : client_fd_(sfd),
       request_(std::make_unique<Packet>()),
-      lite_server_(lite_server) {
-  event_set(&client_event_, sfd, event_flags, event_handler, static_cast<void*>(this));
+      lite_server_(lite_server),
+      response_buffer_(std::make_unique<std::vector<uint8_t>>()) {
+  event_set(&client_event_, sfd, event_flags, event_handler,
+            static_cast<void*>(this));
   event_base_set(base, &client_event_);
   if (event_add(&client_event_, 0) == -1) {
     perror("event_add");
@@ -113,6 +115,11 @@ bool Connection::Read() {
     }
   }
   return true;
+}
+
+void Connection::FlushBuffer() {
+  write(client_fd_, response_buffer_->data(), response_buffer_->size());
+  response_buffer_->clear();
 }
 
 void Connection::Write(std::unique_ptr<std::vector<uint8_t>> buffer) {
