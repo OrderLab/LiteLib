@@ -14,14 +14,14 @@ concept IsService = requires(Service service, Packet p, Client c, Backend b) {
   { service.Filter(p) } -> std::convertible_to<bool>;
 
   // Perform the cachable operation during normal time
-  { service.NormalUpdate(std::move(p)) };
+  { service.NormalUpdate(p) };
 
   // Forward any operation to the backend, get the response and return it to the
   // client during normal time
   { service.NormalForwardAndProxyBack(std::move(p), c, b) };
 
   // Perform any operation during emergency time
-  { service.EmergencyServe(std::move(p)) };
+  { service.EmergencyServe(std::move(p), c) };
 
   // Sync the state changes during emergency time to the recovered full version
   { service.Replay() };
@@ -36,10 +36,10 @@ class LiteServer : public Daemon {
 
   void Serve(Packet p, Client c, Backend backend) {
     if (IsInEmergencyMode()) {
-      service_.EmergencyServe(std::move(p));
+      service_.EmergencyServe(std::move(p), c);
     } else {
       if (service_.Filter(p)) {
-        service_.NormalUpdate(std::move(p));
+        service_.NormalUpdate(p);
       }
       service_.NormalForwardAndProxyBack(std::move(p), c, backend);
     }
