@@ -2,8 +2,12 @@
 
 #include "connection.hpp"
 
-MemcachedService::MemcachedService(const size_t &max_item_count)
-    : cache_(max_item_count) {}
+MemcachedService::MemcachedService(const size_t &max_item_count,
+                                   const std::string &backend_addr,
+                                   const std::string &backend_port)
+    : cache_(max_item_count),
+      backend_addr_(backend_addr),
+      backend_port_(backend_port) {}
 
 bool MemcachedService::Filter(const std::unique_ptr<Packet> &p) const {
   const auto OpCodeOption = p->GetOpcode();
@@ -142,7 +146,28 @@ void MemcachedService::EmergencyServe(std::unique_ptr<Packet> p,
 }
 
 void MemcachedService::Replay() {
-  // TODO: sync, clear response buffer?
+  // TODO: How to deal with the UPDATE/DELETE operation during syncing?
+  // TODO: parallel?
+  auto const backend_fd =
+      Connection::TryConnectBackend(backend_addr_, backend_port_);
+  ParsedPacket req;
+  req.header.magic = 0x81;
+  req.header.opcode = magic_enum::enum_underlying(Header::Opcode::kSetQ);
+  cache_.ConstVisitAll([&](const auto &key, const auto &entry) {
+    req.key = std::make_shared<std::vector<uint8_t>>(key);
+    req.value = entry.value;
+    req.extra = entry.flags;
+    req.header.CAS = entry.CAS;
+    req.header.extras_length = 4;
+    req.header.key_length = req.key->size();
+    req.header.total_body_length =
+        req.value->size() + req.header.key_length + req.header.extras_length;
+    req.buffer->clear();
+    const auto buffer = req.ToBuffers();
+    write(backend_fd, buffer.data(), buffer.size());
+  });
+  close(backend_fd);
+  // TODO: How to deal with in-flight requests and response buffer?
 }
 
 void MemcachedService::BackendHandler(evutil_socket_t fd, short which,

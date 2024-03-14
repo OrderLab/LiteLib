@@ -78,9 +78,9 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
           std::cout << "Daemon: Entering emergency mode" << std::endl;
           break;
         case PipeMessage::kExitEmergencyMode:
+          self->Replay();
           self->emergency_mode_ = false;
           std::cout << "Daemon: Exiting emergency mode" << std::endl;
-          self->Replay();
           break;
       }
     } else {

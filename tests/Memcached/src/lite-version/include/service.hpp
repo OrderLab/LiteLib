@@ -4,6 +4,7 @@
 
 #include <lite.hpp>
 #include <memory>
+#include <string>
 
 #include "packet.hpp"
 
@@ -11,13 +12,16 @@ class Connection;
 
 class MemcachedService {
  public:
-  MemcachedService(const size_t &max_item_count);
+  MemcachedService(const size_t &max_item_count,
+                   const std::string &backend_addr = "localhost",
+                   const std::string &backend_port = "11211");
 
   bool Filter(const std::unique_ptr<Packet> &p) const;
 
   void NormalUpdate(const std::unique_ptr<Packet> &p);
 
-  void NormalForwardAndProxyBack(std::unique_ptr<Packet> p, Connection *conn_ptr,
+  void NormalForwardAndProxyBack(std::unique_ptr<Packet> p,
+                                 Connection *conn_ptr,
                                  volatile evutil_socket_t &server_fd);
 
   void EmergencyServe(std::unique_ptr<Packet> p, Connection *conn_ptr);
@@ -27,6 +31,8 @@ class MemcachedService {
   static void BackendHandler(evutil_socket_t fd, short which, void *arg_conn);
 
  private:
+  const std::string backend_addr_, backend_port_;
+
   struct CacheEntry {
     std::shared_ptr<std::vector<uint8_t>> value = nullptr;
     std::shared_ptr<std::vector<uint8_t>> flags = nullptr;

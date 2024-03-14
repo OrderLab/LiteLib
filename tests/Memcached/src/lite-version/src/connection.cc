@@ -6,8 +6,8 @@ Connection::Connection(const evutil_socket_t sfd, const int event_flags,
                        struct event_base* base, EventHandler event_handler,
                        MemcachedLiteServer& lite_server,
                        bool is_client_connection,
-                       const std::string backend_addr,
-                       const std::string backend_port)
+                       const std::string &backend_addr,
+                       const std::string &backend_port)
     : base_(base),
       backend_addr_(backend_addr),
       backend_port_(backend_port),
@@ -26,16 +26,16 @@ Connection::Connection(const evutil_socket_t sfd, const int event_flags,
   if (is_client_connection) ConnectBackend();
 }
 
-bool Connection::ConnectBackend() {
-  // TODO: handle backend failure
-  // Set up a socket connection to the backend server
+evutil_socket_t Connection::TryConnectBackend(const std::string& addr,
+                                              const std::string& port) {
+  evutil_socket_t backend_fd;
   struct addrinfo hints, *res;
 
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
-  if (getaddrinfo(backend_addr_.c_str(), backend_port_.c_str(), &hints, &res) !=
+  if (getaddrinfo(addr.c_str(), port.c_str(), &hints, &res) !=
       0) {
     perror("getaddrinfo");
     throw std::runtime_error("getaddrinfo");
@@ -43,14 +43,14 @@ bool Connection::ConnectBackend() {
 
   bool connected = false;
   for (; res; res = res->ai_next) {
-    backend_fd_ = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (backend_fd_ == -1) {
+    backend_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (backend_fd == -1) {
       // perror("failed to connect backend");
       // goto connect_backend_exit;
       continue;
     }
 
-    if (connect(backend_fd_, res->ai_addr, res->ai_addrlen) == -1) {
+    if (connect(backend_fd, res->ai_addr, res->ai_addrlen) == -1) {
       // perror("failed to connect backend");
       // goto connect_backend_exit;
       continue;
@@ -65,6 +65,19 @@ bool Connection::ConnectBackend() {
     goto connect_backend_exit;
   }
 
+  return backend_fd;
+
+connect_backend_exit:
+  freeaddrinfo(res);
+  return -1;
+}
+
+bool Connection::ConnectBackend() {
+  // Set up a socket connection to the backend server
+  if ((backend_fd_ = TryConnectBackend(backend_addr_, backend_port_)) == -1) {
+    return false;
+  }
+
   // Add an event that listens to the backend server's messages
   event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
             MemcachedService::BackendHandler, static_cast<void*>(this));
@@ -75,11 +88,6 @@ bool Connection::ConnectBackend() {
   }
 
   return true;
-
-connect_backend_exit:
-  freeaddrinfo(res);
-  backend_fd_ = -1;
-  return false;
 }
 
 Connection::~Connection() {

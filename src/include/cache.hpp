@@ -126,6 +126,11 @@ class Cache {
     return ret;
   }
 
+  void ConstVisitAll(
+      std::function<void(const Key &, const CacheEntry &)> visitor) {
+    cache_.visit_all([&](auto &x) { visitor(x.first, x.second.value_); });
+  }
+
  private:
   struct ListNode {
     Key key_;
