@@ -70,8 +70,8 @@ void ParsedPacket::ToBuffers(std::vector<uint8_t> &buffers) {
     AppendBuffer(buffers, buffer.get());
     return;
   }
-  buffers.reserve(buffers.size() + 24 + extra->size() + key->size() +
-                  (value ? value->size() : 0));
+  buffers.reserve(buffers.size() + 24 + (extra ? extra->size() : 0) +
+                  (key ? key->size() : 0) + (value ? value->size() : 0));
   ReverseAppendBuffer(buffers, &header.magic, sizeof(header.magic));
   ReverseAppendBuffer(buffers, &header.opcode, sizeof(header.opcode));
   ReverseAppendBuffer(buffers, &header.key_length, sizeof(header.key_length));

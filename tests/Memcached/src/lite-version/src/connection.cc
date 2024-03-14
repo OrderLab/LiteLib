@@ -5,9 +5,13 @@
 Connection::Connection(const evutil_socket_t sfd, const int event_flags,
                        struct event_base* base, EventHandler event_handler,
                        MemcachedLiteServer& lite_server,
-                       bool is_client_connection, const char* backend_addr,
-                       const char* backend_port)
-    : client_fd_(sfd),
+                       bool is_client_connection,
+                       const std::string backend_addr,
+                       const std::string backend_port)
+    : base_(base),
+      backend_addr_(backend_addr),
+      backend_port_(backend_port),
+      client_fd_(sfd),
       request_(std::make_unique<Packet>()),
       lite_server_(lite_server),
       response_buffer_(std::make_unique<std::vector<uint8_t>>()) {
@@ -19,56 +23,63 @@ Connection::Connection(const evutil_socket_t sfd, const int event_flags,
     throw std::runtime_error("event_add");
   }
 
-  if (is_client_connection) {
-    // TODO: handle backend failure
-    // Set up a socket connection to the backend server
-    struct addrinfo hints, *res;
+  if (is_client_connection) ConnectBackend();
+}
 
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
+bool Connection::ConnectBackend() {
+  // TODO: handle backend failure
+  // Set up a socket connection to the backend server
+  struct addrinfo hints, *res;
 
-    if (getaddrinfo(backend_addr, backend_port, &hints, &res) != 0) {
-      perror("getaddrinfo");
-      throw std::runtime_error("getaddrinfo");
-    }
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
 
-    bool connected = false;
-    for (;; res = res->ai_next) {
-      backend_fd_ = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-      if (backend_fd_ == -1) {
-        // perror("failed to connect backend");
-        // goto is_client_connection_exit;
-        continue;
-      }
-
-      if (connect(backend_fd_, res->ai_addr, res->ai_addrlen) == -1) {
-        // perror("failed to connect backend");
-        // goto is_client_connection_exit;
-        continue;
-      }
-
-      connected = true;
-      break;
-    }
-
-    if (!connected) {
-      perror("failed to connect backend");
-      goto is_client_connection_exit;
-    }
-
-    // Add an event that listens to the backend server's messages
-    event_set(&backend_event_, backend_fd_, event_flags,
-              MemcachedService::BackendHandler, static_cast<void*>(this));
-    event_base_set(base, &backend_event_);
-    if (event_add(&backend_event_, 0) == -1) {
-      perror("event_add");
-      throw std::runtime_error("event_add");
-    }
-
-  is_client_connection_exit:
-    freeaddrinfo(res);
+  if (getaddrinfo(backend_addr_.c_str(), backend_port_.c_str(), &hints, &res) !=
+      0) {
+    perror("getaddrinfo");
+    throw std::runtime_error("getaddrinfo");
   }
+
+  bool connected = false;
+  for (; res; res = res->ai_next) {
+    backend_fd_ = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (backend_fd_ == -1) {
+      // perror("failed to connect backend");
+      // goto connect_backend_exit;
+      continue;
+    }
+
+    if (connect(backend_fd_, res->ai_addr, res->ai_addrlen) == -1) {
+      // perror("failed to connect backend");
+      // goto connect_backend_exit;
+      continue;
+    }
+
+    connected = true;
+    break;
+  }
+
+  if (!connected) {
+    perror("failed to connect backend");
+    goto connect_backend_exit;
+  }
+
+  // Add an event that listens to the backend server's messages
+  event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
+            MemcachedService::BackendHandler, static_cast<void*>(this));
+  event_base_set(base_, &backend_event_);
+  if (event_add(&backend_event_, 0) == -1) {
+    perror("event_add");
+    throw std::runtime_error("event_add");
+  }
+
+  return true;
+
+connect_backend_exit:
+  freeaddrinfo(res);
+  backend_fd_ = -1;
+  return false;
 }
 
 Connection::~Connection() {
@@ -101,7 +112,7 @@ bool Connection::Read() {
         request_parser_.Parse(begin, buffer_.data() + bytes_transferred);
     request_->buffer->insert(request_->buffer->end(), old_begin, begin);
     if (result == SimpleParser::kGood) {
-      lite_server_.Serve(std::move(request_), 0, backend_fd_);
+      lite_server_.Serve(std::move(request_), this, backend_fd_);
       request_ = std::make_unique<Packet>();
       request_parser_.Reset();
       // requests might be coalesced

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <lite.hpp>
 #include <memory>
+#include <string>
 
 #include "packet.hpp"
 #include "service.hpp"
@@ -23,8 +24,8 @@ class Connection {
                       struct event_base* base, EventHandler event_handler,
                       MemcachedLiteServer& lite_server,
                       bool is_client_connection,
-                      const char* backend_addr = nullptr,
-                      const char* backend_port = nullptr);
+                      const std::string backend_addr = "localhost",
+                      const std::string backend_port = "11211");
 
   ~Connection();
 
@@ -35,11 +36,20 @@ class Connection {
   bool Read();
 
  private:
+  /// Corresponding worker's event_base
+  struct event_base* const base_;
+
   /// Underlying Memcached Server implementation.
   MemcachedLiteServer& lite_server_;
 
+  /// The address and port of the backend server.
+  const std::string backend_addr_, backend_port_;
+
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;
+
+  /// Try to connect to the backend
+  bool ConnectBackend();
 
   /// The event associated with the connection.
   event client_event_, backend_event_;

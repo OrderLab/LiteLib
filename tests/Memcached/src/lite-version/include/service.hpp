@@ -17,8 +17,8 @@ class MemcachedService {
 
   void NormalUpdate(const std::unique_ptr<Packet> &p);
 
-  void NormalForwardAndProxyBack(std::unique_ptr<Packet> p, Connection *_,
-                                 const evutil_socket_t server_fd) const;
+  void NormalForwardAndProxyBack(std::unique_ptr<Packet> p, Connection *conn_ptr,
+                                 volatile evutil_socket_t &server_fd);
 
   void EmergencyServe(std::unique_ptr<Packet> p, Connection *conn_ptr);
 
@@ -41,4 +41,4 @@ class MemcachedService {
 
 using MemcachedLiteServer =
     lite::LiteServer<MemcachedService, std::unique_ptr<Packet>, Connection *,
-                     evutil_socket_t>;
+                     evutil_socket_t &>;

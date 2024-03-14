@@ -46,8 +46,15 @@ void MemcachedService::NormalUpdate(const std::unique_ptr<Packet> &p) {
 }
 
 void MemcachedService::NormalForwardAndProxyBack(
-    std::unique_ptr<Packet> p, Connection *_,
-    const evutil_socket_t server_fd) const {
+    std::unique_ptr<Packet> p, Connection *conn_ptr,
+    volatile evutil_socket_t &server_fd) {
+  if (server_fd <= 0) {
+    if (!conn_ptr->ConnectBackend()) {
+      // TODO: report error
+      EmergencyServe(std::move(p), conn_ptr);
+      return;
+    }
+  }
   write(server_fd, p->buffer->data(), p->buffer->size());
 }
 
