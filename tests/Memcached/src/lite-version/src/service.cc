@@ -43,6 +43,8 @@ void MemcachedService::NormalUpdate(const std::unique_ptr<Packet> &p) {
     case Header::Opcode::kReplace:
       cache_.Replace(*packet.key, entry);
       break;
+    case Header::Opcode::kQuit:
+      break;
     default:  // TODO: support CAS, Expiration, error and other operations
       std::cerr << "Unknown OpCode: " << magic_enum::enum_name(opcode)
                 << std::endl;
@@ -132,8 +134,8 @@ void MemcachedService::EmergencyServe(std::unique_ptr<Packet> p,
       break;
     case Header::Opcode::kQuit:
       conn_ptr->FlushBuffer();
-      delete conn_ptr;  // TODO: check if this is correct
-      break;
+      delete conn_ptr;
+      return;
     default:
       // TODO: more operations
       std::cerr << "Unsupported Opcode:\n" << req << std::endl;

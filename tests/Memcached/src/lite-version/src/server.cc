@@ -13,7 +13,7 @@ MemcachedServer::MemcachedServer(const size_t &nthreads,
                                  const size_t &max_item_count,
                                  const std::string &backend_addr,
                                  const std::string &backend_port)
-    : service_(max_item_count),
+    : service_(max_item_count, backend_addr, backend_port),
       lite_server_(service_, "/tmp/lite_memcached"),
       backend_addr_(backend_addr),
       backend_port_(backend_port) {

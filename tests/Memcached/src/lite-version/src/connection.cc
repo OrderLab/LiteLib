@@ -92,8 +92,11 @@ bool Connection::ConnectBackend() {
 
 Connection::~Connection() {
   /* delete the event, the socket and the conn */
+  close(backend_fd_);
+  close(client_fd_);
   event_del(&client_event_);
   event_del(&backend_event_);
+  // std::cerr << "connection closed" << std::endl;
   return;
 }
 
