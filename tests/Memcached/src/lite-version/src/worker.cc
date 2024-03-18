@@ -69,8 +69,8 @@ void Worker::NotifyHandler(evutil_socket_t fd, short which, void *arg_self) {
     std::unique_ptr<Connection> new_connection;
     if (!(new_connection = std::make_unique<Connection>(
               sfd, EV_READ | EV_PERSIST, self->base_, ConnectionHandler,
-              self->lite_server_, true, self->backend_addr_.c_str(),
-              self->backend_port_.c_str()))) {
+              self->lite_server_, true, self->backend_addr_,
+              self->backend_port_))) {
       fprintf(stderr, "failed to create listening connection\n");
       exit(EXIT_FAILURE);
     }

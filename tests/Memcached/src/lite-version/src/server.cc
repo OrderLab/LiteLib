@@ -11,10 +11,10 @@ MemcachedServer *main_server_ptr = nullptr;
 
 MemcachedServer::MemcachedServer(const size_t &nthreads,
                                  const size_t &max_item_count,
-                                 const std::string &backend_addr,
-                                 const std::string &backend_port)
+                                 std::string &backend_addr,
+                                 std::string &backend_port)
     : service_(max_item_count, backend_addr, backend_port),
-      lite_server_(service_, "/tmp/lite_memcached"),
+      lite_server_(service_, backend_port, "/tmp/lite_memcached"),
       backend_addr_(backend_addr),
       backend_port_(backend_port) {
   struct event_config *ev_config;
@@ -122,9 +122,10 @@ bool MemcachedServer::Run(const char *port) {
     }
 
     std::unique_ptr<Connection> new_connection;
+    std::string place_holder;
     if (!(new_connection = std::make_unique<Connection>(
               sfd, EV_READ | EV_PERSIST, main_base_, EventHandler, lite_server_,
-              false))) {
+              false, place_holder, place_holder))) {
       fprintf(stderr, "failed to create listening connection\n");
       exit(EXIT_FAILURE);
     }

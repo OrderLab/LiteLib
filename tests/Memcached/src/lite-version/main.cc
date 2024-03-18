@@ -65,7 +65,9 @@ int main(int argc, char* argv[]) {
 
     // Initialise the server.
     // TODO: make address and port configurable.
-    MemcachedServer s(thread_pool_size, cache_size, "localhost", "60000");
+    std::string backend_addr = "localhost";
+    std::string backend_port = "60000";
+    MemcachedServer s(thread_pool_size, cache_size, backend_addr, backend_port);
 
     // Run the server until stopped.
     s.Run(port);

@@ -31,8 +31,9 @@ template <typename S, typename Packet, typename Client, typename Backend>
   requires IsService<S, Packet, Client, Backend>
 class LiteServer : public Daemon {
  public:
-  LiteServer(S &service, const char pipe_path[])
-      : Daemon([&] { service_.Replay(); }, pipe_path), service_(service) {}
+  LiteServer(S &service, std::string &backend_port, const char pipe_path[])
+      : Daemon([&] { service_.Replay(); }, backend_port, pipe_path),
+        service_(service) {}
 
   void Serve(Packet p, Client c, Backend backend) {
     if (IsInEmergencyMode()) {

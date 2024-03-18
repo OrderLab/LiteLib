@@ -12,6 +12,7 @@ namespace lite {
 class Daemon {
  public:
   explicit Daemon(const std::function<void()> &Replay,
+                  std::string &backend_port,
                   const std::string pipe_path = "/tmp/lite");
 
   bool IsInEmergencyMode() { return emergency_mode_; }
@@ -30,6 +31,8 @@ class Daemon {
   struct event pipe_event_;
 
   std::string pipe_path_;
+
+  std::string &backend_port_;
 
   void CreatePipeAndRegisterEvent();
 

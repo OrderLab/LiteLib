@@ -11,8 +11,8 @@
 
 namespace lite {
 
-Daemon::Daemon(const std::function<void()> &Replay, const std::string pipe_path)
-    : Replay(Replay), pipe_path_(pipe_path) {
+Daemon::Daemon(const std::function<void()> &Replay, std::string &backend_port, const std::string pipe_path)
+    : Replay(Replay), pipe_path_(pipe_path), backend_port_(backend_port) {
   // set up event_base
   struct event_config *ev_config;
   ev_config = event_config_new();
@@ -70,21 +70,17 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
       fprintf(stderr, "Daemon: Error reading pipe");
       return;
     }
-    const auto enum_message = magic_enum::enum_cast<PipeMessage>(message);
-    if (enum_message.has_value()) {
-      switch (enum_message.value()) {
-        case PipeMessage::kEnterEmergencyMode:
-          self->emergency_mode_ = true;
-          std::cout << "Daemon: Entering emergency mode" << std::endl;
-          break;
-        case PipeMessage::kExitEmergencyMode:
-          self->Replay();
-          self->emergency_mode_ = false;
-          std::cout << "Daemon: Exiting emergency mode" << std::endl;
-          break;
-      }
-    } else {
-      fprintf(stderr, "Daemon: Unknown message received");
+    self->backend_port_ = std::to_string(message.backend_port);
+    switch (message.action) {
+      case PipeMessage::kEnterEmergencyMode:
+        self->emergency_mode_ = true;
+        std::cout << "Daemon: Entering emergency mode" << std::endl;
+        break;
+      case PipeMessage::kExitEmergencyMode:
+        self->Replay();
+        self->emergency_mode_ = false;
+        std::cout << "Daemon: Exiting emergency mode" << std::endl;
+        break;
     }
 
     // Close Pipe

@@ -6,8 +6,8 @@ Connection::Connection(const evutil_socket_t sfd, const int event_flags,
                        struct event_base* base, EventHandler event_handler,
                        MemcachedLiteServer& lite_server,
                        bool is_client_connection,
-                       const std::string &backend_addr,
-                       const std::string &backend_port)
+                       std::string &backend_addr,
+                       std::string &backend_port)
     : base_(base),
       backend_addr_(backend_addr),
       backend_port_(backend_port),
@@ -38,7 +38,7 @@ evutil_socket_t Connection::TryConnectBackend(const std::string& addr,
   if (getaddrinfo(addr.c_str(), port.c_str(), &hints, &res) !=
       0) {
     perror("getaddrinfo");
-    throw std::runtime_error("getaddrinfo");
+    return -1;
   }
 
   bool connected = false;

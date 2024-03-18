@@ -8,11 +8,14 @@
 
 namespace lite {
 
-using pipe_message_t = uint64_t;
-
-enum class PipeMessage : pipe_message_t {
+enum class PipeMessage : uint8_t {
   kExitEmergencyMode,
   kEnterEmergencyMode,
+};
+
+struct pipe_message_t {
+  PipeMessage action;
+  uint16_t backend_port;
 };
 
 }  // namespace lite

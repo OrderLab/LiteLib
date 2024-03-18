@@ -24,8 +24,8 @@ class Connection {
                       struct event_base* base, EventHandler event_handler,
                       MemcachedLiteServer& lite_server,
                       bool is_client_connection,
-                      const std::string &backend_addr = "localhost",
-                      const std::string &backend_port = "11211");
+                      std::string &backend_addr,
+                      std::string &backend_port);
 
   ~Connection();
 
@@ -43,7 +43,7 @@ class Connection {
   MemcachedLiteServer& lite_server_;
 
   /// The address and port of the backend server.
-  const std::string backend_addr_, backend_port_;
+  std::string &backend_addr_, &backend_port_;
 
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;

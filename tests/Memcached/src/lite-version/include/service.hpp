@@ -13,8 +13,8 @@ class Connection;
 class MemcachedService {
  public:
   MemcachedService(const size_t &max_item_count,
-                   const std::string &backend_addr = "localhost",
-                   const std::string &backend_port = "11211");
+                   std::string &backend_addr,
+                   std::string &backend_port);
 
   bool Filter(const std::unique_ptr<Packet> &p) const;
 
@@ -31,7 +31,7 @@ class MemcachedService {
   static void BackendHandler(evutil_socket_t fd, short which, void *arg_conn);
 
  private:
-  const std::string backend_addr_, backend_port_;
+  std::string &backend_addr_, &backend_port_;
 
   struct CacheEntry {
     std::shared_ptr<std::vector<uint8_t>> value = nullptr;

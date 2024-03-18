@@ -3,8 +3,8 @@
 #include "connection.hpp"
 
 MemcachedService::MemcachedService(const size_t &max_item_count,
-                                   const std::string &backend_addr,
-                                   const std::string &backend_port)
+                                   std::string &backend_addr,
+                                   std::string &backend_port)
     : cache_(max_item_count),
       backend_addr_(backend_addr),
       backend_port_(backend_port) {}
@@ -56,7 +56,7 @@ void MemcachedService::NormalForwardAndProxyBack(
     volatile evutil_socket_t &server_fd) {
   if (server_fd <= 0) {
     if (!conn_ptr->ConnectBackend()) {
-      // TODO: report error
+      std::cerr << "Fall back to EmergencyServe\n";
       EmergencyServe(std::move(p), conn_ptr);
       return;
     }

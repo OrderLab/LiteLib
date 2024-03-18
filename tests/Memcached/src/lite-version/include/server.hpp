@@ -17,8 +17,8 @@ class MemcachedServer {
 
   /// Construct the server with the given thread pool size and maximum.
   explicit MemcachedServer(const size_t& nthreads, const size_t& max_item_count,
-                           const std::string& backend_addr,
-                           const std::string& backend_port);
+                           std::string& backend_addr,
+                           std::string& backend_port);
 
   /// Listen on the specified TCP port.
   bool Run(const char* port);
@@ -27,7 +27,7 @@ class MemcachedServer {
   void DispatchNewConnection(const evutil_socket_t sfd);
 
  private:
-  std::string backend_addr_, backend_port_;
+  std::string &backend_addr_, &backend_port_;
 
   /// The internal service implementation.
   MemcachedService service_;
