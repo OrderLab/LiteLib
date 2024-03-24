@@ -1,12 +1,13 @@
 #include "connection.hpp"
 
+#include <netinet/tcp.h>
+
 #include <vector>
 
 Connection::Connection(const evutil_socket_t sfd, const int event_flags,
-                       struct event_base* base, EventHandler event_handler,
-                       MemcachedLiteServer& lite_server,
-                       bool is_client_connection,
-                       std::string &backend_addr,
+                       struct event_base *base, EventHandler event_handler,
+                       MemcachedLiteServer &lite_server,
+                       bool is_client_connection, std::string &backend_addr,
                        std::string &backend_port)
     : base_(base),
       backend_addr_(backend_addr),
@@ -16,7 +17,7 @@ Connection::Connection(const evutil_socket_t sfd, const int event_flags,
       lite_server_(lite_server),
       response_buffer_(std::make_unique<std::vector<uint8_t>>()) {
   event_set(&client_event_, sfd, event_flags, event_handler,
-            static_cast<void*>(this));
+            static_cast<void *>(this));
   event_base_set(base, &client_event_);
   if (event_add(&client_event_, 0) == -1) {
     perror("event_add");
@@ -26,8 +27,9 @@ Connection::Connection(const evutil_socket_t sfd, const int event_flags,
   if (is_client_connection) ConnectBackend();
 }
 
-evutil_socket_t Connection::TryConnectBackend(const std::string& addr,
-                                              const std::string& port) {
+evutil_socket_t Connection::TryConnectBackend(const std::string &addr,
+                                              const std::string &port) {
+  std::cerr << "Try to connect to backend\n";
   evutil_socket_t backend_fd;
   struct addrinfo hints, *res;
 
@@ -35,18 +37,43 @@ evutil_socket_t Connection::TryConnectBackend(const std::string& addr,
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
-  if (getaddrinfo(addr.c_str(), port.c_str(), &hints, &res) !=
-      0) {
+  if (getaddrinfo(addr.c_str(), port.c_str(), &hints, &res) != 0) {
     perror("getaddrinfo");
     return -1;
   }
 
   bool connected = false;
+  int flags = 1;
+  struct linger ling = {0, 0};
   for (; res; res = res->ai_next) {
     backend_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (backend_fd == -1) {
       // perror("failed to connect backend");
       // goto connect_backend_exit;
+      continue;
+    }
+
+    if (setsockopt(backend_fd, SOL_SOCKET, SO_REUSEADDR, (void *)&flags,
+                   sizeof(flags)) != 0) {
+      perror("failed to set SO_REUSEADDR for backend");
+      continue;
+    }
+
+    if (setsockopt(backend_fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags,
+                   sizeof(flags)) != 0) {
+      perror("failed to set SO_KEEPALIVE for backend");
+      continue;
+    }
+
+    if (setsockopt(backend_fd, SOL_SOCKET, SO_LINGER, (void *)&ling,
+                   sizeof(ling)) != 0) {
+      perror("failed to set SO_LINGER for backend");
+      continue;
+    }
+
+    if (setsockopt(backend_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags,
+                   sizeof(flags)) != 0) {
+      perror("failed to set TCP_NODELAY for backend");
       continue;
     }
 
@@ -80,7 +107,7 @@ bool Connection::ConnectBackend() {
 
   // Add an event that listens to the backend server's messages
   event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
-            MemcachedService::BackendHandler, static_cast<void*>(this));
+            MemcachedService::BackendHandler, static_cast<void *>(this));
   event_base_set(base_, &backend_event_);
   if (event_add(&backend_event_, 0) == -1) {
     perror("event_add");
@@ -104,7 +131,7 @@ int Connection::Accept() {
   socklen_t addrlen;
   struct sockaddr_storage addr;
   addrlen = sizeof(addr);
-  return accept4(client_fd_, (struct sockaddr*)&addr, &addrlen, SOCK_NONBLOCK);
+  return accept4(client_fd_, (struct sockaddr *)&addr, &addrlen, SOCK_NONBLOCK);
 }
 
 #define unlikely(x) __builtin_expect((x), 0)
@@ -116,7 +143,7 @@ bool Connection::Read() {
     return false;
   }
   // // std::cerr << "Connection::AsyncRead: " << e.message() << std::endl;
-  uint8_t* begin = buffer_.data();
+  uint8_t *begin = buffer_.data();
   for (;;) {
     const auto old_begin = begin;
     auto result =
