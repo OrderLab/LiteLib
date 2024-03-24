@@ -56,7 +56,7 @@ bool Server::Run(const char *port) {
 
   hints.ai_socktype = SOCK_STREAM;
 
-  char *interface;
+  char *interface = nullptr;
   error = getaddrinfo(interface, port, &hints, &ai);
   if (error != 0) {
     if (error != EAI_SYSTEM)
