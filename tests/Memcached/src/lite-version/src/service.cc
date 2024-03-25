@@ -150,25 +150,36 @@ void MemcachedService::EmergencyServe(std::unique_ptr<Packet> p,
 void MemcachedService::Replay() {
   // TODO: How to deal with the UPDATE/DELETE operation during syncing?
   // TODO: parallel?
-  auto const backend_fd =
-      Connection::TryConnectBackend(backend_addr_, backend_port_);
+  int backend_fd, tries = 0;
+  while ((backend_fd = Connection::TryConnectBackend(backend_addr_, backend_port_)) == -1) {
+    if (tries++ > 100) {
+      std::cerr << "Replay failed to connect to backend\n";
+      return;
+    }
+  }
+  std::cerr << "Replay connected to backend in " << tries << " tries\n";
+  size_t cnt = 0;
   ParsedPacket req;
-  req.header.magic = 0x81;
+  static std::vector<uint8_t> expiry(4, 0); // TODO: use real one
+  req.header.magic = 0x80;
   req.header.opcode = magic_enum::enum_underlying(Header::Opcode::kSetQ);
   cache_.ConstVisitAll([&](const auto &key, const auto &entry) {
+    cnt++;
     req.key = std::make_shared<std::vector<uint8_t>>(key);
     req.value = entry.value;
     req.extra = entry.flags;
     req.header.CAS = entry.CAS;
-    req.header.extras_length = 4;
+    req.header.extras_length = 8;
     req.header.key_length = req.key->size();
     req.header.total_body_length =
         req.value->size() + req.header.key_length + req.header.extras_length;
     req.buffer->clear();
-    const auto buffer = req.ToBuffers();
+    auto buffer = req.ToBuffers();
+    buffer.insert(buffer.begin() + 28, expiry.begin(), expiry.end());
     write(backend_fd, buffer.data(), buffer.size());
   });
   close(backend_fd);
+  std::cerr << "Replay " << cnt << " items\n";
   // TODO: How to deal with in-flight requests and response buffer?
 }
 
