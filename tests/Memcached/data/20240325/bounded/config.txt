@@ -1,0 +1,10 @@
+300s
+1500
+number of entries in MySQL: 1504000
+number of index used in requests: 140000
+weight 50
+concurrency 4
+
+python3 run_experiment.py 1500 0 300 1.00001 12 10 False 1 full
+
+using commit 3f0e6723722d9f66993dc5bacb4
