@@ -21,7 +21,18 @@ print('failure triggered')
 
 time.sleep(crash_time)
 
-if exp_type == 'lite' or exp_type == 'replica':
+if exp_type == 'new_lite':
+  boot_command = ["/workspace/Memcached_codes/lite_cli", "-t", "/tmp/lite_memcached", "-p", "60001", "-m", "1"]
+  # /workspace/Memcached_codes/lite_cli -t /tmp/lite_memcached -p 60001 -m 1
+  subprocess.Popen(boot_command, start_new_session=True)
+  print(boot_command)
+
+  boot_command = ["memcached", "-p", "60001", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4"]
+  subprocess.Popen(boot_command, start_new_session=True)
+  print(boot_command)
+
+  sync(exp_type)
+elif exp_type == 'lite' or exp_type == 'replica':
   os.system("""
   echo "
   -d -t 10.0.233.7:11211 -r 192.168.254.10:60000
@@ -30,11 +41,11 @@ if exp_type == 'lite' or exp_type == 'replica':
   """)
   os.system(r'ipvsadm -l')
 
-  boot_command = ["taskset", "-c", "0,1,2,3", "ip", "net", "e", "testx", "memcached", "-p", "60002", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4"]
+  boot_command = ["ip", "net", "e", "testx", "memcached", "-p", "60002", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4"]
   subprocess.Popen(boot_command, start_new_session=True)
   print(boot_command)
 
-  sync()
+  sync(exp_type)
 
   os.system(r'ipvsadm -C') # if the client doesn't use persistent connections, then there's no need to remove the backup from the pool
   os.system(r'ipvsadm -l')
@@ -68,7 +79,7 @@ elif exp_type == 'full':
   " | ipvsadm -R
   """)
   os.system(r'ipvsadm -l')
-  boot_command = ["taskset", "-c", "0,1,2,3", "ip", "net", "e", "testx", "memcached", "-p", "60002", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4"]
+  boot_command = ["ip", "net", "e", "testx", "memcached", "-p", "60002", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4"]
   # subprocess.Popen(boot_command, start_new_session=True)
   # boot_command = f"taskset -c 0,1,2,3 ip net e testx memcached -p 60000 -d -u root --enable-shutdown -m {str(CACHE_MEM_SIZE)} -t 4 -d"
   # for i in range(0, 1000):

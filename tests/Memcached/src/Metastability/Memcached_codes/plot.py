@@ -308,8 +308,10 @@ def read_monitor_log(filename, num_seconds):
         process_usage["cpu"] = cpu
         process_usage["mem"] = mem
     ordered_process_usages = {}
+    ordered_process_usages['memcached'] = process_usages['memcached']
     for process_name in sorted(process_usages.keys()):
-        ordered_process_usages[process_name] = process_usages[process_name]
+        if process_name != 'memcached':
+            ordered_process_usages[process_name] = process_usages[process_name]
     return ordered_process_usages
 
 
@@ -412,6 +414,7 @@ if __name__ == "__main__":
     for i in range(prefix_number):
         print(f"{file_prefix[i]}: hit throughput avg before trigger {np.mean(hit_throughput[i][:trigger_time])}, after trigger {np.mean(hit_throughput[i][trigger_time:])}")
         print(f"{file_prefix[i]}: min hit throughput after 2s {min(hit_throughput[i][2:])}")
+        print(f"{file_prefix[i]}: avg latency after 2s {np.mean(avg_latency[i][2:])}")
 
         def rolling_average(a, n):
             ret = np.cumsum(a, dtype=float)

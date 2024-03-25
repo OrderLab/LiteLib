@@ -38,6 +38,6 @@ ln -s "`pwd`/../Memcached_codes/crash.py" ~/crash.py
 ln -s "`pwd`/../Memcached_codes/monitor.py" ~/monitor.py
 ln -s "`pwd`/../Memcached_codes/init.py" ~/init.py
 
-python3 ~/init.py
+# python3 ~/init.py
 
 echo "Done executing setup_memcached.sh"

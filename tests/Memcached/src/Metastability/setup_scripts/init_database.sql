@@ -33,6 +33,8 @@ CREATE TABLE `metastable_test_db`.`large_test_table` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB;
 
+USE metastable_test_db;
+
 DELIMITER //
 CREATE PROCEDURE PerformJoin(IN current_index INT, IN query_weight INT)
 BEGIN
@@ -57,5 +59,6 @@ BEGIN
   WHERE L1.id = current_index;
 END //
 DELIMITER ;
+
 GRANT EXECUTE ON metastable_test_db.* TO 'metastable'@'%';
 FLUSH PRIVILEGES;

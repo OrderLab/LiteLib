@@ -31,6 +31,8 @@ cd /workspace/setup_scripts; ./setup_client.sh
 
 ### Run
 
+Note: You need to modify `$version` in `NGINX Web Server/www/html/index.php` and restart php-fpm when changing the method you want to evaluate (it's the same procedure as changing the query weight, plz refer to the Config section)
+
 ```sh
 docker exec -it client bash
 cd /workspace/LoadGenerator
@@ -38,6 +40,7 @@ curl web?request_index=1
 python3 run_experiment.py 1500 0 300 1.00001 12 10 False 1 full
 # cp ./result_stats/monitor_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run1.monitor.txt
 # cp ./results_warm_cache/result_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run1.result.txt
+python3 run_experiment.py 1500 0 300 1.00001 12 10 False 1 new_lite
 python3 run_experiment.py 1500 0 300 1.00001 12 10 False 1 lite
 # cp ./result_stats/monitor_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run2.monitor.txt
 # cp ./results_warm_cache/result_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run2.result.txt

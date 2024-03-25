@@ -1,13 +1,26 @@
 <?php
 
+$version = "new_lite";
+// $version = "full";
+// $version = "others";
+
+ob_start();
+var_dump("Request Received");
+error_log(ob_get_clean());
+$start_time = microtime(true);
+
 //$total_num_db_entries = 34511000; 
 $total_num_db_entries = 140000;
 // $database_query_weight = DATABASE_QUERY_WEIGHT;
-$database_query_weight = 375;
+$database_query_weight = 50;
+// $database_query_weight = 375;
 $servername = "DATABASE_SERVER_IP";
 $username = "metastable";
 $password = "hello@123";
 $memcached_server = "10.0.233.7";
+if ($version == "new_lite") {
+  $memcached_server = "memcached";
+}
 //$request_type = $_GET['request_type'];
 //$request_size = $_GET['request_size'];
 //$arrival_time = $_GET['arrival_time'];
@@ -18,6 +31,7 @@ $persistent_id = rand(1, $pool_size);
 $mem_var = new Memcached($persistent_id);
 // $mem_var = new Memcached();
 $connected = true;
+
 if( !count($mem_var->getServerList()) )
 {
    //  test if port is open to prevent php SEGV
@@ -38,40 +52,60 @@ if( !count($mem_var->getServerList()) )
    }
 }
 
+$end_time = microtime(true);
+$execution_time = ($end_time - $start_time) * 1000000;
+ob_start();
+var_dump("Memcached Connected: ". $execution_time . " us");
+error_log(ob_get_clean());
+$start_time = microtime(true);
+
 // ---------------------------------------------------------------------------------------------------------------------- temp inner proxy
-$lite_persistent_id = rand(1, 1) + 100;
-$lite_mem_var = new Memcached($lite_persistent_id);
-// $lite_mem_var = new Memcached();
-$lite_connected = true;
-if( !count($lite_mem_var->getServerList()) )
-{
-   // test if port is open to prevent php SEGV
-   $lite_connection = fsockopen($memcached_server, '59999', $errno, $errstr, 1);
-   if (is_resource($lite_connection)) {
-      fclose($lite_connection);
-      $lite_mem_var->resetServerList();
-      $lite_mem_var->setOption(Memcached::OPT_BINARY_PROTOCOL, true);
-      $lite_mem_var->setOption(Memcached::OPT_COMPRESSION, true);
-      // $lite_mem_var->setOption(Memcached::OPT_SERVER_FAILURE_LIMIT, 1);
-      // $lite_mem_var->setOption(Memcached::OPT_REMOVE_FAILED_SERVERS, true);
-      $lite_mem_var->setOption(Memcached::OPT_TCP_NODELAY, true);
-      $lite_mem_var->setOption(Memcached::OPT_LIBKETAMA_COMPATIBLE, true);
-      $lite_mem_var->setOption(Memcached::OPT_CONNECT_TIMEOUT, 1);
-      $lite_connected = $lite_mem_var->addServer($memcached_server,59999);
-   } else {
-      $lite_connected = false;
-   }
+$lite_persistent_id = "placeholder";
+$lite_mem_var = "placeholder";
+$lite_connected = "placeholder";
+if ($version == "others") {
+  $lite_persistent_id = rand(1, 1) + 100;
+  $lite_mem_var = new Memcached($lite_persistent_id);
+  // $lite_mem_var = new Memcached();
+  $lite_connected = true;
+  if( !count($lite_mem_var->getServerList()) )
+  {
+    // test if port is open to prevent php SEGV
+    $lite_connection = fsockopen($memcached_server, '59999', $errno, $errstr, 1);
+    if (is_resource($lite_connection)) {
+        fclose($lite_connection);
+        $lite_mem_var->resetServerList();
+        $lite_mem_var->setOption(Memcached::OPT_BINARY_PROTOCOL, true);
+        $lite_mem_var->setOption(Memcached::OPT_COMPRESSION, true);
+        // $lite_mem_var->setOption(Memcached::OPT_SERVER_FAILURE_LIMIT, 1);
+        // $lite_mem_var->setOption(Memcached::OPT_REMOVE_FAILED_SERVERS, true);
+        $lite_mem_var->setOption(Memcached::OPT_TCP_NODELAY, true);
+        $lite_mem_var->setOption(Memcached::OPT_LIBKETAMA_COMPATIBLE, true);
+        $lite_mem_var->setOption(Memcached::OPT_CONNECT_TIMEOUT, 1);
+        $lite_connected = $lite_mem_var->addServer($memcached_server,59999);
+    } else {
+        $lite_connected = false;
+    }
+  }
 }
 // ---------------------------------------------------------------------------------------------------------------------- temp inner proxy
 
 $memcached_response = 0;
 
 if ($connected) $memcached_response =  $mem_var->get($request_index) ;   
+
 // ob_start();
 // var_dump($request_index);
 // var_dump($mem_var->getResultCode());
 // error_log(ob_get_clean());
 if ($memcached_response) {
+
+  $end_time = microtime(true);
+  $execution_time = ($end_time - $start_time) * 1000000;
+  ob_start();
+  var_dump("Data was found in Memcached: ". $execution_time . " us");
+  error_log(ob_get_clean());
+
     #echo "Data was found in memcached\r\n";
     //echo $memcached_response;  
    echo 1; 
@@ -79,9 +113,23 @@ if ($memcached_response) {
 } else 
 {  
 
+      $end_time = microtime(true);
+      $execution_time = ($end_time - $start_time) * 1000000;
+      ob_start();
+      var_dump("Data was NOT found in Memcached: ". $execution_time . " us");
+      error_log(ob_get_clean());
+      $start_time = microtime(true);
+
       $current_index = $request_index;
       $dbh =mysqli_connect($servername, $username, $password);
 
+      $end_time = microtime(true);
+      $execution_time = ($end_time - $start_time) * 1000000;
+      ob_start();
+      var_dump("MySQL Connected: ". $execution_time . " us");
+      error_log(ob_get_clean());
+      $start_time = microtime(true);
+      
       if (!$dbh){        
         //   die("Unable to connect to MySQL: " . mysqli_error($dbh));
         echo -94;
@@ -92,6 +140,13 @@ if ($memcached_response) {
           exit();
           //die("Unable to select database: " . mysqli_error($dbh));         
       }
+
+      $end_time = microtime(true);
+      $execution_time = ($end_time - $start_time) * 1000000;
+      ob_start();
+      var_dump("MySQL DB Selected: ". $execution_time . " us");
+      error_log(ob_get_clean());
+      $start_time = microtime(true);
 
       //   for ($y = 0; $y < $database_query_weight  ; $y++){
 
@@ -146,6 +201,14 @@ if ($memcached_response) {
       // FLUSH PRIVILEGES;
 
       $result = mysqli_query($dbh,"CALL PerformJoin($request_index, $database_query_weight)");
+
+      $end_time = microtime(true);
+      $execution_time = ($end_time - $start_time) * 1000000;
+      ob_start();
+      var_dump("MySQL Query Executed: ". $execution_time . " us");
+      error_log(ob_get_clean());
+      $start_time = microtime(true);
+
       if ($result === false) {
         die('Error : ('. $dbh->errno .') '. $dbh->error);
       }
@@ -154,11 +217,25 @@ if ($memcached_response) {
       $result -> free_result();
       $dbh -> close();
       
+      $end_time = microtime(true);
+      $execution_time = ($end_time - $start_time) * 1000000;
+      ob_start();
+      var_dump("MySQL Query Result Fetched: ". $execution_time . " us");
+      error_log(ob_get_clean());
+      $start_time = microtime(true);
       
       $stringified_data = implode("+",$data_array);  
       #echo $stringified_data . "\n";
       if ($connected) {
       $mem_set_result = $mem_var->set($request_index,  $stringified_data);
+      
+      $end_time = microtime(true);
+      $execution_time = ($end_time - $start_time) * 1000000;
+      ob_start();
+      var_dump("Memcached Set Response: ". $execution_time . " us");
+      error_log(ob_get_clean());
+      $start_time = microtime(true);
+
       if(!$mem_set_result){
           if ($mem_var->getResultCode() == 35) { // MEMCACHED_SERVER_MARKED_DEAD
             $mem_var->quit();
@@ -175,23 +252,25 @@ if ($memcached_response) {
         }
 
 // ---------------------------------------------------------------------------------------------------------------------- temp inner proxy
-if ($lite_connected) {
-  $lite_mem_set_result = $lite_mem_var->set($request_index,  $stringified_data);
-  if(!$lite_mem_set_result){
-    if ($lite_mem_var->getResultCode() == 35) { // MEMCACHED_SERVER_MARKED_DEAD
-      $lite_mem_var->quit();
-      $lite_mem_var->resetServerList();
-    } else {
-      ob_start();
-      var_dump("lite");
-      var_dump($lite_mem_set_result);
-      var_dump($lite_mem_var->getResultCode());
-      error_log(ob_get_clean());
-    }
-    // echo -97;
-    // exit();
-  }
-}
+      if ($version == "others") {
+        if ($lite_connected) {
+          $lite_mem_set_result = $lite_mem_var->set($request_index,  $stringified_data);
+          if(!$lite_mem_set_result){
+            if ($lite_mem_var->getResultCode() == 35) { // MEMCACHED_SERVER_MARKED_DEAD
+              $lite_mem_var->quit();
+              $lite_mem_var->resetServerList();
+            } else {
+              ob_start();
+              var_dump("lite");
+              var_dump($lite_mem_set_result);
+              var_dump($lite_mem_var->getResultCode());
+              error_log(ob_get_clean());
+            }
+            // echo -97;
+            // exit();
+          }
+        }
+      }
 // ---------------------------------------------------------------------------------------------------------------------- temp inner proxy
 
       echo 2;   

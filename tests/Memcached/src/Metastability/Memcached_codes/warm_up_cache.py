@@ -5,7 +5,11 @@ import os
 exp_type = sys.argv[1:][0]
 
 print("Cache warmup started")
-client = bmemcached.Client(('10.0.233.7:11211'))
+client = None
+if exp_type == 'new_lite':
+    client = bmemcached.Client(('memcached:11211'))
+else:
+    client = bmemcached.Client(('10.0.233.7:11211'))
 warm_up_size = 140000
 # warm_up_size = int(warm_up_size * 0.8)
 
@@ -20,7 +24,7 @@ if exp_type == 'lite' or exp_type == 'replica':
     for i in range(warm_up_size, 1, -1): 
         lite_result = lite_client.set(str(i), dummy_string, compress_level = 0) 
 # ---------------------------------------------------------------------------------------------------------------------- temp inner proxy
-elif exp_type != 'full':
+elif exp_type != 'full' and exp_type != 'new_lite'  :
     print('Invalid experiment type')
     exit(1)
 
