@@ -61,6 +61,12 @@ elif exp_type == 'lite' or exp_type == 'replica':
   -a -t 10.0.233.7:59999 -r 192.168.254.10:60001 -m -w 1
   " | ipvsadm -R""")
   os.system(r'ipvsadm -l')
+
+  # TODO: I don't understand why the new connection still connects to the backup
+  # temporary solution: kill the backup
+  for proc in psutil.process_iter(['pid', 'name']):
+    if proc.info['name'] == 'memcached_reference_model' or proc.info['name'] == 'memcached.replica':
+      proc.kill()
   # echo "
   # -a -t 10.0.233.7:11211 -r 192.168.254.10:60002 -m -w 10
   # -d -t 10.0.233.7:11211 -r 192.168.254.10:60001

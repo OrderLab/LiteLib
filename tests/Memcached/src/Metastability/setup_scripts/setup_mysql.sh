@@ -5,7 +5,7 @@ service ssh start
 cp /workspace/.ssh /root -r
 chmod 600 /root/.ssh/id_ed25519
 NGINX_SERVER_IP=${1:-"web"}
-DB_ENTRIES=${2:-"19741000"}
+DB_ENTRIES=${2:-" 1504000"}
 # echo "params: $NGINX_SERVER_IP $DB_ENTRIES" 
 # chmod 777  /var/cache/debconf/config.dat
 # cat ../config_files/deb_conf.dat >>  /var/cache/debconf/config.dat
