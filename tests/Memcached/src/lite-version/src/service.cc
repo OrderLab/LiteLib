@@ -180,8 +180,9 @@ void MemcachedService::BackendHandler(evutil_socket_t fd, short which,
   const ssize_t bytes_transferred =
       read(conn->backend_fd_, buffer->data(), 16384);
   if (bytes_transferred <= 0) {
-    // TODO: handle this
+    // TODO: maybe we can switch to emergency mode automatically here
     perror("read from backend");
+    delete conn;
     return;
   }
   buffer->resize(bytes_transferred);
