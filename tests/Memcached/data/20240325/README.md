@@ -1,0 +1,1 @@
+CPU usage of lite after crash is not meaningful, as I have to kill the lite after synchronization. Plz refer to the crash.py for more details.

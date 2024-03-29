@@ -29,7 +29,7 @@ if exp_type == 'new_lite':
   print(boot_command)
   # taskset -c 0,1,2,3 memcached -p 60000 -d -u root --enable-shutdown -m 10240 -t 4
 
-  boot_command = ["/workspace/Memcached_codes/LiteMemcached", '-t', '1', '-s', f"{LITE_SIZE}"]
+  boot_command = ["/workspace/Memcached_codes/LiteMemcached", '-t', '4', '-s', f"{LITE_SIZE}"]
   subprocess.Popen(boot_command, start_new_session=True)
   print(boot_command)
   # taskset -c 0,1,2,3 /workspace/Memcached_codes/LiteMemcached -t 4 -s 10240
@@ -56,7 +56,7 @@ else:
   # taskset -c 0,1,2,3 ip net e testx memcached -p 60000 -d -u root --enable-shutdown -m 1024 -t 4
 
   if exp_type == 'lite':
-    boot_command = ["ip", "net", "e", "testx", '/workspace/Memcached_codes/memcached_reference_model', '-t', '4', '-s', f"{LITE_SIZE}", '-p', "60001"]
+    boot_command = ["ip", "net", "e", "testx", '/workspace/Memcached_codes/memcached_reference_model', '-t', '1', '-s', f"{LITE_SIZE}", '-p', "60001"]
     subprocess.Popen(boot_command, start_new_session=True)
     print(boot_command)
     # taskset -c 0,1,2,3 ip net e testx /workspace/Memcached_codes/memcached_reference_model -t 4 -s 1024 -p 60001

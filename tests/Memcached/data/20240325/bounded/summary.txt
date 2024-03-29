@@ -1,0 +1,70 @@
+full: hit throughput avg before trigger 771.1, after trigger 910.4089347079038
+full: min hit throughput after 2s 49.0
+full: avg latency after 2s 786678992.2774158
+full: time to reach 90% of arrival rate: 229s
+full(memcached): CPU Avg before trigger 14.7, after trigger 7.680412371134021
+full(memcached): Mem Avg before trigger 130.259375, after trigger 57.21735395189003
+lite-coupled.1.10240: hit throughput avg before trigger 892.4, after trigger 1094.1408934707904
+lite-coupled.1.10240: min hit throughput after 2s 341.0
+lite-coupled.1.10240: avg latency after 2s 636051756.5181466
+lite-coupled.1.10240: time to reach 90% of arrival rate: 188s
+lite-coupled.1.10240(memcached): CPU Avg before trigger 14.76, after trigger 8.697594501718212
+lite-coupled.1.10240(memcached): Mem Avg before trigger 128.862890625, after trigger 69.98982495704468
+lite-coupled.1.10240(memcached_reference_model): CPU Avg before trigger 23.66, after trigger 0.30584192439862545
+lite-coupled.1.10240(memcached_reference_model): Mem Avg before trigger 19.25, after trigger 0.1323024054982818
+lite-coupled.4.10240: hit throughput avg before trigger 891.3, after trigger 1087.6082474226805
+lite-coupled.4.10240: min hit throughput after 2s 341.0
+lite-coupled.4.10240: avg latency after 2s 660791748.9421073
+lite-coupled.4.10240: time to reach 90% of arrival rate: 191s
+lite-coupled.4.10240(memcached): CPU Avg before trigger 10.9, after trigger 8.628865979381443
+lite-coupled.4.10240(memcached): Mem Avg before trigger 103.81328125, after trigger 69.90391430412372
+lite-coupled.4.10240(memcached_reference_model): CPU Avg before trigger 26.78, after trigger 0.2986254295532646
+lite-coupled.4.10240(memcached_reference_model): Mem Avg before trigger 20.25, after trigger 0.13917525773195877
+new_lite.1.10240: hit throughput avg before trigger 934.7, after trigger 1134.5910652920961
+new_lite.1.10240: min hit throughput after 2s 476.0
+new_lite.1.10240: avg latency after 2s 692935665.5997564
+new_lite.1.10240: time to reach 90% of arrival rate: 179s
+new_lite.1.10240(memcached): CPU Avg before trigger 10.03, after trigger 5.243986254295533
+new_lite.1.10240(memcached): Mem Avg before trigger 138.237890625, after trigger 71.72092461340206
+new_lite.1.10240(LiteMemcached): CPU Avg before trigger 18.3, after trigger 11.26701030927835
+new_lite.1.10240(LiteMemcached): Mem Avg before trigger 22.49609375, after trigger 27.480643256013746
+new_lite.4.10240: hit throughput avg before trigger 943.5, after trigger 1134.4810996563574
+new_lite.4.10240: min hit throughput after 2s 478.99999999999994
+new_lite.4.10240: avg latency after 2s 625184390.1886287
+new_lite.4.10240: time to reach 90% of arrival rate: 179s
+new_lite.4.10240(memcached): CPU Avg before trigger 9.370000000000001, after trigger 4.880756013745704
+new_lite.4.10240(memcached): Mem Avg before trigger 138.412890625, after trigger 71.99326138316151
+new_lite.4.10240(LiteMemcached): CPU Avg before trigger 23.9, after trigger 11.124742268041238
+new_lite.4.10240(LiteMemcached): Mem Avg before trigger 22.5859375, after trigger 31.468803694158076
+lite-coupled.1.40960: hit throughput avg before trigger 1065.8, after trigger 1334.8453608247423
+lite-coupled.1.40960: min hit throughput after 2s 753.0
+lite-coupled.1.40960: avg latency after 2s 191893972.2578713
+lite-coupled.1.40960: time to reach 90% of arrival rate: 57s
+lite-coupled.1.40960(memcached): CPU Avg before trigger 16.490000000000002, after trigger 11.072164948453608
+lite-coupled.1.40960(memcached): Mem Avg before trigger 131.812890625, after trigger 111.71920640034364
+lite-coupled.1.40960(memcached_reference_model): CPU Avg before trigger 20.1, after trigger 0.41580756013745707
+lite-coupled.1.40960(memcached_reference_model): Mem Avg before trigger 68.0, after trigger 0.7010309278350515
+lite-coupled.4.40960: hit throughput avg before trigger 1002.8, after trigger 1277.5326460481099
+lite-coupled.4.40960: min hit throughput after 2s 551.0
+lite-coupled.4.40960: avg latency after 2s 354742547.4173097
+lite-coupled.4.40960: time to reach 90% of arrival rate: 77s
+lite-coupled.4.40960(memcached): CPU Avg before trigger 12.690000000000001, after trigger 9.33230240549828
+lite-coupled.4.40960(memcached): Mem Avg before trigger 127.83984375, after trigger 88.99669780927834
+lite-coupled.4.40960(memcached_reference_model): CPU Avg before trigger 24.87, after trigger 0.4257731958762887
+lite-coupled.4.40960(memcached_reference_model): Mem Avg before trigger 65.7, after trigger 0.6847079037800687
+new_lite.1.40960: hit throughput avg before trigger 1274.5, after trigger 1381.7766323024055
+new_lite.1.40960: min hit throughput after 2s 1137.0
+new_lite.1.40960: avg latency after 2s 12510558.511315297
+new_lite.1.40960: time to reach 90% of arrival rate: 19s
+new_lite.1.40960(memcached): CPU Avg before trigger 11.6, after trigger 6.4604810996563575
+new_lite.1.40960(memcached): Mem Avg before trigger 162.919140625, after trigger 110.27161189862542
+new_lite.1.40960(LiteMemcached): CPU Avg before trigger 24.48, after trigger 12.756013745704468
+new_lite.1.40960(LiteMemcached): Mem Avg before trigger 75.22734375, after trigger 90.32001718213058
+new_lite.4.40960: hit throughput avg before trigger 1273.6, after trigger 1381.8109965635738
+new_lite.4.40960: min hit throughput after 2s 1116.0
+new_lite.4.40960: avg latency after 2s 14553616.367394514
+new_lite.4.40960: time to reach 90% of arrival rate: 11s
+new_lite.4.40960(memcached): CPU Avg before trigger 11.3, after trigger 6.3883161512027495
+new_lite.4.40960(memcached): Mem Avg before trigger 163.434765625, after trigger 110.02247100515464
+new_lite.4.40960(LiteMemcached): CPU Avg before trigger 29.18, after trigger 14.470790378006873
+new_lite.4.40960(LiteMemcached): Mem Avg before trigger 74.34140625, after trigger 98.58933365549828
