@@ -1,0 +1,14 @@
+diff --git a/t/Tester.pm b/t/Tester.pm
+index 341099f..8295608 100644
+--- a/t/Tester.pm
++++ b/t/Tester.pm
+@@ -45,7 +45,8 @@ sub start {
+ 
+ sub stop {
+     my $self = shift;
+-    my $stop_cmd = "kill -INT " . $self->{'pid'};
++    # my $stop_cmd = "kill -INT " . $self->{'pid'};
++    my $stop_cmd = "pgrep -x \"redis-leveldb\" | xargs kill -9";
+     qx($stop_cmd) and die "# server stop error!";
+     qx(rm -fr $self->{option}{data_dir});
+ }

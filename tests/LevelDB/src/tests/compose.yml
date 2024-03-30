@@ -1,0 +1,15 @@
+services:
+  leveldb:
+    container_name: leveldb
+    image: debian:12-slim
+    tty: true
+    privileged: true
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+    entrypoint: /workspace/entrypoint.sh

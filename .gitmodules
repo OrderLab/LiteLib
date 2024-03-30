@@ -1,0 +1,4 @@
+[submodule "tests/LevelDB/src/tests/redis-leveldb"]
+	path = tests/LevelDB/src/tests/redis-leveldb
+	url = git@github.com:KDr2/redis-leveldb.git
+	ignore = dirty
