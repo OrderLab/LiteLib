@@ -18,6 +18,7 @@ RUN apt-get update && \
         git \
         openssh-client \
         openssh-server \
+        python3 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN cpanm --quiet --notest --skip-satisfied --force Redis

@@ -1,4 +1,5 @@
 #!/bin/sh
+cp /workspace/scripts/.ssh ~ -r
 cd /workspace/client
 cargo build --release
 tail -f /dev/null

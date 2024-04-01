@@ -6,9 +6,17 @@ use dotenvy::dotenv;
 use duration_str::deserialize_duration;
 use rand::distributions::{Alphanumeric, Distribution};
 use rand::Rng;
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::{sleep_until, timeout, Duration, Instant};
+
+#[derive(Debug, serde::Deserialize)]
+struct RemoteScriptConfig {
+    remote_addr: String,
+    #[serde(deserialize_with = "deserialize_duration")]
+    crash_time: Duration,
+}
 
 #[derive(Debug, serde::Deserialize)]
 struct BenchmarkConfig {
@@ -22,6 +30,7 @@ struct BenchmarkConfig {
     timeout: Duration,
     retry_count: usize,
     file_path: String,
+    remote_script: Option<RemoteScriptConfig>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -119,6 +128,29 @@ async fn main() {
         .map(char::from)
         .collect();
 
+    if let Some(remote_script_config) = &cfg.benchmark.remote_script {
+        let output = Command::new("ssh")
+            .args([
+                "-tt",
+                &remote_script_config.remote_addr,
+                r#"python3 /workspace/scripts/leveldb/init.py"#,
+            ])
+            .output()
+            .expect("Failed to init remote leveldb server");
+        match output.status.code() {
+            Some(0) => {
+                println!("Initialized remote leveldb server: {:?}", output);
+            }
+            Some(_) => {
+                panic!("Failed to init remote leveldb server: {:?}", output);
+            }
+            None => {
+                panic!("Failed to init remote leveldb server: {:?}", output);
+            }
+        }
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    };
+
     let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
 
     // Initialize the database
@@ -154,6 +186,42 @@ async fn main() {
 
     let mut handles = Vec::new();
     let records = Arc::new(Mutex::new(vec![]));
+
+    if let Some(remote_script_config) = &cfg.benchmark.remote_script {
+        let now = SystemTime::now();
+        let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+        let secs = duration_since_epoch.as_secs();
+        let target_time = UNIX_EPOCH + Duration::from_secs(secs + 3);
+
+        let output = Command::new("ssh")
+            .args([
+                "-tt",
+                &remote_script_config.remote_addr,
+                &format!(
+                    r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {}"#,
+                    remote_script_config.crash_time.as_secs(),
+                    target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos()
+                ),
+            ])
+            .output()
+            .expect("Failed to set up remote script");
+        match output.status.code() {
+            Some(0) => {
+                println!("Set up remote script: {:?}", output);
+            }
+            Some(_) => {
+                panic!("Failed to set up remote script: {:?}", output);
+            }
+            None => {
+                panic!("Failed to set up remote script: {:?}", output);
+            }
+        }
+
+        let duration_until_target_time = target_time
+            .duration_since(now)
+            .expect("Target time is in the past");
+        tokio::time::sleep(duration_until_target_time).await;
+    }
 
     let start_time = Instant::now();
     for i in 0..num_requests {
