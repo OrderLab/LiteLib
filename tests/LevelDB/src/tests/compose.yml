@@ -1,7 +1,9 @@
 services:
   leveldb:
-    container_name: leveldb
-    image: debian:12-slim
+    container_name: leveldb-server
+    build:
+      context: .
+      dockerfile: ./scripts/leveldb/Dockerfile
     tty: true
     privileged: true
     volumes:
@@ -12,4 +14,16 @@ services:
       resources:
         limits:
           cpus: '4'
-    entrypoint: /workspace/entrypoint.sh
+    ports:
+      - "6379:6379"
+    entrypoint: /workspace/scripts/leveldb/entrypoint.sh
+  client:
+    container_name: leveldb-client
+    image: rust:bookworm
+    tty: true
+    privileged: true
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+    entrypoint: /workspace/scripts/client/entrypoint.sh
