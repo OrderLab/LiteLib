@@ -78,8 +78,8 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Stat
     // TODO: change value to reference
     let mut conn = match pool.get().await {
         Ok(conn) => conn,
-        Err(e) => {
-            println!("i: {}, key: {}, error: {}", i, key, e);
+        Err(_) => {
+            // println!("i: {}, key: {}, error: {}", i, key, e);
             return Status::Error;
         }
     };
@@ -98,13 +98,13 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Stat
         .await
     {
         Ok(result) => result,
-        Err(e) => {
-            println!("i: {}, key: {}, error: {}", i, key, e);
+        Err(_) => {
+            // println!("i: {}, key: {}, error: {}", i, key, e);
             return Status::Error;
         }
     };
     if old_value.is_none() {
-        println!("i: {}, key: {} miss", i, key);
+        // println!("i: {}, key: {} miss", i, key);
         return Status::Miss;
     }
     if new_value != Some(value) {

@@ -1,3 +1,41 @@
+diff --git a/src/rl_request.cpp b/src/rl_request.cpp
+index b9007a7..6819520 100644
+--- a/src/rl_request.cpp
++++ b/src/rl_request.cpp
+@@ -37,6 +37,7 @@ void RLRequest::init_cmd_map()
+     RLRequest::cmd_map["keys"]       = &RLRequest::rl_keys;
+     RLRequest::cmd_map["select"]     = &RLRequest::rl_select;
+     RLRequest::cmd_map["shutdown"]   = &RLRequest::rl_shutdown;
++    RLRequest::cmd_map["ping"]       = &RLRequest::rl_ping;
+     RLRequest::cmd_map["multi"]      = &RLRequest::rl_multi;
+     RLRequest::cmd_map["exec"]       = &RLRequest::rl_exec;
+     RLRequest::cmd_map["discard"]    = &RLRequest::rl_discard;
+@@ -304,3 +305,13 @@ void RLRequest::rl_shutdown(){
+     fprintf(stderr, "SHUTDOWN by client\n");
+     exit(0);
+ }
++
++void RLRequest::rl_ping(){
++    if (args.size()==0) {
++        connection->write_bulk("PONG");
++    } else if (args.size()==1) {
++        connection->write_bulk(args[0]);
++    } else {
++        connection->write_error("ERR wrong number of arguments for 'ping' command");
++    }
++}
+diff --git a/src/rl_request.h b/src/rl_request.h
+index fb93138..8a61129 100644
+--- a/src/rl_request.h
++++ b/src/rl_request.h
+@@ -42,6 +42,7 @@ public:
+     void rl_keys();
+     void rl_info();
+     void rl_shutdown();
++    void rl_ping();
+ 
+     void rl_multi();
+     void rl_exec();
 diff --git a/t/Tester.pm b/t/Tester.pm
 index 341099f..8295608 100644
 --- a/t/Tester.pm
