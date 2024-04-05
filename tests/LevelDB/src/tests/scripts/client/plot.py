@@ -73,7 +73,7 @@ for i in range(cnt):
   stat["avg_lat"] = [0] * len(stat["cnt"])
   stat["avg_tries"] = [0] * len(stat["cnt"])
   for j in range(len(stat["Success"])):
-    stat["avg_lat"][j] = stat["lat"][j] / stat["Success"][j] if stat["Success"][j] > 0 else 1
+    stat["avg_lat"][j] = stat["lat"][j] / stat["Success"][j] if stat["Success"][j] > 0 else 5
     stat["avg_tries"][j] = stat["tries"][j] / stat["Success"][j] if stat["Success"][j] > 0 else 11
   for array in stat:
     stat[array] = np.array(stat[array])
