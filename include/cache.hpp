@@ -95,7 +95,7 @@ class Cache {
     return true;
   }
 
-  bool Replace(const Key &key, CacheEntry &value) {
+  bool Replace(const Key &key, const CacheEntry &value) {
     bool ret = false;
     cache_.visit(key, [this, &value, &ret](auto &element) {
       element.second.value_ = value;
@@ -124,6 +124,11 @@ class Cache {
       }
     });
     return ret;
+  }
+
+  bool Set(const Key &key, const CacheEntry &value) {
+    if (Add(key, value)) return true;
+    return Replace(key, value);
   }
 
   void ConstVisitAll(
@@ -177,7 +182,7 @@ class Cache {
   std::mutex mutex_;
   size_t max_size_, size_;
   ListNode head_, tail_;
-  boost::unordered::concurrent_flat_map<std::vector<uint8_t>, MapEntry> cache_;
+  boost::unordered::concurrent_flat_map<Key, MapEntry> cache_;
 
   // WARNING: assumes that the mutex is held when calling this function.
   void Evict() {
