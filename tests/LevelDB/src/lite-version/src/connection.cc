@@ -150,6 +150,7 @@ bool Connection::Read() {
       // TODO: handle the case when the buffer is not large enough
       return false;
     }
+    request_->connection = this;
     lite_server_.Serve(std::move(request_), this, backend_fd_);
     request_ = std::make_unique<Packet>();
   }

@@ -70,5 +70,8 @@ class Connection {
 
   void Write(std::unique_ptr<std::vector<uint8_t>> buffer);
 
+  bool is_in_transaction_ = false;
+  std::vector<std::shared_ptr<Packet>> transactions_;
+
   friend class LevelDBService;
 };

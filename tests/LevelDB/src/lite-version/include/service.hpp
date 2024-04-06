@@ -15,15 +15,15 @@ class LevelDBService {
   LevelDBService(const size_t &max_item_count, std::string &backend_addr,
                  std::string &backend_port);
 
-  bool Filter(const std::unique_ptr<Packet> &p) const;
+  bool Filter(const std::shared_ptr<Packet> &p) const;
 
-  void NormalUpdate(const std::unique_ptr<Packet> &p);
+  void NormalUpdate(const std::shared_ptr<Packet> &p);
 
-  void NormalForwardAndProxyBack(std::unique_ptr<Packet> p,
+  void NormalForwardAndProxyBack(std::shared_ptr<Packet> p,
                                  Connection *conn_ptr,
                                  volatile evutil_socket_t &server_fd);
 
-  void EmergencyServe(std::unique_ptr<Packet> p, Connection *conn_ptr);
+  void EmergencyServe(std::shared_ptr<Packet> p, Connection *conn_ptr);
 
   void Replay();
 
@@ -37,8 +37,12 @@ class LevelDBService {
     size_t GetSize() const { return (value ? value->size() : 0); }
   };
   lite::Cache<std::string, CacheEntry> cache_;
+
+  void NormalUpdateImpl(const std::shared_ptr<Packet> &p);
+
+  RESPType *EmergencyServeImpl(std::shared_ptr<Packet> p, Connection *conn_ptr);
 };
 
 using LevelDBLiteServer =
-    lite::LiteServer<LevelDBService, std::unique_ptr<Packet>, Connection *,
+    lite::LiteServer<LevelDBService, std::shared_ptr<Packet>, Connection *,
                      evutil_socket_t &>;

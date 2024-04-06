@@ -1,5 +1,7 @@
 #pragma once
 
+#include <event.h>
+
 #include <algorithm>
 #include <cstdint>
 #include <memory>
@@ -61,6 +63,7 @@ struct RESPBulkString : public RESPString {
 struct RESPArray : public RESPType {
   std::shared_ptr<std::vector<std::shared_ptr<RESPType>>> value;
 
+  RESPArray() {}
   RESPArray(std::shared_ptr<std::vector<std::shared_ptr<RESPType>>> value)
       : value(value) {}
   virtual ~RESPArray(){};
@@ -69,7 +72,11 @@ struct RESPArray : public RESPType {
   void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
+class Connection;
+
 struct Packet {
+  Connection *connection;
+
   std::unique_ptr<RESPArray> command;
 
   Packet() : command(nullptr) {}
