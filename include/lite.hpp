@@ -3,6 +3,7 @@
 #include <concepts>
 
 #include "cache.hpp"
+#include "logger.hpp"
 #include "daemon.hpp"
 
 namespace lite {
