@@ -5,6 +5,7 @@
 #include <concepts>
 #include <iostream>
 #include <mutex>
+#include <shared_mutex>
 
 namespace lite {
 
@@ -36,7 +37,13 @@ class Cache {
     tail_.pre_ = &head_;
   }
 
-  bool Add(const Key &key, const CacheEntry &value) {
+  bool Add(const Key &key, const CacheEntry &value,
+           bool in_transaction = false) {
+    std::shared_lock<std::shared_mutex> transaction_lock;
+    if (!in_transaction) {
+      transaction_lock =
+          std::shared_lock<std::shared_mutex>{transaction_mutex_};
+    }
     ListNode *node = new ListNode(key, value.GetSize());
     if (!cache_.insert(std::make_pair(key, MapEntry(value, node)))) {
       delete node;
@@ -56,7 +63,12 @@ class Cache {
     return true;
   }
 
-  bool Get(const Key &key, CacheEntry &value) {
+  bool Get(const Key &key, CacheEntry &value, bool in_transaction = false) {
+    std::shared_lock<std::shared_mutex> transaction_lock;
+    if (!in_transaction) {
+      transaction_lock =
+          std::shared_lock<std::shared_mutex>{transaction_mutex_};
+    }
     return cache_.cvisit(key, [this, &value](auto &element) {
       value = element.second.value_;
 
@@ -75,7 +87,12 @@ class Cache {
     });
   }
 
-  bool Delete(const Key &key) {
+  bool Delete(const Key &key, bool in_transaction = false) {
+    std::shared_lock<std::shared_mutex> transaction_lock;
+    if (!in_transaction) {
+      transaction_lock =
+          std::shared_lock<std::shared_mutex>{transaction_mutex_};
+    }
     ListNode *node = nullptr;
     cache_.cvisit(key,
                   [&node](auto &element) { node = element.second.list_node_; });
@@ -95,7 +112,13 @@ class Cache {
     return true;
   }
 
-  bool Replace(const Key &key, const CacheEntry &value) {
+  bool Replace(const Key &key, const CacheEntry &value,
+               bool in_transaction = false) {
+    std::shared_lock<std::shared_mutex> transaction_lock;
+    if (!in_transaction) {
+      transaction_lock =
+          std::shared_lock<std::shared_mutex>{transaction_mutex_};
+    }
     bool ret = false;
     cache_.visit(key, [this, &value, &ret](auto &element) {
       element.second.value_ = value;
@@ -126,15 +149,31 @@ class Cache {
     return ret;
   }
 
-  bool Set(const Key &key, const CacheEntry &value) {
-    if (Add(key, value)) return true;
-    return Replace(key, value);
+  bool Set(const Key &key, const CacheEntry &value,
+           bool in_transaction = false) {
+    std::shared_lock<std::shared_mutex> transaction_lock;
+    if (!in_transaction) {
+      transaction_lock =
+          std::shared_lock<std::shared_mutex>{transaction_mutex_};
+    }
+    if (Add(key, value, in_transaction)) return true;
+    return Replace(key, value, in_transaction);
   }
 
   void ConstVisitAll(
-      std::function<void(const Key &, const CacheEntry &)> visitor) {
+      std::function<void(const Key &, const CacheEntry &)> visitor,
+      bool in_transaction = false) {
+    std::shared_lock<std::shared_mutex> transaction_lock;
+    if (!in_transaction) {
+      transaction_lock =
+          std::shared_lock<std::shared_mutex>{transaction_mutex_};
+    }
     cache_.visit_all([&](auto &x) { visitor(x.first, x.second.value_); });
   }
+
+  void EnterTransaction() { transaction_mutex_.lock(); }
+
+  void ExitTransaction() { transaction_mutex_.unlock(); }
 
  private:
   struct ListNode {
@@ -180,6 +219,7 @@ class Cache {
   };
 
   std::mutex mutex_;
+  std::shared_mutex transaction_mutex_;
   size_t max_size_, size_;
   ListNode head_, tail_;
   boost::unordered::concurrent_flat_map<Key, MapEntry> cache_;

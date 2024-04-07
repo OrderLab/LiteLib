@@ -40,9 +40,11 @@ bool LevelDBService::Filter(const std::shared_ptr<Packet> &p) const {
 
 void LevelDBService::NormalUpdate(const std::shared_ptr<Packet> &p) {
   if (p->connection->is_in_transaction_) {
+    cache_.EnterTransaction();
     for (const auto &c : p->connection->transactions_) {
-      NormalUpdateImpl(c);
+      NormalUpdateImpl(c, true);
     }
+    cache_.ExitTransaction();
     p->connection->is_in_transaction_ = false;
     p->connection->transactions_.clear();
   } else {
@@ -50,7 +52,8 @@ void LevelDBService::NormalUpdate(const std::shared_ptr<Packet> &p) {
   }
 }
 
-void LevelDBService::NormalUpdateImpl(const std::shared_ptr<Packet> &p) {
+void LevelDBService::NormalUpdateImpl(const std::shared_ptr<Packet> &p,
+                                      const bool in_transaction) {
   std::string_view opcode;
   try {
     opcode = p->GetOpcode();
@@ -72,13 +75,13 @@ void LevelDBService::NormalUpdateImpl(const std::shared_ptr<Packet> &p) {
       std::cerr << "Invalid argument for set\n";
       return;
     }
-    const auto value = dynamic_cast<RESPString *>(p->GetArg(0).get());
+    const auto value = dynamic_cast<RESPString *>(p->GetArg(1).get());
     if (value == nullptr) {
       std::cerr << "Invalid argument for set\n";
       return;
     }
     entry.value = value->value;
-    cache_.Set(*(key->value), entry);
+    cache_.Set(*(key->value), entry, in_transaction);
   } else if (opcode != "get" && opcode != "ping") {
     std::cerr << "Unknow opcode: " << opcode << std::endl;
   }
@@ -117,9 +120,12 @@ void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
     }
     if (opcode == "exec") {
       auto response_array = new RESPArray;
+      cache_.EnterTransaction();
       for (const auto &c : conn_ptr->transactions_) {
-        response_array->value->emplace_back(EmergencyServeImpl(c, conn_ptr));
+        response_array->value->emplace_back(
+            EmergencyServeImpl(c, conn_ptr, true));
       }
+      cache_.ExitTransaction();
       conn_ptr->is_in_transaction_ = false;
       conn_ptr->transactions_.clear();
       response = response_array;
@@ -138,7 +144,8 @@ void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
 }
 
 RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
-                                             Connection *conn_ptr) {
+                                             Connection *conn_ptr,
+                                             const bool in_transaction) {
   std::string_view opcode;
   try {
     opcode = p->GetOpcode();
@@ -162,14 +169,14 @@ RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
       return new RESPError(
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
-    const auto value = dynamic_cast<RESPString *>(p->GetArg(0).get());
+    const auto value = dynamic_cast<RESPString *>(p->GetArg(1).get());
     if (value == nullptr) {
       std::cerr << "Invalid argument for set\n";
       return new RESPError(
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
     entry.value = value->value;
-    if (cache_.Set(*(key->value), entry))
+    if (cache_.Set(*(key->value), entry, in_transaction))
       return new RESPSimpleString(std::make_shared<std::string>("OK"));
   } else if (opcode == "get") {
     if (p->GetArgNum() != 1) {
@@ -183,7 +190,7 @@ RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
       return new RESPError(
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
-    if (cache_.Get(*(key->value), entry)) {
+    if (cache_.Get(*(key->value), entry, in_transaction)) {
       return new RESPBulkString(entry.value);
     } else {
       return new RESPBulkString(nullptr);
@@ -204,6 +211,9 @@ RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
       return new RESPError(
           std::make_shared<std::string>("ERR wrong number of arguments"));
     }
+  } else if (opcode == "multi") {
+    conn_ptr->is_in_transaction_ = true;
+    return new RESPSimpleString(std::make_shared<std::string>("OK"));
   }
 
   std::cerr << "Unknow opcode: " << opcode << std::endl;

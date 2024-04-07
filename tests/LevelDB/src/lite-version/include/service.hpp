@@ -38,9 +38,11 @@ class LevelDBService {
   };
   lite::Cache<std::string, CacheEntry> cache_;
 
-  void NormalUpdateImpl(const std::shared_ptr<Packet> &p);
+  void NormalUpdateImpl(const std::shared_ptr<Packet> &p,
+                        const bool in_transaction = false);
 
-  RESPType *EmergencyServeImpl(std::shared_ptr<Packet> p, Connection *conn_ptr);
+  RESPType *EmergencyServeImpl(std::shared_ptr<Packet> p, Connection *conn_ptr,
+                               const bool in_transaction = false);
 };
 
 using LevelDBLiteServer =

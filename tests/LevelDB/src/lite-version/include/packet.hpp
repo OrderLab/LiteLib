@@ -63,7 +63,8 @@ struct RESPBulkString : public RESPString {
 struct RESPArray : public RESPType {
   std::shared_ptr<std::vector<std::shared_ptr<RESPType>>> value;
 
-  RESPArray() {}
+  RESPArray()
+      : value(std::make_shared<std::vector<std::shared_ptr<RESPType>>>()) {}
   RESPArray(std::shared_ptr<std::vector<std::shared_ptr<RESPType>>> value)
       : value(value) {}
   virtual ~RESPArray(){};
