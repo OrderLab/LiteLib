@@ -126,6 +126,14 @@ void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
             EmergencyServeImpl(c, conn_ptr, true));
       }
       cache_.ExitTransaction();
+
+      logger_.EnterTransaction();
+      for (const auto &c : conn_ptr->transactions_) {
+        logger_.Log(LogEntry{c}, true);
+      }
+      logger_.Log(LogEntry{p}, true);
+      logger_.ExitTransaction();
+
       conn_ptr->is_in_transaction_ = false;
       conn_ptr->transactions_.clear();
       response = response_array;
@@ -134,6 +142,7 @@ void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
       response = new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
     }
   } else {
+    logger_.Log(LogEntry{p});
     response = EmergencyServeImpl(std::move(p), conn_ptr);
   }
 
@@ -221,7 +230,26 @@ RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
 }
 
 void LevelDBService::Replay() {
-  // TODO
+  int backend_fd, tries = 0;
+  while ((backend_fd = Connection::TryConnectBackend(backend_addr_,
+                                                     backend_port_)) == -1) {
+    if (tries++ > 100) {
+      std::cerr << "Replay failed to connect to backend\n";
+      return;
+    }
+  }
+  std::cerr << "Replay connected to backend in " << tries << " tries\n";
+  size_t cnt = 0;
+  LogEntry entry;
+  while (logger_.Pop(entry)) {
+    cnt++;
+    std::vector<uint8_t> buffer;
+    entry.value->AppendToBuffer(buffer);
+    write(backend_fd, buffer.data(), buffer.size());  // TODO: less writes
+  }
+  // TODO: in-flight requests after this?
+  close(backend_fd);
+  std::cerr << "Replay " << cnt << " items\n";
 }
 
 void LevelDBService::BackendHandler(evutil_socket_t fd, short which,

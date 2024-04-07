@@ -38,6 +38,11 @@ class LevelDBService {
   };
   lite::Cache<std::string, CacheEntry> cache_;
 
+  struct LogEntry {
+    std::shared_ptr<Packet> value;
+  };
+  lite::Logger<LogEntry> logger_;
+
   void NormalUpdateImpl(const std::shared_ptr<Packet> &p,
                         const bool in_transaction = false);
 
