@@ -171,9 +171,9 @@ class Cache {
     cache_.visit_all([&](auto &x) { visitor(x.first, x.second.value_); });
   }
 
-  void EnterTransaction() { transaction_mutex_.lock(); }
-
-  void ExitTransaction() { transaction_mutex_.unlock(); }
+  std::unique_lock<std::shared_mutex> TransactionLock() {
+    return std::unique_lock<std::shared_mutex>{transaction_mutex_};
+  }
 
  private:
   struct ListNode {

@@ -28,9 +28,9 @@ class Logger {
     return q_.pop(entry);
   }
 
-  void EnterTransaction() { transaction_mutex_.lock(); }
-
-  void ExitTransaction() { transaction_mutex_.unlock(); }
+  std::unique_lock<std::shared_mutex> TransactionLock() {
+    return std::unique_lock<std::shared_mutex>{transaction_mutex_};
+  }
 
  private:
   boost::lockfree::spsc_queue<Entry, boost::lockfree::capacity<1024> > q_;
