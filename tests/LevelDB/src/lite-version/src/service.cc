@@ -40,11 +40,13 @@ bool LevelDBService::Filter(const std::shared_ptr<Packet> &p) const {
 
 void LevelDBService::NormalUpdate(const std::shared_ptr<Packet> &p) {
   if (p->connection->is_in_transaction_) {
-    cache_.EnterTransaction();
-    for (const auto &c : p->connection->transactions_) {
-      NormalUpdateImpl(c, true);
+    {
+      auto cache_lock = cache_.TransactionLock();
+      for (const auto &c : p->connection->transactions_) {
+        NormalUpdateImpl(c, true);
+      }
     }
-    cache_.ExitTransaction();
+
     p->connection->is_in_transaction_ = false;
     p->connection->transactions_.clear();
   } else {
@@ -120,19 +122,22 @@ void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
     }
     if (opcode == "exec") {
       auto response_array = new RESPArray;
-      cache_.EnterTransaction();
-      for (const auto &c : conn_ptr->transactions_) {
-        response_array->value->emplace_back(
-            EmergencyServeImpl(c, conn_ptr, true));
-      }
-      cache_.ExitTransaction();
 
-      logger_.EnterTransaction();
-      for (const auto &c : conn_ptr->transactions_) {
-        logger_.Log(LogEntry{c}, true);
+      {
+        auto cache_lock = cache_.TransactionLock();
+        for (const auto &c : conn_ptr->transactions_) {
+          response_array->value->emplace_back(
+              EmergencyServeImpl(c, conn_ptr, true));
+        }
       }
-      logger_.Log(LogEntry{p}, true);
-      logger_.ExitTransaction();
+
+      {
+        auto logger_lock = logger_.TransactionLock();
+        for (const auto &c : conn_ptr->transactions_) {
+          logger_.Log(LogEntry{c}, true);
+        }
+        logger_.Log(LogEntry{p}, true);
+      }
 
       conn_ptr->is_in_transaction_ = false;
       conn_ptr->transactions_.clear();
