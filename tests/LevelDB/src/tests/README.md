@@ -5,6 +5,15 @@ git submodule update --init --recursive
 cd redis-leveldb && git apply ../scripts/leveldb/redis-leveldb.patch
 ```
 
+## Set up lite-version
+
+```bash
+# Need to compile the lite version first
+mkdir -p ./tests/server
+cp ./lite-version/build/LiteLevelDB ./tests/server
+cp ./lite-version/build/Lite/lite_cli ./tests/server
+```
+
 ## Running
 
 ```bash

@@ -12,7 +12,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::{sleep_until, timeout, Duration, Instant};
 
 #[derive(Debug, serde::Deserialize)]
+enum ExperimentType {
+    Full,
+    Lite(usize, String),
+}
+
+#[derive(Debug, serde::Deserialize)]
 struct RemoteScriptConfig {
+    experiment_type: ExperimentType,
     remote_addr: String,
     #[serde(deserialize_with = "deserialize_duration")]
     crash_time: Duration,
@@ -133,7 +140,15 @@ async fn main() {
             .args([
                 "-tt",
                 &remote_script_config.remote_addr,
-                r#"python3 /workspace/scripts/leveldb/init.py"#,
+                &match &remote_script_config.experiment_type {
+                    ExperimentType::Full => {
+                        r#"python3 /workspace/scripts/leveldb/init.py -t Full"#.to_string()
+                    }
+                    ExperimentType::Lite(num_threads, memory_size) => format!(
+                        r#"python3 /workspace/scripts/leveldb/init.py -t Lite -n {} -s {}"#,
+                        num_threads, memory_size,
+                    ),
+                },
             ])
             .output()
             .expect("Failed to init remote leveldb server");
@@ -198,9 +213,10 @@ async fn main() {
                 "-tt",
                 &remote_script_config.remote_addr,
                 &format!(
-                    r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {}"#,
+                    r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {:?}"#,
                     remote_script_config.crash_time.as_secs(),
-                    target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos()
+                    target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
+                    remote_script_config.experiment_type
                 ),
             ])
             .output()

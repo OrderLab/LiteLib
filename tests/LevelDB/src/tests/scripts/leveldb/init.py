@@ -1,13 +1,23 @@
 import os
-import subprocess
+import argparse
+import utils
+import time
 
-os.system(r"rm redis.db -r")
+parser = argparse.ArgumentParser(description='Init experiment')
+parser.add_argument('-t', '--experiment_type', choices=['Full', 'Lite'], required=True, help='The type of the experiment')
+parser.add_argument('-n', '--num_threads', type=int, help='The number of threads of the lite version')
+parser.add_argument('-s', '--memory_size', type=str, help='The memory limit of the lite version')
+args = parser.parse_args()
+
 os.system(r'pgrep "redis-leveldb" | xargs kill -9')
+os.system(r"rm redis.db -r")
 
-boot_command = ["/opt/redis-leveldb/redis-leveldb", "-P", "6379"]
-process = subprocess.Popen(boot_command, start_new_session=True)
-print(boot_command)
-if process.poll() is not None:
-    print(f"The process ended with return code {process.returncode}")
+if (args.experiment_type == 'Full'):
+    boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379"]
+    utils.StartBackgroundProcess(boot_command)
 else:
-    print("The process is still running")
+    boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "60000"]
+    utils.StartBackgroundProcess(boot_command)
+
+    boot_command = ["/workspace/server/LiteLevelDB", '-t', str(args.num_threads), '-s', args.memory_size]
+    utils.StartBackgroundProcess(boot_command)
