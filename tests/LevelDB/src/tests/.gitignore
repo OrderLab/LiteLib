@@ -1,3 +1,5 @@
 *.png
-*.pyc
+__pycache__
 server
+redis.db
+dump.rdb

@@ -9,15 +9,17 @@ cd redis-leveldb && git apply ../scripts/leveldb/redis-leveldb.patch
 
 ```bash
 # Need to compile the lite version first
-mkdir -p ./tests/server
-cp ./lite-version/build/LiteLevelDB ./tests/server
-cp ./lite-version/build/Lite/lite_cli ./tests/server
+mkdir -p ./server
+cp ../lite-version/build/LiteLevelDB ./server
+cp ../lite-version/build/Lite/lite_cli ./server
 ```
 
 ## Running
 
 ```bash
+docker compose build
 docker compose up -d
+# Use docker logs leveldb-client / leveldb-server to check if there's any compilation error
 docker exec -it leveldb-client bash
 cd /workspace/client
 # Modify .env
