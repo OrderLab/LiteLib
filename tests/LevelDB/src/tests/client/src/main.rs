@@ -201,6 +201,7 @@ async fn main() {
         handle.await.unwrap();
     }
     bar.finish();
+    println!("\nFinished initializing database");
 
     let mut idx = Vec::new();
     let mut rng = rand::thread_rng();
@@ -315,16 +316,18 @@ async fn main() {
     }
     let end_time = Instant::now();
     let elapsed = end_time - start_time;
+
+    for handle in handles {
+        handle.await.unwrap();
+    }
     bar.finish();
+
+    println!("\nFinished benchmarking");
     println!(
         "Spawning time: {:?}, actual rps: {:?}",
         elapsed,
         num_requests as f64 / elapsed.as_secs_f64()
     );
-
-    for handle in handles {
-        handle.await.unwrap();
-    }
 
     {
         let records = records.lock().unwrap();
