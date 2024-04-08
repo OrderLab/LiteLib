@@ -11,6 +11,7 @@ config = "0.14.0"
 deadpool-redis = { path = "./lib/deadpool-redis", features = ["serde"] }
 dotenvy = "0.15.7"
 duration-str = "0.7.1"
+indicatif = "0.17.8"
 rand = "0.8.5"
 redis = "0.25.2"
 serde = "1.0.197"

@@ -4,6 +4,7 @@ use deadpool_redis::{
 };
 use dotenvy::dotenv;
 use duration_str::deserialize_duration;
+use indicatif::{ProgressBar, ProgressStyle};
 use rand::distributions::{Alphanumeric, Distribution};
 use rand::Rng;
 use std::process::Command;
@@ -169,11 +170,19 @@ async fn main() {
     let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
 
     // Initialize the database
+    let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Initializing");
+    bar.set_style(
+        ProgressStyle::with_template(
+            "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",
+        )
+        .unwrap(),
+    );
     let mut handles = Vec::new();
     for i in (1..cfg.benchmark.num_keys + 1).rev() {
         let pool = pool.clone();
         let i = i; // Copy i into the closure
         let value = base_value.clone();
+        let bar = bar.clone();
         let handle = tokio::spawn(async move {
             let mut conn = pool.get().await.unwrap_or_else(|e| {
                 panic!("Initialize failed i: {}, error: {}", i, e);
@@ -184,12 +193,14 @@ async fn main() {
                 .query_async(&mut conn)
                 .await
                 .unwrap();
+            bar.inc(1);
         });
         handles.push(handle);
     }
     for handle in handles {
         handle.await.unwrap();
     }
+    bar.finish();
 
     let mut idx = Vec::new();
     let mut rng = rand::thread_rng();
@@ -201,6 +212,13 @@ async fn main() {
 
     let mut handles = Vec::new();
     let records = Arc::new(Mutex::new(vec![]));
+    let bar = ProgressBar::new(num_requests as u64).with_prefix("Benchmarking");
+    bar.set_style(
+        ProgressStyle::with_template(
+            "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",
+        )
+        .unwrap(),
+    );
 
     if let Some(remote_script_config) = &cfg.benchmark.remote_script {
         let now = SystemTime::now();
@@ -246,6 +264,7 @@ async fn main() {
         let key = idx[i];
         let value = base_value.clone() + &idx[i].to_string();
         let records = Arc::clone(&records);
+        let bar = bar.clone();
         let handle = tokio::spawn(async move {
             let begin = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -289,12 +308,14 @@ async fn main() {
                 let mut records = records.lock().unwrap();
                 records.push(record);
             }
+            bar.inc(1);
         });
         handles.push(handle);
         sleep_until(iter_end_time).await;
     }
     let end_time = Instant::now();
     let elapsed = end_time - start_time;
+    bar.finish();
     println!(
         "Spawning time: {:?}, actual rps: {:?}",
         elapsed,
