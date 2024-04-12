@@ -8,14 +8,14 @@
 
 namespace lite {
 
-template <typename Service, typename Packet, typename Client, typename Backend>
-concept IsService = requires(Service service, Packet p, Client c, Backend b) {
+template <typename Service, typename Packet, typename Connection, typename Backend>
+concept IsService = requires(Service service, Packet p, Connection c, Backend b) {
   // Whether it's an operation that contains state info and thus needs to be
   // cached e.g. UPDATE -> true, READ -> false
-  { service.Filter(p) } -> std::convertible_to<bool>;
+  { service.Filter(p, c) } -> std::convertible_to<bool>;
 
   // Perform the cachable operation during normal time
-  { service.NormalUpdate(p) };
+  { service.NormalUpdate(p, c) };
 
   // Forward any operation to the backend, get the response and return it to the
   // client during normal time
@@ -28,22 +28,22 @@ concept IsService = requires(Service service, Packet p, Client c, Backend b) {
   { service.Replay() };
 };
 
-template <typename S, typename Packet, typename Client, typename Backend>
-  requires IsService<S, Packet, Client, Backend>
+template <typename S, typename Packet, typename Connection, typename Backend>
+  requires IsService<S, Packet, Connection, Backend>
 class LiteServer : public Daemon {
  public:
   LiteServer(S &service, std::string &backend_port, const char pipe_path[])
       : Daemon([&] { service_.Replay(); }, backend_port, pipe_path),
         service_(service) {}
 
-  void Serve(Packet p, Client c, Backend backend) {
+  void Serve(Packet p, Connection &conn, Backend backend) {
     if (IsInEmergencyMode()) {
-      service_.EmergencyServe(std::move(p), c);
+      service_.EmergencyServe(std::move(p), conn);
     } else {
-      if (service_.Filter(p)) {
-        service_.NormalUpdate(p);
+      if (service_.Filter(p, conn)) {
+        service_.NormalUpdate(p, conn);
       }
-      service_.NormalForwardAndProxyBack(std::move(p), c, backend);
+      service_.NormalForwardAndProxyBack(std::move(p), conn, backend);
     }
   }
 
