@@ -26,6 +26,15 @@ target_sources(${PROJECT_NAME}
         ${ALL_CC_FILES}
 )
 
+include(FetchContent)
+FetchContent_Declare(
+  readerwriterqueue
+  GIT_REPOSITORY    https://github.com/cameron314/readerwriterqueue
+  GIT_TAG           master
+)
+FetchContent_MakeAvailable(readerwriterqueue)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
-target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread)
+target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread readerwriterqueue)
+
 target_include_directories(${PROJECT_NAME} PRIVATE include)

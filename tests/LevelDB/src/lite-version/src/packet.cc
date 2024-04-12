@@ -1,5 +1,7 @@
 #include "packet.hpp"
 
+#include <iostream>
+
 RESPType *RESPType::Parse(InputIterator &begin, InputIterator end) {
   switch (*(begin++)) {
     case '+':
@@ -13,6 +15,7 @@ RESPType *RESPType::Parse(InputIterator &begin, InputIterator end) {
     case '*':
       return RESPArray::Parse(begin, end);
     default:
+      std::cerr << "Unknown RESPType: " << *(begin - 1) << std::endl;
       return nullptr;
   }
 }
@@ -23,10 +26,12 @@ RESPSimpleString *RESPSimpleString::Parse(InputIterator &begin,
   while (begin != end && *(begin++) != '\r') {
   }
   if (begin == end) {
+    std::cerr << "Could not parse simple string: not long enough" << std::endl;
     return nullptr;
   }
   auto value = std::make_shared<std::string>(start, begin);
   if (*(begin++) != '\n') {
+    std::cerr << "Could not parse simple string: no \\n" << std::endl;
     return nullptr;
   }
   return new RESPSimpleString(value);
@@ -45,10 +50,12 @@ RESPError *RESPError::Parse(InputIterator &begin, InputIterator end) {
   while (begin != end && *(begin++) != '\r') {
   }
   if (begin == end) {
+    std::cerr << "Could not parse error: not long enough" << std::endl;
     return nullptr;
   }
   auto value = std::make_shared<std::string>(start, begin);
   if (*(begin++) != '\n') {
+    std::cerr << "Could not parse error: no \\n" << std::endl;
     return nullptr;
   }
   return new RESPError(value);
@@ -75,10 +82,12 @@ RESPInteger *RESPInteger::Parse(InputIterator &begin, InputIterator end) {
     value = value * 10 + (*(begin++) - '0');
   }
   if (begin == end) {
+    std::cerr << "Could not parse integer: not long enough" << std::endl;
     return nullptr;
   }
   begin++; // take \r
   if (*(begin++) != '\n') {
+    std::cerr << "Could not parse integer: no \\n" << std::endl;
     return nullptr;
   }
   return new RESPInteger(value * (is_positive ? 1 : -1));
@@ -96,6 +105,7 @@ void RESPInteger::AppendToBuffer(std::vector<uint8_t> &buffer) {
 RESPBulkString *RESPBulkString::Parse(InputIterator &begin, InputIterator end) {
   std::unique_ptr<RESPInteger> length(RESPInteger::Parse(begin, end));
   if (length == nullptr) {
+    std::cerr << "Could not parse bulk string length" << std::endl;
     return nullptr;
   }
   auto len = length->value;
@@ -104,13 +114,18 @@ RESPBulkString *RESPBulkString::Parse(InputIterator &begin, InputIterator end) {
   }
   auto start = begin;
   if (begin + len + 2 > end) {
+    std::cerr << "Could not parse bulk string: not long enough" << std::endl;
+    std::cerr << "  Expected length: " << len << " Remaining length: "
+              << end - begin << std::endl;
     return nullptr;
   }
   begin += len;
   if (*(begin++) != '\r') {
+    std::cerr << "Could not parse bulk string: no \\r" << std::endl;
     return nullptr;
   }
   if (*(begin++) != '\n') {
+    std::cerr << "Could not parse bulk string: no \\n" << std::endl;
     return nullptr;
   }
   return new RESPBulkString(std::make_shared<std::string>(start, begin - 2));
@@ -135,6 +150,7 @@ void RESPBulkString::AppendToBuffer(std::vector<uint8_t> &buffer) {
 RESPArray *RESPArray::Parse(InputIterator &begin, InputIterator end) {
   auto length = RESPInteger::Parse(begin, end);
   if (length == nullptr) {
+    std::cerr << "Could not parse array length" << std::endl;
     return nullptr;
   }
   auto len = length->value;
@@ -145,6 +161,7 @@ RESPArray *RESPArray::Parse(InputIterator &begin, InputIterator end) {
   for (int i = 0; i < len; ++i) {
     std::shared_ptr<RESPType> type(RESPType::Parse(begin, end));
     if (type == nullptr) {
+      std::cerr << "Could not parse array element" << std::endl;
       return nullptr;
     }
     value->push_back(type);

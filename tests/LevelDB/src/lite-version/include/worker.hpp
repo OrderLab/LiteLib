@@ -2,6 +2,7 @@
 
 #include <event.h>
 #include <pthread.h>
+#include <readerwriterqueue.h>
 
 #include <lite.hpp>
 #include <memory>
@@ -21,6 +22,9 @@ class Worker {
 
   /// The file descriptor used to signal the worker thread.
   evutil_socket_t notify_event_fd;
+
+  /// The queue used to store the notification.
+  moodycamel::ReaderWriterQueue<evutil_socket_t> notify_queue_;
 
  private:
   std::string &backend_addr_, &backend_port_;

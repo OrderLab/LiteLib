@@ -20,8 +20,8 @@ Connection::Connection(const evutil_socket_t sfd, const int event_flags,
             static_cast<void *>(this));
   event_base_set(base, &client_event_);
   if (event_add(&client_event_, 0) == -1) {
-    perror("event_add");
-    throw std::runtime_error("event_add");
+    perror("client event_add");
+    throw std::runtime_error("client event_add");
   }
 
   if (is_client_connection) ConnectBackend();
@@ -92,6 +92,8 @@ evutil_socket_t Connection::TryConnectBackend(const std::string &addr,
     goto connect_backend_exit;
   }
 
+  std::cerr << "Backend connected, fd: " << backend_fd << std::endl;
+
   return backend_fd;
 
 connect_backend_exit:
@@ -110,8 +112,8 @@ bool Connection::ConnectBackend() {
             LevelDBService::BackendHandler, static_cast<void *>(this));
   event_base_set(base_, &backend_event_);
   if (event_add(&backend_event_, 0) == -1) {
-    perror("event_add");
-    throw std::runtime_error("event_add");
+    perror("backend event_add");
+    throw std::runtime_error("backend event_add");
   }
 
   return true;
@@ -139,7 +141,7 @@ bool Connection::Read() {
   ssize_t bytes_transferred;
   if (unlikely((bytes_transferred = read(client_fd_, buffer_.data(), 16384)) <=
                0)) {
-    // connection closed or error
+    perror("read");
     return false;
   }
   uint8_t *begin = buffer_.data();
@@ -163,7 +165,20 @@ void Connection::FlushBuffer() {
 }
 
 void Connection::Write(std::unique_ptr<std::vector<uint8_t>> buffer) {
+  Write(std::move(buffer), buffer->size());
+}
+
+void Connection::Write(std::unique_ptr<std::vector<uint8_t>> buffer, size_t len) {
   // TODO: async to reduce latency
   // TODO: use transmit in the full version
-  write(client_fd_, buffer->data(), buffer->size());
+  uint8_t *begin = buffer->data();
+  while (len) {
+    ssize_t bytes_written = write(client_fd_, begin, len);
+    if (bytes_written <= 0) {
+      perror("write"); // TODO max tries
+    } else {
+      len -= bytes_written;
+      begin += bytes_written;
+    }
+  }
 }

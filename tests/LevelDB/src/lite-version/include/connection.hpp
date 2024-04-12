@@ -69,6 +69,7 @@ class Connection {
   void FlushBuffer();
 
   void Write(std::unique_ptr<std::vector<uint8_t>> buffer);
+  void Write(std::unique_ptr<std::vector<uint8_t>> buffer, const size_t len);
 
   bool is_in_transaction_ = false;
   std::vector<std::shared_ptr<Packet>> transactions_;

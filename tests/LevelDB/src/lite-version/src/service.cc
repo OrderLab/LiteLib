@@ -34,7 +34,10 @@ bool LevelDBService::Filter(const std::shared_ptr<Packet> &p) const {
   }
   if (opcode == "set") {
     return true;
+  } else if (opcode == "get" || opcode == "ping") {
+    return false;
   }
+  std::cerr << "Unknow opcode: " << opcode << std::endl;
   return false;
 }
 
@@ -260,6 +263,7 @@ void LevelDBService::Replay() {
 void LevelDBService::BackendHandler(evutil_socket_t fd, short which,
                                     void *arg_conn) {
   auto conn = static_cast<Connection *>(arg_conn);
+
   std::unique_ptr<std::vector<uint8_t>> buffer =
       std::make_unique<std::vector<uint8_t>>(16384);
   const ssize_t bytes_transferred =
@@ -270,6 +274,5 @@ void LevelDBService::BackendHandler(evutil_socket_t fd, short which,
     delete conn;
     return;
   }
-  buffer->resize(bytes_transferred);
-  conn->Write(std::move(buffer));
+  conn->Write(std::move(buffer), bytes_transferred);
 }

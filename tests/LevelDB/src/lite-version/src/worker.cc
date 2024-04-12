@@ -61,20 +61,27 @@ void Worker::NotifyHandler(evutil_socket_t fd, short which, void *arg_self) {
   Worker *self = static_cast<Worker *>(arg_self);
 
   if (fd == self->notify_event_fd) {
-    uint64_t sfd = 0;
-    if (read(fd, &sfd, sizeof(uint64_t)) != sizeof(uint64_t)) {
+    uint64_t counter = 0;
+    if (read(fd, &counter, sizeof(uint64_t)) != sizeof(uint64_t)) {
       fprintf(stderr, "Worker can't read from libevent pipe\n");
       return;
     }
-    std::unique_ptr<Connection> new_connection;
-    if (!(new_connection = std::make_unique<Connection>(
-              sfd, EV_READ | EV_PERSIST, self->base_, ConnectionHandler,
-              self->lite_server_, true, self->backend_addr_,
-              self->backend_port_))) {
-      fprintf(stderr, "failed to create listening connection\n");
-      exit(EXIT_FAILURE);
+    while (counter--) {
+      evutil_socket_t sfd;
+      if (!self->notify_queue_.try_dequeue(sfd)) {
+        fprintf(stderr, "Worker can't dequeue from notify_queue\n");
+        return;
+      }
+      std::unique_ptr<Connection> new_connection;
+      if (!(new_connection = std::make_unique<Connection>(
+                sfd, EV_READ | EV_PERSIST, self->base_, ConnectionHandler,
+                self->lite_server_, true, self->backend_addr_,
+                self->backend_port_))) {
+        fprintf(stderr, "failed to create listening connection\n");
+        exit(EXIT_FAILURE);
+      }
+      self->conns_.push(std::move(new_connection));
     }
-    self->conns_.push(std::move(new_connection));
   } else {
   }
 }

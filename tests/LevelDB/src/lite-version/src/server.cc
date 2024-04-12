@@ -154,7 +154,8 @@ void LevelDBServer::EventHandler(const evutil_socket_t fd, const short which,
 }
 
 void LevelDBServer::DispatchNewConnection(const int sfd) {
-  uint64_t buf = sfd;
+  (**next_worker_).notify_queue_.enqueue(sfd);
+  uint64_t buf = 1;
   if (write((**next_worker_).notify_event_fd, &buf, sizeof(uint64_t)) !=
       sizeof(uint64_t)) {
     perror("failed writing to worker eventfd");
