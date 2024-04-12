@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
     // TODO: make address and port configurable.
     std::string backend_addr = "localhost";
     std::string backend_port = "60000";
-    LevelDBServer s(thread_pool_size, cache_size, backend_addr, backend_port);
+    LevelDBServer<Packet, LevelDBService> s(thread_pool_size, cache_size, backend_addr, backend_port);
 
     // Run the server until stopped.
     s.Run(port);

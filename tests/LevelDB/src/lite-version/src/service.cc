@@ -10,7 +10,8 @@ LevelDBService::LevelDBService(const size_t &max_item_count,
       backend_port_(backend_port) {}
 
 // TODO: support multi exec
-bool LevelDBService::Filter(const std::shared_ptr<Packet> &p) const {
+bool LevelDBService::Filter(const std::shared_ptr<Packet> &p,
+                            Connection &conn) const {
   std::string_view opcode;
   try {
     opcode = p->GetOpcode();
@@ -23,13 +24,13 @@ bool LevelDBService::Filter(const std::shared_ptr<Packet> &p) const {
     return false;
   }
   if (opcode == "multi") {
-    p->connection->is_in_transaction_ = true;
+    conn.is_in_transaction_ = true;
     return false;
   } else if (opcode == "exec") {
     return true;
   }
-  if (p->connection->is_in_transaction_) {
-    p->connection->transactions_.push_back(p);
+  if (conn.is_in_transaction_) {
+    conn.transactions_.push_back(p);
     return false;
   }
   if (opcode == "set") {
@@ -41,17 +42,18 @@ bool LevelDBService::Filter(const std::shared_ptr<Packet> &p) const {
   return false;
 }
 
-void LevelDBService::NormalUpdate(const std::shared_ptr<Packet> &p) {
-  if (p->connection->is_in_transaction_) {
+void LevelDBService::NormalUpdate(const std::shared_ptr<Packet> &p,
+                                  Connection &conn) {
+  if (conn.is_in_transaction_) {
     {
       auto cache_lock = cache_.TransactionLock();
-      for (const auto &c : p->connection->transactions_) {
+      for (const auto &c : conn.transactions_) {
         NormalUpdateImpl(c, true);
       }
     }
 
-    p->connection->is_in_transaction_ = false;
-    p->connection->transactions_.clear();
+    conn.is_in_transaction_ = false;
+    conn.transactions_.clear();
   } else {
     NormalUpdateImpl(p);
   }
@@ -93,12 +95,12 @@ void LevelDBService::NormalUpdateImpl(const std::shared_ptr<Packet> &p,
 }
 
 void LevelDBService::NormalForwardAndProxyBack(
-    std::shared_ptr<Packet> p, Connection *conn_ptr,
+    std::shared_ptr<Packet> p, Connection &conn,
     volatile evutil_socket_t &server_fd) {
   if (server_fd <= 0) {
-    if (!conn_ptr->ConnectBackend()) {
+    if (!conn.ConnectBackend()) {
       std::cerr << "Fall back to EmergencyServe\n";
-      EmergencyServe(std::move(p), conn_ptr);
+      EmergencyServe(std::move(p), conn);
       return;
     }
   }
@@ -110,9 +112,9 @@ void LevelDBService::NormalForwardAndProxyBack(
 }
 
 void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
-                                    Connection *conn_ptr) {
+                                    Connection &conn) {
   RESPType *response = nullptr;
-  if (conn_ptr->is_in_transaction_) {
+  if (conn.is_in_transaction_) {
     std::string_view opcode;
     try {
       opcode = p->GetOpcode();
@@ -128,40 +130,40 @@ void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
 
       {
         auto cache_lock = cache_.TransactionLock();
-        for (const auto &c : conn_ptr->transactions_) {
+        for (const auto &c : conn.transactions_) {
           response_array->value->emplace_back(
-              EmergencyServeImpl(c, conn_ptr, true));
+              EmergencyServeImpl(c, conn, true));
         }
       }
 
       {
         auto logger_lock = logger_.TransactionLock();
-        for (const auto &c : conn_ptr->transactions_) {
+        for (const auto &c : conn.transactions_) {
           logger_.Log(LogEntry{c}, true);
         }
         logger_.Log(LogEntry{p}, true);
       }
 
-      conn_ptr->is_in_transaction_ = false;
-      conn_ptr->transactions_.clear();
+      conn.is_in_transaction_ = false;
+      conn.transactions_.clear();
       response = response_array;
     } else {
-      conn_ptr->transactions_.push_back(p);
+      conn.transactions_.push_back(p);
       response = new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
     }
   } else {
     logger_.Log(LogEntry{p});
-    response = EmergencyServeImpl(std::move(p), conn_ptr);
+    response = EmergencyServeImpl(std::move(p), conn);
   }
 
   std::vector<uint8_t> buffer;
   response->AppendToBuffer(buffer);
-  conn_ptr->Write(std::make_unique<std::vector<uint8_t>>(std::move(buffer)));
+  conn.Write(std::make_unique<std::vector<uint8_t>>(std::move(buffer)));
   delete response;
 }
 
 RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
-                                             Connection *conn_ptr,
+                                             Connection &conn,
                                              const bool in_transaction) {
   std::string_view opcode;
   try {
@@ -229,7 +231,7 @@ RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
           std::make_shared<std::string>("ERR wrong number of arguments"));
     }
   } else if (opcode == "multi") {
-    conn_ptr->is_in_transaction_ = true;
+    conn.is_in_transaction_ = true;
     return new RESPSimpleString(std::make_shared<std::string>("OK"));
   }
 

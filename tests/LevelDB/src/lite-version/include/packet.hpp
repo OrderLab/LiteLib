@@ -73,16 +73,11 @@ struct RESPArray : public RESPType {
   void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
-class Connection;
-
 struct Packet {
-  Connection *connection;  // TODO: not necessary in logger
-
   std::unique_ptr<RESPArray> command;
 
   Packet() : command(nullptr) {}
-  Packet(Connection *connection, std::unique_ptr<RESPArray> command)
-      : connection(connection), command(std::move(command)) {}
+  Packet(std::unique_ptr<RESPArray> command) : command(std::move(command)) {}
 
   bool Parse(InputIterator &begin, InputIterator end) {
     std::unique_ptr<RESPArray> new_command(

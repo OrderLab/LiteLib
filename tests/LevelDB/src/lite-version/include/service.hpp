@@ -6,24 +6,24 @@
 #include <memory>
 #include <string>
 
+#include "connection.hpp"
 #include "packet.hpp"
 
-class Connection;
-
 class LevelDBService {
+  using Connection = lite::Connection<Packet, LevelDBService>;
+
  public:
   LevelDBService(const size_t &max_item_count, std::string &backend_addr,
                  std::string &backend_port);
 
-  bool Filter(const std::shared_ptr<Packet> &p) const;
+  bool Filter(const std::shared_ptr<Packet> &p, Connection &conn) const;
 
-  void NormalUpdate(const std::shared_ptr<Packet> &p);
+  void NormalUpdate(const std::shared_ptr<Packet> &p, Connection &conn);
 
-  void NormalForwardAndProxyBack(std::shared_ptr<Packet> p,
-                                 Connection *conn_ptr,
+  void NormalForwardAndProxyBack(std::shared_ptr<Packet> p, Connection &conn,
                                  volatile evutil_socket_t &server_fd);
 
-  void EmergencyServe(std::shared_ptr<Packet> p, Connection *conn_ptr);
+  void EmergencyServe(std::shared_ptr<Packet> p, Connection &conn);
 
   void Replay();
 
@@ -46,10 +46,6 @@ class LevelDBService {
   void NormalUpdateImpl(const std::shared_ptr<Packet> &p,
                         const bool in_transaction = false);
 
-  RESPType *EmergencyServeImpl(std::shared_ptr<Packet> p, Connection *conn_ptr,
+  RESPType *EmergencyServeImpl(std::shared_ptr<Packet> p, Connection &conn,
                                const bool in_transaction = false);
 };
-
-using LevelDBLiteServer =
-    lite::LiteServer<LevelDBService, std::shared_ptr<Packet>, Connection *,
-                     evutil_socket_t &>;

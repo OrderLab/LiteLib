@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.1...3.27)
 
 set(namespace lite)
 project("Lite"
-  VERSION 0.1.0
+  VERSION 0.2.0
   DESCRIPTION "The library for the lite version framework"
 )
 
@@ -18,6 +18,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fconcepts-diagnostics-depth=10")
 endif()
+
+include(FetchContent)
+FetchContent_Declare(
+  readerwriterqueue
+  GIT_REPOSITORY    https://github.com/cameron314/readerwriterqueue
+  GIT_TAG           master
+)
+FetchContent_MakeAvailable(readerwriterqueue)
 
 add_library(${PROJECT_NAME} STATIC)
 
