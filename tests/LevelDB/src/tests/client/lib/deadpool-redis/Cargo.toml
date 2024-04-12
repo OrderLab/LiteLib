@@ -42,7 +42,7 @@ features = ["managed"]
 default-features = false
 
 [dependencies.redis]
-version = "0.24"
+version = "0.25.2"
 features = ["aio"]
 default-features = false
 
