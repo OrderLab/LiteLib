@@ -6,29 +6,30 @@
 #include <signal.h>
 #include <sysexits.h>
 
-#include <lite.hpp>
+#include <core.hpp>
 #include <memory>
 #include <queue>
 #include <string>
 
 #include "connection.hpp"
-#include "service.hpp"
 #include "worker.hpp"
 
-template <typename Packet, typename Service>
-class LevelDBServer {
-  using Connection = lite::Connection<Packet, Service>;
-  using LiteServer = lite::LiteServer<Service, std::shared_ptr<Packet>,
-                                      Connection, evutil_socket_t&>;
+namespace lite {
+
+template <typename Packet, typename Application>
+class LiteServer {
+  using ConnectionInstance = Connection<Packet, Application>;
+  using LiteCoreInstance = LiteCore<Application, std::shared_ptr<Packet>,
+                                    ConnectionInstance, evutil_socket_t&>;
 
  public:
-  LevelDBServer& operator=(const LevelDBServer&) = delete;
+  LiteServer& operator=(const LiteServer&) = delete;
 
   /// Construct the server with the given thread pool size and maximum.
-  explicit LevelDBServer(const size_t& nthreads, const size_t& max_item_count,
-                         std::string& backend_addr, std::string& backend_port)
-      : service_(max_item_count, backend_addr, backend_port),
-        lite_server_(service_, backend_port, "/tmp/lite_LevelDB"),
+  explicit LiteServer(const size_t& nthreads, const size_t& max_item_count,
+                      std::string& backend_addr, std::string& backend_port)
+      : app_(max_item_count, backend_addr, backend_port),
+        lite_core_(app_, backend_port, "/tmp/lite_LevelDB"),
         backend_addr_(backend_addr),
         backend_port_(backend_port) {
     struct event_config* ev_config;
@@ -38,8 +39,8 @@ class LevelDBServer {
     event_config_free(ev_config);
 
     for (int i = 0; i < nthreads; i++) {
-      workers_.emplace_back(new Worker<Packet, LevelDBService>(
-          lite_server_, backend_addr_, backend_port_));
+      workers_.emplace_back(new Worker<Packet, Application>(
+          lite_core_, backend_addr_, backend_port_));
       (**workers_.rbegin()).Run();
     }
     next_worker_ = workers_.begin();
@@ -114,11 +115,11 @@ class LevelDBServer {
         }
       }
 
-      std::unique_ptr<Connection> new_connection;
+      std::unique_ptr<ConnectionInstance> new_connection;
       std::string place_holder;
-      if (!(new_connection = std::make_unique<Connection>(
+      if (!(new_connection = std::make_unique<ConnectionInstance>(
                 sfd, EV_READ | EV_PERSIST, main_base_, EventHandler, this,
-                lite_server_, false, place_holder, place_holder))) {
+                lite_core_, false, place_holder, place_holder))) {
         fprintf(stderr, "failed to create listening connection\n");
         exit(EXIT_FAILURE);
       }
@@ -171,13 +172,13 @@ class LevelDBServer {
   std::string &backend_addr_, &backend_port_;
 
   /// The internal service implementation.
-  LevelDBService service_;
+  Application app_;
 
   /// The internal lite server
-  LiteServer lite_server_;
+  LiteCoreInstance lite_core_;
 
   /// The worker threads.
-  std::vector<std::unique_ptr<Worker<Packet, Service>>> workers_;
+  std::vector<std::unique_ptr<Worker<Packet, Application>>> workers_;
 
   /// The next thread to use for a new connection.
   decltype(workers_)::iterator next_worker_;
@@ -186,18 +187,20 @@ class LevelDBServer {
   struct event_base* main_base_;
 
   /// The queue of listening sockets.
-  std::queue<std::unique_ptr<Connection>> conns_;
+  std::queue<std::unique_ptr<ConnectionInstance>> conns_;
 
   /// Handle a new connection.
   static void EventHandler(const evutil_socket_t fd, const short which,
                            void* arg_conn) {
-    Connection* c = static_cast<Connection*>(arg_conn);
+    ConnectionInstance* c = static_cast<ConnectionInstance*>(arg_conn);
     const auto new_conn_fd = c->Accept();
     if (new_conn_fd == -1) {
       perror("accept");
       return;
     }
-    reinterpret_cast<LevelDBServer*>(c->server_)
+    reinterpret_cast<LiteServer*>(c->lite_server_)
         ->DispatchNewConnection(new_conn_fd);
   }
 };
+
+}  // namespace lite
