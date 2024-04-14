@@ -5,20 +5,19 @@
 
 #include <array>
 #include <cstdint>
-#include <lite.hpp>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "lite.hpp"
+#include "core.hpp"
 
 namespace lite {
 
 /// Represents a single connection from a client.
-template <typename Packet, typename Service>
+template <typename Packet, typename Application>
 class Connection {
-  using LiteServer = lite::LiteServer<Service, std::shared_ptr<Packet>,
-                                      Connection, evutil_socket_t&>;
+  using LiteCoreInstance = LiteCore<Application, std::shared_ptr<Packet>,
+                                    Connection, evutil_socket_t&>;
 
  public:
   Connection(const Connection&) = delete;
@@ -29,7 +28,7 @@ class Connection {
   using EventHandler = void (*)(evutil_socket_t, short, void*);
   explicit Connection(const evutil_socket_t sfd, const int event_flags,
                       struct event_base* base, EventHandler event_handler,
-                      void* server, LiteServer& lite_server,
+                      void* lite_server, LiteCoreInstance& lite_core,
                       bool is_client_connection, std::string& backend_addr,
                       std::string& backend_port)
       : base_(base),
@@ -37,8 +36,8 @@ class Connection {
         backend_port_(backend_port),
         client_fd_(sfd),
         request_(std::make_unique<Packet>()),
-        server_(server),
         lite_server_(lite_server),
+        lite_core_(lite_core),
         response_buffer_(std::make_unique<std::vector<uint8_t>>()) {
     event_set(&client_event_, sfd, event_flags, event_handler,
               static_cast<void*>(this));
@@ -58,11 +57,10 @@ class Connection {
     event_del(&client_event_);
     event_del(&backend_event_);
     // std::cerr << "connection closed" << std::endl;
-    return;
   }
 
   /// Accept a new connection.
-  int Accept() {
+  [[nodiscard]] int Accept() const {
     socklen_t addrlen;
     struct sockaddr_storage addr;
     addrlen = sizeof(addr);
@@ -85,7 +83,7 @@ class Connection {
         // TODO: handle the case when the buffer is not large enough
         return false;
       }
-      lite_server_.Serve(std::move(request_), *this, backend_fd_);
+      lite_core_.Serve(std::move(request_), *this, backend_fd_);
       request_ = std::make_unique<Packet>();
     }
     return true;
@@ -175,7 +173,7 @@ class Connection {
 
     // Add an event that listens to the backend server's messages
     event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
-              Service::BackendHandler, static_cast<void*>(this));
+              Application::BackendHandler, static_cast<void*>(this));
     event_base_set(base_, &backend_event_);
     if (event_add(&backend_event_, 0) == -1) {
       perror("backend event_add");
@@ -216,14 +214,14 @@ class Connection {
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;
 
-  void* server_; // LevelDBServer<Packet, Service>
+  void* lite_server_;  // LiteServer<Packet, Service>
 
  private:
   /// Corresponding worker's event_base
   struct event_base* const base_;
 
-  /// Underlying LevelDB Server implementation.
-  LiteServer& lite_server_;
+  /// Underlying Lite Core.
+  LiteCoreInstance& lite_core_;
 
   /// The address and port of the backend server.
   std::string &backend_addr_, &backend_port_;

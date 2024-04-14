@@ -2,7 +2,7 @@
 
 #include <event.h>
 
-#include <lite.hpp>
+#include <core.hpp>
 #include <memory>
 #include <string>
 

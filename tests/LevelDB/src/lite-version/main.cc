@@ -3,9 +3,11 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread/thread.hpp>
 #include <iostream>
+#include <server.hpp>
 #include <string>
 
-#include "server.hpp"
+#include "packet.hpp"
+#include "service.hpp"
 
 void PrintHelp() {
   std::cout << "Usage: LiteLevelDB [-t thread_num] [-s size] \n"
@@ -67,7 +69,8 @@ int main(int argc, char* argv[]) {
     // TODO: make address and port configurable.
     std::string backend_addr = "localhost";
     std::string backend_port = "60000";
-    LevelDBServer<Packet, LevelDBService> s(thread_pool_size, cache_size, backend_addr, backend_port);
+    lite::LiteServer<Packet, LevelDBService> s(thread_pool_size, cache_size,
+                                               backend_addr, backend_port);
 
     // Run the server until stopped.
     s.Run(port);

@@ -8,24 +8,25 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <lite.hpp>
 #include <memory>
 #include <queue>
 #include <string>
 
 #include "connection.hpp"
-#include "packet.hpp"
+#include "core.hpp"
 
-template <typename Packet, typename Service>
+namespace lite {
+
+template <typename Packet, typename Application>
 class Worker {
-  using Connection = lite::Connection<Packet, Service>;
-  using LiteServer = lite::LiteServer<Service, std::shared_ptr<Packet>,
-                                      Connection, evutil_socket_t &>;
+  using ConnectionInstance = Connection<Packet, Application>;
+  using LiteCoreInstance = LiteCore<Application, std::shared_ptr<Packet>,
+                                    ConnectionInstance, evutil_socket_t &>;
 
  public:
-  explicit Worker(LiteServer &lite_server, std::string &backend_addr,
+  explicit Worker(LiteCoreInstance &lite_core, std::string &backend_addr,
                   std::string &backend_port)
-      : lite_server_(lite_server),
+      : lite_core_(lite_core),
         backend_addr_(backend_addr),
         backend_port_(backend_port) {
     notify_event_fd = eventfd(0, EFD_NONBLOCK);
@@ -85,10 +86,10 @@ class Worker {
   struct event notify_event_;
 
   /// The underlying service implementation.
-  LiteServer &lite_server_;
+  LiteCoreInstance &lite_core_;
 
   /// The connections managed by the worker thread.
-  std::queue<std::unique_ptr<Connection>> conns_;
+  std::queue<std::unique_ptr<ConnectionInstance>> conns_;
 
   /// The entry point for the worker thread.
   static void *ThreadBody(void *arg_self) {
@@ -116,10 +117,10 @@ class Worker {
           fprintf(stderr, "Worker can't dequeue from notify_queue\n");
           return;
         }
-        std::unique_ptr<Connection> new_connection;
-        if (!(new_connection = std::make_unique<Connection>(
+        std::unique_ptr<ConnectionInstance> new_connection;
+        if (!(new_connection = std::make_unique<ConnectionInstance>(
                   sfd, EV_READ | EV_PERSIST, self->base_, ConnectionHandler,
-                  nullptr, self->lite_server_, true, self->backend_addr_,
+                  nullptr, self->lite_core_, true, self->backend_addr_,
                   self->backend_port_))) {
           fprintf(stderr, "failed to create listening connection\n");
           exit(EXIT_FAILURE);
@@ -133,10 +134,12 @@ class Worker {
   /// Handle a new requests from connections.
   static void ConnectionHandler(evutil_socket_t fd, short which,
                                 void *arg_conn) {
-    Connection *c = static_cast<Connection *>(arg_conn);
+    ConnectionInstance *c = static_cast<ConnectionInstance *>(arg_conn);
     if (!c->Read()) {
       delete c;
       // TODO: remove it from conns_
     }
   }
 };
+
+}  // namespace lite
