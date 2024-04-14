@@ -1,28 +1,11 @@
 #pragma once
 
-#include <concepts>
-
 #include "cache.hpp"
+#include "concept.hpp"
 #include "daemon.hpp"
 #include "logger.hpp"
 
 namespace lite {
-
-template <typename Application, typename Packet, typename Connection,
-          typename CacheKey, typename CacheEntry, typename LogEntry>
-concept IsApplication =
-    requires(Application app, Packet p, Connection conn,
-             Cache<CacheKey, CacheEntry> &cache, Logger<LogEntry> &l) {
-      // Whether it's an operation that contains state info and thus needs to be
-      // cached e.g. UPDATE -> true, READ -> false
-      { app.Filter(p, conn) } -> std::convertible_to<bool>;
-
-      // Perform the cachable operation during normal time
-      { app.NormalUpdate(p, conn, cache) };
-
-      // Perform any operation during emergency time
-      { app.EmergencyServe(std::move(p), conn, cache, l) };
-    };
 
 template <typename Application, typename Packet, typename Connection,
           typename CacheKey, typename CacheEntry, typename LogEntry>
@@ -87,7 +70,7 @@ class LiteCore : public Daemon {
     LogEntry entry;
     while (logger_.Pop(entry)) {
       cnt++;
-      const auto buffer = entry.Deserialize();
+      const auto buffer = entry.Serialize();
       write(backend_fd, buffer.data(), buffer.size());  // TODO: less writes
     }
     // TODO: in-flight requests after this?

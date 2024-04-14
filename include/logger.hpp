@@ -3,9 +3,12 @@
 #include <boost/lockfree/spsc_queue.hpp>
 #include <mutex>
 
+#include "concept.hpp"
+
 namespace lite {
 
 template <typename Entry>
+  requires IsLogEntry<Entry>
 class Logger {
  public:
   Logger() = default;

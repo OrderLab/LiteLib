@@ -79,13 +79,17 @@ class Connection {
     uint8_t* begin = buffer_.data();
     uint8_t* end = begin + bytes_transferred;
     while (begin != end) {
-      if (!request_->Parse(begin, end)) {
+      const auto result = request_->Deserialize(begin, end);
+      if (result == kGood) {
+        lite_core_.Serve(std::move(request_), *this);
+        request_ = std::make_unique<Packet>();
+      } else if (result == kIndeterminate) {
+        continue;
+      } else if (result == kBad) {
         std::cerr << "failed to parse request" << std::endl;
         // TODO: handle the case when the buffer is not large enough
         return false;
       }
-      lite_core_.Serve(std::move(request_), *this);
-      request_ = std::make_unique<Packet>();
     }
     return true;
   }
