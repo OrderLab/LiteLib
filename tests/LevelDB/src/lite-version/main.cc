@@ -69,8 +69,10 @@ int main(int argc, char* argv[]) {
     // TODO: make address and port configurable.
     std::string backend_addr = "localhost";
     std::string backend_port = "60000";
-    lite::LiteServer<Packet, LevelDBService> s(thread_pool_size, cache_size,
-                                               backend_addr, backend_port);
+    LevelDB level_db(backend_addr, backend_port);
+    lite::LiteServer<Packet, LevelDB, std::string, CacheEntry, LogEntry> s(
+        thread_pool_size, cache_size, level_db, backend_addr, backend_port,
+        "/tmp/lite_LevelDB");
 
     // Run the server until stopped.
     s.Run(port);

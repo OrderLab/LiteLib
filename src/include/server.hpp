@@ -16,20 +16,24 @@
 
 namespace lite {
 
-template <typename Packet, typename Application>
+template <typename Packet, typename Application, typename CacheKey,
+          typename CacheEntry, typename LogEntry>
 class LiteServer {
-  using ConnectionInstance = Connection<Packet, Application>;
-  using LiteCoreInstance = LiteCore<Application, std::shared_ptr<Packet>,
-                                    ConnectionInstance, evutil_socket_t&>;
+  using ConnectionInstance =
+      Connection<Packet, Application, CacheKey, CacheEntry, LogEntry>;
+  using LiteCoreInstance =
+      LiteCore<Application, std::shared_ptr<Packet>, ConnectionInstance,
+               CacheKey, CacheEntry, LogEntry>;
 
  public:
   LiteServer& operator=(const LiteServer&) = delete;
 
   /// Construct the server with the given thread pool size and maximum.
   explicit LiteServer(const size_t& nthreads, const size_t& max_item_count,
-                      std::string& backend_addr, std::string& backend_port)
-      : app_(max_item_count, backend_addr, backend_port),
-        lite_core_(app_, backend_port, "/tmp/lite_LevelDB"),
+                      Application& app, std::string& backend_addr,
+                      std::string& backend_port,
+                      const char pipe_path[] = "/tmp/lite")
+      : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path),
         backend_addr_(backend_addr),
         backend_port_(backend_port) {
     struct event_config* ev_config;
@@ -39,8 +43,9 @@ class LiteServer {
     event_config_free(ev_config);
 
     for (int i = 0; i < nthreads; i++) {
-      workers_.emplace_back(new Worker<Packet, Application>(
-          lite_core_, backend_addr_, backend_port_));
+      workers_.emplace_back(
+          new Worker<Packet, Application, CacheKey, CacheEntry, LogEntry>(
+              lite_core_, backend_addr_, backend_port_));
       (**workers_.rbegin()).Run();
     }
     next_worker_ = workers_.begin();
@@ -171,14 +176,13 @@ class LiteServer {
 
   std::string &backend_addr_, &backend_port_;
 
-  /// The internal service implementation.
-  Application app_;
-
   /// The internal lite server
   LiteCoreInstance lite_core_;
 
   /// The worker threads.
-  std::vector<std::unique_ptr<Worker<Packet, Application>>> workers_;
+  std::vector<std::unique_ptr<
+      Worker<Packet, Application, CacheKey, CacheEntry, LogEntry>>>
+      workers_;
 
   /// The next thread to use for a new connection.
   decltype(workers_)::iterator next_worker_;

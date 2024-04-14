@@ -9,43 +9,49 @@
 #include "connection.hpp"
 #include "packet.hpp"
 
-class LevelDBService {
-  using Connection = lite::Connection<Packet, LevelDBService>;
+struct CacheEntry {
+  std::shared_ptr<std::string> value = nullptr;
+  size_t GetSize() const { return (value ? value->size() : 0); }
+};
+
+struct LogEntry {
+  std::shared_ptr<Packet> value;
+
+  std::vector<uint8_t> Deserialize() const {
+    std::vector<uint8_t> buffer;
+    value->AppendToBuffer(buffer);
+    return buffer;
+  }
+};
+
+class LevelDB {
+  using Connection =
+      lite::Connection<Packet, LevelDB, std::string, CacheEntry, LogEntry>;
+  using Cache = lite::Cache<std::string, CacheEntry>;
+  using Logger = lite::Logger<LogEntry>;
 
  public:
-  LevelDBService(const size_t &max_item_count, std::string &backend_addr,
-                 std::string &backend_port);
+  LevelDB(std::string &backend_addr, std::string &backend_port);
 
   bool Filter(const std::shared_ptr<Packet> &p, Connection &conn) const;
 
-  void NormalUpdate(const std::shared_ptr<Packet> &p, Connection &conn);
+  void NormalUpdate(const std::shared_ptr<Packet> &p, Connection &conn,
+                    Cache &cache);
 
-  void NormalForwardAndProxyBack(std::shared_ptr<Packet> p, Connection &conn,
-                                 volatile evutil_socket_t &server_fd);
+  void EmergencyServe(std::shared_ptr<Packet> p, Connection &conn, Cache &cache,
+                      Logger &logger);
 
-  void EmergencyServe(std::shared_ptr<Packet> p, Connection &conn);
-
-  void Replay();
+  void Replay(Logger &logger);
 
   static void BackendHandler(evutil_socket_t fd, short which, void *arg_conn);
 
  private:
   std::string &backend_addr_, &backend_port_;
 
-  struct CacheEntry {
-    std::shared_ptr<std::string> value = nullptr;
-    size_t GetSize() const { return (value ? value->size() : 0); }
-  };
-  lite::Cache<std::string, CacheEntry> cache_;
-
-  struct LogEntry {
-    std::shared_ptr<Packet> value;
-  };
-  lite::Logger<LogEntry> logger_;
-
-  void NormalUpdateImpl(const std::shared_ptr<Packet> &p,
+  void NormalUpdateImpl(const std::shared_ptr<Packet> &p, Cache &cache,
                         const bool in_transaction = false);
 
   RESPType *EmergencyServeImpl(std::shared_ptr<Packet> p, Connection &conn,
+                               Cache &cache, Logger &logger,
                                const bool in_transaction = false);
 };

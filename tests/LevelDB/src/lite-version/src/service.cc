@@ -2,16 +2,11 @@
 
 #include "connection.hpp"
 
-LevelDBService::LevelDBService(const size_t &max_item_count,
-                               std::string &backend_addr,
-                               std::string &backend_port)
-    : cache_(max_item_count),
-      backend_addr_(backend_addr),
-      backend_port_(backend_port) {}
+LevelDB::LevelDB(std::string &backend_addr, std::string &backend_port)
+    : backend_addr_(backend_addr), backend_port_(backend_port) {}
 
 // TODO: support multi exec
-bool LevelDBService::Filter(const std::shared_ptr<Packet> &p,
-                            Connection &conn) const {
+bool LevelDB::Filter(const std::shared_ptr<Packet> &p, Connection &conn) const {
   std::string_view opcode;
   try {
     opcode = p->GetOpcode();
@@ -42,25 +37,25 @@ bool LevelDBService::Filter(const std::shared_ptr<Packet> &p,
   return false;
 }
 
-void LevelDBService::NormalUpdate(const std::shared_ptr<Packet> &p,
-                                  Connection &conn) {
+void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &p, Connection &conn,
+                           Cache &cache) {
   if (conn.is_in_transaction_) {
     {
-      auto cache_lock = cache_.TransactionLock();
+      auto cache_lock = cache.TransactionLock();
       for (const auto &c : conn.transactions_) {
-        NormalUpdateImpl(c, true);
+        NormalUpdateImpl(c, cache, true);
       }
     }
 
     conn.is_in_transaction_ = false;
     conn.transactions_.clear();
   } else {
-    NormalUpdateImpl(p);
+    NormalUpdateImpl(p, cache);
   }
 }
 
-void LevelDBService::NormalUpdateImpl(const std::shared_ptr<Packet> &p,
-                                      const bool in_transaction) {
+void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &p, Cache &cache,
+                               const bool in_transaction) {
   std::string_view opcode;
   try {
     opcode = p->GetOpcode();
@@ -88,31 +83,14 @@ void LevelDBService::NormalUpdateImpl(const std::shared_ptr<Packet> &p,
       return;
     }
     entry.value = value->value;
-    cache_.Set(*(key->value), entry, in_transaction);
+    cache.Set(*(key->value), entry, in_transaction);
   } else if (opcode != "get" && opcode != "ping") {
     std::cerr << "Unknow opcode: " << opcode << std::endl;
   }
 }
 
-void LevelDBService::NormalForwardAndProxyBack(
-    std::shared_ptr<Packet> p, Connection &conn,
-    volatile evutil_socket_t &server_fd) {
-  if (server_fd <= 0) {
-    if (!conn.ConnectBackend()) {
-      std::cerr << "Fall back to EmergencyServe\n";
-      EmergencyServe(std::move(p), conn);
-      return;
-    }
-  }
-  // TODO: do we really need to have this copy?
-  std::vector<uint8_t> buffer;
-  p->AppendToBuffer(buffer);
-
-  write(server_fd, buffer.data(), buffer.size());
-}
-
-void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
-                                    Connection &conn) {
+void LevelDB::EmergencyServe(std::shared_ptr<Packet> p, Connection &conn,
+                             Cache &cache, Logger &logger) {
   RESPType *response = nullptr;
   if (conn.is_in_transaction_) {
     std::string_view opcode;
@@ -129,19 +107,19 @@ void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
       auto response_array = new RESPArray;
 
       {
-        auto cache_lock = cache_.TransactionLock();
+        auto cache_lock = cache.TransactionLock();
         for (const auto &c : conn.transactions_) {
           response_array->value->emplace_back(
-              EmergencyServeImpl(c, conn, true));
+              EmergencyServeImpl(c, conn, cache, logger, true));
         }
       }
 
       {
-        auto logger_lock = logger_.TransactionLock();
+        auto logger_lock = logger.TransactionLock();
         for (const auto &c : conn.transactions_) {
-          logger_.Log(LogEntry{c}, true);
+          logger.Log(LogEntry{c}, true);
         }
-        logger_.Log(LogEntry{p}, true);
+        logger.Log(LogEntry{p}, true);
       }
 
       conn.is_in_transaction_ = false;
@@ -152,8 +130,8 @@ void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
       response = new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
     }
   } else {
-    logger_.Log(LogEntry{p});
-    response = EmergencyServeImpl(std::move(p), conn);
+    logger.Log(LogEntry{p});
+    response = EmergencyServeImpl(std::move(p), conn, cache, logger);
   }
 
   std::vector<uint8_t> buffer;
@@ -162,9 +140,10 @@ void LevelDBService::EmergencyServe(std::shared_ptr<Packet> p,
   delete response;
 }
 
-RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
-                                             Connection &conn,
-                                             const bool in_transaction) {
+RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> p,
+                                      Connection &conn, Cache &cache,
+                                      Logger &logger,
+                                      const bool in_transaction) {
   std::string_view opcode;
   try {
     opcode = p->GetOpcode();
@@ -195,7 +174,7 @@ RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
     entry.value = value->value;
-    if (cache_.Set(*(key->value), entry, in_transaction))
+    if (cache.Set(*(key->value), entry, in_transaction))
       return new RESPSimpleString(std::make_shared<std::string>("OK"));
   } else if (opcode == "get") {
     if (p->GetArgNum() != 1) {
@@ -209,7 +188,7 @@ RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
       return new RESPError(
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
-    if (cache_.Get(*(key->value), entry, in_transaction)) {
+    if (cache.Get(*(key->value), entry, in_transaction)) {
       return new RESPBulkString(entry.value);
     } else {
       return new RESPBulkString(nullptr);
@@ -239,31 +218,9 @@ RESPType *LevelDBService::EmergencyServeImpl(std::shared_ptr<Packet> p,
   return new RESPError(std::make_shared<std::string>("ERR unknow command"));
 }
 
-void LevelDBService::Replay() {
-  int backend_fd, tries = 0;
-  while ((backend_fd = Connection::TryConnectBackend(backend_addr_,
-                                                     backend_port_)) == -1) {
-    if (tries++ > 100) {
-      std::cerr << "Replay failed to connect to backend\n";
-      return;
-    }
-  }
-  std::cerr << "Replay connected to backend in " << tries << " tries\n";
-  size_t cnt = 0;
-  LogEntry entry;
-  while (logger_.Pop(entry)) {
-    cnt++;
-    std::vector<uint8_t> buffer;
-    entry.value->AppendToBuffer(buffer);
-    write(backend_fd, buffer.data(), buffer.size());  // TODO: less writes
-  }
-  // TODO: in-flight requests after this?
-  close(backend_fd);
-  std::cerr << "Replay " << cnt << " items\n";
-}
+void LevelDB::Replay(Logger &logger) {}
 
-void LevelDBService::BackendHandler(evutil_socket_t fd, short which,
-                                    void *arg_conn) {
+void LevelDB::BackendHandler(evutil_socket_t fd, short which, void *arg_conn) {
   auto conn = static_cast<Connection *>(arg_conn);
 
   std::unique_ptr<std::vector<uint8_t>> buffer =

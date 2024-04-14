@@ -11,7 +11,8 @@
 
 namespace lite {
 
-Daemon::Daemon(const std::function<void()> &Replay, std::string &backend_port, const std::string pipe_path)
+Daemon::Daemon(const std::function<void()> &Replay, std::string &backend_port,
+               const std::string pipe_path)
     : Replay(Replay), pipe_path_(pipe_path), backend_port_(backend_port) {
   // set up event_base
   struct event_config *ev_config;

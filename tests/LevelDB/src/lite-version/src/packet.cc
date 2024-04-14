@@ -85,7 +85,7 @@ RESPInteger *RESPInteger::Parse(InputIterator &begin, InputIterator end) {
     std::cerr << "Could not parse integer: not long enough" << std::endl;
     return nullptr;
   }
-  begin++; // take \r
+  begin++;  // take \r
   if (*(begin++) != '\n') {
     std::cerr << "Could not parse integer: no \\n" << std::endl;
     return nullptr;
@@ -115,8 +115,8 @@ RESPBulkString *RESPBulkString::Parse(InputIterator &begin, InputIterator end) {
   auto start = begin;
   if (begin + len + 2 > end) {
     std::cerr << "Could not parse bulk string: not long enough" << std::endl;
-    std::cerr << "  Expected length: " << len << " Remaining length: "
-              << end - begin << std::endl;
+    std::cerr << "  Expected length: " << len
+              << " Remaining length: " << end - begin << std::endl;
     return nullptr;
   }
   begin += len;
