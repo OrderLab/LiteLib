@@ -11,10 +11,9 @@ bool LevelDB::Filter(const std::shared_ptr<Packet> &p, Connection &conn) const {
   try {
     opcode = p->GetOpcode();
   } catch (const std::exception &e) {
-    std::vector<std::uint8_t> buffer;
-    p->AppendToBuffer(buffer);
+    const auto buffer = p->Serialize();
     std::cerr << "Unknow opcode: ";
-    for (const auto &c : buffer) std::cerr << c;
+    for (const auto &c : *buffer) std::cerr << c;
     std::cerr << std::endl;
     return false;
   }
@@ -60,10 +59,9 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &p, Cache &cache,
   try {
     opcode = p->GetOpcode();
   } catch (const std::exception &e) {
-    std::vector<std::uint8_t> buffer;
-    p->AppendToBuffer(buffer);
+    const auto buffer = p->Serialize();
     std::cerr << "Unknow opcode: ";
-    for (const auto &c : buffer) std::cerr << c;
+    for (const auto &c : *buffer) std::cerr << c;
     std::cerr << std::endl;
   }
   CacheEntry entry;
@@ -97,10 +95,9 @@ void LevelDB::EmergencyServe(std::shared_ptr<Packet> p, Connection &conn,
     try {
       opcode = p->GetOpcode();
     } catch (const std::exception &e) {
-      std::vector<std::uint8_t> buffer;
-      p->AppendToBuffer(buffer);
+      const auto buffer = p->Serialize();
       std::cerr << "Unknow opcode: ";
-      for (const auto &c : buffer) std::cerr << c;
+      for (const auto &c : *buffer) std::cerr << c;
       std::cerr << std::endl;
     }
     if (opcode == "exec") {
@@ -148,10 +145,9 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> p,
   try {
     opcode = p->GetOpcode();
   } catch (const std::exception &e) {
-    std::vector<std::uint8_t> buffer;
-    p->AppendToBuffer(buffer);
+    const auto buffer = p->Serialize();
     std::cerr << "Unknow opcode: ";
-    for (const auto &c : buffer) std::cerr << c;
+    for (const auto &c : *buffer) std::cerr << c;
     std::cerr << std::endl;
   }
   CacheEntry entry;

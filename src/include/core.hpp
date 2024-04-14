@@ -39,11 +39,10 @@ class LiteCore : public Daemon {
           return;
         }
       }
-      // TODO: do we really need to have this copy?
-      std::vector<uint8_t> buffer;
-      p->AppendToBuffer(buffer);
 
-      write(conn.backend_fd_, buffer.data(), buffer.size());
+      const auto buffer = p->Serialize();
+
+      write(conn.backend_fd_, buffer->data(), buffer->size());
     }
   }
 
@@ -70,8 +69,8 @@ class LiteCore : public Daemon {
     LogEntry entry;
     while (logger_.Pop(entry)) {
       cnt++;
-      const auto buffer = entry.Serialize();
-      write(backend_fd, buffer.data(), buffer.size());  // TODO: less writes
+      const auto buffer = entry.ToPacket();
+      write(backend_fd, buffer->data(), buffer->size());  // TODO: less writes
     }
     // TODO: in-flight requests after this?
     close(backend_fd);

@@ -17,10 +17,16 @@ struct CacheEntry {
 struct LogEntry {
   std::shared_ptr<Packet> value;
 
-  std::vector<uint8_t> Serialize() const {
-    std::vector<uint8_t> buffer;
-    value->AppendToBuffer(buffer);
-    return buffer;
+  std::shared_ptr<std::vector<uint8_t>> Serialize() const {
+    return value->Serialize();
+  }
+
+  lite::DeserializeResult Deserialize(uint8_t *&begin, uint8_t *end) {
+    return value->Deserialize(begin, end);
+  }
+
+  std::shared_ptr<std::vector<uint8_t>> ToPacket() const {
+    return value->Serialize();
   }
 };
 

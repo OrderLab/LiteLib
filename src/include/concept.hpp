@@ -2,13 +2,28 @@
 
 #include <concepts>
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 namespace lite {
 
+enum DeserializeResult { kGood, kBad, kIndeterminate };
+
 template <typename LogEntry>
-concept IsLogEntry = requires(LogEntry log_entry) {
-  { log_entry.Serialize() } -> std::convertible_to<std::vector<uint8_t>>;
-};
+concept IsLogEntry =
+    requires(LogEntry log_entry, uint8_t *&begin, uint8_t *end) {
+      {
+        log_entry.Serialize()
+      } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
+
+      {
+        log_entry.Deserialize(begin, end)
+      } -> std::convertible_to<DeserializeResult>;
+
+      {
+        log_entry.ToPacket()
+      } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
+    };
 
 template <typename T>
   requires IsLogEntry<T>
@@ -33,10 +48,12 @@ concept IsApplication =
       { app.EmergencyServe(std::move(p), conn, cache, l) };
     };
 
-enum DeserializeResult { kGood, kBad, kIndeterminate };
-
 template <typename Packet>
 concept IsPacket = requires(Packet p, uint8_t *&begin, uint8_t *end) {
+  {
+    p.Serialize()
+  } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
+
   { p.Deserialize(begin, end) } -> std::convertible_to<DeserializeResult>;
 };
 }  // namespace lite

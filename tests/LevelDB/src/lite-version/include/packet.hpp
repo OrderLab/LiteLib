@@ -97,8 +97,10 @@ struct Packet {
     return lite::kGood;
   }
 
-  void AppendToBuffer(std::vector<uint8_t> &buffer) {
+  std::shared_ptr<std::vector<uint8_t>> Serialize() const {
+    std::vector<uint8_t> buffer;
     command->AppendToBuffer(buffer);
+    return std::make_shared<std::vector<uint8_t>>(buffer);
   }
 
   std::string_view GetOpcode() const {
