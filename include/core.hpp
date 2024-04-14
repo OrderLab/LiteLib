@@ -9,49 +9,91 @@
 namespace lite {
 
 template <typename Application, typename Packet, typename Connection,
-          typename Backend>
+          typename CacheKey, typename CacheEntry, typename LogEntry>
 concept IsApplication =
-    requires(Application app, Packet p, Connection c, Backend b) {
+    requires(Application app, Packet p, Connection conn,
+             Cache<CacheKey, CacheEntry> &cache, Logger<LogEntry> &l) {
       // Whether it's an operation that contains state info and thus needs to be
       // cached e.g. UPDATE -> true, READ -> false
-      { app.Filter(p, c) } -> std::convertible_to<bool>;
+      { app.Filter(p, conn) } -> std::convertible_to<bool>;
 
       // Perform the cachable operation during normal time
-      { app.NormalUpdate(p, c) };
-
-      // Forward any operation to the backend, get the response and return it to
-      // the client during normal time
-      { app.NormalForwardAndProxyBack(std::move(p), c, b) };
+      { app.NormalUpdate(p, conn, cache) };
 
       // Perform any operation during emergency time
-      { app.EmergencyServe(std::move(p), c) };
-
-      // Sync the state changes during emergency time to the recovered full
-      // version
-      { app.Replay() };
+      { app.EmergencyServe(std::move(p), conn, cache, l) };
     };
 
 template <typename Application, typename Packet, typename Connection,
-          typename Backend>
-  requires IsApplication<Application, Packet, Connection, Backend>
+          typename CacheKey, typename CacheEntry, typename LogEntry>
+  requires IsApplication<Application, Packet, Connection, CacheKey, CacheEntry,
+                         LogEntry>
 class LiteCore : public Daemon {
  public:
-  LiteCore(Application &app, std::string &backend_port, const char pipe_path[])
-      : Daemon([&] { app_.Replay(); }, backend_port, pipe_path), app_(app) {}
+  LiteCore(Application &app, const size_t &max_item_count,
+           std::string &backend_addr, std::string &backend_port,
+           const char pipe_path[])
+      : Daemon([&] { Replay(); }, backend_port, pipe_path),
+        app_(app),
+        cache_(max_item_count),
+        backend_addr_(backend_addr),
+        backend_port_(backend_port) {}
 
-  void Serve(Packet p, Connection &conn, Backend backend) {
-    if (IsInEmergencyMode()) {
-      app_.EmergencyServe(std::move(p), conn);
+  void Serve(Packet p, Connection &conn) {
+    if (emergency_mode_) {
+      app_.EmergencyServe(std::move(p), conn, cache_, logger_);
     } else {
       if (app_.Filter(p, conn)) {
-        app_.NormalUpdate(p, conn);
+        app_.NormalUpdate(p, conn, cache_);
       }
-      app_.NormalForwardAndProxyBack(std::move(p), conn, backend);
+
+      // Forward
+      if (conn.backend_fd_ <= 0) {
+        if (!conn.ConnectBackend()) {
+          std::cerr << "Fall back to EmergencyServe\n";
+          emergency_mode_ = true;
+          app_.EmergencyServe(std::move(p), conn, cache_, logger_);
+          return;
+        }
+      }
+      // TODO: do we really need to have this copy?
+      std::vector<uint8_t> buffer;
+      p->AppendToBuffer(buffer);
+
+      write(conn.backend_fd_, buffer.data(), buffer.size());
     }
   }
 
  private:
+  std::string &backend_addr_, &backend_port_;
+
   Application &app_;
+
+  Cache<CacheKey, CacheEntry> cache_;
+
+  Logger<LogEntry> logger_;
+
+  void Replay() {
+    int backend_fd, tries = 0;
+    while ((backend_fd = Connection::TryConnectBackend(backend_addr_,
+                                                       backend_port_)) == -1) {
+      if (tries++ > 100) {
+        std::cerr << "Replay failed to connect to backend\n";
+        return;
+      }
+    }
+    std::cerr << "Replay connected to backend in " << tries << " tries\n";
+    size_t cnt = 0;
+    LogEntry entry;
+    while (logger_.Pop(entry)) {
+      cnt++;
+      const auto buffer = entry.Deserialize();
+      write(backend_fd, buffer.data(), buffer.size());  // TODO: less writes
+    }
+    // TODO: in-flight requests after this?
+    close(backend_fd);
+    std::cerr << "Replay " << cnt << " items\n";
+  }
 };
 
 }  // namespace lite

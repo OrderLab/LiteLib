@@ -17,11 +17,14 @@
 
 namespace lite {
 
-template <typename Packet, typename Application>
+template <typename Packet, typename Application, typename CacheKey,
+          typename CacheEntry, typename LogEntry>
 class Worker {
-  using ConnectionInstance = Connection<Packet, Application>;
-  using LiteCoreInstance = LiteCore<Application, std::shared_ptr<Packet>,
-                                    ConnectionInstance, evutil_socket_t &>;
+  using ConnectionInstance =
+      Connection<Packet, Application, CacheKey, CacheEntry, LogEntry>;
+  using LiteCoreInstance =
+      LiteCore<Application, std::shared_ptr<Packet>, ConnectionInstance,
+               CacheKey, CacheEntry, LogEntry>;
 
  public:
   explicit Worker(LiteCoreInstance &lite_core, std::string &backend_addr,

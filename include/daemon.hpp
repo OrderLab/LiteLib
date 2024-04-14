@@ -15,7 +15,7 @@ class Daemon {
                   std::string &backend_port,
                   const std::string pipe_path = "/tmp/lite");
 
-  bool IsInEmergencyMode() { return emergency_mode_; }
+  std::atomic<bool> emergency_mode_ = false;
 
  private:
   std::function<void()> Replay;
@@ -23,8 +23,6 @@ class Daemon {
   pthread_t thread_id_;
 
   int named_pipe_fd_;
-
-  std::atomic<bool> emergency_mode_ = false;
 
   struct event_base *base_;
 

@@ -14,10 +14,11 @@
 namespace lite {
 
 /// Represents a single connection from a client.
-template <typename Packet, typename Application>
+template <typename Packet, typename Application, typename CacheKey,
+          typename CacheEntry, typename LogEntry>
 class Connection {
   using LiteCoreInstance = LiteCore<Application, std::shared_ptr<Packet>,
-                                    Connection, evutil_socket_t&>;
+                                    Connection, CacheKey, CacheEntry, LogEntry>;
 
  public:
   Connection(const Connection&) = delete;
@@ -83,7 +84,7 @@ class Connection {
         // TODO: handle the case when the buffer is not large enough
         return false;
       }
-      lite_core_.Serve(std::move(request_), *this, backend_fd_);
+      lite_core_.Serve(std::move(request_), *this);
       request_ = std::make_unique<Packet>();
     }
     return true;
