@@ -46,9 +46,9 @@ class LiteCore : public Daemon {
     }
   }
 
- private:
   std::string &backend_addr_, &backend_port_;
 
+ private:
   Application &app_;
 
   Cache<CacheKey, CacheEntry> cache_;

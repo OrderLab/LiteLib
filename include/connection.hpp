@@ -30,11 +30,8 @@ class Connection {
   explicit Connection(const evutil_socket_t sfd, const int event_flags,
                       struct event_base* base, EventHandler event_handler,
                       void* lite_server, LiteCoreInstance& lite_core,
-                      bool is_client_connection, std::string& backend_addr,
-                      std::string& backend_port)
+                      bool is_client_connection)
       : base_(base),
-        backend_addr_(backend_addr),
-        backend_port_(backend_port),
         client_fd_(sfd),
         request_(std::make_unique<Packet>()),
         lite_server_(lite_server),
@@ -172,7 +169,8 @@ class Connection {
   /// Try to connect to the backend and set event
   bool ConnectBackend() {
     // Set up a socket connection to the backend server
-    if ((backend_fd_ = TryConnectBackend(backend_addr_, backend_port_)) == -1) {
+    if ((backend_fd_ = TryConnectBackend(lite_core_.backend_addr_,
+                                         lite_core_.backend_port_)) == -1) {
       return false;
     }
 
@@ -227,9 +225,6 @@ class Connection {
 
   /// Underlying Lite Core.
   LiteCoreInstance& lite_core_;
-
-  /// The address and port of the backend server.
-  std::string &backend_addr_, &backend_port_;
 
   /// The event associated with the connection.
   event client_event_, backend_event_;
