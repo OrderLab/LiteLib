@@ -3,6 +3,7 @@
 #include <event.h>
 
 #include <algorithm>
+#include <concept.hpp>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -79,21 +80,21 @@ struct Packet {
   Packet() : command(nullptr) {}
   Packet(std::unique_ptr<RESPArray> command) : command(std::move(command)) {}
 
-  bool Parse(InputIterator &begin, InputIterator end) {
+  lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end) {
     std::unique_ptr<RESPArray> new_command(
         dynamic_cast<RESPArray *>(RESPType::Parse(begin, end)));
     if (new_command == nullptr) {
-      return false;
+      return lite::kBad;
     }
     command = std::move(new_command);
     auto opcode = dynamic_cast<RESPBulkString *>((*command->value)[0].get());
     if (opcode == nullptr) {
-      return false;
+      return lite::kBad;
     }
     auto &data = opcode->value;
     std::transform(data->begin(), data->end(), data->begin(),
                    [](unsigned char c) { return std::tolower(c); });
-    return true;
+    return lite::kGood;
   }
 
   void AppendToBuffer(std::vector<uint8_t> &buffer) {

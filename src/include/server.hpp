@@ -18,6 +18,7 @@ namespace lite {
 
 template <typename Packet, typename Application, typename CacheKey,
           typename CacheEntry, typename LogEntry>
+  requires IsPacket<Packet>
 class LiteServer {
   using ConnectionInstance =
       Connection<Packet, Application, CacheKey, CacheEntry, LogEntry>;

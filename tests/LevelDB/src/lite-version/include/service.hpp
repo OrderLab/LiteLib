@@ -17,7 +17,7 @@ struct CacheEntry {
 struct LogEntry {
   std::shared_ptr<Packet> value;
 
-  std::vector<uint8_t> Deserialize() const {
+  std::vector<uint8_t> Serialize() const {
     std::vector<uint8_t> buffer;
     value->AppendToBuffer(buffer);
     return buffer;
