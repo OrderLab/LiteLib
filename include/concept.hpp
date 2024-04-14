@@ -2,6 +2,7 @@
 
 #include <concepts>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -23,6 +24,10 @@ concept IsLogEntry =
       {
         log_entry.ToPacket()
       } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
+    } && !requires(LogEntry log_entry, uint8_t *&begin, uint8_t *end) {
+      {
+        log_entry.Deserialize(std::move(begin), end)
+      };  // begin must be a reference
     };
 
 template <typename T>
@@ -55,5 +60,8 @@ concept IsPacket = requires(Packet p, uint8_t *&begin, uint8_t *end) {
   } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
 
   { p.Deserialize(begin, end) } -> std::convertible_to<DeserializeResult>;
+} && !requires(Packet p, uint8_t *&begin, uint8_t *end) {
+  { p.Deserialize(std::move(begin), end) };  // begin must be a reference
 };
+
 }  // namespace lite
