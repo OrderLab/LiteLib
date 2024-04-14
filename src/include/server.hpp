@@ -34,9 +34,7 @@ class LiteServer {
                       Application& app, std::string& backend_addr,
                       std::string& backend_port,
                       const char pipe_path[] = "/tmp/lite")
-      : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path),
-        backend_addr_(backend_addr),
-        backend_port_(backend_port) {
+      : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path) {
     struct event_config* ev_config;
     ev_config = event_config_new();
     event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
@@ -46,7 +44,7 @@ class LiteServer {
     for (int i = 0; i < nthreads; i++) {
       workers_.emplace_back(
           new Worker<Packet, Application, CacheKey, CacheEntry, LogEntry>(
-              lite_core_, backend_addr_, backend_port_));
+              lite_core_));
       (**workers_.rbegin()).Run();
     }
     next_worker_ = workers_.begin();
@@ -122,10 +120,9 @@ class LiteServer {
       }
 
       std::unique_ptr<ConnectionInstance> new_connection;
-      std::string place_holder;
       if (!(new_connection = std::make_unique<ConnectionInstance>(
                 sfd, EV_READ | EV_PERSIST, main_base_, EventHandler, this,
-                lite_core_, false, place_holder, place_holder))) {
+                lite_core_, false))) {
         fprintf(stderr, "failed to create listening connection\n");
         exit(EXIT_FAILURE);
       }
@@ -174,8 +171,6 @@ class LiteServer {
     }
     return sfd;
   }
-
-  std::string &backend_addr_, &backend_port_;
 
   /// The internal lite server
   LiteCoreInstance lite_core_;

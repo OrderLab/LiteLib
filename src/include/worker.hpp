@@ -27,11 +27,7 @@ class Worker {
                CacheKey, CacheEntry, LogEntry>;
 
  public:
-  explicit Worker(LiteCoreInstance &lite_core, std::string &backend_addr,
-                  std::string &backend_port)
-      : lite_core_(lite_core),
-        backend_addr_(backend_addr),
-        backend_port_(backend_port) {
+  explicit Worker(LiteCoreInstance &lite_core) : lite_core_(lite_core) {
     notify_event_fd = eventfd(0, EFD_NONBLOCK);
     if (notify_event_fd == -1) {
       perror("failed creating eventfd for worker thread");
@@ -77,8 +73,6 @@ class Worker {
   moodycamel::ReaderWriterQueue<evutil_socket_t> notify_queue_;
 
  private:
-  std::string &backend_addr_, &backend_port_;
-
   /// PID of the worker thread.
   pthread_t thread_id_;
 
@@ -123,8 +117,7 @@ class Worker {
         std::unique_ptr<ConnectionInstance> new_connection;
         if (!(new_connection = std::make_unique<ConnectionInstance>(
                   sfd, EV_READ | EV_PERSIST, self->base_, ConnectionHandler,
-                  nullptr, self->lite_core_, true, self->backend_addr_,
-                  self->backend_port_))) {
+                  nullptr, self->lite_core_, true))) {
           fprintf(stderr, "failed to create listening connection\n");
           exit(EXIT_FAILURE);
         }
