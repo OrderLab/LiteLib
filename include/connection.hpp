@@ -17,8 +17,8 @@ namespace lite {
 template <typename Packet, typename Application, typename CacheKey,
           typename CacheEntry, typename LogEntry>
 class Connection {
-  using LiteCoreInstance = LiteCore<Application, std::shared_ptr<Packet>,
-                                    Connection, CacheKey, CacheEntry, LogEntry>;
+  using LiteCoreInstance =
+      LiteCore<Application, Packet, Connection, CacheKey, CacheEntry, LogEntry>;
 
  public:
   Connection(const Connection&) = delete;
@@ -68,6 +68,7 @@ class Connection {
 
   /// Handle completion of a read operation.
   bool Read() {
+    // TODO: handle the case when the buffer is not large enough
     ssize_t bytes_transferred;
     if ((bytes_transferred = read(client_fd_, buffer_.data(), 16384)) <= 0) {
       perror("read");
@@ -84,7 +85,6 @@ class Connection {
         continue;
       } else if (result == kBad) {
         std::cerr << "failed to parse request" << std::endl;
-        // TODO: handle the case when the buffer is not large enough
         return false;
       }
     }
@@ -176,7 +176,7 @@ class Connection {
 
     // Add an event that listens to the backend server's messages
     event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
-              Application::BackendHandler, static_cast<void*>(this));
+              Connection::BackendHandler, static_cast<void*>(this));
     event_base_set(base_, &backend_event_);
     if (event_add(&backend_event_, 0) == -1) {
       perror("backend event_add");
@@ -186,24 +186,50 @@ class Connection {
     return true;
   }
 
-  /// Handle completion of a write operation.
-  std::unique_ptr<std::vector<uint8_t>> response_buffer_;
-  void FlushBuffer() {
-    write(client_fd_, response_buffer_->data(), response_buffer_->size());
-    response_buffer_->clear();
+  static void BackendHandler(evutil_socket_t fd, short which, void* arg_conn) {
+    auto conn = static_cast<Connection*>(arg_conn);
+
+    std::vector<uint8_t> buffer(16384);
+    const ssize_t bytes_transferred =
+        read(conn->backend_fd_, buffer.data(), 16384);
+    if (bytes_transferred <= 0) {
+      // TODO: maybe we can switch to emergency mode automatically here
+      perror("read from backend");
+      delete conn;
+      return;
+    }
+    // TODO: add a hook here?
+    conn->Write(conn->client_fd_, buffer, bytes_transferred);
   }
 
-  void Write(std::unique_ptr<std::vector<uint8_t>> buffer) {
-    Write(std::move(buffer), buffer->size());
+  /// Handle completion of a write operation.
+  std::unique_ptr<std::vector<uint8_t>> response_buffer_;
+  void FlushBuffer(const evutil_socket_t fd) {
+    Write(client_fd_, std::move(response_buffer_));
+    response_buffer_ = std::make_unique<std::vector<uint8_t>>();
   }
-  void Write(std::unique_ptr<std::vector<uint8_t>> buffer, size_t len) {
-    // TODO: async to reduce latency
-    // TODO: use transmit in the full version
-    uint8_t* begin = buffer->data();
+
+  static void Write(const evutil_socket_t fd,
+                    const std::vector<uint8_t>&& buffer) {
+    Write(fd, buffer, buffer.size());
+  }
+  static void Write(const evutil_socket_t fd,
+                    const std::unique_ptr<std::vector<uint8_t>> buffer) {
+    Write(fd, *buffer, buffer->size());
+  }
+  static void Write(const evutil_socket_t fd,
+                    const std::shared_ptr<std::vector<uint8_t>> buffer) {
+    Write(fd, *buffer, buffer->size());
+  }
+  static void Write(const evutil_socket_t fd, const std::vector<uint8_t> buffer,
+                    size_t len) {
+    // TODO: async?
+    // TODO: use transmit() implementation in Memcached
+    const uint8_t* begin = buffer.data();
     while (len) {
-      ssize_t bytes_written = write(client_fd_, begin, len);
+      ssize_t bytes_written = write(fd, begin, len);
       if (bytes_written <= 0) {
-        perror("write");  // TODO max tries
+        perror("write");  // TODO: max tries
       } else {
         len -= bytes_written;
         begin += bytes_written;

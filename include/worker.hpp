@@ -22,9 +22,8 @@ template <typename Packet, typename Application, typename CacheKey,
 class Worker {
   using ConnectionInstance =
       Connection<Packet, Application, CacheKey, CacheEntry, LogEntry>;
-  using LiteCoreInstance =
-      LiteCore<Application, std::shared_ptr<Packet>, ConnectionInstance,
-               CacheKey, CacheEntry, LogEntry>;
+  using LiteCoreInstance = LiteCore<Application, Packet, ConnectionInstance,
+                                    CacheKey, CacheEntry, LogEntry>;
 
  public:
   explicit Worker(LiteCoreInstance &lite_core) : lite_core_(lite_core) {

@@ -22,9 +22,8 @@ template <typename Packet, typename Application, typename CacheKey,
 class LiteServer {
   using ConnectionInstance =
       Connection<Packet, Application, CacheKey, CacheEntry, LogEntry>;
-  using LiteCoreInstance =
-      LiteCore<Application, std::shared_ptr<Packet>, ConnectionInstance,
-               CacheKey, CacheEntry, LogEntry>;
+  using LiteCoreInstance = LiteCore<Application, Packet, ConnectionInstance,
+                                    CacheKey, CacheEntry, LogEntry>;
 
  public:
   LiteServer& operator=(const LiteServer&) = delete;
@@ -146,7 +145,6 @@ class LiteServer {
     if (write((**next_worker_).notify_event_fd, &buf, sizeof(uint64_t)) !=
         sizeof(uint64_t)) {
       perror("failed writing to worker eventfd");
-      /* TODO: This is a fatal problem. Can it ever happen temporarily? */
     }
 
     next_worker_++;
