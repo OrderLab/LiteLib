@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concept.hpp>
 #include <cstdint>
 #include <iostream>
 #include <magic_enum.hpp>
@@ -81,55 +82,24 @@ struct Header {
 
 struct Packet {
   // size_t length;
-  std::unique_ptr<std::vector<uint8_t>> buffer;
-  Packet() : buffer(std::make_unique<std::vector<uint8_t>>()) {}
+  std::shared_ptr<std::vector<uint8_t>> buffer;
+  Packet() : buffer(std::make_shared<std::vector<uint8_t>>()) {}
+  Packet(std::shared_ptr<std::vector<uint8_t>> buffer) : buffer(buffer) {}
+
+  std::shared_ptr<std::vector<uint8_t>> Serialize() {
+    if (!buffer) {  // empty packet (quiet response)
+      return std::make_shared<std::vector<uint8_t>>();
+    }
+    if (buffer->empty()) {
+      std::cerr << "Serialize: buffer is empty" << std::endl;
+      return nullptr;
+    }
+    return buffer;
+  }
 
   std::optional<Header::Opcode> GetOpcode() const {
     return magic_enum::enum_cast<Header::Opcode>((*buffer)[1]);
   }
-};
-
-struct ParsedPacket : public Packet {
-  Header header = {};
-  std::shared_ptr<std::vector<uint8_t>> extra = {};
-  std::shared_ptr<std::vector<uint8_t>> key = {};
-  std::shared_ptr<std::vector<uint8_t>> value = nullptr;
-
-  ParsedPacket() = default;
-
-  ParsedPacket(const Packet &packet);
-
-  std::vector<uint8_t> ToBuffers();
-
-  /// Append the response into a vector of buffers.
-  void ToBuffers(std::vector<uint8_t> &buffers);
-
-  friend std::ostream &operator<<(std::ostream &os, const ParsedPacket &rhs) {
-    os << rhs.header;
-    // os << "extra: \n" << ToString(rhs.extra) << std::endl;
-    os << "extra: \n";
-    for (const auto byte : *rhs.extra)
-      os << std::hex << "0x" << uint32_t(byte) << std::dec << " ";
-    os << std::endl;
-    os << "key: \n" << ToString(rhs.key.get()) << std::endl;
-    os << "value: \n" << ToString(rhs.value.get()) << std::endl;
-    return os;
-  }
-
- private:
-  static std::string ToString(const std::vector<uint8_t> &v) {
-    return std::string(v.begin(), v.end());
-  }
-  static std::string ToString(const std::vector<uint8_t> *v) {
-    return std::string(v->begin(), v->end());
-  }
-};
-
-class SimpleParser {
- public:
-  enum ResultType { kGood, kBad, kIndeterminate };
-
-  void Reset() { state_ = kMagic; }
 
 #define digest_remaining()             \
   if (remaining_len_ <= end - begin) { \
@@ -141,8 +111,7 @@ class SimpleParser {
   }
 #define input (*begin++)
 
-  template <typename InputIterator>
-  ResultType Parse(InputIterator &begin, InputIterator end) {
+  lite::DeserializeResult Deserialize(uint8_t *&begin, uint8_t *end) {
     while (begin != end) {
       switch (state_) {
         case kMagic:
@@ -210,7 +179,7 @@ class SimpleParser {
             remaining_len_ = total_body_length_ - extras_length_ - key_length_;
             if (remaining_len_ == 0) {
               state_ = kMagic;
-              return kGood;
+              return lite::kGood;
             }
           }
           break;
@@ -218,14 +187,14 @@ class SimpleParser {
           digest_remaining();
           if (!remaining_len_) {
             state_ = kMagic;
-            return kGood;
+            return lite::kGood;
           }
           break;
         default:
-          return kBad;
+          return lite::kBad;
       }
     }
-    return kIndeterminate;
+    return lite::kIndeterminate;
   }
 
 #undef input
@@ -252,3 +221,41 @@ class SimpleParser {
   uint8_t extras_length_;
   uint32_t total_body_length_;
 };
+
+struct ParsedPacket : public Packet {
+  Header header = {};
+  std::shared_ptr<std::vector<uint8_t>> extra = {};
+  std::shared_ptr<std::vector<uint8_t>> key = {};
+  std::shared_ptr<std::vector<uint8_t>> value = nullptr;
+
+  ParsedPacket() = default;
+
+  ParsedPacket(const Packet &packet);
+
+  std::shared_ptr<std::vector<uint8_t>> Serialize();
+
+  /// Append the response into a vector of buffers.
+  void ToBuffers(std::vector<uint8_t> &buffers);
+
+  friend std::ostream &operator<<(std::ostream &os, const ParsedPacket &rhs) {
+    os << rhs.header;
+    // os << "extra: \n" << ToString(rhs.extra) << std::endl;
+    os << "extra: \n";
+    for (const auto byte : *rhs.extra)
+      os << std::hex << "0x" << uint32_t(byte) << std::dec << " ";
+    os << std::endl;
+    os << "key: \n" << ToString(rhs.key.get()) << std::endl;
+    os << "value: \n" << ToString(rhs.value.get()) << std::endl;
+    return os;
+  }
+
+ private:
+  static std::string ToString(const std::vector<uint8_t> &v) {
+    return std::string(v.begin(), v.end());
+  }
+  static std::string ToString(const std::vector<uint8_t> *v) {
+    return std::string(v->begin(), v->end());
+  }
+};
+
+class SimpleParser {};

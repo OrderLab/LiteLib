@@ -3,9 +3,11 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread/thread.hpp>
 #include <iostream>
+#include <server.hpp>
 #include <string>
 
-#include "server.hpp"
+#include "packet.hpp"
+#include "service.hpp"
 
 void PrintHelp() {
   std::cout << "Usage: LiteMemcached [-t thread_num] [-s size] \n"
@@ -67,7 +69,11 @@ int main(int argc, char* argv[]) {
     // TODO: make address and port configurable.
     std::string backend_addr = "localhost";
     std::string backend_port = "60000";
-    MemcachedServer s(thread_pool_size, cache_size, backend_addr, backend_port);
+    Memcached memcached;
+    lite::LiteServer<Packet, Memcached, std::vector<uint8_t>, CacheEntry,
+                     LogEntry, ConnectionInfo>
+        s(thread_pool_size, cache_size, memcached, backend_addr, backend_port,
+          "/tmp/lite_memcached");
 
     // Run the server until stopped.
     s.Run(port);

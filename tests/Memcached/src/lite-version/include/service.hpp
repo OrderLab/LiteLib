@@ -2,49 +2,54 @@
 
 #include <event.h>
 
-#include <lite.hpp>
+#include <concept.hpp>
 #include <memory>
 #include <string>
 
 #include "packet.hpp"
 
-class Connection;
-
-class MemcachedService {
- public:
-  MemcachedService(const size_t &max_item_count,
-                   std::string &backend_addr,
-                   std::string &backend_port);
-
-  bool Filter(const std::unique_ptr<Packet> &p) const;
-
-  void NormalUpdate(const std::unique_ptr<Packet> &p);
-
-  void NormalForwardAndProxyBack(std::unique_ptr<Packet> p,
-                                 Connection *conn_ptr,
-                                 volatile evutil_socket_t &server_fd);
-
-  void EmergencyServe(std::unique_ptr<Packet> p, Connection *conn_ptr);
-
-  void Replay();
-
-  static void BackendHandler(evutil_socket_t fd, short which, void *arg_conn);
-
- private:
-  std::string &backend_addr_, &backend_port_;
-
-  struct CacheEntry {
-    std::shared_ptr<std::vector<uint8_t>> value = nullptr;
-    std::shared_ptr<std::vector<uint8_t>> flags = nullptr;
-    uint64_t CAS;
-    size_t GetSize() const {
-      return (value ? value->size() : 0) + (flags ? flags->size() : 0) +
-             sizeof(CAS);
-    }
-  };
-  lite::Cache<std::vector<uint8_t>, CacheEntry> cache_;
+struct CacheEntry {
+  std::shared_ptr<std::vector<uint8_t>> value = nullptr;
+  std::shared_ptr<std::vector<uint8_t>> flags = nullptr;
+  uint64_t CAS;
+  size_t GetSize() const {
+    return (value ? value->size() : 0) + (flags ? flags->size() : 0) +
+           sizeof(CAS);
+  }
 };
 
-using MemcachedLiteServer =
-    lite::LiteServer<MemcachedService, std::unique_ptr<Packet>, Connection *,
-                     evutil_socket_t &>;
+struct LogEntry {  // TODO: deal with expiry
+  std::shared_ptr<Packet> packet;
+
+  std::shared_ptr<std::vector<uint8_t>> Serialize() {
+    return packet->Serialize();
+  }
+
+  lite::DeserializeResult Deserialize(uint8_t *&begin, uint8_t *end) {
+    return packet->Deserialize(begin, end);
+  }
+
+  std::shared_ptr<std::vector<uint8_t>> ToPacket() {
+    return packet->Serialize();
+  }
+};
+
+struct ConnectionInfo {
+  std::unique_ptr<std::vector<uint8_t>> response_buffer;
+};
+
+class Memcached {
+  using Cache = lite::Cache<std::vector<uint8_t>, CacheEntry>;
+  using Logger = lite::Logger<LogEntry>;
+
+ public:
+  bool Filter(const std::shared_ptr<Packet> &p, ConnectionInfo &_) const;
+
+  void NormalUpdate(const std::shared_ptr<Packet> &p, ConnectionInfo &_,
+                    Cache &cache);
+
+  Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &_,
+                        Cache &cache, Logger &logger);
+
+  void Replay();
+};

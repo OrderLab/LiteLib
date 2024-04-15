@@ -59,9 +59,12 @@ ParsedPacket::ParsedPacket(const Packet &packet) {
       data.begin() + 24 + header.extras_length + header.key_length, data.end());
 }
 
-std::vector<uint8_t> ParsedPacket::ToBuffers() {
-  std::vector<uint8_t> buffers;
-  ToBuffers(buffers);
+std::shared_ptr<std::vector<uint8_t>> ParsedPacket::Serialize() {
+  if (!buffer->empty()) {
+    return buffer;
+  }
+  auto buffers = std::make_shared<std::vector<uint8_t>>();
+  ToBuffers(*buffers);
   return buffers;
 }
 

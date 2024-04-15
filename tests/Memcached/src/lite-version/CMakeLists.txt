@@ -27,5 +27,5 @@ target_sources(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
-target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread)
+target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread readerwriterqueue)
 target_include_directories(${PROJECT_NAME} PRIVATE include)
