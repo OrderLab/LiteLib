@@ -45,7 +45,7 @@ class Connection {
       throw std::runtime_error("client event_add");
     }
 
-    if (is_client_connection) ConnectBackend();
+    if (is_client_connection && !lite_core_.emergency_mode_) ConnectBackend();
   }
 
   ~Connection() {
@@ -71,6 +71,7 @@ class Connection {
     // TODO: handle the case when the buffer is not large enough
     ssize_t bytes_transferred;
     if ((bytes_transferred = read(client_fd_, buffer_.data(), 16384)) <= 0) {
+      // TODO: how to handle the case when the client disconnects? (e.g. quit command in Memcached)
       perror("read");
       return false;
     }

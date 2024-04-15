@@ -36,6 +36,8 @@ struct LogEntry {  // TODO: deal with expiry
 
 struct ConnectionInfo {
   std::unique_ptr<std::vector<uint8_t>> response_buffer;
+  ConnectionInfo()
+      : response_buffer(std::make_unique<std::vector<uint8_t>>()) {}
 };
 
 class Memcached {

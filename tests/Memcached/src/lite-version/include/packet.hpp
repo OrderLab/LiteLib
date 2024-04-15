@@ -112,6 +112,7 @@ struct Packet {
 #define input (*begin++)
 
   lite::DeserializeResult Deserialize(uint8_t *&begin, uint8_t *end) {
+    uint8_t *const begin_old = begin;
     while (begin != end) {
       switch (state_) {
         case kMagic:
@@ -179,6 +180,7 @@ struct Packet {
             remaining_len_ = total_body_length_ - extras_length_ - key_length_;
             if (remaining_len_ == 0) {
               state_ = kMagic;
+              buffer->insert(buffer->end(), begin_old, begin);
               return lite::kGood;
             }
           }
@@ -187,6 +189,7 @@ struct Packet {
           digest_remaining();
           if (!remaining_len_) {
             state_ = kMagic;
+            buffer->insert(buffer->end(), begin_old, begin);
             return lite::kGood;
           }
           break;
@@ -194,6 +197,7 @@ struct Packet {
           return lite::kBad;
       }
     }
+    buffer->insert(buffer->end(), begin_old, begin);
     return lite::kIndeterminate;
   }
 

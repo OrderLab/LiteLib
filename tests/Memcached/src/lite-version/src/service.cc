@@ -118,6 +118,8 @@ Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
                                       resp.header.key_length +
                                       resp.header.extras_length;
       break;
+    case Header::Opcode::kQuit:
+      break;
     default:
       // TODO: more operations
       std::cerr << "Unsupported Opcode:\n" << req << std::endl;
