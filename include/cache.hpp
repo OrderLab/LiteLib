@@ -44,7 +44,12 @@ class Cache {
       transaction_lock =
           std::shared_lock<std::shared_mutex>{transaction_mutex_};
     }
-    ListNode *node = new ListNode(key, value.GetSize());
+    ListNode *node;
+    if constexpr (HasGetSize<CacheEntry>) {
+      node = new ListNode(key, value.GetSize());
+    } else {
+      node = new ListNode(key);
+    }
     if (!cache_.insert(std::make_pair(key, MapEntry(value, node)))) {
       delete node;
       return false;
