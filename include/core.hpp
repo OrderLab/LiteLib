@@ -27,7 +27,7 @@ class LiteCore : public Daemon {
              const evutil_socket_t client_fd,
              const evutil_socket_t backend_fd) {
     if (emergency_mode_) {
-      const auto packet =
+      auto packet =
           app_.EmergencyServe(std::move(p), conn_info, cache_, logger_);
       const auto buffer = packet.Serialize();
       network::Write(client_fd, buffer);

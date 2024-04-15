@@ -36,8 +36,7 @@ class Connection {
         client_fd_(sfd),
         request_(std::make_unique<Packet>()),
         lite_server_(lite_server),
-        lite_core_(lite_core),
-        response_buffer_(std::make_unique<std::vector<uint8_t>>()) {
+        lite_core_(lite_core) {
     event_set(&client_event_, sfd, event_flags, event_handler,
               static_cast<void*>(this));
     event_base_set(base, &client_event_);
@@ -130,13 +129,6 @@ class Connection {
     }
     // TODO: add a hook here?
     network::Write(conn->client_fd_, buffer, bytes_transferred);
-  }
-
-  /// Handle completion of a write operation.
-  std::unique_ptr<std::vector<uint8_t>> response_buffer_;
-  void FlushBuffer(const evutil_socket_t fd) {
-    network::Write(client_fd_, std::move(response_buffer_));
-    response_buffer_ = std::make_unique<std::vector<uint8_t>>();
   }
 
   ConnectionInfo extra_app_info_;
