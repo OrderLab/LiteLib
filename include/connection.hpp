@@ -10,15 +10,16 @@
 #include <vector>
 
 #include "core.hpp"
+#include "network_utils.hpp"
 
 namespace lite {
 
 /// Represents a single connection from a client.
 template <typename Packet, typename Application, typename CacheKey,
-          typename CacheEntry, typename LogEntry>
+          typename CacheEntry, typename LogEntry, typename ConnectionInfo>
 class Connection {
-  using LiteCoreInstance =
-      LiteCore<Application, Packet, Connection, CacheKey, CacheEntry, LogEntry>;
+  using LiteCoreInstance = LiteCore<Application, Packet, ConnectionInfo,
+                                    CacheKey, CacheEntry, LogEntry>;
 
  public:
   Connection(const Connection&) = delete;
@@ -79,7 +80,11 @@ class Connection {
     while (begin != end) {
       const auto result = request_->Deserialize(begin, end);
       if (result == kGood) {
-        lite_core_.Serve(std::move(request_), *this);
+        if (backend_fd_ <= 0 && !lite_core_.emergency_mode_) {
+          ConnectBackend();
+        }
+        lite_core_.Serve(std::move(request_), extra_app_info_, client_fd_,
+                         backend_fd_);
         request_ = std::make_unique<Packet>();
       } else if (result == kIndeterminate) {
         continue;
@@ -91,86 +96,11 @@ class Connection {
     return true;
   }
 
-  /// Try to connect to the backend
-  static evutil_socket_t TryConnectBackend(const std::string& addr,
-                                           const std::string& port) {
-    std::cerr << "Try to connect to backend\n";
-    evutil_socket_t backend_fd;
-    struct addrinfo hints, *res;
-
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-
-    if (getaddrinfo(addr.c_str(), port.c_str(), &hints, &res) != 0) {
-      perror("getaddrinfo");
-      return -1;
-    }
-
-    bool connected = false;
-    int flags = 1;
-    struct linger ling = {0, 0};
-    for (; res; res = res->ai_next) {
-      backend_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-      if (backend_fd == -1) {
-        // perror("failed to connect backend");
-        // goto connect_backend_exit;
-        continue;
-      }
-
-      if (setsockopt(backend_fd, SOL_SOCKET, SO_REUSEADDR, (void*)&flags,
-                     sizeof(flags)) != 0) {
-        perror("failed to set SO_REUSEADDR for backend");
-        continue;
-      }
-
-      if (setsockopt(backend_fd, SOL_SOCKET, SO_KEEPALIVE, (void*)&flags,
-                     sizeof(flags)) != 0) {
-        perror("failed to set SO_KEEPALIVE for backend");
-        continue;
-      }
-
-      if (setsockopt(backend_fd, SOL_SOCKET, SO_LINGER, (void*)&ling,
-                     sizeof(ling)) != 0) {
-        perror("failed to set SO_LINGER for backend");
-        continue;
-      }
-
-      if (setsockopt(backend_fd, IPPROTO_TCP, TCP_NODELAY, (void*)&flags,
-                     sizeof(flags)) != 0) {
-        perror("failed to set TCP_NODELAY for backend");
-        continue;
-      }
-
-      if (connect(backend_fd, res->ai_addr, res->ai_addrlen) == -1) {
-        // perror("failed to connect backend");
-        // goto connect_backend_exit;
-        continue;
-      }
-
-      connected = true;
-      break;
-    }
-
-    if (!connected) {
-      perror("failed to connect backend");
-      goto connect_backend_exit;
-    }
-
-    std::cerr << "Backend connected, fd: " << backend_fd << std::endl;
-
-    return backend_fd;
-
-  connect_backend_exit:
-    freeaddrinfo(res);
-    return -1;
-  }
-
   /// Try to connect to the backend and set event
   bool ConnectBackend() {
     // Set up a socket connection to the backend server
-    if ((backend_fd_ = TryConnectBackend(lite_core_.backend_addr_,
-                                         lite_core_.backend_port_)) == -1) {
+    if ((backend_fd_ = network::TryConnectBackend(
+             lite_core_.backend_addr_, lite_core_.backend_port_)) == -1) {
       return false;
     }
 
@@ -199,46 +129,17 @@ class Connection {
       return;
     }
     // TODO: add a hook here?
-    conn->Write(conn->client_fd_, buffer, bytes_transferred);
+    network::Write(conn->client_fd_, buffer, bytes_transferred);
   }
 
   /// Handle completion of a write operation.
   std::unique_ptr<std::vector<uint8_t>> response_buffer_;
   void FlushBuffer(const evutil_socket_t fd) {
-    Write(client_fd_, std::move(response_buffer_));
+    network::Write(client_fd_, std::move(response_buffer_));
     response_buffer_ = std::make_unique<std::vector<uint8_t>>();
   }
 
-  static void Write(const evutil_socket_t fd,
-                    const std::vector<uint8_t>&& buffer) {
-    Write(fd, buffer, buffer.size());
-  }
-  static void Write(const evutil_socket_t fd,
-                    const std::unique_ptr<std::vector<uint8_t>> buffer) {
-    Write(fd, *buffer, buffer->size());
-  }
-  static void Write(const evutil_socket_t fd,
-                    const std::shared_ptr<std::vector<uint8_t>> buffer) {
-    Write(fd, *buffer, buffer->size());
-  }
-  static void Write(const evutil_socket_t fd, const std::vector<uint8_t> buffer,
-                    size_t len) {
-    // TODO: async?
-    // TODO: use transmit() implementation in Memcached
-    const uint8_t* begin = buffer.data();
-    while (len) {
-      ssize_t bytes_written = write(fd, begin, len);
-      if (bytes_written <= 0) {
-        perror("write");  // TODO: max tries
-      } else {
-        len -= bytes_written;
-        begin += bytes_written;
-      }
-    }
-  }
-
-  bool is_in_transaction_ = false;
-  std::vector<std::shared_ptr<Packet>> transactions_;
+  ConnectionInfo extra_app_info_;
 
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;

@@ -37,33 +37,35 @@ class Logger;
 template <typename T1, typename T2>
 class Cache;
 
-template <typename Application, typename Packet, typename Connection,
+template <typename Application, typename Packet, typename ConnectionInfo,
           typename CacheKey, typename CacheEntry, typename LogEntry>
 concept IsApplication =
-    requires(Application app, std::shared_ptr<Packet> p, Connection conn,
-             Cache<CacheKey, CacheEntry> &cache, Logger<LogEntry> &l) {
+    requires(Application app, std::shared_ptr<Packet> p,
+             ConnectionInfo conn_info, Cache<CacheKey, CacheEntry> &cache,
+             Logger<LogEntry> &logger) {
       // Whether it's an operation that contains state info and thus needs to be
       // cached e.g. UPDATE -> true, READ -> false
-      { app.Filter(p, conn) } -> std::convertible_to<bool>;
+      { app.Filter(p, conn_info) } -> std::convertible_to<bool>;
 
       // Perform the cachable operation during normal time
-      { app.NormalUpdate(p, conn, cache) };
+      { app.NormalUpdate(p, conn_info, cache) };
 
       // Perform any operation during emergency time
       {
-        app.EmergencyServe(std::move(p), conn, cache, l)
+        app.EmergencyServe(std::move(p), conn_info, cache, logger)
       } -> std::convertible_to<Packet>;
     } &&
-    !requires(Application app, std::shared_ptr<Packet> p, Connection conn,
-              Cache<CacheKey, CacheEntry> &cache, Logger<LogEntry> &l) {
+    !requires(Application app, std::shared_ptr<Packet> p,
+              ConnectionInfo conn_info, Cache<CacheKey, CacheEntry> &cache,
+              Logger<LogEntry> &logger) {
       {
-        app.NormalUpdate(p, conn, std::move(cache))
+        app.NormalUpdate(p, conn_info, std::move(cache))
       };  // cache must be a reference
       {
-        app.EmergencyServe(std::move(p), conn, std::move(cache), l)
+        app.EmergencyServe(std::move(p), conn_info, std::move(cache), logger)
       };  // cache must be a reference
       {
-        app.EmergencyServe(std::move(p), conn, cache, std::move(l))
+        app.EmergencyServe(std::move(p), conn_info, cache, std::move(logger))
       };  // l must be a reference
     };
 

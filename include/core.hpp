@@ -4,13 +4,14 @@
 #include "concept.hpp"
 #include "daemon.hpp"
 #include "logger.hpp"
+#include "network_utils.hpp"
 
 namespace lite {
 
-template <typename Application, typename Packet, typename Connection,
+template <typename Application, typename Packet, typename ConnectionInfo,
           typename CacheKey, typename CacheEntry, typename LogEntry>
-  requires IsApplication<Application, Packet, Connection, CacheKey, CacheEntry,
-                         LogEntry>
+  requires IsApplication<Application, Packet, ConnectionInfo, CacheKey,
+                         CacheEntry, LogEntry>
 class LiteCore : public Daemon {
  public:
   LiteCore(Application &app, const size_t &max_item_count,
@@ -22,29 +23,30 @@ class LiteCore : public Daemon {
         backend_addr_(backend_addr),
         backend_port_(backend_port) {}
 
-  void Serve(std::shared_ptr<Packet> p, Connection &conn) {
+  void Serve(std::shared_ptr<Packet> p, ConnectionInfo &conn_info,
+             const evutil_socket_t client_fd,
+             const evutil_socket_t backend_fd) {
     if (emergency_mode_) {
       const auto packet =
-          app_.EmergencyServe(std::move(p), conn, cache_, logger_);
+          app_.EmergencyServe(std::move(p), conn_info, cache_, logger_);
       const auto buffer = packet.Serialize();
-      conn.Write(conn.client_fd_, buffer);
+      network::Write(client_fd, buffer);
     } else {
-      if (app_.Filter(p, conn)) {
-        app_.NormalUpdate(p, conn, cache_);
+      if (app_.Filter(p, conn_info)) {
+        app_.NormalUpdate(p, conn_info, cache_);
       }
 
       // Forward
-      if (conn.backend_fd_ <= 0) {
-        if (!conn.ConnectBackend()) {
-          std::cerr << "Fall back to EmergencyServe\n";
-          emergency_mode_ = true;
-          app_.EmergencyServe(std::move(p), conn, cache_, logger_);
-          return;
-        }
+      if (backend_fd <= 0) {
+        std::cerr << "Fallback to emergency mode" << std::endl;
+        emergency_mode_ = true;
+        app_.EmergencyServe(std::move(p), conn_info, cache_, logger_);
+        const auto buffer = p->Serialize();
+        network::Write(client_fd, buffer);
+      } else {
+        const auto buffer = p->Serialize();
+        network::Write(backend_fd, buffer);
       }
-
-      const auto buffer = p->Serialize();
-      conn.Write(conn.backend_fd_, buffer);
     }
   }
 
@@ -59,8 +61,8 @@ class LiteCore : public Daemon {
 
   void Replay() {
     int backend_fd, tries = 0;
-    while ((backend_fd = Connection::TryConnectBackend(backend_addr_,
-                                                       backend_port_)) == -1) {
+    while ((backend_fd = network::TryConnectBackend(backend_addr_,
+                                                    backend_port_)) == -1) {
       if (tries++ > 100) {
         std::cerr << "Replay failed to connect to backend\n";
         return;
@@ -72,7 +74,7 @@ class LiteCore : public Daemon {
     while (logger_.Pop(entry)) {
       cnt++;
       const auto buffer = entry.ToPacket();
-      Connection::Write(backend_fd, buffer);  // TODO: less writes
+      network::Write(backend_fd, buffer);  // TODO: less writes
     }
     // TODO: in-flight requests after this?
     close(backend_fd);
