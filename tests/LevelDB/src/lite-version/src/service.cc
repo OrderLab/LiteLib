@@ -1,11 +1,10 @@
 #include "service.hpp"
 
-#include "connection.hpp"
-
 LevelDB::LevelDB(std::string &backend_addr, std::string &backend_port)
     : backend_addr_(backend_addr), backend_port_(backend_port) {}
 
-bool LevelDB::Filter(const std::shared_ptr<Packet> &p, Connection &conn) const {
+bool LevelDB::Filter(const std::shared_ptr<Packet> &p,
+                     ConnectionInfo &conn) const {
   std::string_view opcode;
   try {
     opcode = p->GetOpcode();
@@ -35,8 +34,8 @@ bool LevelDB::Filter(const std::shared_ptr<Packet> &p, Connection &conn) const {
   return false;
 }
 
-void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &p, Connection &conn,
-                           Cache &cache) {
+void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &p,
+                           ConnectionInfo &conn, Cache &cache) {
   if (conn.is_in_transaction_) {
     {
       auto cache_lock = cache.TransactionLock();
@@ -86,7 +85,7 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &p, Cache &cache,
   }
 }
 
-Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> p, Connection &conn,
+Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn,
                                Cache &cache, Logger &logger) {
   RESPType *response = nullptr;
   if (conn.is_in_transaction_) {
@@ -133,7 +132,7 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> p, Connection &conn,
 }
 
 RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> p,
-                                      Connection &conn, Cache &cache,
+                                      ConnectionInfo &conn, Cache &cache,
                                       Logger &logger,
                                       const bool in_transaction) {
   std::string_view opcode;

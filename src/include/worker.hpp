@@ -18,11 +18,11 @@
 namespace lite {
 
 template <typename Packet, typename Application, typename CacheKey,
-          typename CacheEntry, typename LogEntry>
+          typename CacheEntry, typename LogEntry, typename ConnectionInfo>
 class Worker {
-  using ConnectionInstance =
-      Connection<Packet, Application, CacheKey, CacheEntry, LogEntry>;
-  using LiteCoreInstance = LiteCore<Application, Packet, ConnectionInstance,
+  using ConnectionInstance = Connection<Packet, Application, CacheKey,
+                                        CacheEntry, LogEntry, ConnectionInfo>;
+  using LiteCoreInstance = LiteCore<Application, Packet, ConnectionInfo,
                                     CacheKey, CacheEntry, LogEntry>;
 
  public:

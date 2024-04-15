@@ -17,12 +17,12 @@
 namespace lite {
 
 template <typename Packet, typename Application, typename CacheKey,
-          typename CacheEntry, typename LogEntry>
+          typename CacheEntry, typename LogEntry, typename ConnectionInfo>
   requires IsPacket<Packet>
 class LiteServer {
-  using ConnectionInstance =
-      Connection<Packet, Application, CacheKey, CacheEntry, LogEntry>;
-  using LiteCoreInstance = LiteCore<Application, Packet, ConnectionInstance,
+  using ConnectionInstance = Connection<Packet, Application, CacheKey,
+                                        CacheEntry, LogEntry, ConnectionInfo>;
+  using LiteCoreInstance = LiteCore<Application, Packet, ConnectionInfo,
                                     CacheKey, CacheEntry, LogEntry>;
 
  public:
@@ -42,8 +42,8 @@ class LiteServer {
 
     for (int i = 0; i < nthreads; i++) {
       workers_.emplace_back(
-          new Worker<Packet, Application, CacheKey, CacheEntry, LogEntry>(
-              lite_core_));
+          new Worker<Packet, Application, CacheKey, CacheEntry, LogEntry,
+                     ConnectionInfo>(lite_core_));
       (**workers_.rbegin()).Run();
     }
     next_worker_ = workers_.begin();
@@ -174,8 +174,8 @@ class LiteServer {
   LiteCoreInstance lite_core_;
 
   /// The worker threads.
-  std::vector<std::unique_ptr<
-      Worker<Packet, Application, CacheKey, CacheEntry, LogEntry>>>
+  std::vector<std::unique_ptr<Worker<Packet, Application, CacheKey, CacheEntry,
+                                     LogEntry, ConnectionInfo>>>
       workers_;
 
   /// The next thread to use for a new connection.

@@ -6,7 +6,6 @@
 #include <memory>
 #include <string>
 
-#include "connection.hpp"
 #include "packet.hpp"
 
 struct CacheEntry {
@@ -30,21 +29,24 @@ struct LogEntry {
   }
 };
 
+struct ConnectionInfo {
+  bool is_in_transaction_ = false;
+  std::vector<std::shared_ptr<Packet>> transactions_;
+};
+
 class LevelDB {
-  using Connection =
-      lite::Connection<Packet, LevelDB, std::string, CacheEntry, LogEntry>;
   using Cache = lite::Cache<std::string, CacheEntry>;
   using Logger = lite::Logger<LogEntry>;
 
  public:
   LevelDB(std::string &backend_addr, std::string &backend_port);
 
-  bool Filter(const std::shared_ptr<Packet> &p, Connection &conn) const;
+  bool Filter(const std::shared_ptr<Packet> &p, ConnectionInfo &conn) const;
 
-  void NormalUpdate(const std::shared_ptr<Packet> &p, Connection &conn,
+  void NormalUpdate(const std::shared_ptr<Packet> &p, ConnectionInfo &conn,
                     Cache &cache);
 
-  Packet EmergencyServe(std::shared_ptr<Packet> p, Connection &conn,
+  Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn,
                         Cache &cache, Logger &logger);
 
  private:
@@ -53,7 +55,7 @@ class LevelDB {
   void NormalUpdateImpl(const std::shared_ptr<Packet> &p, Cache &cache,
                         const bool in_transaction = false);
 
-  RESPType *EmergencyServeImpl(std::shared_ptr<Packet> p, Connection &conn,
+  RESPType *EmergencyServeImpl(std::shared_ptr<Packet> p, ConnectionInfo &conn,
                                Cache &cache, Logger &logger,
                                const bool in_transaction = false);
 };
