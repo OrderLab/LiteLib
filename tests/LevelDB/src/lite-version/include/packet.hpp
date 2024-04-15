@@ -75,9 +75,10 @@ struct RESPArray : public RESPType {
 };
 
 struct Packet {
-  std::unique_ptr<RESPArray> command;
+  std::unique_ptr<RESPType> command;
 
   Packet() : command(nullptr) {}
+  Packet(std::unique_ptr<RESPType> command) : command(std::move(command)) {}
   Packet(std::unique_ptr<RESPArray> command) : command(std::move(command)) {}
 
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end) {
@@ -86,14 +87,15 @@ struct Packet {
     if (new_command == nullptr) {
       return lite::kBad;
     }
-    command = std::move(new_command);
-    auto opcode = dynamic_cast<RESPBulkString *>((*command->value)[0].get());
+    auto opcode =
+        dynamic_cast<RESPBulkString *>((*new_command->value)[0].get());
     if (opcode == nullptr) {
       return lite::kBad;
     }
     auto &data = opcode->value;
     std::transform(data->begin(), data->end(), data->begin(),
                    [](unsigned char c) { return std::tolower(c); });
+    command = std::move(new_command);
     return lite::kGood;
   }
 
@@ -104,16 +106,19 @@ struct Packet {
   }
 
   std::string_view GetOpcode() const {
-    auto opcode = dynamic_cast<RESPBulkString *>((*command->value)[0].get());
+    auto opcode = dynamic_cast<RESPBulkString *>(
+        (*dynamic_cast<RESPArray *>(command.get())->value)[0].get());
     if (opcode == nullptr) {
       throw std::runtime_error("Invalid opcode");
     }
     return std::string_view(*opcode->value);
   }
 
-  size_t GetArgNum() const { return command->value->size() - 1; }
+  size_t GetArgNum() const {
+    return dynamic_cast<RESPArray *>(command.get())->value->size() - 1;
+  }
 
   std::shared_ptr<RESPType> GetArg(size_t index) const {
-    return (*command->value)[index + 1];
+    return (*dynamic_cast<RESPArray *>(command.get())->value)[index + 1];
   }
 };

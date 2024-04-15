@@ -44,12 +44,8 @@ class LevelDB {
   void NormalUpdate(const std::shared_ptr<Packet> &p, Connection &conn,
                     Cache &cache);
 
-  void EmergencyServe(std::shared_ptr<Packet> p, Connection &conn, Cache &cache,
-                      Logger &logger);
-
-  void Replay(Logger &logger);
-
-  static void BackendHandler(evutil_socket_t fd, short which, void *arg_conn);
+  Packet EmergencyServe(std::shared_ptr<Packet> p, Connection &conn,
+                        Cache &cache, Logger &logger);
 
  private:
   std::string &backend_addr_, &backend_port_;

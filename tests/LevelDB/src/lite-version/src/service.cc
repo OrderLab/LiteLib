@@ -5,7 +5,6 @@
 LevelDB::LevelDB(std::string &backend_addr, std::string &backend_port)
     : backend_addr_(backend_addr), backend_port_(backend_port) {}
 
-// TODO: support multi exec
 bool LevelDB::Filter(const std::shared_ptr<Packet> &p, Connection &conn) const {
   std::string_view opcode;
   try {
@@ -87,8 +86,8 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &p, Cache &cache,
   }
 }
 
-void LevelDB::EmergencyServe(std::shared_ptr<Packet> p, Connection &conn,
-                             Cache &cache, Logger &logger) {
+Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> p, Connection &conn,
+                               Cache &cache, Logger &logger) {
   RESPType *response = nullptr;
   if (conn.is_in_transaction_) {
     std::string_view opcode;
@@ -130,11 +129,7 @@ void LevelDB::EmergencyServe(std::shared_ptr<Packet> p, Connection &conn,
     logger.Log(LogEntry{p});
     response = EmergencyServeImpl(std::move(p), conn, cache, logger);
   }
-
-  std::vector<uint8_t> buffer;
-  response->AppendToBuffer(buffer);
-  conn.Write(std::make_unique<std::vector<uint8_t>>(std::move(buffer)));
-  delete response;
+  return Packet(std::unique_ptr<RESPType>(response));
 }
 
 RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> p,
@@ -212,22 +207,4 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> p,
 
   std::cerr << "Unknow opcode: " << opcode << std::endl;
   return new RESPError(std::make_shared<std::string>("ERR unknow command"));
-}
-
-void LevelDB::Replay(Logger &logger) {}
-
-void LevelDB::BackendHandler(evutil_socket_t fd, short which, void *arg_conn) {
-  auto conn = static_cast<Connection *>(arg_conn);
-
-  std::unique_ptr<std::vector<uint8_t>> buffer =
-      std::make_unique<std::vector<uint8_t>>(16384);
-  const ssize_t bytes_transferred =
-      read(conn->backend_fd_, buffer->data(), 16384);
-  if (bytes_transferred <= 0) {
-    // TODO: maybe we can switch to emergency mode automatically here
-    perror("read from backend");
-    delete conn;
-    return;
-  }
-  conn->Write(std::move(buffer), bytes_transferred);
 }

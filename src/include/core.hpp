@@ -22,9 +22,12 @@ class LiteCore : public Daemon {
         backend_addr_(backend_addr),
         backend_port_(backend_port) {}
 
-  void Serve(Packet p, Connection &conn) {
+  void Serve(std::shared_ptr<Packet> p, Connection &conn) {
     if (emergency_mode_) {
-      app_.EmergencyServe(std::move(p), conn, cache_, logger_);
+      const auto packet =
+          app_.EmergencyServe(std::move(p), conn, cache_, logger_);
+      const auto buffer = packet.Serialize();
+      conn.Write(conn.client_fd_, buffer);
     } else {
       if (app_.Filter(p, conn)) {
         app_.NormalUpdate(p, conn, cache_);
@@ -41,8 +44,7 @@ class LiteCore : public Daemon {
       }
 
       const auto buffer = p->Serialize();
-
-      write(conn.backend_fd_, buffer->data(), buffer->size());
+      conn.Write(conn.backend_fd_, buffer);
     }
   }
 
@@ -70,7 +72,7 @@ class LiteCore : public Daemon {
     while (logger_.Pop(entry)) {
       cnt++;
       const auto buffer = entry.ToPacket();
-      write(backend_fd, buffer->data(), buffer->size());  // TODO: less writes
+      Connection::Write(backend_fd, buffer);  // TODO: less writes
     }
     // TODO: in-flight requests after this?
     close(backend_fd);
