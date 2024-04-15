@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
     // TODO: make address and port configurable.
     std::string backend_addr = "localhost";
     std::string backend_port = "60000";
-    LevelDB level_db(backend_addr, backend_port);
+    LevelDB level_db;
     lite::LiteServer<Packet, LevelDB, std::string, CacheEntry, LogEntry,
                      ConnectionInfo>
         s(thread_pool_size, cache_size, level_db, backend_addr, backend_port,

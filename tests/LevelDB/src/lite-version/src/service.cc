@@ -1,8 +1,5 @@
 #include "service.hpp"
 
-LevelDB::LevelDB(std::string &backend_addr, std::string &backend_port)
-    : backend_addr_(backend_addr), backend_port_(backend_port) {}
-
 bool LevelDB::Filter(const std::shared_ptr<Packet> &p,
                      ConnectionInfo &conn) const {
   std::string_view opcode;

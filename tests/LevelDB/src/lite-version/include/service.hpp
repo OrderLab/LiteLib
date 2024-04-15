@@ -39,8 +39,6 @@ class LevelDB {
   using Logger = lite::Logger<LogEntry>;
 
  public:
-  LevelDB(std::string &backend_addr, std::string &backend_port);
-
   bool Filter(const std::shared_ptr<Packet> &p, ConnectionInfo &conn) const;
 
   void NormalUpdate(const std::shared_ptr<Packet> &p, ConnectionInfo &conn,
@@ -50,8 +48,6 @@ class LevelDB {
                         Cache &cache, Logger &logger);
 
  private:
-  std::string &backend_addr_, &backend_port_;
-
   void NormalUpdateImpl(const std::shared_ptr<Packet> &p, Cache &cache,
                         const bool in_transaction = false);
 
