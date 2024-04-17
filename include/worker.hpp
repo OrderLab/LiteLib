@@ -17,13 +17,16 @@
 
 namespace lite {
 
-template <typename Packet, typename Application, typename CacheKey,
-          typename CacheEntry, typename LogEntry, typename ConnectionInfo>
+template <typename Request, typename Response, typename Application,
+          typename CacheKey, typename CacheEntry, typename LogEntry,
+          typename ConnectionInfo>
 class Worker {
-  using ConnectionInstance = Connection<Packet, Application, CacheKey,
-                                        CacheEntry, LogEntry, ConnectionInfo>;
-  using LiteCoreInstance = LiteCore<Application, Packet, ConnectionInfo,
-                                    CacheKey, CacheEntry, LogEntry>;
+  using ConnectionInstance =
+      Connection<Request, Response, Application, CacheKey, CacheEntry, LogEntry,
+                 ConnectionInfo>;
+  using LiteCoreInstance =
+      LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
+               CacheEntry, LogEntry>;
 
  public:
   explicit Worker(LiteCoreInstance &lite_core) : lite_core_(lite_core) {
@@ -115,24 +118,15 @@ class Worker {
         }
         std::unique_ptr<ConnectionInstance> new_connection;
         if (!(new_connection = std::make_unique<ConnectionInstance>(
-                  sfd, EV_READ | EV_PERSIST, self->base_, ConnectionHandler,
-                  nullptr, self->lite_core_, true))) {
+                  sfd, EV_READ | EV_PERSIST, self->base_,
+                  ConnectionInstance::ClientHandler, nullptr, self->lite_core_,
+                  true))) {
           fprintf(stderr, "failed to create listening connection\n");
           exit(EXIT_FAILURE);
         }
         self->conns_.push(std::move(new_connection));
       }
     } else {
-    }
-  }
-
-  /// Handle a new requests from connections.
-  static void ConnectionHandler(evutil_socket_t fd, short which,
-                                void *arg_conn) {
-    ConnectionInstance *c = static_cast<ConnectionInstance *>(arg_conn);
-    if (!c->Read()) {
-      delete c;
-      // TODO: remove it from conns_
     }
   }
 };
