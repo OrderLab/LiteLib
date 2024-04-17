@@ -15,11 +15,13 @@
 namespace lite {
 
 /// Represents a single connection from a client.
-template <typename Packet, typename Application, typename CacheKey,
-          typename CacheEntry, typename LogEntry, typename ConnectionInfo>
+template <typename Request, typename Response, typename Application,
+          typename CacheKey, typename CacheEntry, typename LogEntry,
+          typename ConnectionInfo>
 class Connection {
-  using LiteCoreInstance = LiteCore<Application, Packet, ConnectionInfo,
-                                    CacheKey, CacheEntry, LogEntry>;
+  using LiteCoreInstance =
+      LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
+               CacheEntry, LogEntry>;
 
  public:
   Connection(const Connection&) = delete;
@@ -34,7 +36,8 @@ class Connection {
                       bool is_client_connection)
       : base_(base),
         client_fd_(sfd),
-        request_(std::make_unique<Packet>()),
+        request_(std::make_unique<Request>()),
+        response_(std::make_unique<Response>()),
         lite_server_(lite_server),
         lite_core_(lite_core) {
     event_set(&client_event_, sfd, event_flags, event_handler,
@@ -66,34 +69,77 @@ class Connection {
                    SOCK_NONBLOCK);
   }
 
-  /// Handle completion of a read operation.
-  bool Read() {
-    // TODO: handle the case when the buffer is not large enough
-    ssize_t bytes_transferred;
-    if ((bytes_transferred = read(client_fd_, buffer_.data(), 16384)) <= 0) {
-      // TODO: how to handle the case when the client disconnects? (e.g. quit command in Memcached)
-      perror("read");
-      return false;
+  /// Handle completion of a client read operation.
+  static void ClientHandler(evutil_socket_t fd, short which, void* arg_conn) {
+    auto conn = static_cast<Connection*>(arg_conn);
+    if (fd != conn->client_fd_) {
+      std::cerr << "ClientHandler: fd mismatch. Expecting " << conn->client_fd_
+                << " but got " << fd << std::endl;
+      return;
     }
-    uint8_t* begin = buffer_.data();
+    // TODO: handle the case when the buffer is not large enough
+    // TODO: above TODOs apply to BackendHandler as well
+    ssize_t bytes_transferred;
+    if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
+      perror("read from client");
+      delete conn;
+      // TODO: how to properly handle the case when the client disconnects as
+      // expected? (e.g. quit command in Memcached)
+      return;
+    }
+    uint8_t* begin = conn->buffer_.data();
     uint8_t* end = begin + bytes_transferred;
     while (begin != end) {
-      const auto result = request_->Deserialize(begin, end);
+      const auto result = conn->request_->Deserialize(begin, end);
       if (result == kGood) {
-        if (backend_fd_ <= 0 && !lite_core_.emergency_mode_) {
-          ConnectBackend();
+        if (conn->backend_fd_ <= 0 && !conn->lite_core_.emergency_mode_) {
+          conn->ConnectBackend();
         }
-        lite_core_.Serve(std::move(request_), extra_app_info_, client_fd_,
-                         backend_fd_);
-        request_ = std::make_unique<Packet>();
+        conn->lite_core_.HandleRequest(
+            std::move(conn->request_), conn->extra_app_info_,
+            conn->pending_requests_, conn->client_fd_, conn->backend_fd_);
+        conn->request_ = std::make_unique<Request>();
       } else if (result == kIndeterminate) {
         continue;
       } else if (result == kBad) {
         std::cerr << "failed to parse request" << std::endl;
-        return false;
+        return;
       }
     }
-    return true;
+    return;
+  }
+
+  static void BackendHandler(evutil_socket_t fd, short which, void* arg_conn) {
+    auto conn = static_cast<Connection*>(arg_conn);
+    if (fd != conn->backend_fd_) {
+      std::cerr << "BackendHandler: fd mismatch. Expecting "
+                << conn->backend_fd_ << " but got " << fd << std::endl;
+      return;
+    }
+
+    ssize_t bytes_transferred;
+    if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
+      perror("read from backend");
+      delete conn;
+      return;
+    }
+    uint8_t* begin = conn->buffer_.data();
+    uint8_t* end = begin + bytes_transferred;
+    while (begin != end) {
+      const auto result = conn->response_->Deserialize(begin, end);
+      if (result == kGood) {
+        conn->lite_core_.HandleResponse(
+            std::move(conn->response_), conn->extra_app_info_,
+            conn->pending_requests_, conn->client_fd_);
+        conn->response_ = std::make_unique<Response>();
+      } else if (result == kIndeterminate) {
+        continue;
+      } else if (result == kBad) {
+        std::cerr << "failed to parse response" << std::endl;
+        return;
+      }
+    }
+    return;
   }
 
   /// Try to connect to the backend and set event
@@ -115,29 +161,12 @@ class Connection {
 
     return true;
   }
-
-  static void BackendHandler(evutil_socket_t fd, short which, void* arg_conn) {
-    auto conn = static_cast<Connection*>(arg_conn);
-
-    std::vector<uint8_t> buffer(16384);
-    const ssize_t bytes_transferred =
-        read(conn->backend_fd_, buffer.data(), 16384);
-    if (bytes_transferred <= 0) {
-      // TODO: maybe we can switch to emergency mode automatically here
-      perror("read from backend");
-      delete conn;
-      return;
-    }
-    // TODO: add a hook here?
-    network::Write(conn->client_fd_, buffer, bytes_transferred);
-  }
-
   ConnectionInfo extra_app_info_;
 
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;
 
-  void* lite_server_;  // LiteServer<Packet, Service>
+  void* lite_server_;
 
  private:
   /// Corresponding worker's event_base
@@ -153,7 +182,13 @@ class Connection {
   std::array<uint8_t, 16384> buffer_;
 
   /// The incoming request.
-  std::unique_ptr<Packet> request_;
+  std::shared_ptr<Request> request_;
+
+  /// The outgoing response.
+  std::shared_ptr<Response> response_;
+
+  /// The pending requests
+  std::deque<std::shared_ptr<Request>> pending_requests_;
 };
 
 }  // namespace lite

@@ -38,6 +38,15 @@ inline uint64_t ntohll(const uint64_t &x) {
   return (((uint64_t)htonl(x)) << 32) + (htonl((x) >> 32));
 }
 
+uint32_t Packet::GetOpaque() const {
+  return ntohl(*reinterpret_cast<const uint32_t *>(&(*buffer)[12]));
+}
+
+uint16_t Packet::GetStatus() const {
+  return ntohs(*reinterpret_cast<const uint16_t *>(&(*buffer)[6]));
+}
+
+
 ParsedPacket::ParsedPacket(const Packet &packet) {
   const auto &data = *(packet.buffer);
   header.magic = data[0];

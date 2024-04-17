@@ -2,53 +2,76 @@
 
 #include "connection.hpp"
 
-bool Memcached::Filter(const std::shared_ptr<Packet> &p,
-                       ConnectionInfo &_) const {
-  const auto OpCodeOption = p->GetOpcode();
-  if (!OpCodeOption.has_value()) {
-    std::cerr << "Unknow opcode: " << (*p->buffer)[1] << std::endl;
-    return false;
+std::optional<std::vector<std::shared_ptr<Packet>>> Memcached::Filter(
+    const std::shared_ptr<Packet> &resp, ConnectionInfo &_,
+    std::deque<std::shared_ptr<Packet>> &pending_requests) const {
+  const auto resp_opaque = resp->GetOpaque();
+  std::shared_ptr<Packet> req;
+  std::vector<std::shared_ptr<Packet>> ret;
+  while (!pending_requests.empty()) {
+    req = pending_requests.front();
+    pending_requests.pop_front();
+    const auto req_opaque = req->GetOpaque();
+    if (req_opaque != resp_opaque || !req->GetStatus()) {
+      const auto OpCodeOption = req->GetOpcode();
+      if (!OpCodeOption.has_value()) {
+        std::cerr << "Unknow opcode: " << (*req->buffer)[1] << std::endl;
+        continue;
+      }
+      const auto OpCode = OpCodeOption.value();
+      if (OpCode == Header::Opcode::kGet || OpCode == Header::Opcode::kGetK ||
+          OpCode == Header::Opcode::kGetKQ || OpCode == Header::Opcode::kNoOp ||
+          OpCode == Header::Opcode::kStat ||
+          OpCode == Header::Opcode::kVersion) {
+        continue;
+        // TODO: update states using get
+      }
+      ret.push_back(req);
+    }
+
+    if (req_opaque == resp_opaque) break;
   }
-  const auto OpCode = OpCodeOption.value();
-  if (OpCode == Header::Opcode::kGet || OpCode == Header::Opcode::kGetK ||
-      OpCode == Header::Opcode::kGetKQ || OpCode == Header::Opcode::kNoOp ||
-      OpCode == Header::Opcode::kStat || OpCode == Header::Opcode::kVersion) {
-    return false;
+
+  if (ret.empty()) {
+    return {};
   }
-  return true;
+  return ret;
 }
 
-void Memcached::NormalUpdate(const std::shared_ptr<Packet> &p,
-                             ConnectionInfo &_, Cache &cache) {
-  const auto opcode = p->GetOpcode().value();
-  const auto packet = ParsedPacket(*p);
-  if (packet.header.magic != 0x80) {
-    std::cerr << "Unsupported Protocol Version:\n" << packet << std::endl;
-    // TODO: error handling
-    exit(1);
-  }
-  packet.extra->resize(4);
-  CacheEntry entry{
-      .value = packet.value, .flags = packet.extra, .CAS = packet.header.CAS};
-  switch (opcode) {
-    case Header::Opcode::kSet:
-    case Header::Opcode::kAdd:
-      cache.Add(*packet.key, entry);
-      break;
-    case Header::Opcode::kReplace:
-      cache.Replace(*packet.key, entry);
-      break;
-    case Header::Opcode::kQuit:
-      break;
-    default:  // TODO: support CAS, Expiration, error and other operations
-      std::cerr << "Unknown OpCode: " << magic_enum::enum_name(opcode)
-                << std::endl;
+void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
+                             std::vector<std::shared_ptr<Packet>> requests,
+                             ConnectionInfo &_, Cache &cache) const {
+  for (const auto &req : requests) {
+    const auto opcode = req->GetOpcode().value();
+    const auto packet = ParsedPacket(*req);
+    if (packet.header.magic != 0x80) {
+      std::cerr << "Unsupported Protocol Version:\n" << packet << std::endl;
+      // TODO: error handling
+      exit(1);
+    }
+    packet.extra->resize(4);
+    CacheEntry entry{
+        .value = packet.value, .flags = packet.extra, .CAS = packet.header.CAS};
+    switch (opcode) {
+      case Header::Opcode::kSet:
+      case Header::Opcode::kAdd:
+        cache.Add(*packet.key, entry);
+        break;
+      case Header::Opcode::kReplace:
+        cache.Replace(*packet.key, entry);
+        break;
+      case Header::Opcode::kQuit:
+        break;
+      default:  // TODO: support CAS, Expiration, error and other operations
+        std::cerr << "Unknown OpCode: " << magic_enum::enum_name(opcode)
+                  << std::endl;
+    }
   }
 }
 
 Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
                                  ConnectionInfo &conn_info, Cache &cache,
-                                 Logger &logger) {
+                                 Logger &logger) const {
   const auto req = ParsedPacket(*p);
   if (req.header.magic != 0x80) {
     std::cerr << "Unsupported Protocol Version:\n" << req << std::endl;

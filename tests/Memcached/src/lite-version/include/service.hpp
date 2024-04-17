@@ -29,7 +29,7 @@ struct LogEntry {  // TODO: deal with expiry
     return packet->Deserialize(begin, end);
   }
 
-  std::shared_ptr<std::vector<uint8_t>> ToPacket() {
+  std::shared_ptr<std::vector<uint8_t>> ToRequests() {
     return packet->Serialize();
   }
 };
@@ -45,13 +45,14 @@ class Memcached {
   using Logger = lite::Logger<LogEntry>;
 
  public:
-  bool Filter(const std::shared_ptr<Packet> &p, ConnectionInfo &_) const;
+  std::optional<std::vector<std::shared_ptr<Packet>>> Filter(
+      const std::shared_ptr<Packet> &resp, ConnectionInfo &_,
+      std::deque<std::shared_ptr<Packet>> &pending_requests) const;
 
-  void NormalUpdate(const std::shared_ptr<Packet> &p, ConnectionInfo &_,
-                    Cache &cache);
+  void NormalUpdate(const std::shared_ptr<Packet> &resp,
+                    std::vector<std::shared_ptr<Packet>> requests,
+                    ConnectionInfo &_, Cache &cache) const;
 
-  Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &_,
-                        Cache &cache, Logger &logger);
-
-  void Replay();
+  Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn_info,
+                        Cache &cache, Logger &logger) const;
 };

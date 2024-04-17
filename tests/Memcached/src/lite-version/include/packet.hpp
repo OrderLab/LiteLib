@@ -101,6 +101,10 @@ struct Packet {
     return magic_enum::enum_cast<Header::Opcode>((*buffer)[1]);
   }
 
+  uint32_t GetOpaque() const;
+
+  uint16_t GetStatus() const;
+
 #define digest_remaining()             \
   if (remaining_len_ <= end - begin) { \
     begin += remaining_len_;           \
