@@ -5,21 +5,6 @@
 #include "concept.hpp"
 #include "packet.hpp"
 
-class RESPTypeParser {
-  std::unique_ptr<RESPTypeParser> parser_ = nullptr;
-
- public:
-  std::shared_ptr<RESPType> value_ = nullptr;
-
-  virtual lite::DeserializeResult Deserialize(InputIterator &begin,
-                                              InputIterator end,
-                                              RESPType &value) {
-    std::cerr << "RESPTypeParser::Deserialize" << std::endl;
-    return lite::kBad;
-  }
-  lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
-};
-
 class RESPIntegerParser : public RESPTypeParser {
   bool is_positive_ = true;
   enum State { kSign, kCR, kLF } state_ = kSign;

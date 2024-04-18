@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <concept.hpp>
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -20,16 +21,23 @@ struct RESPType {
 struct RESPString : public RESPType {
   std::shared_ptr<std::string> value = std::make_shared<std::string>();
 
+  RESPString() = default;
+  RESPString(const std::shared_ptr<std::string> &value) : value(value) {}
   virtual ~RESPString(){};
 };
 struct RESPSimpleString : public RESPString {
   virtual ~RESPSimpleString(){};
+  RESPSimpleString() = default;
+  RESPSimpleString(const std::shared_ptr<std::string> &value)
+      : RESPString(value) {}
 
   std::pair<lite::DeserializeResult, RESPSimpleString *> Deserialize(
       InputIterator &begin, InputIterator end);
   void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 struct RESPError : public RESPString {
+  RESPError() = default;
+  RESPError(const std::shared_ptr<std::string> &value) : RESPString(value) {}
   virtual ~RESPError(){};
 
   std::pair<lite::DeserializeResult, RESPError *> Deserialize(
@@ -37,6 +45,9 @@ struct RESPError : public RESPString {
   void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 struct RESPBulkString : public RESPString {
+  RESPBulkString() = default;
+  RESPBulkString(const std::shared_ptr<std::string> &value)
+      : RESPString(value) {}
   virtual ~RESPBulkString(){};
 
   std::pair<lite::DeserializeResult, RESPBulkString *> Deserialize(
@@ -65,7 +76,20 @@ struct RESPArray : public RESPType {
   void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
-class RESPTypeParser;
+class RESPTypeParser {
+  std::unique_ptr<RESPTypeParser> parser_ = nullptr;
+
+ public:
+  std::shared_ptr<RESPType> value_ = nullptr;
+
+  virtual lite::DeserializeResult Deserialize(InputIterator &begin,
+                                              InputIterator end,
+                                              RESPType &value) {
+    std::cerr << "RESPTypeParser::Deserialize" << std::endl;
+    return lite::kBad;
+  }
+  lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
+};
 
 struct Packet {
   std::unique_ptr<RESPType> command;
