@@ -14,90 +14,68 @@ using InputIterator = uint8_t *;
 struct RESPType {
   virtual ~RESPType(){};
 
-  static RESPType *Parse(InputIterator &begin, InputIterator end);
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) = 0;
+  virtual void AppendToBuffer(std::vector<uint8_t> &buffer){};
 };
 
 struct RESPString : public RESPType {
-  std::shared_ptr<std::string> value;
+  std::shared_ptr<std::string> value = std::make_shared<std::string>();
 
-  RESPString(std::shared_ptr<std::string> value) : value(value) {}
   virtual ~RESPString(){};
 };
-
 struct RESPSimpleString : public RESPString {
-  RESPSimpleString(std::shared_ptr<std::string> value) : RESPString(value) {}
   virtual ~RESPSimpleString(){};
 
-  static RESPSimpleString *Parse(InputIterator &begin, InputIterator end);
+  std::pair<lite::DeserializeResult, RESPSimpleString *> Deserialize(
+      InputIterator &begin, InputIterator end);
   void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
-
-struct RESPError : public RESPType {
-  std::shared_ptr<std::string> value;
-
-  RESPError(std::shared_ptr<std::string> value) : value(value) {}
+struct RESPError : public RESPString {
   virtual ~RESPError(){};
 
-  static RESPError *Parse(InputIterator &begin, InputIterator end);
+  std::pair<lite::DeserializeResult, RESPError *> Deserialize(
+      InputIterator &begin, InputIterator end);
+  void AppendToBuffer(std::vector<uint8_t> &buffer) override;
+};
+struct RESPBulkString : public RESPString {
+  virtual ~RESPBulkString(){};
+
+  std::pair<lite::DeserializeResult, RESPBulkString *> Deserialize(
+      InputIterator &begin, InputIterator end);
   void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
 struct RESPInteger : public RESPType {
-  int64_t value;
+  int64_t value = 0;
 
-  RESPInteger(int value) : value(value) {}
   virtual ~RESPInteger(){};
 
-  static RESPInteger *Parse(InputIterator &begin, InputIterator end);
-  void AppendToBuffer(std::vector<uint8_t> &buffer) override;
-};
-
-struct RESPBulkString : public RESPString {
-  RESPBulkString(std::shared_ptr<std::string> value) : RESPString(value) {}
-  virtual ~RESPBulkString(){};
-
-  static RESPBulkString *Parse(InputIterator &begin, InputIterator end);
+  std::pair<lite::DeserializeResult, RESPInteger *> Deserialize(
+      InputIterator &begin, InputIterator end);
   void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
 struct RESPArray : public RESPType {
-  std::shared_ptr<std::vector<std::shared_ptr<RESPType>>> value;
+  std::shared_ptr<std::vector<std::shared_ptr<RESPType>>> value =
+      std::make_shared<std::vector<std::shared_ptr<RESPType>>>();
 
-  RESPArray()
-      : value(std::make_shared<std::vector<std::shared_ptr<RESPType>>>()) {}
-  RESPArray(std::shared_ptr<std::vector<std::shared_ptr<RESPType>>> value)
-      : value(value) {}
   virtual ~RESPArray(){};
 
-  static RESPArray *Parse(InputIterator &begin, InputIterator end);
+  std::pair<lite::DeserializeResult, RESPArray *> Deserialize(
+      InputIterator &begin, InputIterator end);
   void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
+class RESPTypeParser;
+
 struct Packet {
   std::unique_ptr<RESPType> command;
+  std::unique_ptr<RESPTypeParser> parser;
 
-  Packet() : command(nullptr) {}
+  Packet() : command(nullptr), parser(std::make_unique<RESPTypeParser>()) {}
   Packet(std::unique_ptr<RESPType> command) : command(std::move(command)) {}
   Packet(std::unique_ptr<RESPArray> command) : command(std::move(command)) {}
 
-  lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end) {
-    std::unique_ptr<RESPArray> new_command(
-        dynamic_cast<RESPArray *>(RESPType::Parse(begin, end)));
-    if (new_command == nullptr) {
-      return lite::kBad;
-    }
-    auto opcode =
-        dynamic_cast<RESPBulkString *>((*new_command->value)[0].get());
-    if (opcode == nullptr) {
-      return lite::kBad;
-    }
-    auto &data = opcode->value;
-    std::transform(data->begin(), data->end(), data->begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    command = std::move(new_command);
-    return lite::kGood;
-  }
+  lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
 
   std::shared_ptr<std::vector<uint8_t>> Serialize() const {
     std::vector<uint8_t> buffer;

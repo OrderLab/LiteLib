@@ -2,6 +2,15 @@
 
 bool LevelDB::Filter(const std::shared_ptr<Packet> &p,
                      ConnectionInfo &conn) const {
+  auto opcode = dynamic_cast<RESPBulkString *>((*new_command->value)[0].get());
+  if (opcode == nullptr) {
+    return lite::kBad;
+  }
+  auto &data = opcode->value;
+  std::transform(data->begin(), data->end(), data->begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  command = std::move(new_command);
+
   std::string_view opcode;
   try {
     opcode = p->GetOpcode();
