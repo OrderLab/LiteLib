@@ -5,28 +5,13 @@
 #include "concept.hpp"
 #include "packet.hpp"
 
-class RESPTypeParser {
-  std::unique_ptr<RESPTypeParser> parser_ = nullptr;
-
- public:
-  std::shared_ptr<RESPType> value_ = nullptr;
-
-  virtual lite::DeserializeResult Deserialize(InputIterator &begin,
-                                              InputIterator end,
-                                              RESPType &value) {
-    std::cerr << "RESPTypeParser::Deserialize" << std::endl;
-    return lite::kBad;
-  }
-  lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
-};
-
 class RESPIntegerParser : public RESPTypeParser {
   bool is_positive_ = true;
   enum State { kSign, kCR, kLF } state_ = kSign;
 
  public:
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end,
-                                      RESPType &value) {
+                                      RESPType &value) override {
     RESPInteger &typed_value = dynamic_cast<RESPInteger &>(value);
     switch (state_) {
       case kSign: {
@@ -67,7 +52,7 @@ class RESPSimpleStringParser : public RESPTypeParser {
 
  public:
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end,
-                                      RESPType &value) {
+                                      RESPType &value) override {
     RESPString &typed_value = dynamic_cast<RESPString &>(value);
     switch (state_) {
       case kCR: {
@@ -96,7 +81,7 @@ class RESPBulkStringParser : public RESPTypeParser {
 
  public:
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end,
-                                      RESPType &value) {
+                                      RESPType &value) override {
     RESPString &typed_value = dynamic_cast<RESPBulkString &>(value);
     switch (state_) {
       case kLength: {
@@ -116,6 +101,7 @@ class RESPBulkStringParser : public RESPTypeParser {
           state_ = kCR;
         } else {
           typed_value.value->insert(typed_value.value->end(), begin, end);
+          length_.value -= end - begin;
           begin = end;
           return lite::kIndeterminate;
         }
@@ -144,35 +130,36 @@ class RESPArrayParser : public RESPTypeParser {
   enum State { kLength, kData } state_ = kLength;
   RESPIntegerParser length_parser_;
   RESPInteger length_;
-  int64_t current_index_ = 0;
   std::unique_ptr<RESPTypeParser> data_parser_ =
       std::make_unique<RESPTypeParser>();
 
  public:
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end,
-                                      RESPType &value) {
+                                      RESPType &value) override {
     RESPArray &typed_value = dynamic_cast<RESPArray &>(value);
     switch (state_) {
       case kLength: {
         const auto result = length_parser_.Deserialize(begin, end, length_);
         if (result == lite::kGood) {
           state_ = kData;
-          typed_value.value->reserve(length_.value);
+          typed_value.value.reserve(length_.value);
         } else {
           return result;
         }
       }
       case kData: {
-        while (begin != end && current_index_ < length_.value) {
+        while (begin != end && length_.value) {
           const auto result = data_parser_->Deserialize(begin, end);
-          (*typed_value.value)[current_index_] = data_parser_->value_;
           if (result == lite::kGood) {
-            ++current_index_;
-            data_parser_.reset({});
+            length_.value--;
+            typed_value.value.emplace_back(std::move(data_parser_->value_));
+            data_parser_ = std::make_unique<RESPTypeParser>();
           } else {
             return result;
           }
         }
+        if (length_.value)
+          return lite::kIndeterminate;
         return lite::kGood;
       }
     }

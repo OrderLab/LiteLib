@@ -24,7 +24,7 @@ struct LogEntry {
     return value->Deserialize(begin, end);
   }
 
-  std::shared_ptr<std::vector<uint8_t>> ToPacket() const {
+  std::shared_ptr<std::vector<uint8_t>> ToRequests() const {
     return value->Serialize();
   }
 };
@@ -39,10 +39,13 @@ class LevelDB {
   using Logger = lite::Logger<LogEntry>;
 
  public:
-  bool Filter(const std::shared_ptr<Packet> &p, ConnectionInfo &conn) const;
+  std::optional<std::vector<std::shared_ptr<Packet>>> Filter(
+      const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
+      std::deque<std::shared_ptr<Packet>> &pending_requests) const;
 
-  void NormalUpdate(const std::shared_ptr<Packet> &p, ConnectionInfo &conn,
-                    Cache &cache);
+  void NormalUpdate(const std::shared_ptr<Packet> &resp,
+                    std::vector<std::shared_ptr<Packet>> requests,
+                    ConnectionInfo &conn, Cache &cache);
 
   Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn,
                         Cache &cache, Logger &logger);

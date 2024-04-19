@@ -98,7 +98,7 @@ class Connection {
         conn->lite_core_.HandleRequest(
             std::move(conn->request_), conn->extra_app_info_,
             conn->pending_requests_, conn->client_fd_, conn->backend_fd_);
-        conn->request_.reset({});
+        conn->request_ = std::make_unique<Request>();
       } else if (result == kIndeterminate) {
         continue;
       } else if (result == kBad) {
@@ -131,7 +131,7 @@ class Connection {
         conn->lite_core_.HandleResponse(
             std::move(conn->response_), conn->extra_app_info_,
             conn->pending_requests_, conn->client_fd_);
-        conn->response_.reset({});
+        conn->response_ = std::make_unique<Response>();
       } else if (result == kIndeterminate) {
         continue;
       } else if (result == kBad) {
