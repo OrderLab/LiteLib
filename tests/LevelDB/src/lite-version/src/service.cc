@@ -6,7 +6,7 @@ std::optional<std::vector<std::shared_ptr<Packet>>> LevelDB::Filter(
   auto req = pending_requests.front();
   pending_requests.pop_front();
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
-  auto opcode_resp = dynamic_cast<RESPBulkString *>((*command->value)[0].get());
+  auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
   if (opcode_resp == nullptr) {
     std::cerr << "Invalid request\n";
     return {};
@@ -48,17 +48,17 @@ void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
       std::cerr << "Invalid response for EXEC\n";
       return;
     }
-    auto responses = responses_resp->value;
-    if (conn.transactions_.size() != responses->size()) {
+    auto &responses = responses_resp->value;
+    if (conn.transactions_.size() != responses.size()) {
       std::cerr << "Invalid number of responses\n";
       return;
     }
 
-    const auto len = responses->size();
+    const auto len = responses.size();
     {
       auto cache_lock = cache.TransactionLock();
       for (size_t i = 0; i < len; ++i) {
-        if (!dynamic_cast<RESPError *>((*responses)[i].get()))
+        if (!dynamic_cast<RESPError *>(responses[i].get()))
           NormalUpdateImpl(conn.transactions_[i], cache, true);
       }
     }
@@ -88,12 +88,12 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &p, Cache &cache,
       std::cerr << "Invalid number of arguments for set\n";
       return;
     }
-    const auto key = dynamic_cast<RESPString *>(p->GetArg(0).get());
+    const auto key = dynamic_cast<RESPString *>(p->GetArg(0));
     if (key == nullptr) {
       std::cerr << "Invalid argument for set\n";
       return;
     }
-    const auto value = dynamic_cast<RESPString *>(p->GetArg(1).get());
+    const auto value = dynamic_cast<RESPString *>(p->GetArg(1));
     if (value == nullptr) {
       std::cerr << "Invalid argument for set\n";
       return;
@@ -125,7 +125,7 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn,
       {
         auto cache_lock = cache.TransactionLock();
         for (const auto &c : conn.transactions_) {
-          response_array->value->emplace_back(
+          response_array->value.emplace_back(
               EmergencyServeImpl(c, conn, cache, logger, true));
         }
       }
@@ -172,13 +172,13 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> p,
       return new RESPError(
           std::make_shared<std::string>("ERR wrong number of arguments"));
     }
-    const auto key = dynamic_cast<RESPString *>(p->GetArg(0).get());
+    const auto key = dynamic_cast<RESPString *>(p->GetArg(0));
     if (key == nullptr) {
       std::cerr << "Invalid argument for set\n";
       return new RESPError(
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
-    const auto value = dynamic_cast<RESPString *>(p->GetArg(1).get());
+    const auto value = dynamic_cast<RESPString *>(p->GetArg(1));
     if (value == nullptr) {
       std::cerr << "Invalid argument for set\n";
       return new RESPError(
@@ -193,7 +193,7 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> p,
       return new RESPError(
           std::make_shared<std::string>("ERR wrong number of arguments"));
     }
-    const auto key = dynamic_cast<RESPString *>(p->GetArg(0).get());
+    const auto key = dynamic_cast<RESPString *>(p->GetArg(0));
     if (key == nullptr) {
       std::cerr << "Invalid argument for get\n";
       return new RESPError(
@@ -208,7 +208,7 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> p,
     if (p->GetArgNum() == 0) {
       return new RESPSimpleString(std::make_shared<std::string>("PONG"));
     } else if (p->GetArgNum() == 1) {
-      const auto arg = dynamic_cast<RESPString *>(p->GetArg(0).get());
+      const auto arg = dynamic_cast<RESPString *>(p->GetArg(0));
       if (arg == nullptr) {
         std::cerr << "Invalid argument for ping\n";
         return new RESPError(
