@@ -1,0 +1,66 @@
+version: '0.1.0'
+services:
+  redis-server:
+    container_name: redis-server
+    build: ./scripts/redis
+    entrypoint: /workspace/entrypoint.sh
+    privileged: true
+    volumes:
+      - ./scripts/redis:/workspace
+    working_dir: /workspace
+    networks:
+      redis_net:
+        ipv4_address: 172.16.0.2
+
+  redis-client:
+    container_name: redis-client
+    build: ./scripts/client
+    entrypoint: /workspace/entrypoint.sh
+    privileged: true
+    volumes:
+      - ./scripts/client:/workspace
+    working_dir: /workspace
+    networks:
+      redis_net:
+        ipv4_address: 172.16.0.3
+    depends_on:
+      - redis-server
+
+  cadvisor:
+    container_name: cadvisor-redis
+    image: gcr.io/cadvisor/cadvisor
+    volumes:
+      - "/:/rootfs:ro"
+      - "/var/run:/var/run:rw"
+      - "/sys:/sys:ro"
+      - "/var/lib/docker/:/var/lib/docker:ro"
+    ports:
+      - "8080:8080"
+    networks:
+      monitoring_net:
+        ipv4_address: 172.18.0.2
+
+  prometheus:
+    container_name: prometheus-redis
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+    networks:
+      monitoring_net:
+        ipv4_address: 172.18.0.3
+
+networks:
+  redis_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.0.0/16
+  monitoring_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.0.0/16
