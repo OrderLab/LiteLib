@@ -47,14 +47,15 @@ class LevelDB {
                     std::vector<std::shared_ptr<Packet>> requests,
                     ConnectionInfo &conn, Cache &cache);
 
-  Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn,
+  Packet EmergencyServe(std::shared_ptr<Packet> req, ConnectionInfo &conn,
                         Cache &cache, Logger &logger);
 
  private:
-  void NormalUpdateImpl(const std::shared_ptr<Packet> &p, Cache &cache,
+  void NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache &cache,
                         const bool in_transaction = false);
 
-  RESPType *EmergencyServeImpl(std::shared_ptr<Packet> p, ConnectionInfo &conn,
-                               Cache &cache, Logger &logger,
+  RESPType *EmergencyServeImpl(std::shared_ptr<Packet> req,
+                               ConnectionInfo &conn, Cache &cache,
+                               Logger &logger,
                                const bool in_transaction = false);
 };
