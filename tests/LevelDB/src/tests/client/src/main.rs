@@ -232,10 +232,13 @@ async fn main() {
                 "-tt",
                 &remote_script_config.remote_addr,
                 &format!(
-                    r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {:?}"#,
+                    r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {}"#,
                     remote_script_config.crash_time.as_secs(),
                     target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
-                    remote_script_config.experiment_type
+                    match &remote_script_config.experiment_type {
+                        ExperimentType::Full => "Full",
+                        ExperimentType::Lite(_, _) => "Lite"
+                    }
                 ),
             ])
             .output()
