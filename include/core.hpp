@@ -57,7 +57,7 @@ class LiteCore : public Daemon {
     const auto buffer = resp->Serialize();
     network::Write(client_fd, buffer);
 
-    // TODO: in parallel with network::Write
+    // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
     const auto related_stateful_request =
         app_.Filter(resp, conn_info, pending_requests);
     if (related_stateful_request.has_value()) {

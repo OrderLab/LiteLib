@@ -88,7 +88,7 @@ void Write(const evutil_socket_t fd, const std::vector<uint8_t> buffer,
   // TODO: use transmit() implementation in Memcached
   const uint8_t* begin = buffer.data();
   while (len) {
-    ssize_t bytes_written = write(fd, begin, len);
+    ssize_t bytes_written = write(fd, begin, len);  // BUG: it's nonblocking
     if (bytes_written <= 0) {
       perror("write");  // TODO: max tries
     } else {
@@ -101,7 +101,7 @@ void Write(const evutil_socket_t fd, const std::vector<uint8_t>&& buffer) {
   Write(fd, buffer, buffer.size());
 }
 void Write(const evutil_socket_t fd,
-           const std::unique_ptr<std::vector<uint8_t>> buffer) {
+           const std::unique_ptr<std::vector<uint8_t>>&& buffer) {
   Write(fd, *buffer, buffer->size());
 }
 void Write(const evutil_socket_t fd,
