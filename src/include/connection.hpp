@@ -81,7 +81,10 @@ class Connection {
     // TODO: above TODOs apply to BackendHandler as well
     ssize_t bytes_transferred;
     if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
-      perror("read from client");
+      if (bytes_transferred == 0)
+        std::cerr << "Client disconnected: " << fd << std::endl;
+      else
+        perror("read from client");
       delete conn;
       // TODO: how to properly handle the case when the client disconnects as
       // expected? (e.g. quit command in Memcached)
@@ -119,7 +122,10 @@ class Connection {
 
     ssize_t bytes_transferred;
     if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
-      perror("read from backend");
+      if (bytes_transferred == 0)
+        std::cerr << "Backend disconnected: " << fd << std::endl;
+      else
+        perror("read from backend");
       delete conn;
       return;
     }
