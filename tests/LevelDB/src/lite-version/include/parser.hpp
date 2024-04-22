@@ -89,8 +89,12 @@ class RESPBulkStringParser : public RESPTypeParser {
       case kLength: {
         const auto result = length_parser_.Deserialize(begin, end, length_);
         if (result == lite::kGood) {
-          state_ = kData;
+          if (length_.value == -1) {
+            typed_value.value = nullptr;
+            return lite::kGood;
+          }
           typed_value.value->reserve(length_.value);
+          state_ = kData;
         } else {
           return result;
         }
