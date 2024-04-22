@@ -82,7 +82,7 @@ for i in range(cnt):
 fig, axs = plt.subplots(3, cnt, figsize=(5 * cnt, 10))
 plt.subplots_adjust(hspace=0.3, wspace=0.3)
 for i in range(cnt):
-  axs[0, i].set_title(filename[:-6], y=1.2)
+  axs[0, i].set_title(args.filenames[i][:-6], y=1.2)
   plot_throughput(axs[0, i], stats[i])
   plot_latency(axs[1, i], stats[i])
   plot_tries(axs[2, i], stats[i])
