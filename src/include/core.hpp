@@ -20,7 +20,7 @@ class LiteCore : public Daemon {
            const char pipe_path[])
       : Daemon([&] { Replay(); }, backend_port, pipe_path),
         app_(app),
-        cache_(max_item_count),
+        cache_(max_item_count, emergency_mode_),
         backend_addr_(backend_addr),
         backend_port_(backend_port) {}
 

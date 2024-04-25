@@ -19,22 +19,23 @@ class Cache {
  public:
   // If CacheEntry has GetSize method, then max_size_ is the sum of it.
   // Otherwise, max_size_ is the number of entries.
-  explicit Cache(const size_t &max_size) : max_size_(max_size), size_(0) {
-    head_.pre_ = nullptr;
-    head_.nxt_ = &tail_;
-    tail_.pre_ = &head_;
+  explicit Cache(const size_t &max_size, std::atomic<bool> &emergency_mode)
+      : max_size_(max_size), size(0), emergency_mode_(emergency_mode) {
+    lru_head_.pre_ = nullptr;
+    lru_head_.nxt_ = &lru_tail_;
+    lru_tail_.pre_ = &lru_head_;
   }
 
   ~Cache() {
-    ListNode *node = head_.nxt_;
+    ListNode *node = lru_head_.nxt_;
     ListNode *nxt;
-    while (node != &tail_) {
+    while (node != &lru_tail_) {
       nxt = node->nxt_;
       delete node;
       node = nxt;
     }
-    head_.nxt_ = &tail_;
-    tail_.pre_ = &head_;
+    lru_head_.nxt_ = &lru_tail_;
+    lru_tail_.pre_ = &lru_head_;
   }
 
   bool Add(const Key &key, const CacheEntry &value,
@@ -44,26 +45,23 @@ class Cache {
       transaction_lock =
           std::shared_lock<std::shared_mutex>{transaction_mutex_};
     }
-    ListNode *node;
-    if constexpr (HasGetSize<CacheEntry>) {
-      node = new ListNode(key, value.GetSize());
-    } else {
-      node = new ListNode(key);
-    }
-    if (!cache_.insert(std::make_pair(key, MapEntry(value, node)))) {
-      delete node;
+    ListNode *lru_node = new ListNode;
+    if (!cache_.insert(std::make_pair(
+            key, MapEntry(key, value, lru_node,
+                          HasGetSize<CacheEntry> ? value.GetSize() : 0)))) {
+      delete lru_node;
       return false;
     }
 
-    std::unique_lock<std::mutex> lock(mutex_);
-    PushFront(node);
+    std::unique_lock<std::mutex> lru_lock(lru_mutex_);
+    lru_node->PushFront(lru_head_);
     if constexpr (HasGetSize<CacheEntry>) {
-      size_ += node->size_;
+      size += lru_node->data_->size;
     } else {
-      size_++;
+      size++;
     }
-    if (size_ > max_size_) Evict();
-    lock.unlock();
+    if (size > max_size_) Evict();
+    lru_lock.unlock();
 
     return true;
   }
@@ -75,19 +73,19 @@ class Cache {
           std::shared_lock<std::shared_mutex>{transaction_mutex_};
     }
     return cache_.cvisit(key, [this, &value](auto &element) {
-      value = element.second.value_;
+      value = element.second.data->value;
 
-      std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
-      if (lock) {
-        ListNode *node = element.second.list_node_;
+      std::unique_lock<std::mutex> lru_lock(lru_mutex_, std::try_to_lock);
+      if (lru_lock) {
+        ListNode *lru_node = element.second.lru_node;
         // The list node may be out of the list if it is in the process of being
         // inserted or evicted. Doing this check allows us to lock the list for
         // shorter periods of time.
-        if (node->isInList()) {
-          Delink(node);
-          PushFront(node);
+        if (lru_node->isInList()) {
+          lru_node->Delink();
+          lru_node->PushFront(lru_head_);
         }
-        lock.unlock();
+        lru_lock.unlock();
       }
     });
   }
@@ -98,22 +96,22 @@ class Cache {
       transaction_lock =
           std::shared_lock<std::shared_mutex>{transaction_mutex_};
     }
-    ListNode *node = nullptr;
-    cache_.cvisit(key,
-                  [&node](auto &element) { node = element.second.list_node_; });
-    if (!node || !cache_.erase(key)) return false;
+    ListNode *lru_node = nullptr;
+    cache_.cvisit(key, [&lru_node](auto &element) {
+      lru_node = element.second.lru_node;
+    });
+    if (!lru_node || !cache_.erase(key)) return false;
 
-    std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
-    if (lock) {
-      Delink(node);
-      if constexpr (HasGetSize<CacheEntry>) {
-        size_ -= node->size_;
-      } else {
-        size_--;
-      }
-      delete node;
-      lock.unlock();
+    std::unique_lock<std::mutex> lru_lock(lru_mutex_);
+    lru_node->Delink();
+    if constexpr (HasGetSize<CacheEntry>) {
+      size -= lru_node->data_->size;
+    } else {
+      size--;
     }
+    lru_lock.unlock();
+    delete lru_node;
+
     return true;
   }
 
@@ -126,29 +124,29 @@ class Cache {
     }
     bool ret = false;
     cache_.visit(key, [this, &value, &ret](auto &element) {
-      element.second.value_ = value;
+      element.second.data->value = value;
       size_t new_size;
       if constexpr (HasGetSize<CacheEntry>) {
         new_size = value.GetSize();
       }
       ret = true;
 
-      std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
-      if (lock) {
-        ListNode *node = element.second.list_node_;
+      std::unique_lock<std::mutex> lru_lock(lru_mutex_, std::try_to_lock);
+      if (lru_lock) {
+        ListNode *lru_node = element.second.lru_node;
         // The list node may be out of the list if it is in the process of being
         // inserted or evicted. Doing this check allows us to lock the list for
         // shorter periods of time.
-        if (node->isInList()) {
-          Delink(node);
-          PushFront(node);
+        if (lru_node->isInList()) {
+          lru_node->Delink();
+          lru_node->PushFront(lru_head_);
           if constexpr (HasGetSize<CacheEntry>) {
-            size_ += new_size - node->size_;
-            node->size_ = new_size;
+            size += new_size - lru_node->size;
+            lru_node->size = new_size;
           }
-          if (size_ > max_size_) Evict();
+          if (size > max_size_) Evict();
         }
-        lock.unlock();
+        lru_lock.unlock();
       }
     });
     return ret;
@@ -173,7 +171,7 @@ class Cache {
       transaction_lock =
           std::shared_lock<std::shared_mutex>{transaction_mutex_};
     }
-    cache_.visit_all([&](auto &x) { visitor(x.first, x.second.value_); });
+    cache_.visit_all([&](auto &x) { visitor(x.first, x.second.value); });
   }
 
   std::unique_lock<std::shared_mutex> TransactionLock() {
@@ -181,74 +179,81 @@ class Cache {
   }
 
  private:
-  struct ListNode {
-    Key key_;
-    std::conditional_t<HasGetSize<CacheEntry>, size_t, std::false_type> size_;
-    ListNode *pre_, *nxt_;
+  struct Data {
+    Key key;
+    CacheEntry value;
+    std::conditional_t<HasGetSize<CacheEntry>, size_t, std::false_type> size;
+  };
 
-    ListNode() : pre_(nullptr), nxt_(nullptr) {}
+  class ListNode {
+   public:
+    Data *data_;
 
-    explicit ListNode(const Key &key, size_t size = 0)
-        : key_(key), pre_(nullptr), nxt_(nullptr) {
-      if constexpr (HasGetSize<CacheEntry>) {
-        size_ = size;
-      }
-    }
+    ListNode *pre_ = nullptr, *nxt_ = nullptr;
+
+    ListNode() : data_(nullptr) {}
+    ListNode(Data *data) : data_(data) {}
 
     bool isInList() const { return pre_ != nullptr; }
-  };
 
-  void Delink(ListNode *node) {
-    ListNode *prev = node->pre_;
-    ListNode *nxt = node->nxt_;
-    prev->nxt_ = nxt;
-    nxt->pre_ = prev;
-    node->pre_ = nullptr;
-  }
-  void PushFront(ListNode *node) {
-    ListNode *oldRealHead = head_.nxt_;
-    node->pre_ = &head_;
-    node->nxt_ = oldRealHead;
-    oldRealHead->pre_ = node;
-    head_.nxt_ = node;
-  }
+    void Delink() {
+      pre_->nxt_ = nxt_;
+      nxt_->pre_ = pre_;
+      pre_ = nullptr;
+    }
+
+    // Push a delinked node to the front
+    void PushFront(ListNode &head) {
+      pre_ = &head;
+      nxt_ = head.nxt_;
+      head.nxt_->pre_ = this;
+      head.nxt_ = this;
+    }
+  };
 
   struct MapEntry {
-    CacheEntry value_;
-    ListNode *list_node_;
+    std::unique_ptr<Data> data;
 
-    MapEntry() : list_node_(nullptr) {}
+    ListNode *lru_node;
 
-    MapEntry(const CacheEntry &value, ListNode *const list_node)
-        : value_(value), list_node_(list_node) {}
+    MapEntry(const Key &key, const CacheEntry &value, ListNode *const list_node,
+             const size_t size = 0)
+        : data(std::make_unique<Data>()), lru_node(list_node) {
+      data->key = key;
+      data->value = value;
+      if constexpr (HasGetSize<CacheEntry>) {
+        data->size = size;
+      }
+    }
   };
 
-  std::mutex mutex_;
+  std::atomic<bool> &emergency_mode_;
+  std::mutex lru_mutex_;
   std::shared_mutex transaction_mutex_;
-  size_t max_size_, size_;
-  ListNode head_, tail_;
+  size_t max_size_, size;
+  ListNode lru_head_, lru_tail_;
   boost::unordered::concurrent_flat_map<Key, MapEntry> cache_;
 
   // WARNING: assumes that the mutex is held when calling this function.
   void Evict() {
     // std::cerr << "Evict" << std::endl;
-    while (size_ > max_size_) {
-      ListNode *moribund = tail_.pre_;
-      if (moribund == &head_) {
+    while (size > max_size_) {
+      ListNode *moribund = lru_tail_.pre_;
+      if (moribund == &lru_head_) {
         // List is empty, can't evict
         return;
       }
-      Delink(moribund);
+      moribund->Delink();
       if constexpr (HasGetSize<CacheEntry>) {
-        size_ -= moribund->size_;
+        size -= moribund->size;
       } else {
-        size_--;
+        size--;
       }
 
-      cache_.erase(moribund->key_);
+      cache_.erase(moribund->data_->key);
       delete moribund;
     }
-    // std::cerr << "Evict done: " << size_ << std::endl;
+    // std::cerr << "Evict done: " << size << std::endl;
   }
 };
 
