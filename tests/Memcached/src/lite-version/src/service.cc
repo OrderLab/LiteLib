@@ -96,7 +96,6 @@ Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
   // TODO: support CAS, Expiration, TTL, error, and other operations
   switch (opcode) {
     case Header::Opcode::kSet:
-      logger.Log(LogEntry{.packet = p});
       entry.flags->resize(4);
       if (!cache.Add(*req.key, entry) && !cache.Replace(*req.key, entry)) {
         resp.header.status = 0x0005;
@@ -104,7 +103,6 @@ Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
       }
       break;
     case Header::Opcode::kAdd:
-      logger.Log(LogEntry{.packet = p});
       entry.value = req.value;
       entry.flags->resize(4);
       if (!cache.Add(*req.key, entry)) {
@@ -113,7 +111,6 @@ Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
       }
       break;
     case Header::Opcode::kReplace:
-      logger.Log(LogEntry{.packet = p});
       entry.value = req.value;
       entry.flags->resize(4);
       if (!cache.Replace(*req.key, entry)) {

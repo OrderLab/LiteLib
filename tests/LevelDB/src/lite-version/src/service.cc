@@ -1,5 +1,9 @@
 #include "service.hpp"
 
+const std::shared_ptr<bool> LogEntry::bool_true = std::make_shared<bool>(true);
+const std::shared_ptr<std::vector<uint8_t>> LogEntry::empty_vector =
+    std::make_shared<std::vector<uint8_t>>();
+
 std::optional<std::vector<std::shared_ptr<Packet>>> LevelDB::Filter(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
     std::deque<std::shared_ptr<Packet>> &pending_requests) const {
@@ -122,6 +126,7 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
   RESPType *response = nullptr;
   if (conn.is_in_transaction_) {
     if (*opcode == "exec") {
+      *conn.log_valid_ = false;
       auto response_array = new RESPArray;
 
       {
@@ -132,23 +137,16 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
         }
       }
 
-      {
-        auto logger_lock = logger.TransactionLock();
-        for (const auto &c : conn.transactions_) {
-          logger.Log(LogEntry{c}, true);
-        }
-        logger.Log(LogEntry{req}, true);
-      }
-
       conn.is_in_transaction_ = false;
       conn.transactions_.clear();
+      conn.log_valid_ = std::make_shared<bool>(true);
       response = response_array;
     } else {
       conn.transactions_.push_back(req);
+      logger.Log(LogEntry{req, conn.log_valid_});
       response = new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
     }
   } else {
-    logger.Log(LogEntry{req});
     response = EmergencyServeImpl(std::move(req), conn, cache, logger);
   }
   return Packet(std::unique_ptr<RESPType>(response));
@@ -224,6 +222,7 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
     }
   } else if (opcode == "multi") {
     conn.is_in_transaction_ = true;
+    logger.Log(LogEntry{req, conn.log_valid_});
     return new RESPSimpleString(std::make_shared<std::string>("OK"));
   }
 

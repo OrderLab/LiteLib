@@ -12,6 +12,13 @@ namespace lite {
 
 enum DeserializeResult { kGood, kBad, kIndeterminate };
 
+template <typename CacheKey, typename CacheEntry>
+concept IsCacheEntry = requires(CacheEntry entry, CacheKey key) {
+  {
+    entry.ToRequests(key)
+  } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
+};
+
 template <typename LogEntry>
 concept IsLogEntry =
     requires(LogEntry log_entry, uint8_t *&begin, uint8_t *end) {
