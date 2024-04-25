@@ -12,7 +12,8 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry,
           typename LogEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
-                         CacheKey, CacheEntry, LogEntry>
+                         CacheKey, CacheEntry, LogEntry> &&
+           IsCacheEntry<CacheKey, CacheEntry>
 class LiteCore : public Daemon {
  public:
   LiteCore(Application &app, const size_t &max_item_count,
@@ -85,16 +86,26 @@ class LiteCore : public Daemon {
       }
     }
     std::cerr << "Replay connected to backend in " << tries << " tries\n";
-    size_t cnt = 0;
+
     LogEntry entry;
-    while (logger_.Pop(entry)) {
-      cnt++;
-      const auto buffer = entry.ToRequests();
-      network::Write(backend_fd, buffer);  // TODO: less writes
+    size_t log_cnt = 0, dirty_cnt = 0;
+    while (!logger_.Empty() || !cache_.dirties.Empty()) {
+      for (const auto entry : cache_.dirties) {
+        dirty_cnt++;
+        const auto buffer = entry.second.ToRequests(entry.first);
+        network::Write(backend_fd, buffer);
+      }
+      while (logger_.Pop(entry)) {
+        log_cnt++;
+        const auto buffer = entry.ToRequests();
+        network::Write(backend_fd, buffer);  // TODO: less writes
+      }
     }
+
     // TODO: in-flight requests after this?
     close(backend_fd);
-    std::cerr << "Replay " << cnt << " items\n";
+    std::cerr << "Replay finished with " << log_cnt << " log entries and "
+              << dirty_cnt << " dirty entries\n";
   }
 };
 

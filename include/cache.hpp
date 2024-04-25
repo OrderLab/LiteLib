@@ -20,22 +20,34 @@ class Cache {
   // If CacheEntry has GetSize method, then max_size_ is the sum of it.
   // Otherwise, max_size_ is the number of entries.
   explicit Cache(const size_t &max_size, std::atomic<bool> &emergency_mode)
-      : max_size_(max_size), size(0), emergency_mode_(emergency_mode) {
+      : max_size_(max_size),
+        size(0),
+        emergency_mode_(emergency_mode),
+        dirties(dirty_mutex_, dirty_head_, dirty_tail_) {
     lru_head_.pre_ = nullptr;
     lru_head_.nxt_ = &lru_tail_;
     lru_tail_.pre_ = &lru_head_;
+    dirty_head_.pre_ = nullptr;
+    dirty_head_.nxt_ = &dirty_tail_;
+    dirty_tail_.pre_ = &dirty_head_;
   }
 
   ~Cache() {
     ListNode *node = lru_head_.nxt_;
     ListNode *nxt;
+
     while (node != &lru_tail_) {
       nxt = node->nxt_;
       delete node;
       node = nxt;
     }
-    lru_head_.nxt_ = &lru_tail_;
-    lru_tail_.pre_ = &lru_head_;
+
+    node = dirty_head_.nxt_;
+    while (node != &dirty_tail_) {
+      nxt = node->nxt_;
+      delete node;
+      node = nxt;
+    }
   }
 
   bool Add(const Key &key, const CacheEntry &value,
@@ -46,9 +58,10 @@ class Cache {
           std::shared_lock<std::shared_mutex>{transaction_mutex_};
     }
     ListNode *lru_node = new ListNode;
-    if (!cache_.insert(std::make_pair(
-            key, MapEntry(key, value, lru_node,
-                          HasGetSize<CacheEntry> ? value.GetSize() : 0)))) {
+    MapEntry entry = MapEntry(key, value, lru_node,
+                              HasGetSize<CacheEntry> ? value.GetSize() : 0);
+    std::unique_ptr<ListNode> &dirty_node = entry.dirty_node;
+    if (!cache_.insert(std::make_pair(key, std::move(entry)))) {
       delete lru_node;
       return false;
     }
@@ -62,6 +75,11 @@ class Cache {
     }
     if (size > max_size_) Evict();
     lru_lock.unlock();
+
+    if (emergency_mode_) {
+      std::unique_lock<std::mutex> dirty_lock(dirty_mutex_);
+      dirty_node->PushFront(dirty_head_);
+    }
 
     return true;
   }
@@ -90,6 +108,7 @@ class Cache {
     });
   }
 
+  // TODO: how to force the application to log it?
   bool Delete(const Key &key, bool in_transaction = false) {
     std::shared_lock<std::shared_mutex> transaction_lock;
     if (!in_transaction) {
@@ -147,6 +166,12 @@ class Cache {
           if (size > max_size_) Evict();
         }
         lru_lock.unlock();
+      }
+
+      ListNode *dirty_node = element.second.dirty_node.get();
+      if (emergency_mode_ && !dirty_node->isInList()) {
+        std::unique_lock<std::mutex> dirty_lock(dirty_mutex_);
+        if (!dirty_node->isInList()) dirty_node->PushFront(dirty_head_);
       }
     });
     return ret;
@@ -215,6 +240,7 @@ class Cache {
     std::unique_ptr<Data> data;
 
     ListNode *lru_node;
+    std::unique_ptr<ListNode> dirty_node;
 
     MapEntry(const Key &key, const CacheEntry &value, ListNode *const list_node,
              const size_t size = 0)
@@ -224,17 +250,23 @@ class Cache {
       if constexpr (HasGetSize<CacheEntry>) {
         data->size = size;
       }
+      dirty_node = std::make_unique<ListNode>(data.get());
     }
   };
 
-  std::atomic<bool> &emergency_mode_;
   std::mutex lru_mutex_;
-  std::shared_mutex transaction_mutex_;
-  size_t max_size_, size;
   ListNode lru_head_, lru_tail_;
+
+  std::mutex dirty_mutex_;
+  ListNode dirty_head_, dirty_tail_;
+
+  std::atomic<bool> &emergency_mode_;
+  size_t max_size_, size;
+  std::shared_mutex transaction_mutex_;
   boost::unordered::concurrent_flat_map<Key, MapEntry> cache_;
 
   // WARNING: assumes that the mutex is held when calling this function.
+  // TODO: how to notify application
   void Evict() {
     // std::cerr << "Evict" << std::endl;
     while (size > max_size_) {
@@ -255,6 +287,48 @@ class Cache {
     }
     // std::cerr << "Evict done: " << size << std::endl;
   }
+
+ public:
+  class Dirties {
+   public:
+    class Iterator {
+     public:
+      using difference_type = std::ptrdiff_t;
+
+      Iterator(ListNode *ptr, std::mutex &dirty_mutex_)
+          : ptr_(ptr), dirty_mutex_(dirty_mutex_) {}
+
+      std::pair<Key, CacheEntry> operator*() const {
+        return std::make_pair(ptr_->data_->key, ptr_->data_->value);
+      }
+      Iterator &operator++() {
+        const auto old_ptr = ptr_;
+        ptr_ = ptr_->nxt_;
+        std::unique_lock<std::mutex> dirty_lock(dirty_mutex_);
+        old_ptr->Delink();
+        return *this;
+      }
+      bool operator!=(const Iterator &rhs) const { return ptr_ != rhs.ptr_; }
+
+     private:
+      ListNode *ptr_;
+      std::mutex &dirty_mutex_;
+    };
+
+    Iterator begin() { return Iterator(dirty_tail_.pre_, dirty_mutex_); }
+    Iterator end() { return Iterator(&dirty_head_, dirty_mutex_); }
+    bool Empty() { return dirty_tail_.pre_ == &dirty_head_; }
+
+    Dirties(std::mutex &dirty_mutex_, ListNode &dirty_head_,
+            ListNode &dirty_tail)
+        : dirty_mutex_(dirty_mutex_),
+          dirty_head_(dirty_head_),
+          dirty_tail_(dirty_tail) {}
+
+   private:
+    std::mutex &dirty_mutex_;
+    ListNode &dirty_head_, &dirty_tail_;
+  } dirties;
 };
 
 }  // namespace lite
