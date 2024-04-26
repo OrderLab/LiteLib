@@ -8,11 +8,36 @@ This consists of setting up 4 Docker containers:
   - Lite Redis server listening to port `6479`
 - Redis benchmarking client (172.16.0.3)
 - Monitoring tools
-  - cAdvisor
+  - cAdvisor(v0.49.1)
   - Prometheus
+
+### Replica model
+
+Redis provides replication model for high usability. A full server, a replica server and 3 sentinels are involved to simulate the real scenario in production.
+
+- [Redis-replication](https://redis.io/docs/latest/operate/oss_and_stack/management/replication/)
+- [Redis-sentinel](https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/)
 
 ```sh
 # Make sure that you are in the cascade/tests/Redis/tests directory.
+export REDIS_REPLICA=true
+docker compose up -d
+# Entering the container of Redis server
+docker exec -it redis-server bash
+
+# Setting up the server takes a while. Use ping to check if the Redis server is on
+# Inside the server container, the server is up if it replies PONG
+redis-cli ping
+```
+
+### Lite model
+
+> Still under construction
+
+Source code at `Redis/src`. In this setting, a full server and a lite server are involved. The function and performance overhead of switching is integrated in Lite-Redis.
+
+```sh
+export REDIS_REPLICA=false
 docker compose up -d
 # Entering the container of Redis server
 docker exec -it redis-server bash
@@ -23,6 +48,8 @@ redis-cli ping
 ```
 
 ## Benchmarking
+
+> probably needs to be modified, official benchmarking terminates if failure detected
 
 To benchmark the Redis servers, Redis-benchmark utility from Redis is used. About how to use Redis-benchmark, please check the [official manual](https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/benchmarks/).
 

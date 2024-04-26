@@ -1,8 +1,11 @@
-version: '0.1.0'
+version: '0.1.1'
 services:
   redis-server:
     container_name: redis-server
     build: ./scripts/redis
+    environment:
+      - REDIS_REPLICA=${REDIS_REPLICA}
+      # true for replica, otherwise lite
     entrypoint: /workspace/entrypoint.sh
     privileged: true
     volumes:
@@ -28,7 +31,8 @@ services:
 
   cadvisor:
     container_name: cadvisor-redis
-    image: gcr.io/cadvisor/cadvisor
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
     volumes:
       - "/:/rootfs:ro"
       - "/var/run:/var/run:rw"
@@ -39,10 +43,13 @@ services:
     networks:
       monitoring_net:
         ipv4_address: 172.18.0.2
+    depends_on:
+      - redis-client
 
   prometheus:
     container_name: prometheus-redis
     image: prom/prometheus:latest
+    privileged: true
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     command:
@@ -52,6 +59,8 @@ services:
     networks:
       monitoring_net:
         ipv4_address: 172.18.0.3
+    depends_on:
+      - cadvisor
 
 networks:
   redis_net:
