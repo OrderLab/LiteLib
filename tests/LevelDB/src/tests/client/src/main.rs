@@ -221,36 +221,41 @@ async fn main() {
         .unwrap(),
     );
 
-    if let Some(remote_script_config) = &cfg.benchmark.remote_script {
+    if let Some(remote_script_config) = cfg.benchmark.remote_script {
         let now = SystemTime::now();
         let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
         let secs = duration_since_epoch.as_secs();
         let target_time = UNIX_EPOCH + Duration::from_secs(secs + 3);
 
-        let output = Command::new("ssh")
-            .args([
-                "-tt",
-                &remote_script_config.remote_addr,
-                &format!(
-                    r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {:?}"#,
-                    remote_script_config.crash_time.as_secs(),
-                    target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
-                    remote_script_config.experiment_type
-                ),
-            ])
-            .output()
-            .expect("Failed to set up remote script");
-        match output.status.code() {
-            Some(0) => {
-                println!("Set up remote script: {:?}", output);
+        tokio::spawn(async move {
+            let output = Command::new("ssh")
+                .args([
+                    "-tt",
+                    &remote_script_config.remote_addr,
+                    &format!(
+                        r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {}"#,
+                        remote_script_config.crash_time.as_secs(),
+                        target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
+                        match &remote_script_config.experiment_type {
+                            ExperimentType::Full => "Full",
+                            ExperimentType::Lite(_, _) => "Lite",
+                        }
+                    ),
+                ])
+                .output()
+                .expect("Failed to set up remote script");
+            match output.status.code() {
+                Some(0) => {
+                    println!("Set up remote script: {:?}", output);
+                }
+                Some(_) => {
+                    panic!("Failed to set up remote script: {:?}", output);
+                }
+                None => {
+                    panic!("Failed to set up remote script: {:?}", output);
+                }
             }
-            Some(_) => {
-                panic!("Failed to set up remote script: {:?}", output);
-            }
-            None => {
-                panic!("Failed to set up remote script: {:?}", output);
-            }
-        }
+        });
 
         let duration_until_target_time = target_time
             .duration_since(now)

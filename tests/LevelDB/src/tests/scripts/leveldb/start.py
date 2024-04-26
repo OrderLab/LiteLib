@@ -4,7 +4,7 @@ import os
 import utils
 
 def sleep_for(seconds):
-  if seconds < 0:
+  if seconds > 0:
     time.sleep(seconds)
 
 parser = argparse.ArgumentParser(description='Run experiment')

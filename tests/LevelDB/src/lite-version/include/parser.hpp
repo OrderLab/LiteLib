@@ -57,10 +57,12 @@ class RESPSimpleStringParser : public RESPTypeParser {
     switch (state_) {
       case kCR: {
         auto start = begin;
-        while (begin != end && *(begin++) != '\r') {
-        }
+        while (begin != end && *begin != '\r') ++begin;
         typed_value.value->insert(typed_value.value->end(), start, begin);
-        if (*(begin - 1) == '\r') state_ = kLF;
+        if (*begin == '\r') {
+          state_ = kLF;
+          ++begin;
+        }
       }
       case kLF: {
         if (begin == end) return lite::kIndeterminate;
@@ -87,8 +89,12 @@ class RESPBulkStringParser : public RESPTypeParser {
       case kLength: {
         const auto result = length_parser_.Deserialize(begin, end, length_);
         if (result == lite::kGood) {
-          state_ = kData;
+          if (length_.value == -1) {
+            typed_value.value = nullptr;
+            return lite::kGood;
+          }
           typed_value.value->reserve(length_.value);
+          state_ = kData;
         } else {
           return result;
         }
@@ -158,8 +164,7 @@ class RESPArrayParser : public RESPTypeParser {
             return result;
           }
         }
-        if (length_.value)
-          return lite::kIndeterminate;
+        if (length_.value) return lite::kIndeterminate;
         return lite::kGood;
       }
     }
