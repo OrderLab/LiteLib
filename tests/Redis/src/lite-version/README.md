@@ -16,6 +16,7 @@ docker exec -it redis-build bash
 # Inside the container, working directory: /workspace
 mkdir build && cd build
 cmake ..
+make
 ```
 
 The executable of lite-Redis is now built in `Redis/lite-version/build`

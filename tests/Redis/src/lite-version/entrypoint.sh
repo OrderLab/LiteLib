@@ -5,9 +5,9 @@ BOOST_VERSION="1.83.0"
 LIBEVENT_VERSION="2.1.12-stable"
 
 apt update
-apt install -y build-essential wget libssl-dev
+apt install -y build-essential wget libssl-dev git
 
-cd tmp
+cd /tmp
 
 # echo "-----------------Installing CMake-----------------"
 wget https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.sh
