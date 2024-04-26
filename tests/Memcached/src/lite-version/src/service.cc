@@ -69,9 +69,10 @@ void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
   }
 }
 
-Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
-                                 ConnectionInfo &conn_info, Cache &cache,
-                                 Logger &logger) const {
+Packet Memcached::EmergencyServe(
+    std::shared_ptr<Packet> p, ConnectionInfo &conn_info, Cache &cache,
+    std::function<void(LogEntry)> log_func,
+    std::function<bool(size_t)> undo_log_func) const {
   const auto req = ParsedPacket(*p);
   if (req.header.magic != 0x80) {
     std::cerr << "Unsupported Protocol Version:\n" << req << std::endl;

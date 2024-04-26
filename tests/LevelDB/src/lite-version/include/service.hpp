@@ -36,17 +36,7 @@ struct CacheEntry {
 };
 
 struct LogEntry {
-  std::shared_ptr<bool> valid;  // TODO: how to actually delete it in the log
-                                // instead of using lazy deletion
   std::shared_ptr<Packet> value;
-
-  const static std::shared_ptr<bool> bool_true;
-  const static std::shared_ptr<std::vector<uint8_t>> empty_vector;
-
-  LogEntry() : valid(bool_true), value(nullptr) {}
-  LogEntry(std::shared_ptr<Packet> value) : valid(bool_true), value(value) {}
-  LogEntry(std::shared_ptr<Packet> value, std::shared_ptr<bool> valid)
-      : valid(valid), value(value) {}
 
   std::shared_ptr<std::vector<uint8_t>> Serialize() const {
     return value->Serialize();
@@ -57,7 +47,6 @@ struct LogEntry {
   }
 
   std::shared_ptr<std::vector<uint8_t>> ToRequests() const {
-    if (!valid) return empty_vector;
     return value->Serialize();
   }
 };
@@ -71,7 +60,6 @@ struct ConnectionInfo {
 
 class LevelDB {
   using Cache = lite::Cache<std::string, CacheEntry>;
-  using Logger = lite::Logger<LogEntry>;
 
  public:
   std::optional<std::vector<std::shared_ptr<Packet>>> Filter(
@@ -83,7 +71,8 @@ class LevelDB {
                     ConnectionInfo &conn, Cache &cache);
 
   Packet EmergencyServe(std::shared_ptr<Packet> req, ConnectionInfo &conn,
-                        Cache &cache, Logger &logger);
+                        Cache &cache, std::function<void(LogEntry)> log_func,
+                        std::function<bool(size_t)> undo_log_func);
 
  private:
   void NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache &cache,
@@ -91,6 +80,6 @@ class LevelDB {
 
   RESPType *EmergencyServeImpl(std::shared_ptr<Packet> req,
                                ConnectionInfo &conn, Cache &cache,
-                               Logger &logger,
+                               std::function<void(LogEntry)> log_func,
                                const bool in_transaction = false);
 };

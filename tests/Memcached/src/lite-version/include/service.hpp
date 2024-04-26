@@ -74,5 +74,6 @@ class Memcached {
                     ConnectionInfo &_, Cache &cache) const;
 
   Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn_info,
-                        Cache &cache, Logger &logger) const;
+                        Cache &cache, std::function<void(LogEntry)> log_func,
+                        std::function<bool(size_t)> undo_log_func) const;
 };

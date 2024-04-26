@@ -1,28 +1,73 @@
 #pragma once
 
-#include <boost/lockfree/spsc_queue.hpp>
 #include <mutex>
 
 #include "concept.hpp"
 
 namespace lite {
 
-template <typename Entry>
-  requires IsLogEntry<Entry>
+template <typename Data>
+  requires IsLogEntry<Data>
 class Logger {
  public:
-  Logger() = default;
+  Logger() {
+    chr_head_.chr_pre = nullptr;
+    chr_head_.chr_nxt = &chr_tail_;
+    chr_tail_.chr_pre = &chr_head_;
+    chr_tail_.chr_nxt = nullptr;
+  }
 
-  void Log(const Entry &entry) {
-    q_.push(entry);
+  struct LogEntry {
+    Data data;
+    std::shared_ptr<evutil_socket_t> backend_fd;
+    LogEntry *chr_pre, *chr_nxt;    // global linked list in chronological order
+    LogEntry *conn_pre, *conn_nxt;  // linked list per connection
+  };
+
+  void Log(const Data &data, LogEntry &conn_head) {
+    LogEntry *entry = new LogEntry{
+        data, conn_head.backend_fd, nullptr, nullptr, nullptr, nullptr};
+    std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+    entry->chr_pre = &chr_head_;
+    entry->chr_nxt = chr_head_.chr_nxt;
+    chr_lock.unlock();
+    conn_head.conn_nxt->conn_pre = entry;
+    entry->conn_nxt = conn_head.conn_nxt;
+    entry->conn_pre = &conn_head;
+    conn_head.conn_nxt = entry;
   }  // TODO: deal with capacity issues
 
-  bool Pop(Entry &entry) { return q_.pop(entry); }
+  bool Pop(LogEntry *entry) {
+    std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+    if (chr_tail_.chr_pre == &chr_head_) return false;
+    entry = chr_tail_.chr_pre;
+    entry->chr_pre->chr_nxt = entry->chr_nxt;
+    entry->chr_nxt->chr_pre = entry->chr_pre;
+    return true;
+  }
 
-  bool Empty() { return q_.empty(); }
+  bool EraseConnectionLogs(LogEntry &conn_head,
+                           const size_t number_of_entries) {
+    std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+    LogEntry *entry = conn_head.conn_nxt, *nxt_entry;
+    for (size_t i = 0; i < number_of_entries; ++i, entry = nxt_entry) {
+      if (!entry->conn_nxt) return false;
+      nxt_entry = entry->conn_nxt;
+      entry->conn_pre->conn_nxt = entry->conn_nxt;
+      entry->conn_nxt->conn_pre = entry->conn_pre;
+      entry->chr_pre->chr_nxt = entry->chr_nxt;
+      entry->chr_nxt->chr_pre = entry->chr_pre;
+      delete entry;
+    }
+    chr_lock.unlock();
+    return true;
+  }
+
+  bool Empty() { return chr_tail_.chr_pre == chr_head_.chr_nxt; }
 
  private:
-  boost::lockfree::spsc_queue<Entry, boost::lockfree::capacity<1024> > q_;
+  std::mutex chr_mutex_;
+  LogEntry chr_head_, chr_tail_;
 };
 
 }  // namespace lite

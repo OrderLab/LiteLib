@@ -38,7 +38,18 @@ class LiteServer {
                       Application& app, std::string& backend_addr,
                       std::string& backend_port,
                       const char pipe_path[] = "/tmp/lite")
-      : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path) {
+      : lite_core_(
+            app, max_item_count, backend_addr, backend_port, pipe_path,
+            [](std::set<void*>& live_connections) {
+              for (auto& c : live_connections) {
+                static_cast<ConnectionInstance*>(c)->ConnectBackend();
+              }
+            },
+            [](std::set<void*>& live_connections) {
+              for (auto& c : live_connections) {
+                *static_cast<ConnectionInstance*>(c)->backend_fd_ = -1;
+              }
+            }) {
     struct event_config* ev_config;
     ev_config = event_config_new();
     event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);

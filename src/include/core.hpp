@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include "cache.hpp"
 #include "concept.hpp"
 #include "daemon.hpp"
@@ -15,28 +17,42 @@ template <typename Application, typename Request, typename Response,
                          CacheKey, CacheEntry, LogEntry> &&
            IsCacheEntry<CacheKey, CacheEntry>
 class LiteCore : public Daemon {
+  using LoggerInstance = Logger<LogEntry>;
+
  public:
   LiteCore(Application &app, const size_t &max_item_count,
            std::string &backend_addr, std::string &backend_port,
-           const char pipe_path[])
-      : Daemon([&] { Replay(); }, backend_port, pipe_path),
+           const char pipe_path[],
+           std::function<void(std::set<void *> &live_connections)>
+               ReconnectToBackend,
+           std::function<void(std::set<void *> &live_connections)>
+               DisconnectFromBackend)
+      : Daemon([&] { Replay(); },
+               [&] { DisconnectFromBackend(live_connections_); }, backend_port,
+               pipe_path),
         app_(app),
         cache_(max_item_count, emergency_mode_),
         backend_addr_(backend_addr),
-        backend_port_(backend_port) {}
+        backend_port_(backend_port),
+        ReconnectToBackend(ReconnectToBackend) {}
 
   void HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
                      std::deque<std::shared_ptr<Request>> &pending_requests,
                      const evutil_socket_t client_fd,
-                     const evutil_socket_t backend_fd) {
+                     const evutil_socket_t backend_fd,
+                     LoggerInstance::LogEntry &log_head) {
     if (!emergency_mode_ && backend_fd <= 0) {
       std::cerr << "Fallback to emergency mode" << std::endl;
       emergency_mode_ = true;
     }
 
     if (emergency_mode_) {
-      auto packet =
-          app_.EmergencyServe(std::move(req), conn_info, cache_, logger_);
+      auto packet = app_.EmergencyServe(
+          std::move(req), conn_info, cache_,
+          [&](const LogEntry &data) { logger_.Log(data, log_head); },
+          [&](const size_t number_of_entries) {
+            return logger_.EraseConnectionLogs(log_head, number_of_entries);
+          });
       const auto buffer = packet.Serialize();
       network::Write(client_fd, buffer);
     } else {
@@ -69,14 +85,23 @@ class LiteCore : public Daemon {
 
   std::string &backend_addr_, &backend_port_;
 
+  bool is_replaying_ = false;
+
+  std::set<void *> live_connections_;
+
  private:
   Application &app_;
 
   Cache<CacheKey, CacheEntry> cache_;
 
-  Logger<LogEntry> logger_;
+  LoggerInstance logger_;
+
+  std::function<void(std::set<void *> &live_connections)> ReconnectToBackend;
 
   void Replay() {
+    is_replaying_ = true;
+    ReconnectToBackend(live_connections_);
+
     int backend_fd, tries = 0;
     while ((backend_fd = network::TryConnectBackend(backend_addr_,
                                                     backend_port_)) == -1) {
@@ -87,9 +112,9 @@ class LiteCore : public Daemon {
     }
     std::cerr << "Replay connected to backend in " << tries << " tries\n";
 
-    LogEntry entry;
+    typename LoggerInstance::LogEntry *entry;
     size_t log_cnt = 0, dirty_cnt = 0;
-    while (!logger_.Empty() || !cache_.dirties.Empty()) {
+    while (!logger_.Empty() || !cache_.dirties.Empty()) {  // TODO: less writes
       for (const auto entry : cache_.dirties) {
         dirty_cnt++;
         const auto buffer = entry.second.ToRequests(entry.first);
@@ -97,8 +122,12 @@ class LiteCore : public Daemon {
       }
       while (logger_.Pop(entry)) {
         log_cnt++;
-        const auto buffer = entry.ToRequests();
-        network::Write(backend_fd, buffer);  // TODO: less writes
+        const auto buffer = entry->data.ToRequests();
+        if (*entry->backend_fd == -1)
+          network::Write(backend_fd, buffer);
+        else
+          network::Write(*entry->backend_fd, buffer);
+        delete entry;
       }
     }
 
@@ -106,6 +135,8 @@ class LiteCore : public Daemon {
     close(backend_fd);
     std::cerr << "Replay finished with " << log_cnt << " log entries and "
               << dirty_cnt << " dirty entries\n";
+
+    is_replaying_ = false;
   }
 };
 

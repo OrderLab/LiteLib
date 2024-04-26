@@ -124,6 +124,7 @@ class Worker {
           fprintf(stderr, "failed to create listening connection\n");
           exit(EXIT_FAILURE);
         }
+        self->lite_core_.live_connections_.insert(new_connection.get());
         self->conns_.push(std::move(new_connection));
       }
     } else {
