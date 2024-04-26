@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "core.hpp"
+#include "logger.hpp"
 #include "network_utils.hpp"
 
 namespace lite {
@@ -22,6 +23,7 @@ class Connection {
   using LiteCoreInstance =
       LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                CacheEntry, LogEntry>;
+  using LoggerInstance = Logger<LogEntry>;
 
  public:
   Connection(const Connection&) = delete;
@@ -36,6 +38,7 @@ class Connection {
                       bool is_client_connection)
       : base_(base),
         client_fd_(sfd),
+        backend_fd_(std::make_shared<evutil_socket_t>(-1)),
         request_(std::make_unique<Request>()),
         response_(std::make_unique<Response>()),
         lite_server_(lite_server),
@@ -48,12 +51,19 @@ class Connection {
       throw std::runtime_error("client event_add");
     }
 
-    if (is_client_connection && !lite_core_.emergency_mode_) ConnectBackend();
+    log_head_.backend_fd = backend_fd_;
+
+    if (is_client_connection &&
+        (!lite_core_.emergency_mode_ && !lite_core_.is_replaying_))
+      ConnectBackend();
   }
 
   ~Connection() {
+    lite_core_.live_connections_.erase(this);
+    *backend_fd_ = -1;
+
     /* delete the event, the socket and the conn */
-    close(backend_fd_);
+    close(*backend_fd_);
     close(client_fd_);
     event_del(&client_event_);
     event_del(&backend_event_);
@@ -100,7 +110,8 @@ class Connection {
         }
         conn->lite_core_.HandleRequest(
             std::move(conn->request_), conn->extra_app_info_,
-            conn->pending_requests_, conn->client_fd_, conn->backend_fd_);
+            conn->pending_requests_, conn->client_fd_, *conn->backend_fd_,
+            conn->log_head_);
         conn->request_ = std::make_unique<Request>();
       } else if (result == kIndeterminate) {
         continue;
@@ -114,7 +125,7 @@ class Connection {
 
   static void BackendHandler(evutil_socket_t fd, short which, void* arg_conn) {
     auto conn = static_cast<Connection*>(arg_conn);
-    if (fd != conn->backend_fd_) {
+    if (fd != *conn->backend_fd_) {
       std::cerr << "BackendHandler: fd mismatch. Expecting "
                 << conn->backend_fd_ << " but got " << fd << std::endl;
       return;
@@ -122,11 +133,13 @@ class Connection {
 
     ssize_t bytes_transferred;
     if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
-      if (bytes_transferred == 0)
+      if (bytes_transferred == 0) {
         std::cerr << "Backend disconnected: " << fd << std::endl;
-      else
+        *conn->backend_fd_ = -1;
+      } else {
         perror("read from backend");
-      delete conn;
+        delete conn;
+      }
       return;
     }
     uint8_t* begin = conn->buffer_.data();
@@ -151,13 +164,13 @@ class Connection {
   /// Try to connect to the backend and set event
   bool ConnectBackend() {
     // Set up a socket connection to the backend server
-    if ((backend_fd_ = network::TryConnectBackend(
+    if ((*backend_fd_ = network::TryConnectBackend(
              lite_core_.backend_addr_, lite_core_.backend_port_)) == -1) {
       return false;
     }
 
     // Add an event that listens to the backend server's messages
-    event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
+    event_set(&backend_event_, *backend_fd_, EV_READ | EV_PERSIST,
               Connection::BackendHandler, static_cast<void*>(this));
     event_base_set(base_, &backend_event_);
     if (event_add(&backend_event_, 0) == -1) {
@@ -170,7 +183,10 @@ class Connection {
   ConnectionInfo extra_app_info_;
 
   /// Socket file descriptor for the client and backend.
-  evutil_socket_t client_fd_, backend_fd_;
+  evutil_socket_t client_fd_;
+  std::shared_ptr<evutil_socket_t> backend_fd_;
+
+  LoggerInstance::LogEntry log_head_;
 
   void* lite_server_;
 
