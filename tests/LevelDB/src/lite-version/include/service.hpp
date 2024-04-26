@@ -14,8 +14,8 @@ struct CacheEntry {
 
   std::shared_ptr<std::vector<uint8_t>> ToRequests(
       const std::string &key) const {
-    std::vector<uint8_t> buffer = {'$', '3', '\r', '\n', '+',
-                                   'S', 'E', 'T',  '\r', '\n'};
+    std::vector<uint8_t> buffer = {'*',  '3', '\r', '\n', '$',  '3', '\r',
+                                   '\n', 'S', 'E',  'T',  '\r', '\n'};
     AppendBulkString(buffer, key);
     AppendBulkString(buffer, *value);
     return std::make_shared<std::vector<uint8_t>>(std::move(buffer));

@@ -19,9 +19,9 @@ class Daemon {
   std::atomic<bool> emergency_mode_ = false;
 
  private:
-  std::function<bool()> Replay;
+  std::function<bool()> Replay_;
 
-  std::function<void()> DisconnectFromBackend;
+  std::function<void()> DisconnectFromBackend_;
 
   pthread_t thread_id_;
 

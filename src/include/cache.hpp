@@ -23,7 +23,7 @@ class Cache {
       : max_size_(max_size),
         size(0),
         emergency_mode_(emergency_mode),
-        dirties(dirty_mutex_, dirty_head_, dirty_tail_) {
+        dirties(dirty_mutex_, &dirty_head_, &dirty_tail_) {
     lru_head_.pre_ = nullptr;
     lru_head_.nxt_ = &lru_tail_;
     lru_tail_.pre_ = &lru_head_;
@@ -57,10 +57,10 @@ class Cache {
       transaction_lock =
           std::shared_lock<std::shared_mutex>{transaction_mutex_};
     }
-    ListNode *lru_node = new ListNode;
-    MapEntry entry = MapEntry(key, value, lru_node,
-                              HasGetSize<CacheEntry> ? value.GetSize() : 0);
-    std::unique_ptr<ListNode> &dirty_node = entry.dirty_node;
+    MapEntry entry =
+        MapEntry(key, value, HasGetSize<CacheEntry> ? value.GetSize() : 0);
+    ListNode *lru_node = entry.lru_node;
+    ListNode *dirty_node = entry.dirty_node.get();
     if (!cache_.insert(std::make_pair(key, std::move(entry)))) {
       delete lru_node;
       return false;
@@ -116,8 +116,10 @@ class Cache {
           std::shared_lock<std::shared_mutex>{transaction_mutex_};
     }
     ListNode *lru_node = nullptr;
-    cache_.cvisit(key, [&lru_node](auto &element) {
+    std::unique_ptr<ListNode> dirty_node;
+    cache_.cvisit(key, [&](auto &element) {
       lru_node = element.second.lru_node;
+      dirty_node = std::move(element.second.dirty_node);
     });
     if (!lru_node || !cache_.erase(key)) return false;
 
@@ -130,6 +132,11 @@ class Cache {
     }
     lru_lock.unlock();
     delete lru_node;
+
+    if (emergency_mode_) {
+      std::unique_lock<std::mutex> dirty_lock(dirty_mutex_);
+      dirty_node->Delink();
+    }
 
     return true;
   }
@@ -242,14 +249,14 @@ class Cache {
     ListNode *lru_node;
     std::unique_ptr<ListNode> dirty_node;
 
-    MapEntry(const Key &key, const CacheEntry &value, ListNode *const list_node,
-             const size_t size = 0)
-        : data(std::make_unique<Data>()), lru_node(list_node) {
+    MapEntry(const Key &key, const CacheEntry &value, const size_t size = 0)
+        : data(std::make_unique<Data>()) {
       data->key = key;
       data->value = value;
       if constexpr (HasGetSize<CacheEntry>) {
         data->size = size;
       }
+      lru_node = new ListNode(data.get());
       dirty_node = std::make_unique<ListNode>(data.get());
     }
   };
@@ -303,7 +310,7 @@ class Cache {
       }
       Iterator &operator++() {
         const auto old_ptr = ptr_;
-        ptr_ = ptr_->nxt_;
+        ptr_ = ptr_->pre_;
         std::unique_lock<std::mutex> dirty_lock(dirty_mutex_);
         old_ptr->Delink();
         return *this;
@@ -315,19 +322,19 @@ class Cache {
       std::mutex &dirty_mutex_;
     };
 
-    Iterator begin() { return Iterator(dirty_tail_.pre_, dirty_mutex_); }
-    Iterator end() { return Iterator(&dirty_head_, dirty_mutex_); }
-    bool Empty() { return dirty_tail_.pre_ == &dirty_head_; }
+    Iterator begin() { return Iterator(dirty_tail_->pre_, dirty_mutex_); }
+    Iterator end() { return Iterator(dirty_head_, dirty_mutex_); }
+    bool Empty() { return dirty_tail_->pre_ == dirty_head_; }
 
-    Dirties(std::mutex &dirty_mutex_, ListNode &dirty_head_,
-            ListNode &dirty_tail)
+    Dirties(std::mutex &dirty_mutex_, ListNode *dirty_head_,
+            ListNode *dirty_tail)
         : dirty_mutex_(dirty_mutex_),
           dirty_head_(dirty_head_),
           dirty_tail_(dirty_tail) {}
 
    private:
     std::mutex &dirty_mutex_;
-    ListNode &dirty_head_, &dirty_tail_;
+    ListNode *dirty_head_, *dirty_tail_;
   } dirties;
 };
 
