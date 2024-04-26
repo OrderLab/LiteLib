@@ -82,7 +82,7 @@ connect_backend_exit:
   return -1;
 }
 
-void Write(const evutil_socket_t fd, const std::vector<uint8_t> buffer,
+bool Write(const evutil_socket_t fd, const std::vector<uint8_t> buffer,
            size_t len) {
   // TODO: async?
   // TODO: use transmit() implementation in Memcached
@@ -91,22 +91,24 @@ void Write(const evutil_socket_t fd, const std::vector<uint8_t> buffer,
     ssize_t bytes_written = write(fd, begin, len);  // BUG: it's nonblocking
     if (bytes_written <= 0) {
       perror("write");  // TODO: max tries
+      return false;
     } else {
       len -= bytes_written;
       begin += bytes_written;
     }
   }
+  return true;
 }
-void Write(const evutil_socket_t fd, const std::vector<uint8_t>&& buffer) {
-  Write(fd, buffer, buffer.size());
+bool Write(const evutil_socket_t fd, const std::vector<uint8_t>&& buffer) {
+  return Write(fd, buffer, buffer.size());
 }
-void Write(const evutil_socket_t fd,
+bool Write(const evutil_socket_t fd,
            const std::unique_ptr<std::vector<uint8_t>>&& buffer) {
-  Write(fd, *buffer, buffer->size());
+  return Write(fd, *buffer, buffer->size());
 }
-void Write(const evutil_socket_t fd,
+bool Write(const evutil_socket_t fd,
            const std::shared_ptr<std::vector<uint8_t>> buffer) {
-  Write(fd, *buffer, buffer->size());
+  return Write(fd, *buffer, buffer->size());
 }
 
 }  // namespace network

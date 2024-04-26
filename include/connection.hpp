@@ -108,10 +108,13 @@ class Connection {
         if (conn->backend_fd_ <= 0 && !conn->lite_core_.emergency_mode_) {
           conn->ConnectBackend();
         }
-        conn->lite_core_.HandleRequest(
-            std::move(conn->request_), conn->extra_app_info_,
-            conn->pending_requests_, conn->client_fd_, *conn->backend_fd_,
-            conn->log_head_);
+        if (!conn->lite_core_.HandleRequest(
+                std::move(conn->request_), conn->extra_app_info_,
+                conn->pending_requests_, conn->client_fd_, *conn->backend_fd_,
+                conn->log_head_)) {
+          delete conn;
+          return;
+        }
         conn->request_ = std::make_unique<Request>();
       } else if (result == kIndeterminate) {
         continue;
@@ -147,9 +150,12 @@ class Connection {
     while (begin != end) {
       const auto result = conn->response_->Deserialize(begin, end);
       if (result == kGood) {
-        conn->lite_core_.HandleResponse(
-            std::move(conn->response_), conn->extra_app_info_,
-            conn->pending_requests_, conn->client_fd_);
+        if (!conn->lite_core_.HandleResponse(
+                std::move(conn->response_), conn->extra_app_info_,
+                conn->pending_requests_, conn->client_fd_)) {
+          delete conn;
+          return;
+        }
         conn->response_ = std::make_unique<Response>();
       } else if (result == kIndeterminate) {
         continue;
