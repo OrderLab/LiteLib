@@ -63,7 +63,7 @@ class Logger {
     return true;
   }
 
-  bool Empty() { return chr_tail_.chr_pre == chr_head_.chr_nxt; }
+  bool Empty() { return chr_tail_.chr_pre == &chr_head_; }
 
  private:
   std::mutex chr_mutex_;

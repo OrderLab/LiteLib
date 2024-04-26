@@ -46,7 +46,9 @@ class LiteServer {
               }
             },
             [](std::set<void*>& live_connections) {
+              std::cerr << "Disconnect from backend" << std::endl;
               for (auto& c : live_connections) {
+                close(*static_cast<ConnectionInstance*>(c)->backend_fd_);
                 *static_cast<ConnectionInstance*>(c)->backend_fd_ = -1;
               }
             }) {

@@ -28,13 +28,14 @@ class LiteCore : public Daemon {
            std::function<void(std::set<void *> &live_connections)>
                DisconnectFromBackend)
       : Daemon([&] { return Replay(); },
-               [&] { DisconnectFromBackend(live_connections_); }, backend_port,
+               [&] { DisconnectFromBackend_(live_connections_); }, backend_port,
                pipe_path),
         app_(app),
         cache_(max_item_count, emergency_mode_),
         backend_addr_(backend_addr),
         backend_port_(backend_port),
-        ReconnectToBackend(ReconnectToBackend) {}
+        DisconnectFromBackend_(DisconnectFromBackend),
+        ReconnectToBackend_(ReconnectToBackend) {}
 
   bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
                      std::deque<std::shared_ptr<Request>> &pending_requests,
@@ -107,11 +108,14 @@ class LiteCore : public Daemon {
 
   LoggerInstance logger_;
 
-  std::function<void(std::set<void *> &live_connections)> ReconnectToBackend;
+  std::function<void(std::set<void *> &live_connections)> ReconnectToBackend_;
+
+  std::function<void(std::set<void *> &live_connections)>
+      DisconnectFromBackend_;
 
   bool Replay() {
     is_replaying_ = true;
-    ReconnectToBackend(live_connections_);
+    ReconnectToBackend_(live_connections_);
 
     int backend_fd, tries = 0;
     while ((backend_fd = network::TryConnectBackend(backend_addr_,

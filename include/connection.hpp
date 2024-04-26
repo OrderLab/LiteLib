@@ -138,6 +138,7 @@ class Connection {
     if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
       if (bytes_transferred == 0) {
         std::cerr << "Backend disconnected: " << fd << std::endl;
+        close(fd);
         *conn->backend_fd_ = -1;
       } else {
         perror("read from backend");
