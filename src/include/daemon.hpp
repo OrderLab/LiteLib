@@ -11,7 +11,7 @@ namespace lite {
 
 class Daemon {
  public:
-  explicit Daemon(const std::function<void()> &Replay,
+  explicit Daemon(const std::function<bool()> &Replay,
                   std::function<void()> DisconnectFromBackend,
                   std::string &backend_port,
                   const std::string pipe_path = "/tmp/lite");
@@ -19,7 +19,7 @@ class Daemon {
   std::atomic<bool> emergency_mode_ = false;
 
  private:
-  std::function<void()> Replay;
+  std::function<bool()> Replay;
 
   std::function<void()> DisconnectFromBackend;
 

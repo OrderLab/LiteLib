@@ -27,7 +27,7 @@ class LiteCore : public Daemon {
                ReconnectToBackend,
            std::function<void(std::set<void *> &live_connections)>
                DisconnectFromBackend)
-      : Daemon([&] { Replay(); },
+      : Daemon([&] { return Replay(); },
                [&] { DisconnectFromBackend(live_connections_); }, backend_port,
                pipe_path),
         app_(app),
@@ -36,7 +36,7 @@ class LiteCore : public Daemon {
         backend_port_(backend_port),
         ReconnectToBackend(ReconnectToBackend) {}
 
-  void HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
+  bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
                      std::deque<std::shared_ptr<Request>> &pending_requests,
                      const evutil_socket_t client_fd,
                      const evutil_socket_t backend_fd,
@@ -54,25 +54,35 @@ class LiteCore : public Daemon {
             return logger_.EraseConnectionLogs(log_head, number_of_entries);
           });
       const auto buffer = packet.Serialize();
-      network::Write(client_fd, buffer);
+      if (!network::Write(client_fd, buffer)) {
+        std::cerr << "Failed to write response to client" << std::endl;
+        return false;
+      }
     } else {
       const auto buffer = req->Serialize();
-      network::Write(backend_fd, buffer);
+      if (!network::Write(backend_fd, buffer)) {
+        std::cerr << "Failed to write request to backend" << std::endl;
+        return false;
+      }
       // TODO: enable application to filter/modify requests before pushing back
       pending_requests.push_back(req);
     }
+    return true;
   }
 
-  void HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
+  bool HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
                       std::deque<std::shared_ptr<Request>> &pending_requests,
                       const evutil_socket_t client_fd) {
     if (emergency_mode_) {
       std::cerr << "Trying to handle a response in emergency mode" << std::endl;
-      return;
+      return false;
     }
 
     const auto buffer = resp->Serialize();
-    network::Write(client_fd, buffer);
+    if (!network::Write(client_fd, buffer)) {
+      std::cerr << "Failed to write response to client" << std::endl;
+      return false;
+    }
 
     // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
     const auto related_stateful_request =
@@ -81,6 +91,7 @@ class LiteCore : public Daemon {
       app_.NormalUpdate(resp, std::move(related_stateful_request.value()),
                         conn_info, cache_);
     }
+    return true;
   }
 
   std::string &backend_addr_, &backend_port_;
@@ -98,7 +109,7 @@ class LiteCore : public Daemon {
 
   std::function<void(std::set<void *> &live_connections)> ReconnectToBackend;
 
-  void Replay() {
+  bool Replay() {
     is_replaying_ = true;
     ReconnectToBackend(live_connections_);
 
@@ -107,7 +118,7 @@ class LiteCore : public Daemon {
                                                     backend_port_)) == -1) {
       if (tries++ > 100) {
         std::cerr << "Replay failed to connect to backend\n";
-        return;
+        return false;
       }
     }
     std::cerr << "Replay connected to backend in " << tries << " tries\n";
@@ -118,15 +129,27 @@ class LiteCore : public Daemon {
       for (const auto entry : cache_.dirties) {
         dirty_cnt++;
         const auto buffer = entry.second.ToRequests(entry.first);
-        network::Write(backend_fd, buffer);
+        if (!network::Write(backend_fd, buffer)) {
+          std::cerr << "Replay failed to write dirty to backend\n";
+          return false;
+        }
       }
       while (logger_.Pop(entry)) {
         log_cnt++;
         const auto buffer = entry->data.ToRequests();
-        if (*entry->backend_fd == -1)
-          network::Write(backend_fd, buffer);
-        else
-          network::Write(*entry->backend_fd, buffer);
+        if (*entry->backend_fd == -1) {
+          if (!network::Write(backend_fd, buffer)) {
+            std::cerr << "Replay failed to write to backend\n";
+            // TODO: push back entry
+            return false;
+          }
+        } else {
+          if (!network::Write(*entry->backend_fd, buffer)) {
+            std::cerr << "Replay failed to write to backend\n";
+            // TODO: push back entry
+            return false;
+          }
+        }
         delete entry;
       }
     }
@@ -137,6 +160,8 @@ class LiteCore : public Daemon {
               << dirty_cnt << " dirty entries\n";
 
     is_replaying_ = false;
+
+    return true;
   }
 };
 

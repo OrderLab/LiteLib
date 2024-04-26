@@ -50,7 +50,9 @@ void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
     }
     auto &responses = responses_resp->value;
     if (conn.transactions_.size() != responses.size()) {
-      std::cerr << "Invalid number of responses\n";
+      std::cerr << "Invalid number of responses: trans "
+                << conn.transactions_.size() << " responses "
+                << responses.size() << std::endl;
       return;
     }
 
