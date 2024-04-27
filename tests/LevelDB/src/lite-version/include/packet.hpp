@@ -31,8 +31,6 @@ struct RESPSimpleString : public RESPString {
   RESPSimpleString(const std::shared_ptr<std::string> &value)
       : RESPString(value) {}
 
-  std::pair<lite::DeserializeResult, RESPSimpleString *> Deserialize(
-      InputIterator &begin, InputIterator end);
   virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 struct RESPError : public RESPString {
@@ -40,8 +38,6 @@ struct RESPError : public RESPString {
   RESPError(const std::shared_ptr<std::string> &value) : RESPString(value) {}
   virtual ~RESPError(){};
 
-  std::pair<lite::DeserializeResult, RESPError *> Deserialize(
-      InputIterator &begin, InputIterator end);
   virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 struct RESPBulkString : public RESPString {
@@ -50,8 +46,6 @@ struct RESPBulkString : public RESPString {
       : RESPString(value) {}
   virtual ~RESPBulkString(){};
 
-  std::pair<lite::DeserializeResult, RESPBulkString *> Deserialize(
-      InputIterator &begin, InputIterator end);
   virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
@@ -60,8 +54,6 @@ struct RESPInteger : public RESPType {
 
   virtual ~RESPInteger(){};
 
-  std::pair<lite::DeserializeResult, RESPInteger *> Deserialize(
-      InputIterator &begin, InputIterator end);
   virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
@@ -70,8 +62,6 @@ struct RESPArray : public RESPType {
 
   virtual ~RESPArray(){};
 
-  std::pair<lite::DeserializeResult, RESPArray *> Deserialize(
-      InputIterator &begin, InputIterator end);
   virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 

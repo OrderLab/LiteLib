@@ -54,8 +54,6 @@ struct LogEntry {
 struct ConnectionInfo {
   bool is_in_transaction_ = false;
   std::vector<std::shared_ptr<Packet>> transactions_;
-  std::shared_ptr<bool> log_valid_;
-  ConnectionInfo() : log_valid_(std::make_shared<bool>(true)) {}
 };
 
 class LevelDB {

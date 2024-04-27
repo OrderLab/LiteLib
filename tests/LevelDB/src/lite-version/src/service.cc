@@ -143,7 +143,6 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
 
       conn.is_in_transaction_ = false;
       conn.transactions_.clear();
-      conn.log_valid_ = std::make_shared<bool>(true);
       response = response_array;
     } else {
       conn.transactions_.push_back(req);
