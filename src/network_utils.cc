@@ -10,7 +10,7 @@ namespace lite {
 namespace network {
 evutil_socket_t TryConnectBackend(const std::string& addr,
                                   const std::string& port) {
-  std::cerr << "Try to connect to backend\n";
+  // std::cerr << "Try to connect to backend\n";
   evutil_socket_t backend_fd;
   struct addrinfo hints, *res;
 
@@ -73,7 +73,7 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
     goto connect_backend_exit;
   }
 
-  std::cerr << "Backend connected, fd: " << backend_fd << std::endl;
+  // std::cerr << "Backend connected, fd: " << backend_fd << std::endl;
 
   return backend_fd;
 

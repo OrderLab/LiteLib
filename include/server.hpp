@@ -212,7 +212,7 @@ class LiteServer {
       perror("accept");
       return;
     }
-    std::cerr << "Accepted new connection: " << new_conn_fd << std::endl;
+    // std::cerr << "Accepted new connection: " << new_conn_fd << std::endl;
     reinterpret_cast<LiteServer*>(c->lite_server_)
         ->DispatchNewConnection(new_conn_fd);
   }

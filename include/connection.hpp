@@ -65,8 +65,9 @@ class Connection {
     /* delete the event, the socket and the conn */
     close(*backend_fd_);
     close(client_fd_);
+    // BUG: how to distinguish if the event is deletable?
     event_del(&client_event_);
-    event_del(&backend_event_);
+    if (backend_event_.ev_base) event_del(&backend_event_);
     // std::cerr << "connection closed" << std::endl;
   }
 
@@ -92,7 +93,7 @@ class Connection {
     ssize_t bytes_transferred;
     if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
       if (bytes_transferred == 0)
-        std::cerr << "Client disconnected: " << fd << std::endl;
+        ; // std::cerr << "Client disconnected: " << fd << std::endl;
       else
         perror("read from client");
       delete conn;
@@ -137,7 +138,7 @@ class Connection {
     ssize_t bytes_transferred;
     if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
       if (bytes_transferred == 0) {
-        std::cerr << "Backend disconnected: " << fd << std::endl;
+        ; // std::cerr << "Backend disconnected: " << fd << std::endl;
         close(fd);
         *conn->backend_fd_ = -1;
       } else {
