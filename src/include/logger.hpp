@@ -18,8 +18,10 @@ class Logger {
   struct LogEntry {
     Data data;
     std::shared_ptr<evutil_socket_t> backend_fd;
-    LogEntry *chr_pre = nullptr, *chr_nxt = nullptr;    // global linked list in chronological order
-    LogEntry *conn_pre = nullptr, *conn_nxt = nullptr;  // linked list per connection
+    LogEntry *chr_pre = nullptr,
+             *chr_nxt = nullptr;  // global linked list in chronological order
+    LogEntry *conn_pre = nullptr,
+             *conn_nxt = nullptr;  // linked list per connection
   };
 
   void Log(const Data &data, LogEntry &conn_head) {
@@ -41,6 +43,9 @@ class Logger {
     entry = chr_tail_.chr_pre;
     entry->chr_pre->chr_nxt = entry->chr_nxt;
     entry->chr_nxt->chr_pre = entry->chr_pre;
+    // TODO: lock for connection?
+    entry->conn_pre->conn_nxt = entry->conn_nxt;
+    if (entry->conn_nxt) entry->conn_nxt->conn_pre = entry->conn_pre;
     return true;
   }
 

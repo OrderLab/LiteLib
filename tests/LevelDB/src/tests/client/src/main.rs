@@ -91,7 +91,6 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Stat
             return Status::Error;
         }
     };
-    // BUG: https://docs.rs/deadpool-redis/0.14.0/deadpool_redis/struct.Manager.html#method.recycle has PING and UNWATCH command, which redis-leveldb does not support
     let (old_value, new_value): (Option<String>, Option<String>) = match pipe()
         .atomic()
         .cmd("GET")

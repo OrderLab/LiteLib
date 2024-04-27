@@ -28,6 +28,7 @@ mod config;
 use std::{
     ops::{Deref, DerefMut},
     sync::atomic::{AtomicUsize, Ordering},
+    thread, time,
 };
 
 use deadpool::{async_trait, managed};
@@ -154,7 +155,7 @@ impl managed::Manager for Manager {
 
     async fn recycle(&self, conn: &mut RedisConnection, _: &Metrics) -> RecycleResult {
         let ping_number = self.ping_number.fetch_add(1, Ordering::Relaxed).to_string();
-        // Using pipeline to avoid roundtrip for UNWATCH
+        thread::sleep(time::Duration::from_millis(100)); // TODO: Temporary fix. The async query has a bug here where it may match a response to a previous async query to the current query
         let n = redis::cmd("PING")
             .arg(&ping_number)
             .query_async::<_, String>(conn)
@@ -162,6 +163,7 @@ impl managed::Manager for Manager {
         if n == ping_number {
             Ok(())
         } else {
+            println("Temporary fix for client doesn't work");
             Err(managed::RecycleError::StaticMessage(
                 "Invalid PING response",
             ))
