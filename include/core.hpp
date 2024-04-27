@@ -1,12 +1,11 @@
 #pragma once
 
-#include <set>
-
 #include "cache.hpp"
 #include "concept.hpp"
 #include "daemon.hpp"
 #include "logger.hpp"
 #include "network_utils.hpp"
+#include "thread_safe_set.hpp"
 
 namespace lite {
 
@@ -23,9 +22,9 @@ class LiteCore : public Daemon {
   LiteCore(Application &app, const size_t &max_item_count,
            std::string &backend_addr, std::string &backend_port,
            const char pipe_path[],
-           std::function<void(std::set<void *> &live_connections)>
+           std::function<void(ThreadSafeSet<void *> &live_connections)>
                ReconnectToBackend,
-           std::function<void(std::set<void *> &live_connections)>
+           std::function<void(ThreadSafeSet<void *> &live_connections)>
                DisconnectFromBackend)
       : Daemon([&] { return Replay(); },
                [&] { DisconnectFromBackend_(live_connections_); }, backend_port,
@@ -99,7 +98,7 @@ class LiteCore : public Daemon {
 
   bool is_replaying_ = false;
 
-  std::set<void *> live_connections_;
+  ThreadSafeSet<void *> live_connections_;
 
  private:
   Application &app_;
@@ -108,9 +107,10 @@ class LiteCore : public Daemon {
 
   LoggerInstance logger_;
 
-  std::function<void(std::set<void *> &live_connections)> ReconnectToBackend_;
+  std::function<void(ThreadSafeSet<void *> &live_connections)>
+      ReconnectToBackend_;
 
-  std::function<void(std::set<void *> &live_connections)>
+  std::function<void(ThreadSafeSet<void *> &live_connections)>
       DisconnectFromBackend_;
 
   bool Replay() {
