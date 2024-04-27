@@ -11,17 +11,15 @@ template <typename Data>
 class Logger {
  public:
   Logger() {
-    chr_head_.chr_pre = nullptr;
     chr_head_.chr_nxt = &chr_tail_;
     chr_tail_.chr_pre = &chr_head_;
-    chr_tail_.chr_nxt = nullptr;
   }
 
   struct LogEntry {
     Data data;
     std::shared_ptr<evutil_socket_t> backend_fd;
-    LogEntry *chr_pre, *chr_nxt;    // global linked list in chronological order
-    LogEntry *conn_pre, *conn_nxt;  // linked list per connection
+    LogEntry *chr_pre = nullptr, *chr_nxt = nullptr;    // global linked list in chronological order
+    LogEntry *conn_pre = nullptr, *conn_nxt = nullptr;  // linked list per connection
   };
 
   void Log(const Data &data, LogEntry &conn_head) {
@@ -31,7 +29,7 @@ class Logger {
     entry->chr_pre = &chr_head_;
     entry->chr_nxt = chr_head_.chr_nxt;
     chr_lock.unlock();
-    conn_head.conn_nxt->conn_pre = entry;
+    if (conn_head.conn_nxt) conn_head.conn_nxt->conn_pre = entry;
     entry->conn_nxt = conn_head.conn_nxt;
     entry->conn_pre = &conn_head;
     conn_head.conn_nxt = entry;
@@ -51,10 +49,15 @@ class Logger {
     std::unique_lock<std::mutex> chr_lock(chr_mutex_);
     LogEntry *entry = conn_head.conn_nxt, *nxt_entry;
     for (size_t i = 0; i < number_of_entries; ++i, entry = nxt_entry) {
-      if (!entry->conn_nxt) return false;
+      if (!entry) {
+        std::cerr << "Expected to erase " << number_of_entries
+                  << " entries, but only erased " << i << " entries"
+                  << std::endl;
+        return false;
+      }
       nxt_entry = entry->conn_nxt;
       entry->conn_pre->conn_nxt = entry->conn_nxt;
-      entry->conn_nxt->conn_pre = entry->conn_pre;
+      if (entry->conn_nxt) entry->conn_nxt->conn_pre = entry->conn_pre;
       entry->chr_pre->chr_nxt = entry->chr_nxt;
       entry->chr_nxt->chr_pre = entry->chr_pre;
       delete entry;
