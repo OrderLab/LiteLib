@@ -84,13 +84,14 @@ struct Record {
 
 async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Status {
     // TODO: change value to reference
-    let mut conn = match pool.get().await {
+    let conn = match pool.get().await {
         Ok(conn) => conn,
         Err(_) => {
             // println!("i: {}, key: {}, error: {}", i, key, e);
             return Status::Error;
         }
     };
+    let mut conn_guard = conn.lock().await;
     let (old_value, new_value): (Option<String>, Option<String>) = match pipe()
         .atomic()
         .cmd("GET")
@@ -101,7 +102,7 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Stat
         .ignore()
         .cmd("GET")
         .arg(&key)
-        .query_async(&mut conn)
+        .query_async(&mut *conn_guard)
         .await
     {
         Ok(result) => result,
@@ -183,13 +184,14 @@ async fn main() {
         let value = base_value.clone();
         let bar = bar.clone();
         let handle = tokio::spawn(async move {
-            let mut conn = pool.get().await.unwrap_or_else(|e| {
+            let conn = pool.get().await.unwrap_or_else(|e| {
                 panic!("Initialize failed i: {}, error: {}", i, e);
             });
+            let mut conn_guard = conn.lock().await;
             let _: () = cmd("SET")
                 .arg(&i)
                 .arg(&value)
-                .query_async(&mut conn)
+                .query_async(&mut *conn_guard)
                 .await
                 .unwrap();
             bar.inc(1);

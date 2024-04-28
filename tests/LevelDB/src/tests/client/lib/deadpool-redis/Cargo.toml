@@ -36,6 +36,9 @@ rustdoc-args = [
     "docsrs",
 ]
 
+[dependencies.async-mutex]
+version = "1.4.0"
+
 [dependencies.deadpool]
 version = "0.10.0"
 features = ["managed"]

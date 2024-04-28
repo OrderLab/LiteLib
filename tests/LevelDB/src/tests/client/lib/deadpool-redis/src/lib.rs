@@ -27,13 +27,14 @@ mod config;
 
 use std::{
     ops::{Deref, DerefMut},
+    sync::Arc,
     sync::atomic::{AtomicUsize, Ordering},
-    thread, time,
 };
+use async_mutex::Mutex;
 
 use deadpool::{async_trait, managed};
 use redis::{
-    aio::{Connection as RedisConnection, ConnectionLike},
+    aio::Connection as RedisConnection,
     Client, IntoConnectionInfo, RedisError, RedisResult,
 };
 
@@ -61,7 +62,7 @@ impl Connection {
     ///
     /// This reduces the size of the [`Pool`].
     #[must_use]
-    pub fn take(this: Self) -> RedisConnection {
+    pub fn take(this: Self) -> Arc<Mutex<RedisConnection>> {
         Object::take(this.conn)
     }
 }
@@ -73,50 +74,28 @@ impl From<Object> for Connection {
 }
 
 impl Deref for Connection {
-    type Target = RedisConnection;
+    type Target = Arc<Mutex<RedisConnection>>;
 
-    fn deref(&self) -> &RedisConnection {
+    fn deref(&self) -> &Arc<Mutex<RedisConnection>> {
         &self.conn
     }
 }
 
 impl DerefMut for Connection {
-    fn deref_mut(&mut self) -> &mut RedisConnection {
+    fn deref_mut(&mut self) -> &mut Arc<Mutex<RedisConnection>> {
         &mut self.conn
     }
 }
 
-impl AsRef<redis::aio::Connection> for Connection {
-    fn as_ref(&self) -> &redis::aio::Connection {
+impl AsRef<Arc<Mutex<RedisConnection>>> for Connection {
+    fn as_ref(&self) -> &Arc<Mutex<RedisConnection>> {
         &self.conn
     }
 }
 
-impl AsMut<redis::aio::Connection> for Connection {
-    fn as_mut(&mut self) -> &mut redis::aio::Connection {
+impl AsMut<Arc<Mutex<RedisConnection>>> for Connection {
+    fn as_mut(&mut self) -> &mut Arc<Mutex<RedisConnection>> {
         &mut self.conn
-    }
-}
-
-impl ConnectionLike for Connection {
-    fn req_packed_command<'a>(
-        &'a mut self,
-        cmd: &'a redis::Cmd,
-    ) -> redis::RedisFuture<'a, redis::Value> {
-        self.conn.req_packed_command(cmd)
-    }
-
-    fn req_packed_commands<'a>(
-        &'a mut self,
-        cmd: &'a redis::Pipeline,
-        offset: usize,
-        count: usize,
-    ) -> redis::RedisFuture<'a, Vec<redis::Value>> {
-        self.conn.req_packed_commands(cmd, offset, count)
-    }
-
-    fn get_db(&self) -> i64 {
-        self.conn.get_db()
     }
 }
 
@@ -145,25 +124,25 @@ impl Manager {
 
 #[async_trait]
 impl managed::Manager for Manager {
-    type Type = RedisConnection;
+    type Type = Arc<Mutex<RedisConnection>>;
     type Error = RedisError;
 
-    async fn create(&self) -> Result<RedisConnection, RedisError> {
+    async fn create(&self) -> Result<Arc<Mutex<RedisConnection>>, RedisError> {
         let conn = self.client.get_async_connection().await?;
-        Ok(conn)
+        Ok(Arc::new(Mutex::new(conn)))
     }
 
-    async fn recycle(&self, conn: &mut RedisConnection, _: &Metrics) -> RecycleResult {
+    async fn recycle(&self, conn: &mut Arc<Mutex<RedisConnection>>, _: &Metrics) -> RecycleResult {
+        let mut conn_guard = conn.lock().await;
         let ping_number = self.ping_number.fetch_add(1, Ordering::Relaxed).to_string();
-        thread::sleep(time::Duration::from_millis(100)); // TODO: Temporary fix. The async query has a bug here where it may match a response to a previous async query to the current query
         let n = redis::cmd("PING")
             .arg(&ping_number)
-            .query_async::<_, String>(conn)
+            .query_async::<_, String>(&mut *conn_guard)
             .await?;
         if n == ping_number {
             Ok(())
         } else {
-            println("Temporary fix for client doesn't work");
+            println!("Broken connection or the async bug of redis-rs was triggered");
             Err(managed::RecycleError::StaticMessage(
                 "Invalid PING response",
             ))
