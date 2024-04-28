@@ -15,6 +15,7 @@ RUN apt-get update && \
         openssh-client \
         openssh-server \
         python3 \
+        python3-pip \
         wget \
         tar \
         cmake \

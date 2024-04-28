@@ -22,6 +22,7 @@ enum ExperimentType {
 struct RemoteScriptConfig {
     experiment_type: ExperimentType,
     remote_addr: String,
+    monitor_file_path: String,
     #[serde(deserialize_with = "deserialize_duration")]
     crash_time: Duration,
 }
@@ -234,13 +235,15 @@ async fn main() {
                     "-tt",
                     &remote_script_config.remote_addr,
                     &format!(
-                        r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {}"#,
+                        r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {}"#,
                         remote_script_config.crash_time.as_secs(),
                         target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
                         match &remote_script_config.experiment_type {
                             ExperimentType::Full => "Full",
                             ExperimentType::Lite(_, _) => "Lite",
-                        }
+                        },
+                        cfg.benchmark.test_duration.as_secs(),
+                        remote_script_config.monitor_file_path,
                     ),
                 ])
                 .output()
