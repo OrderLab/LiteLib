@@ -1,81 +1,46 @@
 #pragma once
 
-#include <mutex>
-
-#include "concept.hpp"
+#include "logger_inner.hpp"
 
 namespace lite {
 
-template <typename Data>
-  requires IsLogEntry<Data>
+template <typename Request, typename Key, typename CacheEntry>
 class Logger {
+  using LoggerInnerInstance = LoggerInner<Request>;
+  using CacheInnerInstance = CacheInner<Key, CacheEntry>;
+
  public:
-  Logger() {
-    chr_head_.chr_nxt = &chr_tail_;
-    chr_tail_.chr_pre = &chr_head_;
+  Logger(LoggerInnerInstance &logger_inner, LoggerInnerInstance::LogEntry *const conn_head)
+      : logger_inner_(logger_inner), conn_head_(conn_head) {}
+
+  void Log(const std::shared_ptr<Request> &req) {
+    auto *entry = new (typename LoggerInnerInstance::LogEntry)(
+        nullptr, req, conn_head_->backend_conn_ptr);
+    logger_inner_.Log(entry, conn_head_);
   }
 
-  struct LogEntry {
-    Data data;
-    std::shared_ptr<evutil_socket_t> backend_fd;
-    LogEntry *chr_pre = nullptr,
-             *chr_nxt = nullptr;  // global linked list in chronological order
-    LogEntry *conn_pre = nullptr,
-             *conn_nxt = nullptr;  // linked list per connection
-  };
+  static bool Pop(LoggerInnerInstance &logger_inner,
+                  LoggerInnerInstance::LogEntry *&entry) {
+    auto ret = logger_inner.Pop(entry);
 
-  void Log(const Data &data, LogEntry &conn_head) {
-    LogEntry *entry = new LogEntry{
-        data, conn_head.backend_fd, nullptr, nullptr, nullptr, nullptr};
-    std::unique_lock<std::mutex> chr_lock(chr_mutex_);
-    entry->chr_pre = &chr_head_;
-    entry->chr_nxt = chr_head_.chr_nxt;
-    chr_lock.unlock();
-    if (conn_head.conn_nxt) conn_head.conn_nxt->conn_pre = entry;
-    entry->conn_nxt = conn_head.conn_nxt;
-    entry->conn_pre = &conn_head;
-    conn_head.conn_nxt = entry;
-  }  // TODO: deal with capacity issues
-
-  bool Pop(LogEntry *entry) {
-    std::unique_lock<std::mutex> chr_lock(chr_mutex_);
-    if (chr_tail_.chr_pre == &chr_head_) return false;
-    entry = chr_tail_.chr_pre;
-    entry->chr_pre->chr_nxt = entry->chr_nxt;
-    entry->chr_nxt->chr_pre = entry->chr_pre;
-    // TODO: lock for connection?
-    entry->conn_pre->conn_nxt = entry->conn_nxt;
-    if (entry->conn_nxt) entry->conn_nxt->conn_pre = entry->conn_pre;
-    return true;
-  }
-
-  bool EraseConnectionLogs(LogEntry &conn_head,
-                           const size_t number_of_entries) {
-    std::unique_lock<std::mutex> chr_lock(chr_mutex_);
-    LogEntry *entry = conn_head.conn_nxt, *nxt_entry;
-    for (size_t i = 0; i < number_of_entries; ++i, entry = nxt_entry) {
-      if (!entry) {
-        std::cerr << "Expected to erase " << number_of_entries
-                  << " entries, but only erased " << i << " entries"
-                  << std::endl;
-        return false;
-      }
-      nxt_entry = entry->conn_nxt;
-      entry->conn_pre->conn_nxt = entry->conn_nxt;
-      if (entry->conn_nxt) entry->conn_nxt->conn_pre = entry->conn_pre;
-      entry->chr_pre->chr_nxt = entry->chr_nxt;
-      entry->chr_nxt->chr_pre = entry->chr_pre;
-      delete entry;
+    if (ret && entry->state) {
+      static_cast<typename CacheInnerInstance::State *>(entry->state)->dirty_node =
+          nullptr;
     }
-    chr_lock.unlock();
-    return true;
+
+    return ret;
   }
 
-  bool Empty() { return chr_tail_.chr_pre == &chr_head_; }
+  bool EraseConnectionLogs(const size_t number_of_entries) {
+    return logger_inner_.EraseConnectionLogs(conn_head_, number_of_entries);
+  }
+
+  bool Empty() { return logger_inner_.Empty(); }
 
  private:
-  std::mutex chr_mutex_;
-  LogEntry chr_head_, chr_tail_;
+  LoggerInnerInstance &logger_inner_;
+
+  typename LoggerInnerInstance::LogEntry *const conn_head_;
 };
 
 }  // namespace lite

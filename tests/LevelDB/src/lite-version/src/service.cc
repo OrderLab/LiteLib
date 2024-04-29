@@ -41,7 +41,7 @@ std::optional<std::vector<std::shared_ptr<Packet>>> LevelDB::Filter(
 
 void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
                            std::vector<std::shared_ptr<Packet>> requests,
-                           ConnectionInfo &conn, Cache &cache) {
+                           ConnectionInfo &conn, Cache *cache) {
   if (conn.is_in_transaction_) {
     RESPArray *responses_resp = dynamic_cast<RESPArray *>(resp->command.get());
     if (responses_resp == nullptr) {
@@ -58,7 +58,7 @@ void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
 
     const auto len = responses.size();
     {
-      auto cache_lock = cache.TransactionLock();
+      auto cache_lock = cache->TransactionLock();
       for (size_t i = 0; i < len; ++i) {
         if (!dynamic_cast<RESPError *>(responses[i].get()))
           NormalUpdateImpl(conn.transactions_[i], cache, true);
@@ -73,7 +73,7 @@ void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
   }
 }
 
-void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache &cache,
+void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
                                const bool in_transaction) {
   std::string_view opcode;
   try {
@@ -101,7 +101,7 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache &cache,
       return;
     }
     entry.value = value->value;
-    cache.Set(*(key->value), entry, in_transaction);
+    cache->Set(*(key->value), entry, in_transaction);
   } else if (opcode != "get" &&
              opcode != "ping") {  // TODO: update states using get
     std::cerr << "Unknow opcode: " << opcode << std::endl;
@@ -109,9 +109,8 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache &cache,
 }
 
 Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
-                               ConnectionInfo &conn, Cache &cache,
-                               std::function<void(LogEntry)> log_func,
-                               std::function<bool(size_t)> undo_log_func) {
+                               ConnectionInfo &conn, Cache *cache,
+                               Logger *logger) {
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
   if (opcode_resp == nullptr) {
@@ -125,7 +124,7 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
   RESPType *response = nullptr;
   if (conn.is_in_transaction_) {
     if (*opcode == "exec") {
-      if (!undo_log_func(conn.transactions_.size() + 1)) {
+      if (!logger->EraseConnectionLogs(conn.transactions_.size() + 1)) {
         std::cerr << "Failed to undo log\n";
         return Packet(std::unique_ptr<RESPType>(new RESPError(
             std::make_shared<std::string>("ERR failed to undo log"))));
@@ -134,10 +133,10 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
       auto response_array = new RESPArray;
 
       {
-        auto cache_lock = cache.TransactionLock();
+        auto cache_lock = cache->TransactionLock();
         for (const auto &c : conn.transactions_) {
           response_array->value.emplace_back(
-              EmergencyServeImpl(c, conn, cache, log_func, true));
+              EmergencyServeImpl(c, conn, cache, logger, true));
         }
       }
 
@@ -146,18 +145,18 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
       response = response_array;
     } else {
       conn.transactions_.push_back(req);
-      log_func(LogEntry{req});
+      logger->Log(req);
       response = new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
     }
   } else {
-    response = EmergencyServeImpl(std::move(req), conn, cache, log_func);
+    response = EmergencyServeImpl(std::move(req), conn, cache, logger);
   }
   return Packet(std::unique_ptr<RESPType>(response));
 }
 
 RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
-                                      ConnectionInfo &conn, Cache &cache,
-                                      std::function<void(LogEntry)> log_func,
+                                      ConnectionInfo &conn, Cache *cache,
+                                      Logger *logger,
                                       const bool in_transaction) {
   std::string_view opcode;
   try {
@@ -188,7 +187,7 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
     entry.value = value->value;
-    if (cache.Set(*(key->value), entry, in_transaction))
+    if (cache->Set(*(key->value), entry, in_transaction))
       return new RESPSimpleString(std::make_shared<std::string>("OK"));
   } else if (opcode == "get") {
     if (req->GetArgNum() != 1) {
@@ -202,7 +201,7 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
       return new RESPError(
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
-    if (cache.Get(*(key->value), entry, in_transaction)) {
+    if (cache->Get(*(key->value), entry, in_transaction)) {
       return new RESPBulkString(entry.value);
     } else {
       return new RESPBulkString(nullptr);
@@ -225,7 +224,7 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
     }
   } else if (opcode == "multi") {
     conn.is_in_transaction_ = true;
-    log_func(LogEntry{req});
+    logger->Log(req);
     return new RESPSimpleString(std::make_shared<std::string>("OK"));
   }
 

@@ -10,13 +10,15 @@
 namespace lite {
 
 template <typename Application, typename Request, typename Response,
-          typename ConnectionInfo, typename CacheKey, typename CacheEntry,
-          typename LogEntry>
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
-                         CacheKey, CacheEntry, LogEntry> &&
+                         CacheKey, CacheEntry> &&
            IsCacheEntry<CacheKey, CacheEntry>
 class LiteCore : public Daemon {
-  using LoggerInstance = Logger<LogEntry>;
+  using LoggerInstance = Logger<Request, CacheKey, CacheEntry>;
+  using LoggerInnerInstance = LoggerInner<Request>;
+  using CacheInstance = Cache<CacheKey, CacheEntry, Request>;
+  using CacheInnerInstance = CacheInner<CacheKey, CacheEntry>;
 
  public:
   LiteCore(Application &app, const size_t &max_item_count,
@@ -25,34 +27,35 @@ class LiteCore : public Daemon {
            std::function<void(ThreadSafeSet<void *> &live_connections)>
                ReconnectToBackend,
            std::function<void(ThreadSafeSet<void *> &live_connections)>
-               DisconnectFromBackend)
+               DisconnectFromBackend,
+           std::function<evutil_socket_t(void *)> GetBackendFdFromConnPtr,
+           std::function<void(void *, std::shared_ptr<Request>)>
+               PushBackPendingRequestIntoConnPtr)
       : Daemon([&] { return Replay(); },
                [&] { DisconnectFromBackend_(live_connections_); }, backend_port,
                pipe_path),
         app_(app),
-        cache_(max_item_count, emergency_mode_),
+        cache_inner_(max_item_count, emergency_mode_),
         backend_addr_(backend_addr),
         backend_port_(backend_port),
         DisconnectFromBackend_(DisconnectFromBackend),
-        ReconnectToBackend_(ReconnectToBackend) {}
+        ReconnectToBackend_(ReconnectToBackend),
+        GetBackendFdFromConnPtr_(GetBackendFdFromConnPtr),
+        PushBackPendingRequestIntoConnPtr_(PushBackPendingRequestIntoConnPtr) {}
 
   bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
                      std::deque<std::shared_ptr<Request>> &pending_requests,
                      const evutil_socket_t client_fd,
-                     const evutil_socket_t backend_fd,
-                     LoggerInstance::LogEntry &log_head) {
+                     const evutil_socket_t backend_fd, CacheInstance *cache,
+                     LoggerInstance *logger) {
     if (!emergency_mode_ && backend_fd <= 0) {
       std::cerr << "Fallback to emergency mode" << std::endl;
       emergency_mode_ = true;
     }
 
     if (emergency_mode_) {
-      auto packet = app_.EmergencyServe(
-          std::move(req), conn_info, cache_,
-          [&](const LogEntry &data) { logger_.Log(data, log_head); },
-          [&](const size_t number_of_entries) {
-            return logger_.EraseConnectionLogs(log_head, number_of_entries);
-          });
+      auto packet =
+          app_.EmergencyServe(std::move(req), conn_info, cache, logger);
       const auto buffer = packet.Serialize();
       if (!network::Write(client_fd, buffer)) {
         std::cerr << "Failed to write response to client" << std::endl;
@@ -72,7 +75,7 @@ class LiteCore : public Daemon {
 
   bool HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
                       std::deque<std::shared_ptr<Request>> &pending_requests,
-                      const evutil_socket_t client_fd) {
+                      const evutil_socket_t client_fd, CacheInstance *cache) {
     if (emergency_mode_) {
       std::cerr << "Trying to handle a response in emergency mode" << std::endl;
       return false;
@@ -89,7 +92,7 @@ class LiteCore : public Daemon {
         app_.Filter(resp, conn_info, pending_requests);
     if (related_stateful_request.has_value()) {
       app_.NormalUpdate(resp, std::move(related_stateful_request.value()),
-                        conn_info, cache_);
+                        conn_info, cache);
     }
     return true;
   }
@@ -100,12 +103,12 @@ class LiteCore : public Daemon {
 
   ThreadSafeSet<void *> live_connections_;
 
+  CacheInnerInstance cache_inner_;
+
+  LoggerInnerInstance logger_inner_;
+
  private:
   Application &app_;
-
-  Cache<CacheKey, CacheEntry> cache_;
-
-  LoggerInstance logger_;
 
   std::function<void(ThreadSafeSet<void *> &live_connections)>
       ReconnectToBackend_;
@@ -113,11 +116,17 @@ class LiteCore : public Daemon {
   std::function<void(ThreadSafeSet<void *> &live_connections)>
       DisconnectFromBackend_;
 
+  std::function<evutil_socket_t(void *)> GetBackendFdFromConnPtr_;
+
+  std::function<void(void *, std::shared_ptr<Request>)>
+      PushBackPendingRequestIntoConnPtr_;
+
   bool Replay() {
     is_replaying_ = true;
     ReconnectToBackend_(live_connections_);
 
-    int backend_fd, tries = 0;
+    evutil_socket_t backend_fd;
+    size_t tries = 0;
     while ((backend_fd = network::TryConnectBackend(backend_addr_,
                                                     backend_port_)) == -1) {
       if (tries++ > 100) {
@@ -127,35 +136,41 @@ class LiteCore : public Daemon {
     }
     std::cerr << "Replay connected to backend in " << tries << " tries\n";
 
-    typename LoggerInstance::LogEntry *entry;
+    typename LoggerInner<Request>::LogEntry *entry;
     size_t log_cnt = 0, dirty_cnt = 0;
-    while (!logger_.Empty() || !cache_.dirties.Empty()) {  // TODO: less writes
-      for (const auto entry : cache_.dirties) {
+    while (LoggerInstance::Pop(logger_inner_, entry)) {  // TODO: less writes
+      if (entry->state) {
         dirty_cnt++;
-        const auto buffer = entry.second.ToRequests(entry.first);
+        auto state =
+            static_cast<typename CacheInner<CacheKey, CacheEntry>::State *>(
+                entry->state);
+        const auto buffer = state->value.ToRequests(state->key);
         if (!network::Write(backend_fd, buffer)) {
           std::cerr << "Replay failed to write dirty to backend\n";
           return false;
         }
-      }
-      while (logger_.Pop(entry)) {
+      } else {
         log_cnt++;
-        const auto buffer = entry->data.ToRequests();
-        if (*entry->backend_fd == -1) {
+        const auto buffer = entry->req->Serialize();
+        if (!*entry->backend_conn_ptr) {
+          // TODO: what if there're errors? nothing will receive the response
           if (!network::Write(backend_fd, buffer)) {
             std::cerr << "Replay failed to write to backend\n";
-            // TODO: push back entry
             return false;
           }
         } else {
-          if (!network::Write(*entry->backend_fd, buffer)) {
+          // TODO: lock the connection here
+          PushBackPendingRequestIntoConnPtr_(*entry->backend_conn_ptr,
+                                             entry->req);
+          if (!network::Write(
+                  GetBackendFdFromConnPtr_(*entry->backend_conn_ptr), buffer)) {
             std::cerr << "Replay failed to write to backend\n";
             // TODO: push back entry
             return false;
           }
         }
-        delete entry;
       }
+      delete entry;
     }
 
     // TODO: in-flight requests after this?

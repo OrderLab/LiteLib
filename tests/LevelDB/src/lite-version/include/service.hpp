@@ -35,29 +35,14 @@ struct CacheEntry {
   }
 };
 
-struct LogEntry {
-  std::shared_ptr<Packet> value;
-
-  std::shared_ptr<std::vector<uint8_t>> Serialize() const {
-    return value->Serialize();
-  }
-
-  lite::DeserializeResult Deserialize(uint8_t *&begin, uint8_t *end) {
-    return value->Deserialize(begin, end);
-  }
-
-  std::shared_ptr<std::vector<uint8_t>> ToRequests() const {
-    return value->Serialize();
-  }
-};
-
 struct ConnectionInfo {
   bool is_in_transaction_ = false;
   std::vector<std::shared_ptr<Packet>> transactions_;
 };
 
 class LevelDB {
-  using Cache = lite::Cache<std::string, CacheEntry>;
+  using Cache = lite::Cache<std::string, CacheEntry, Packet>;
+  using Logger = lite::Logger<Packet, std::string, CacheEntry>;
 
  public:
   std::optional<std::vector<std::shared_ptr<Packet>>> Filter(
@@ -66,18 +51,17 @@ class LevelDB {
 
   void NormalUpdate(const std::shared_ptr<Packet> &resp,
                     std::vector<std::shared_ptr<Packet>> requests,
-                    ConnectionInfo &conn, Cache &cache);
+                    ConnectionInfo &conn, Cache *cache);
 
   Packet EmergencyServe(std::shared_ptr<Packet> req, ConnectionInfo &conn,
-                        Cache &cache, std::function<void(LogEntry)> log_func,
-                        std::function<bool(size_t)> undo_log_func);
+                        Cache *cache, Logger *logger);
 
  private:
-  void NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache &cache,
+  void NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
                         const bool in_transaction = false);
 
   RESPType *EmergencyServeImpl(std::shared_ptr<Packet> req,
-                               ConnectionInfo &conn, Cache &cache,
-                               std::function<void(LogEntry)> log_func,
+                               ConnectionInfo &conn, Cache *cache,
+                               Logger *logger,
                                const bool in_transaction = false);
 };
