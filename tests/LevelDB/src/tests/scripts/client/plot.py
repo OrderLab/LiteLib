@@ -46,6 +46,13 @@ def plot_resource(
     )
   ax.set_xlabel("Time (s)")
   ax.set_ylabel(f"{res_name} usage" + (" (%)" if res_name == "cpu" else " (MB)"))
+  ax.legend(
+    bbox_to_anchor=(0, 1.02, 1, 0.2),
+    loc="lower left",
+    mode="expand",
+    borderaxespad=0,
+    ncol=1,
+  )
 
 parser = argparse.ArgumentParser(description='Process JSON files.')
 
