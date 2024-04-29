@@ -17,18 +17,15 @@
 namespace lite {
 
 template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename LogEntry,
-          typename ConnectionInfo>
+          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
   requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 class LiteServer {
-  using ConnectionInstance =
-      Connection<Request, Response, Application, CacheKey, CacheEntry, LogEntry,
-                 ConnectionInfo>;
-  using LiteCoreInstance =
-      LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-               CacheEntry, LogEntry>;
+  using ConnectionInstance = Connection<Request, Response, Application,
+                                        CacheKey, CacheEntry, ConnectionInfo>;
+  using LiteCoreInstance = LiteCore<Application, Request, Response,
+                                    ConnectionInfo, CacheKey, CacheEntry>;
   using WorkerInstance = Worker<Request, Response, Application, CacheKey,
-                                CacheEntry, LogEntry, ConnectionInfo>;
+                                CacheEntry, ConnectionInfo>;
 
  public:
   LiteServer& operator=(const LiteServer&) = delete;
@@ -48,9 +45,16 @@ class LiteServer {
             [](ThreadSafeSet<void*>& live_connections) {
               std::cerr << "Disconnect from backend" << std::endl;
               live_connections.visit_all([&](void* const& c) {
-                close(*static_cast<ConnectionInstance*>(c)->backend_fd_);
-                *static_cast<ConnectionInstance*>(c)->backend_fd_ = -1;
+                close(static_cast<ConnectionInstance*>(c)->backend_fd_);
+                static_cast<ConnectionInstance*>(c)->backend_fd_ = -1;
               });
+            },
+            [](void* conn) {
+              return static_cast<ConnectionInstance*>(conn)->backend_fd_;
+            },
+            [](void* conn, std::shared_ptr<Request> req) {
+              static_cast<ConnectionInstance*>(conn)
+                  ->pending_requests_.push_back(req);
             }) {
     struct event_config* ev_config;
     ev_config = event_config_new();

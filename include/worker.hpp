@@ -18,15 +18,12 @@
 namespace lite {
 
 template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename LogEntry,
-          typename ConnectionInfo>
+          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
 class Worker {
-  using ConnectionInstance =
-      Connection<Request, Response, Application, CacheKey, CacheEntry, LogEntry,
-                 ConnectionInfo>;
-  using LiteCoreInstance =
-      LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-               CacheEntry, LogEntry>;
+  using ConnectionInstance = Connection<Request, Response, Application,
+                                        CacheKey, CacheEntry, ConnectionInfo>;
+  using LiteCoreInstance = LiteCore<Application, Request, Response,
+                                    ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
   explicit Worker(LiteCoreInstance &lite_core) : lite_core_(lite_core) {

@@ -17,13 +17,16 @@ namespace lite {
 
 /// Represents a single connection from a client.
 template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename LogEntry,
-          typename ConnectionInfo>
+          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
 class Connection {
-  using LiteCoreInstance =
-      LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-               CacheEntry, LogEntry>;
-  using LoggerInstance = Logger<LogEntry>;
+  using ConnectionInstance = Connection<Request, Response, Application,
+                                        CacheKey, CacheEntry, ConnectionInfo>;
+  using LiteCoreInstance = LiteCore<Application, Request, Response,
+                                    ConnectionInfo, CacheKey, CacheEntry>;
+  using LoggerInstance = Logger<Request, CacheKey, CacheEntry>;
+  using LoggerInnerInstance = LoggerInner<Request>;
+  using CacheInstance = Cache<CacheKey, CacheEntry, Request>;
+  using CacheInnerInstance = CacheInner<CacheKey, CacheEntry>;
 
  public:
   Connection(const Connection&) = delete;
@@ -38,11 +41,15 @@ class Connection {
                       bool is_client_connection)
       : base_(base),
         client_fd_(sfd),
-        backend_fd_(std::make_shared<evutil_socket_t>(-1)),
+        backend_fd_(-1),
         request_(std::make_unique<Request>()),
         response_(std::make_unique<Response>()),
         lite_server_(lite_server),
-        lite_core_(lite_core) {
+        lite_core_(lite_core),
+        self_(std::make_shared<void*>(this)),
+        log_head_(nullptr, nullptr, self_),
+        cache_(lite_core.cache_inner_, lite_core.logger_inner_, &log_head_),
+        logger_(lite_core.logger_inner_, &log_head_) {
     event_set(&client_event_, sfd, event_flags, event_handler,
               static_cast<void*>(this));
     event_base_set(base, &client_event_);
@@ -51,8 +58,6 @@ class Connection {
       throw std::runtime_error("client event_add");
     }
 
-    log_head_.backend_fd = backend_fd_;
-
     if (is_client_connection &&
         (!lite_core_.emergency_mode_ && !lite_core_.is_replaying_))
       ConnectBackend();
@@ -60,10 +65,10 @@ class Connection {
 
   ~Connection() {
     lite_core_.live_connections_.erase(this);
-    *backend_fd_ = -1;
+    *self_ = nullptr;
 
     /* delete the event, the socket and the conn */
-    close(*backend_fd_);
+    close(backend_fd_);
     close(client_fd_);
     // BUG: how to distinguish if the event is deletable?
     event_del(&client_event_);
@@ -93,7 +98,7 @@ class Connection {
     ssize_t bytes_transferred;
     if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
       if (bytes_transferred == 0)
-        ; // std::cerr << "Client disconnected: " << fd << std::endl;
+        ;  // std::cerr << "Client disconnected: " << fd << std::endl;
       else
         perror("read from client");
       delete conn;
@@ -111,8 +116,8 @@ class Connection {
         }
         if (!conn->lite_core_.HandleRequest(
                 std::move(conn->request_), conn->extra_app_info_,
-                conn->pending_requests_, conn->client_fd_, *conn->backend_fd_,
-                conn->log_head_)) {
+                conn->pending_requests_, conn->client_fd_, conn->backend_fd_,
+                &conn->cache_, &conn->logger_)) {
           delete conn;
           return;
         }
@@ -129,7 +134,7 @@ class Connection {
 
   static void BackendHandler(evutil_socket_t fd, short which, void* arg_conn) {
     auto conn = static_cast<Connection*>(arg_conn);
-    if (fd != *conn->backend_fd_) {
+    if (fd != conn->backend_fd_) {
       std::cerr << "BackendHandler: fd mismatch. Expecting "
                 << conn->backend_fd_ << " but got " << fd << std::endl;
       return;
@@ -138,9 +143,9 @@ class Connection {
     ssize_t bytes_transferred;
     if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
       if (bytes_transferred == 0) {
-        ; // std::cerr << "Backend disconnected: " << fd << std::endl;
+        ;  // std::cerr << "Backend disconnected: " << fd << std::endl;
         close(fd);
-        *conn->backend_fd_ = -1;
+        conn->backend_fd_ = -1;
       } else {
         perror("read from backend");
         delete conn;
@@ -154,7 +159,7 @@ class Connection {
       if (result == kGood) {
         if (!conn->lite_core_.HandleResponse(
                 std::move(conn->response_), conn->extra_app_info_,
-                conn->pending_requests_, conn->client_fd_)) {
+                conn->pending_requests_, conn->client_fd_, &conn->cache_)) {
           delete conn;
           return;
         }
@@ -172,13 +177,13 @@ class Connection {
   /// Try to connect to the backend and set event
   bool ConnectBackend() {
     // Set up a socket connection to the backend server
-    if ((*backend_fd_ = network::TryConnectBackend(
+    if ((backend_fd_ = network::TryConnectBackend(
              lite_core_.backend_addr_, lite_core_.backend_port_)) == -1) {
       return false;
     }
 
     // Add an event that listens to the backend server's messages
-    event_set(&backend_event_, *backend_fd_, EV_READ | EV_PERSIST,
+    event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
               Connection::BackendHandler, static_cast<void*>(this));
     event_base_set(base_, &backend_event_);
     if (event_add(&backend_event_, 0) == -1) {
@@ -191,14 +196,16 @@ class Connection {
   ConnectionInfo extra_app_info_;
 
   /// Socket file descriptor for the client and backend.
-  evutil_socket_t client_fd_;
-  std::shared_ptr<evutil_socket_t> backend_fd_;
+  evutil_socket_t client_fd_, backend_fd_;
 
-  LoggerInstance::LogEntry log_head_;
+  /// The pending requests
+  std::deque<std::shared_ptr<Request>> pending_requests_;
 
   void* lite_server_;
 
  private:
+  std::shared_ptr<void*> self_;
+
   /// Corresponding worker's event_base
   struct event_base* const base_;
 
@@ -217,8 +224,9 @@ class Connection {
   /// The outgoing response.
   std::shared_ptr<Response> response_;
 
-  /// The pending requests
-  std::deque<std::shared_ptr<Request>> pending_requests_;
+  typename LoggerInnerInstance::LogEntry log_head_;
+  CacheInstance cache_;
+  LoggerInstance logger_;
 };
 
 }  // namespace lite

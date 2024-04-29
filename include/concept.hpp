@@ -19,38 +19,20 @@ concept IsCacheEntry = requires(CacheEntry entry, CacheKey key) {
   } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
 };
 
-template <typename LogEntry>
-concept IsLogEntry =
-    requires(LogEntry log_entry, uint8_t *&begin, uint8_t *end) {
-      {
-        log_entry.Serialize()
-      } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
-
-      {
-        log_entry.Deserialize(begin, end)
-      } -> std::convertible_to<DeserializeResult>;
-
-      {
-        log_entry.ToRequests()
-      } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
-    };
-
-template <typename T>
-  requires IsLogEntry<T>
+template <typename T1, typename T2, typename T3>
 class Logger;
 
-template <typename T1, typename T2>
+template <typename T1, typename T2, typename T3>
 class Cache;
 
 template <typename Application, typename Request, typename Response,
-          typename ConnectionInfo, typename CacheKey, typename CacheEntry,
-          typename LogEntry>
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 concept IsApplication = requires(
     Application app, std::shared_ptr<Request> req,
     std::shared_ptr<Response> resp, ConnectionInfo conn_info,
     std::deque<std::shared_ptr<Request>> pending_requests,
-    Cache<CacheKey, CacheEntry> &cache, std::function<void(LogEntry)> log_func,
-    std::function<bool(size_t)> undo_log_func) {
+    Cache<CacheKey, CacheEntry, Request> *cache,
+    Logger<Request, CacheKey, CacheEntry> *logger) {
   // Find the corresponding requests of the response, return a subset of the
   // requests that contain information about state changes
   {
@@ -67,8 +49,7 @@ concept IsApplication = requires(
 
   // Perform any operation during emergency time
   {
-    app.EmergencyServe(std::move(req), conn_info, cache, log_func,
-                       undo_log_func)
+    app.EmergencyServe(std::move(req), conn_info, cache, logger)
   } -> std::convertible_to<Response>;
 };
 
