@@ -45,13 +45,18 @@ class LevelDB {
   using Logger = lite::Logger<Packet, std::string, CacheEntry>;
 
  public:
-  std::optional<std::vector<std::shared_ptr<Packet>>> Filter(
+  std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
       const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-      std::deque<std::shared_ptr<Packet>> &pending_requests) const;
+      std::deque<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests)
+      const;
 
   void NormalUpdate(const std::shared_ptr<Packet> &resp,
                     std::vector<std::shared_ptr<Packet>> requests,
                     ConnectionInfo &conn, Cache *cache);
+
+  void HandleReplayResponse(const std::shared_ptr<Packet> &resp,
+                            std::vector<std::shared_ptr<Packet>> requests,
+                            ConnectionInfo &conn, Cache *cache);
 
   Packet EmergencyServe(std::shared_ptr<Packet> req, ConnectionInfo &conn,
                         Cache *cache, Logger *logger);

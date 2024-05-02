@@ -61,19 +61,23 @@ struct ConnectionInfo {
 };
 
 class Memcached {
-  using Cache = lite::Cache<std::vector<uint8_t>, CacheEntry>;
-  using Logger = lite::Logger<LogEntry>;
+  using Cache = lite::Cache<std::vector<uint8_t>, CacheEntry, Packet>;
+  using Logger = lite::Logger<Packet, std::vector<uint8_t>, CacheEntry>;
 
  public:
-  std::optional<std::vector<std::shared_ptr<Packet>>> Filter(
+  std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
       const std::shared_ptr<Packet> &resp, ConnectionInfo &_,
-      std::deque<std::shared_ptr<Packet>> &pending_requests) const;
+      std::deque<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests)
+      const;
 
   void NormalUpdate(const std::shared_ptr<Packet> &resp,
                     std::vector<std::shared_ptr<Packet>> requests,
-                    ConnectionInfo &_, Cache &cache) const;
+                    ConnectionInfo &_, Cache *cache) const;
+
+  void HandleReplayResponse(const std::shared_ptr<Packet> &resp,
+                            std::vector<std::shared_ptr<Packet>> requests,
+                            ConnectionInfo &_, Cache *cache) const;
 
   Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn_info,
-                        Cache &cache, std::function<void(LogEntry)> log_func,
-                        std::function<bool(size_t)> undo_log_func) const;
+                        Cache *cache, Logger *logger) const;
 };

@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
     std::string backend_port = "60000";
     Memcached memcached;
     lite::LiteServer<Packet, Packet, Memcached, std::vector<uint8_t>,
-                     CacheEntry, LogEntry, ConnectionInfo>
+                     CacheEntry, ConnectionInfo>
         s(thread_pool_size, cache_size, memcached, backend_addr, backend_port,
           "/tmp/lite_memcached");
 

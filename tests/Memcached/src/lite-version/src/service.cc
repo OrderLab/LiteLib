@@ -2,14 +2,14 @@
 
 #include "connection.hpp"
 
-std::optional<std::vector<std::shared_ptr<Packet>>> Memcached::Filter(
+std::pair<std::vector<std::shared_ptr<Packet>>, bool> Memcached::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &_,
-    std::deque<std::shared_ptr<Packet>> &pending_requests) const {
+    std::deque<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests)
+    const {
   const auto resp_opaque = resp->GetOpaque();
-  std::shared_ptr<Packet> req;
   std::vector<std::shared_ptr<Packet>> ret;
   while (!pending_requests.empty()) {
-    req = pending_requests.front();
+    auto [req, _] = pending_requests.front();
     pending_requests.pop_front();
     const auto req_opaque = req->GetOpaque();
     if (req_opaque != resp_opaque || !req->GetStatus()) {
@@ -32,15 +32,12 @@ std::optional<std::vector<std::shared_ptr<Packet>>> Memcached::Filter(
     if (req_opaque == resp_opaque) break;
   }
 
-  if (ret.empty()) {
-    return {};
-  }
-  return ret;
+  return std::make_pair(ret, true);
 }
 
 void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
                              std::vector<std::shared_ptr<Packet>> requests,
-                             ConnectionInfo &_, Cache &cache) const {
+                             ConnectionInfo &_, Cache *cache) const {
   for (const auto &req : requests) {
     const auto opcode = req->GetOpcode().value();
     const auto packet = ParsedPacket(*req);
@@ -55,10 +52,10 @@ void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
     switch (opcode) {
       case Header::Opcode::kSet:
       case Header::Opcode::kAdd:
-        cache.Add(*packet.key, entry);
+        cache->Add(*packet.key, entry);
         break;
       case Header::Opcode::kReplace:
-        cache.Replace(*packet.key, entry);
+        cache->Replace(*packet.key, entry);
         break;
       case Header::Opcode::kQuit:
         break;
@@ -68,11 +65,16 @@ void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
     }
   }
 }
+void Memcached::HandleReplayResponse(
+    const std::shared_ptr<Packet> &resp,
+    std::vector<std::shared_ptr<Packet>> requests, ConnectionInfo &_,
+    Cache *cache) const {
+  return;
+}
 
-Packet Memcached::EmergencyServe(
-    std::shared_ptr<Packet> p, ConnectionInfo &conn_info, Cache &cache,
-    std::function<void(LogEntry)> log_func,
-    std::function<bool(size_t)> undo_log_func) const {
+Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
+                                 ConnectionInfo &conn_info, Cache *cache,
+                                 Logger *logger) const {
   const auto req = ParsedPacket(*p);
   if (req.header.magic != 0x80) {
     std::cerr << "Unsupported Protocol Version:\n" << req << std::endl;
@@ -98,7 +100,7 @@ Packet Memcached::EmergencyServe(
   switch (opcode) {
     case Header::Opcode::kSet:
       entry.flags->resize(4);
-      if (!cache.Add(*req.key, entry) && !cache.Replace(*req.key, entry)) {
+      if (!cache->Add(*req.key, entry) && !cache->Replace(*req.key, entry)) {
         resp.header.status = 0x0005;
         break;
       }
@@ -106,7 +108,7 @@ Packet Memcached::EmergencyServe(
     case Header::Opcode::kAdd:
       entry.value = req.value;
       entry.flags->resize(4);
-      if (!cache.Add(*req.key, entry)) {
+      if (!cache->Add(*req.key, entry)) {
         resp.header.status = 0x0005;
         break;
       }
@@ -114,7 +116,7 @@ Packet Memcached::EmergencyServe(
     case Header::Opcode::kReplace:
       entry.value = req.value;
       entry.flags->resize(4);
-      if (!cache.Replace(*req.key, entry)) {
+      if (!cache->Replace(*req.key, entry)) {
         resp.header.status = 0x0005;
       }
       break;
@@ -125,7 +127,7 @@ Packet Memcached::EmergencyServe(
     case Header::Opcode::kGetK:
       resp.key = req.key;
     case Header::Opcode::kGet:
-      if (!cache.Get(*req.key, entry)) {
+      if (!cache->Get(*req.key, entry)) {
         resp.header.status = 0x0001;
         resp.value = std::make_shared<std::vector<uint8_t>>(Header::kNotFound);
       } else {
@@ -143,6 +145,9 @@ Packet Memcached::EmergencyServe(
       break;
     default:
       // TODO: more operations
+      // NOTE: when adding support for DELETE, we need to modify Match and
+      // HandleReplayResponse as we will have req entries in logs after
+      // supporting DELETE
       std::cerr << "Unsupported Opcode:\n" << req << std::endl;
       exit(1);
   }

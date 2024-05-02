@@ -1,16 +1,23 @@
 #include "service.hpp"
 
-std::optional<std::vector<std::shared_ptr<Packet>>> LevelDB::Filter(
+std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-    std::deque<std::shared_ptr<Packet>> &pending_requests) const {
-  auto req = pending_requests.front();
+    std::deque<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests)
+    const {
+  auto [req, is_not_replay] = pending_requests.front();
   pending_requests.pop_front();
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
   if (opcode_resp == nullptr) {
     std::cerr << "Invalid request\n";
-    return {};
+    return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
+                          is_not_replay);
   }
+
+  if (!is_not_replay)
+    return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
+                          is_not_replay);
+
   auto &opcode = opcode_resp->value;
   std::transform(opcode->begin(), opcode->end(), opcode->begin(),
                  [](unsigned char c) { return std::tolower(c); });
@@ -19,29 +26,35 @@ std::optional<std::vector<std::shared_ptr<Packet>>> LevelDB::Filter(
 
   if (*opcode == "multi") {
     if (!is_error) conn.is_in_transaction_ = true;
-    return {};
+    return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
+                          is_not_replay);
   } else if (*opcode == "exec") {
-    return std::vector<std::shared_ptr<Packet>>();
+    return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
+                          is_not_replay);
   }
   if (conn.is_in_transaction_) {
     if (!is_error) {
       conn.transactions_.push_back(req);
     }  // TODO: do we need to abort the transaction if it's an illegal command
        // or if there are other kinds of errors here?
-    return {};
+    return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
+                          is_not_replay);
   }
   if (*opcode == "set" || *opcode == "get") {
-    return std::vector<std::shared_ptr<Packet>>{std::move(req)};
+    return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
+                          is_not_replay);
   } else if (*opcode == "ping") {
-    return {};
+    return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
+                          is_not_replay);
   }
   std::cerr << "Unknow opcode: " << *opcode << std::endl;
-  return {};
+  return std::make_pair(std::vector<std::shared_ptr<Packet>>(), is_not_replay);
 }
 
 void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
                            std::vector<std::shared_ptr<Packet>> requests,
                            ConnectionInfo &conn, Cache *cache) {
+  if (requests.empty()) return;
   if (conn.is_in_transaction_) {
     RESPArray *responses_resp = dynamic_cast<RESPArray *>(resp->command.get());
     if (responses_resp == nullptr) {
@@ -108,6 +121,14 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
   }
 }
 
+void LevelDB::HandleReplayResponse(
+    const std::shared_ptr<Packet> &resp,
+    std::vector<std::shared_ptr<Packet>> requests, ConnectionInfo &conn,
+    Cache *cache) {
+  // TODO: handle errors
+  return;
+}
+
 Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
                                ConnectionInfo &conn, Cache *cache,
                                Logger *logger) {
@@ -126,8 +147,12 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
     if (*opcode == "exec") {
       if (!logger->EraseConnectionLogs(conn.transactions_.size() + 1)) {
         std::cerr << "Failed to undo log\n";
-        return Packet(std::unique_ptr<RESPType>(new RESPError(
-            std::make_shared<std::string>("ERR failed to undo log"))));
+        // Two cases that are expected
+        // 1) MULTI; switch to emergency; EXEC;
+        // 2) switch to emergency; MULTI; REPLAY; EXEC
+
+        // return Packet(std::unique_ptr<RESPType>(new RESPError(
+        //     std::make_shared<std::string>("ERR failed to undo log"))));
       }
 
       auto response_array = new RESPArray;
@@ -149,7 +174,7 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
       response = new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
     }
   } else {
-    response = EmergencyServeImpl(std::move(req), conn, cache, logger);
+    response = EmergencyServeImpl(req, conn, cache, logger);
   }
   return Packet(std::unique_ptr<RESPType>(response));
 }
