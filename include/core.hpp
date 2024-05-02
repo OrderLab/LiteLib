@@ -30,7 +30,8 @@ class LiteCore : public Daemon {
                DisconnectFromBackend,
            std::function<evutil_socket_t(void *)> GetBackendFdFromConnPtr,
            std::function<void(void *, std::shared_ptr<Request>)>
-               PushBackPendingRequestIntoConnPtr)
+               PushBackPendingRequestIntoConnPtr,
+           std::function<void()> WaitForAllInFlightConnections)
       : Daemon([&] { return Replay(); },
                [&] { DisconnectFromBackend_(live_connections_); }, backend_port,
                pipe_path),
@@ -41,7 +42,8 @@ class LiteCore : public Daemon {
         DisconnectFromBackend_(DisconnectFromBackend),
         ReconnectToBackend_(ReconnectToBackend),
         GetBackendFdFromConnPtr_(GetBackendFdFromConnPtr),
-        PushBackPendingRequestIntoConnPtr_(PushBackPendingRequestIntoConnPtr) {}
+        PushBackPendingRequestIntoConnPtr_(PushBackPendingRequestIntoConnPtr),
+        WaitForAllInFlightConnections_(WaitForAllInFlightConnections) {}
 
   bool HandleRequest(
       std::shared_ptr<Request> req, ConnectionInfo &conn_info,
@@ -125,6 +127,8 @@ class LiteCore : public Daemon {
   std::function<void(void *, std::shared_ptr<Request>)>
       PushBackPendingRequestIntoConnPtr_;
 
+  std::function<void()> WaitForAllInFlightConnections_;
+
   bool Replay() {
     is_replaying_ = true;
     ReconnectToBackend_(live_connections_);
@@ -142,39 +146,45 @@ class LiteCore : public Daemon {
 
     typename LoggerInner<Request>::LogEntry *entry;
     size_t log_cnt = 0, dirty_cnt = 0;
-    while (LoggerInstance::Pop(logger_inner_, entry)) {  // TODO: less writes
-      if (entry->state) {
-        dirty_cnt++;
-        auto state =
-            static_cast<typename CacheInner<CacheKey, CacheEntry>::State *>(
-                entry->state);
-        const auto buffer = state->value.ToRequests(state->key);
-        if (!network::Write(backend_fd, buffer)) {
-          std::cerr << "Replay failed to write dirty to backend\n";
-          return false;
-        }
-      } else {
-        log_cnt++;
-        const auto buffer = entry->req->Serialize();
-        if (!*entry->backend_conn_ptr) {
-          // TODO: what if there're errors? nothing will receive the response
+
+    for (int i = 0; i < 2; i++) {  // Double flush to ensure the consistency of
+                                   // in-flight connections
+      while (LoggerInstance::Pop(logger_inner_, entry)) {  // TODO: less writes
+        if (entry->state) {
+          dirty_cnt++;
+          auto state =
+              static_cast<typename CacheInner<CacheKey, CacheEntry>::State *>(
+                  entry->state);
+          const auto buffer = state->value.ToRequests(state->key);
           if (!network::Write(backend_fd, buffer)) {
-            std::cerr << "Replay failed to write to backend\n";
+            std::cerr << "Replay failed to write dirty to backend\n";
             return false;
           }
         } else {
-          // TODO: lock the connection here
-          PushBackPendingRequestIntoConnPtr_(*entry->backend_conn_ptr,
-                                             entry->req);
-          if (!network::Write(
-                  GetBackendFdFromConnPtr_(*entry->backend_conn_ptr), buffer)) {
-            std::cerr << "Replay failed to write to backend\n";
-            // TODO: push back entry
-            return false;
+          log_cnt++;
+          const auto buffer = entry->req->Serialize();
+          if (!*entry->backend_conn_ptr) {
+            // TODO: what if there're errors? nothing will receive the response
+            if (!network::Write(backend_fd, buffer)) {
+              std::cerr << "Replay failed to write to backend\n";
+              return false;
+            }
+          } else {
+            // TODO: lock the connection here
+            PushBackPendingRequestIntoConnPtr_(*entry->backend_conn_ptr,
+                                               entry->req);
+            if (!network::Write(
+                    GetBackendFdFromConnPtr_(*entry->backend_conn_ptr),
+                    buffer)) {
+              std::cerr << "Replay failed to write to backend\n";
+              // TODO: push back entry
+              return false;
+            }
           }
         }
+        delete entry;
       }
-      delete entry;
+      if (!i) WaitForAllInFlightConnections_();
     }
 
     // TODO: in-flight requests after this?

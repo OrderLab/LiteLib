@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <sysexits.h>
 
+#include <barrier>
 #include <core.hpp>
 #include <memory>
 #include <queue>
@@ -60,7 +61,21 @@ class LiteServer {
             [](void* conn, std::shared_ptr<Request> req) {
               static_cast<ConnectionInstance*>(conn)
                   ->pending_requests_.push_back(std::make_pair(req, false));
-            }) {
+            },
+            [&]() {
+              std::cerr << "Replay barrier initialized" << std::endl;
+              for (auto& worker : workers_) {
+                worker->notify_queue_.enqueue(-1);
+                uint64_t buf = 1;
+                if (write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
+                    sizeof(uint64_t)) {
+                  perror("failed writing to worker eventfd");
+                }
+              }
+            }),
+        barrier_(nthreads, []() {
+          std::cerr << "Replay barrier completed" << std::endl;
+        }) {
     struct event_config* ev_config;
     ev_config = event_config_new();
     event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
@@ -68,7 +83,7 @@ class LiteServer {
     event_config_free(ev_config);
 
     for (int i = 0; i < nthreads; i++) {
-      workers_.emplace_back(new WorkerInstance(lite_core_));
+      workers_.emplace_back(new WorkerInstance(lite_core_, barrier_));
       (**workers_.rbegin()).Run();
     }
     next_worker_ = workers_.begin();
@@ -202,6 +217,9 @@ class LiteServer {
 
   /// The worker threads.
   std::vector<std::unique_ptr<WorkerInstance>> workers_;
+
+  /// sync point for replaying
+  std::barrier<std::function<void()>> barrier_;
 
   /// The next thread to use for a new connection.
   decltype(workers_)::iterator next_worker_;
