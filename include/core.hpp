@@ -43,11 +43,11 @@ class LiteCore : public Daemon {
         GetBackendFdFromConnPtr_(GetBackendFdFromConnPtr),
         PushBackPendingRequestIntoConnPtr_(PushBackPendingRequestIntoConnPtr) {}
 
-  bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
-                     std::deque<std::shared_ptr<Request>> &pending_requests,
-                     const evutil_socket_t client_fd,
-                     const evutil_socket_t backend_fd, CacheInstance *cache,
-                     LoggerInstance *logger) {
+  bool HandleRequest(
+      std::shared_ptr<Request> req, ConnectionInfo &conn_info,
+      std::deque<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
+      const evutil_socket_t client_fd, const evutil_socket_t backend_fd,
+      CacheInstance *cache, LoggerInstance *logger) {
     if (!emergency_mode_ && backend_fd <= 0) {
       std::cerr << "Fallback to emergency mode" << std::endl;
       emergency_mode_ = true;
@@ -68,32 +68,36 @@ class LiteCore : public Daemon {
         return false;
       }
       // TODO: enable application to filter/modify requests before pushing back
-      pending_requests.push_back(req);
+      pending_requests.push_back(std::make_pair(req, true));
     }
     return true;
   }
 
-  bool HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
-                      std::deque<std::shared_ptr<Request>> &pending_requests,
-                      const evutil_socket_t client_fd, CacheInstance *cache) {
+  bool HandleResponse(
+      std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
+      std::deque<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
+      const evutil_socket_t client_fd, CacheInstance *cache) {
     if (emergency_mode_) {
       std::cerr << "Trying to handle a response in emergency mode" << std::endl;
       return false;
     }
 
-    const auto buffer = resp->Serialize();
-    if (!network::Write(client_fd, buffer)) {
-      std::cerr << "Failed to write response to client" << std::endl;
-      return false;
+    const auto [related_stateful_request, forward_resp] =
+        app_.Match(resp, conn_info, pending_requests);
+    if (forward_resp) {
+      const auto buffer = resp->Serialize();
+      if (!network::Write(client_fd, buffer)) {
+        std::cerr << "Failed to write response to client" << std::endl;
+        return false;
+      }
+      // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
+      app_.NormalUpdate(resp, std::move(related_stateful_request), conn_info,
+                        cache);
+    } else {
+      app_.HandleReplayResponse(resp, std::move(related_stateful_request),
+                                conn_info, cache);
     }
 
-    // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
-    const auto related_stateful_request =
-        app_.Filter(resp, conn_info, pending_requests);
-    if (related_stateful_request.has_value()) {
-      app_.NormalUpdate(resp, std::move(related_stateful_request.value()),
-                        conn_info, cache);
-    }
     return true;
   }
 

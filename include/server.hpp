@@ -40,6 +40,11 @@ class LiteServer {
             [](ThreadSafeSet<void*>& live_connections) {
               live_connections.visit_all([&](void* const& c) {
                 static_cast<ConnectionInstance*>(c)->ConnectBackend();
+                std::cerr << "Connect backend "
+                          << static_cast<ConnectionInstance*>(c)->backend_fd_
+                          << " to "
+                          << static_cast<ConnectionInstance*>(c)->client_fd_
+                          << std::endl;
               });
             },
             [](ThreadSafeSet<void*>& live_connections) {
@@ -54,7 +59,7 @@ class LiteServer {
             },
             [](void* conn, std::shared_ptr<Request> req) {
               static_cast<ConnectionInstance*>(conn)
-                  ->pending_requests_.push_back(req);
+                  ->pending_requests_.push_back(std::make_pair(req, false));
             }) {
     struct event_config* ev_config;
     ev_config = event_config_new();

@@ -182,6 +182,9 @@ class Connection {
       return false;
     }
 
+    // remove previous event
+    event_del(&backend_event_);
+
     // Add an event that listens to the backend server's messages
     event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
               Connection::BackendHandler, static_cast<void*>(this));
@@ -199,7 +202,7 @@ class Connection {
   evutil_socket_t client_fd_, backend_fd_;
 
   /// The pending requests
-  std::deque<std::shared_ptr<Request>> pending_requests_;
+  std::deque<std::pair<std::shared_ptr<Request>, bool>> pending_requests_;
 
   void* lite_server_;
 
