@@ -12,56 +12,50 @@ namespace lite {
 
 enum DeserializeResult { kGood, kBad, kIndeterminate };
 
-template <typename LogEntry>
-concept IsLogEntry =
-    requires(LogEntry log_entry, uint8_t *&begin, uint8_t *end) {
-      {
-        log_entry.Serialize()
-      } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
+template <typename CacheKey, typename CacheEntry>
+concept IsCacheEntry = requires(CacheEntry entry, CacheKey key) {
+  {
+    entry.ToRequests(key)
+  } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
+};
 
-      {
-        log_entry.Deserialize(begin, end)
-      } -> std::convertible_to<DeserializeResult>;
-
-      {
-        log_entry.ToRequests()
-      } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
-    };
-
-template <typename T>
-  requires IsLogEntry<T>
+template <typename T1, typename T2, typename T3>
 class Logger;
 
-template <typename T1, typename T2>
+template <typename T1, typename T2, typename T3>
 class Cache;
 
 template <typename Application, typename Request, typename Response,
-          typename ConnectionInfo, typename CacheKey, typename CacheEntry,
-          typename LogEntry>
-concept IsApplication = requires(
-    Application app, std::shared_ptr<Request> req,
-    std::shared_ptr<Response> resp, ConnectionInfo conn_info,
-    std::deque<std::shared_ptr<Request>> pending_requests,
-    Cache<CacheKey, CacheEntry> &cache, Logger<LogEntry> &logger) {
-  // Find the corresponding requests of the response, return a subset of the
-  // requests that contain information about state changes
-  {
-    app.Filter(resp, conn_info, pending_requests)
-  }
-  -> std::convertible_to<std::optional<std::vector<std::shared_ptr<Request>>>>;
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+concept IsApplication =
+    requires(Application app, std::shared_ptr<Request> req,
+             std::shared_ptr<Response> resp, ConnectionInfo conn_info,
+             std::deque<std::pair<std::shared_ptr<Request>, bool>>
+                 pending_requests,  // true: request forward from client, false:
+                                    // request generated during replay
+             std::vector<std::shared_ptr<Request>> related_requests,
+             Cache<CacheKey, CacheEntry, Request> *cache,
+             Logger<Request, CacheKey, CacheEntry> *logger) {
+      // Find the corresponding requests of the response, return a subset of the
+      // requests that contain information about state changes
+      {
+        app.Match(resp, conn_info, pending_requests)
+      } -> std::convertible_to<std::pair<std::vector<std::shared_ptr<Request>>,
+                                         bool>>;  // pair<related_requests,
+                                                  // forward response>
 
-  // Update the states during normal time
-  {
-    app.NormalUpdate(
-        resp, std::move(app.Filter(resp, conn_info, pending_requests).value()),
-        conn_info, cache)
-  };
+      // Update the states during normal time
+      { app.NormalUpdate(resp, related_requests, conn_info, cache) };
 
-  // Perform any operation during emergency time
-  {
-    app.EmergencyServe(std::move(req), conn_info, cache, logger)
-  } -> std::convertible_to<Response>;
-};
+      // Handle response of requests sent by Replay (those Match() = (_, false))
+      // TODO: let the application to be able to retry the request
+      { app.HandleReplayResponse(resp, related_requests, conn_info, cache) };
+
+      // Perform any operation during emergency time
+      {
+        app.EmergencyServe(std::move(req), conn_info, cache, logger)
+      } -> std::convertible_to<Response>;
+    };
 
 template <typename ProtocolMessage>
 concept IsProtocolMessage =

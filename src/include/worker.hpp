@@ -6,6 +6,7 @@
 #include <sys/eventfd.h>
 #include <unistd.h>
 
+#include <barrier>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -18,18 +19,17 @@
 namespace lite {
 
 template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename LogEntry,
-          typename ConnectionInfo>
+          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
 class Worker {
-  using ConnectionInstance =
-      Connection<Request, Response, Application, CacheKey, CacheEntry, LogEntry,
-                 ConnectionInfo>;
-  using LiteCoreInstance =
-      LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-               CacheEntry, LogEntry>;
+  using ConnectionInstance = Connection<Request, Response, Application,
+                                        CacheKey, CacheEntry, ConnectionInfo>;
+  using LiteCoreInstance = LiteCore<Application, Request, Response,
+                                    ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  explicit Worker(LiteCoreInstance &lite_core) : lite_core_(lite_core) {
+  explicit Worker(LiteCoreInstance &lite_core,
+                  std::barrier<std::function<void()>> &barrier)
+      : lite_core_(lite_core), barrier_(barrier) {
     notify_event_fd = eventfd(0, EFD_NONBLOCK);
     if (notify_event_fd == -1) {
       perror("failed creating eventfd for worker thread");
@@ -41,11 +41,13 @@ class Worker {
     event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
     base_ = event_base_new_with_config(ev_config);
     event_config_free(ev_config);
+    event_base_priority_init(base_, 2);
 
     event_set(&notify_event_, notify_event_fd, EV_READ | EV_PERSIST,
               NotifyHandler, this);
 
     event_base_set(base_, &notify_event_);
+    event_priority_set(&notify_event_, 0);  // highest priority
 
     if (event_add(&notify_event_, 0) == -1) {
       fprintf(stderr, "Can't monitor libevent notify pipe\n");
@@ -90,6 +92,8 @@ class Worker {
   /// The connections managed by the worker thread.
   std::queue<std::unique_ptr<ConnectionInstance>> conns_;
 
+  std::barrier<std::function<void()>> &barrier_;
+
   /// The entry point for the worker thread.
   static void *ThreadBody(void *arg_self) {
     Worker *self = static_cast<Worker *>(arg_self);
@@ -116,15 +120,22 @@ class Worker {
           fprintf(stderr, "Worker can't dequeue from notify_queue\n");
           return;
         }
-        std::unique_ptr<ConnectionInstance> new_connection;
-        if (!(new_connection = std::make_unique<ConnectionInstance>(
-                  sfd, EV_READ | EV_PERSIST, self->base_,
-                  ConnectionInstance::ClientHandler, nullptr, self->lite_core_,
-                  true))) {
-          fprintf(stderr, "failed to create listening connection\n");
-          exit(EXIT_FAILURE);
+        if (sfd > 0) {  // new connections
+          std::unique_ptr<ConnectionInstance> new_connection;
+          if (!(new_connection = std::make_unique<ConnectionInstance>(
+                    sfd, EV_READ | EV_PERSIST, self->base_,
+                    ConnectionInstance::ClientHandler, nullptr,
+                    self->lite_core_, true))) {
+            fprintf(stderr, "failed to create listening connection\n");
+            exit(EXIT_FAILURE);
+          }
+          self->lite_core_.live_connections_.insert(new_connection.get());
+          self->conns_.push(std::move(new_connection));
+        } else if (sfd == -1) {  // replay sync
+          std::cerr << "Thread " << self->thread_id_
+                    << " reaches replay sync point" << std::endl;
+          self->barrier_.arrive_and_wait();
         }
-        self->conns_.push(std::move(new_connection));
       }
     } else {
     }

@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <sysexits.h>
 
+#include <barrier>
 #include <core.hpp>
 #include <memory>
 #include <queue>
@@ -17,18 +18,15 @@
 namespace lite {
 
 template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename LogEntry,
-          typename ConnectionInfo>
+          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
   requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 class LiteServer {
-  using ConnectionInstance =
-      Connection<Request, Response, Application, CacheKey, CacheEntry, LogEntry,
-                 ConnectionInfo>;
-  using LiteCoreInstance =
-      LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-               CacheEntry, LogEntry>;
+  using ConnectionInstance = Connection<Request, Response, Application,
+                                        CacheKey, CacheEntry, ConnectionInfo>;
+  using LiteCoreInstance = LiteCore<Application, Request, Response,
+                                    ConnectionInfo, CacheKey, CacheEntry>;
   using WorkerInstance = Worker<Request, Response, Application, CacheKey,
-                                CacheEntry, LogEntry, ConnectionInfo>;
+                                CacheEntry, ConnectionInfo>;
 
  public:
   LiteServer& operator=(const LiteServer&) = delete;
@@ -38,7 +36,46 @@ class LiteServer {
                       Application& app, std::string& backend_addr,
                       std::string& backend_port,
                       const char pipe_path[] = "/tmp/lite")
-      : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path) {
+      : lite_core_(
+            app, max_item_count, backend_addr, backend_port, pipe_path,
+            [](ThreadSafeSet<void*>& live_connections) {
+              live_connections.visit_all([&](void* const& c) {
+                static_cast<ConnectionInstance*>(c)->ConnectBackend();
+                std::cerr << "Connect backend "
+                          << static_cast<ConnectionInstance*>(c)->backend_fd_
+                          << " to "
+                          << static_cast<ConnectionInstance*>(c)->client_fd_
+                          << std::endl;
+              });
+            },
+            [](ThreadSafeSet<void*>& live_connections) {
+              std::cerr << "Disconnect from backend" << std::endl;
+              live_connections.visit_all([&](void* const& c) {
+                close(static_cast<ConnectionInstance*>(c)->backend_fd_);
+                static_cast<ConnectionInstance*>(c)->backend_fd_ = -1;
+              });
+            },
+            [](void* conn) {
+              return static_cast<ConnectionInstance*>(conn)->backend_fd_;
+            },
+            [](void* conn, std::shared_ptr<Request> req) {
+              static_cast<ConnectionInstance*>(conn)
+                  ->pending_requests_.push_back(std::make_pair(req, false));
+            },
+            [&]() {
+              std::cerr << "Replay barrier initialized" << std::endl;
+              for (auto& worker : workers_) {
+                worker->notify_queue_.enqueue(-1);
+                uint64_t buf = 1;
+                if (write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
+                    sizeof(uint64_t)) {
+                  perror("failed writing to worker eventfd");
+                }
+              }
+            }),
+        barrier_(nthreads, []() {
+          std::cerr << "Replay barrier completed" << std::endl;
+        }) {
     struct event_config* ev_config;
     ev_config = event_config_new();
     event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
@@ -46,7 +83,7 @@ class LiteServer {
     event_config_free(ev_config);
 
     for (int i = 0; i < nthreads; i++) {
-      workers_.emplace_back(new WorkerInstance(lite_core_));
+      workers_.emplace_back(new WorkerInstance(lite_core_, barrier_));
       (**workers_.rbegin()).Run();
     }
     next_worker_ = workers_.begin();
@@ -54,6 +91,8 @@ class LiteServer {
 
   /// Listen on the specified TCP port.
   bool Run(const char* port) {
+    signal(SIGPIPE, SIG_IGN);
+
     int sfd;
     struct linger ling = {0, 0};
     struct addrinfo* ai;
@@ -179,6 +218,9 @@ class LiteServer {
   /// The worker threads.
   std::vector<std::unique_ptr<WorkerInstance>> workers_;
 
+  /// sync point for replaying
+  std::barrier<std::function<void()>> barrier_;
+
   /// The next thread to use for a new connection.
   decltype(workers_)::iterator next_worker_;
 
@@ -197,6 +239,7 @@ class LiteServer {
       perror("accept");
       return;
     }
+    // std::cerr << "Accepted new connection: " << new_conn_fd << std::endl;
     reinterpret_cast<LiteServer*>(c->lite_server_)
         ->DispatchNewConnection(new_conn_fd);
   }

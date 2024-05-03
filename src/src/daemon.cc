@@ -11,9 +11,13 @@
 
 namespace lite {
 
-Daemon::Daemon(const std::function<void()> &Replay, std::string &backend_port,
-               const std::string pipe_path)
-    : Replay(Replay), pipe_path_(pipe_path), backend_port_(backend_port) {
+Daemon::Daemon(const std::function<bool()> &Replay,
+               std::function<void()> DisconnectFromBackend,
+               std::string &backend_port, const std::string pipe_path)
+    : Replay_(Replay),
+      pipe_path_(pipe_path),
+      backend_port_(backend_port),
+      DisconnectFromBackend_(DisconnectFromBackend) {
   // set up event_base
   struct event_config *ev_config;
   ev_config = event_config_new();
@@ -75,10 +79,14 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
     switch (message.action) {
       case PipeMessage::kEnterEmergencyMode:
         self->emergency_mode_ = true;
+        self->DisconnectFromBackend_();
         std::cout << "Daemon: Entering emergency mode" << std::endl;
         break;
       case PipeMessage::kExitEmergencyMode:
-        self->Replay();
+        if (!self->Replay_()) {
+          std::cerr << "Daemon: Failed to replay" << std::endl;
+          break;
+        }
         self->emergency_mode_ = false;
         std::cout << "Daemon: Exiting emergency mode" << std::endl;
         break;

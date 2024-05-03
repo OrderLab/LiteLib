@@ -22,6 +22,7 @@ enum ExperimentType {
 struct RemoteScriptConfig {
     experiment_type: ExperimentType,
     remote_addr: String,
+    monitor_file_path: String,
     #[serde(deserialize_with = "deserialize_duration")]
     crash_time: Duration,
 }
@@ -84,14 +85,14 @@ struct Record {
 
 async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Status {
     // TODO: change value to reference
-    let mut conn = match pool.get().await {
+    let conn = match pool.get().await {
         Ok(conn) => conn,
         Err(_) => {
             // println!("i: {}, key: {}, error: {}", i, key, e);
             return Status::Error;
         }
     };
-    // BUG: https://docs.rs/deadpool-redis/0.14.0/deadpool_redis/struct.Manager.html#method.recycle has PING and UNWATCH command, which redis-leveldb does not support
+    let mut conn_guard = conn.lock().await;
     let (old_value, new_value): (Option<String>, Option<String>) = match pipe()
         .atomic()
         .cmd("GET")
@@ -102,7 +103,7 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Stat
         .ignore()
         .cmd("GET")
         .arg(&key)
-        .query_async(&mut conn)
+        .query_async(&mut *conn_guard)
         .await
     {
         Ok(result) => result,
@@ -184,13 +185,14 @@ async fn main() {
         let value = base_value.clone();
         let bar = bar.clone();
         let handle = tokio::spawn(async move {
-            let mut conn = pool.get().await.unwrap_or_else(|e| {
+            let conn = pool.get().await.unwrap_or_else(|e| {
                 panic!("Initialize failed i: {}, error: {}", i, e);
             });
+            let mut conn_guard = conn.lock().await;
             let _: () = cmd("SET")
                 .arg(&i)
                 .arg(&value)
-                .query_async(&mut conn)
+                .query_async(&mut *conn_guard)
                 .await
                 .unwrap();
             bar.inc(1);
@@ -233,13 +235,15 @@ async fn main() {
                     "-tt",
                     &remote_script_config.remote_addr,
                     &format!(
-                        r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {}"#,
+                        r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {}"#,
                         remote_script_config.crash_time.as_secs(),
                         target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
                         match &remote_script_config.experiment_type {
                             ExperimentType::Full => "Full",
                             ExperimentType::Lite(_, _) => "Lite",
-                        }
+                        },
+                        cfg.benchmark.test_duration.as_secs(),
+                        remote_script_config.monitor_file_path,
                     ),
                 ])
                 .output()

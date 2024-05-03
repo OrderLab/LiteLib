@@ -16,6 +16,26 @@ struct CacheEntry {
     return (value ? value->size() : 0) + (flags ? flags->size() : 0) +
            sizeof(CAS);
   }
+
+  std::shared_ptr<std::vector<uint8_t>> ToRequests(
+      const std::vector<uint8_t> &key) const {
+    ParsedPacket req;
+    static std::vector<uint8_t> expiry(4, 0);  // TODO: use real one
+    req.header.magic = 0x80;
+    req.header.opcode = magic_enum::enum_underlying(Header::Opcode::kSetQ);
+    req.key = std::make_shared<std::vector<uint8_t>>(key);
+    req.value = value;
+    req.extra = flags;
+    req.header.CAS = CAS;
+    req.header.extras_length = 8;
+    req.header.key_length = req.key->size();
+    req.header.total_body_length =
+        req.value->size() + req.header.key_length + req.header.extras_length;
+    req.buffer->clear();
+    auto buffer = req.Serialize();
+    buffer->insert(buffer->begin() + 28, expiry.begin(), expiry.end());
+    return buffer;
+  }
 };
 
 struct LogEntry {  // TODO: deal with expiry
@@ -41,18 +61,23 @@ struct ConnectionInfo {
 };
 
 class Memcached {
-  using Cache = lite::Cache<std::vector<uint8_t>, CacheEntry>;
-  using Logger = lite::Logger<LogEntry>;
+  using Cache = lite::Cache<std::vector<uint8_t>, CacheEntry, Packet>;
+  using Logger = lite::Logger<Packet, std::vector<uint8_t>, CacheEntry>;
 
  public:
-  std::optional<std::vector<std::shared_ptr<Packet>>> Filter(
+  std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
       const std::shared_ptr<Packet> &resp, ConnectionInfo &_,
-      std::deque<std::shared_ptr<Packet>> &pending_requests) const;
+      std::deque<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests)
+      const;
 
   void NormalUpdate(const std::shared_ptr<Packet> &resp,
                     std::vector<std::shared_ptr<Packet>> requests,
-                    ConnectionInfo &_, Cache &cache) const;
+                    ConnectionInfo &_, Cache *cache) const;
+
+  void HandleReplayResponse(const std::shared_ptr<Packet> &resp,
+                            std::vector<std::shared_ptr<Packet>> requests,
+                            ConnectionInfo &_, Cache *cache) const;
 
   Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn_info,
-                        Cache &cache, Logger &logger) const;
+                        Cache *cache, Logger *logger) const;
 };
