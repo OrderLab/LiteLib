@@ -1,3 +1,4 @@
+use async_mutex::Mutex;
 use deadpool_redis::{
     redis::{cmd, pipe},
     Pool, Runtime,
@@ -8,7 +9,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use rand::distributions::{Alphanumeric, Distribution};
 use rand::Rng;
 use std::process::Command;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::{sleep_until, timeout, Duration, Instant};
 
@@ -83,8 +84,18 @@ struct Record {
     status: Status,
 }
 
-async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Status {
-    // TODO: change value to reference
+fn generate_new_value(old_value: &str) -> String {
+    let suffix_length = std::cmp::min(5, old_value.len());
+    let new_suffix: String = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(suffix_length)
+        .map(char::from)
+        .collect();
+    let (base, _) = old_value.split_at(old_value.len() - suffix_length);
+    base.to_string() + &new_suffix
+}
+
+async fn do_transaction(i: usize, pool: Pool, key: usize, value: Arc<Mutex<String>>) -> Status {
     let conn = match pool.get().await {
         Ok(conn) => conn,
         Err(_) => {
@@ -93,13 +104,15 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Stat
         }
     };
     let mut conn_guard = conn.lock().await;
+    let mut value_guard = value.lock().await;
+    let new_value_expected = generate_new_value(&*value_guard);
     let (old_value, new_value): (Option<String>, Option<String>) = match pipe()
         .atomic()
         .cmd("GET")
         .arg(&key)
         .cmd("SET")
         .arg(&key)
-        .arg(&value)
+        .arg(&new_value_expected)
         .ignore()
         .cmd("GET")
         .arg(&key)
@@ -112,14 +125,25 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Stat
             return Status::Error;
         }
     };
-    if old_value.is_none() {
-        // println!("i: {}, key: {} miss", i, key);
-        return Status::Miss;
-    }
-    if new_value != Some(value) {
-        println!("i: {}, key: {}, value: {:?}", i, key, new_value);
+    let new_value = match new_value {
+        Some(new_value) => new_value,
+        None => {
+            println!("i: {}, key: {} can't get new value", i, key);
+            return Status::TransactionError;
+        }
+    };
+    let old_value = match old_value {
+        Some(old_value) => old_value,
+        None => {
+            println!("i: {}, key: {} can't get old value", i, key);
+            return Status::Miss;
+        }
+    };
+    if new_value != new_value_expected || old_value != *value_guard {
+        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, *value_guard, old_value, new_value_expected, new_value);
         Status::TransactionError
     } else {
+        *value_guard = new_value_expected;
         Status::Success
     }
 }
@@ -179,10 +203,16 @@ async fn main() {
         .unwrap(),
     );
     let mut handles = Vec::new();
+    let mut values = Vec::new();
+    for _ in 0..cfg.benchmark.num_keys + 1 {
+        values.push(Arc::new(Mutex::new("".to_string())));
+    }
     for i in (1..cfg.benchmark.num_keys + 1).rev() {
         let pool = pool.clone();
         let i = i; // Copy i into the closure
-        let value = base_value.clone();
+        let mut value_guard = values[i].lock().await;
+        let new_value = generate_new_value(&base_value);
+        *value_guard = new_value.clone();
         let bar = bar.clone();
         let handle = tokio::spawn(async move {
             let conn = pool.get().await.unwrap_or_else(|e| {
@@ -191,7 +221,7 @@ async fn main() {
             let mut conn_guard = conn.lock().await;
             let _: () = cmd("SET")
                 .arg(&i)
-                .arg(&value)
+                .arg(&new_value)
                 .query_async(&mut *conn_guard)
                 .await
                 .unwrap();
@@ -272,7 +302,7 @@ async fn main() {
         let iter_end_time = start_time + interval * (i as u32 + 1);
         let pool = pool.clone();
         let key = idx[i];
-        let value = base_value.clone() + &idx[i].to_string();
+        let value = values[idx[i]].clone();
         let records = Arc::clone(&records);
         let bar = bar.clone();
         let handle = tokio::spawn(async move {
@@ -284,7 +314,7 @@ async fn main() {
             while tries <= cfg.benchmark.retry_count {
                 match timeout(
                     cfg.benchmark.timeout,
-                    do_transaction(i, pool.clone(), key, value.to_string()),
+                    do_transaction(i, pool.clone(), key, value.clone()),
                 )
                 .await
                 {
@@ -315,8 +345,8 @@ async fn main() {
                 status,
             };
             {
-                let mut records = records.lock().unwrap();
-                records.push(record);
+                let mut records_guard = records.lock().await;
+                records_guard.push(record);
             }
             bar.inc(1);
         });
@@ -339,8 +369,8 @@ async fn main() {
     );
 
     {
-        let records = records.lock().unwrap();
-        let json = serde_json::to_string(&(*records)).unwrap();
+        let records_guard = records.lock().await;
+        let json = serde_json::to_string(&(*records_guard)).unwrap();
         std::fs::write(cfg.benchmark.file_path, json).unwrap();
     }
 }

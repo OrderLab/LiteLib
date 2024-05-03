@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-mutex = "1.4.0"
 config = "0.14.0"
 # deadpool-redis = { version = "0.14.0", features = ["serde"] }
 deadpool-redis = { path = "./lib/deadpool-redis", features = ["serde"] }
