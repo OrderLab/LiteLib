@@ -58,6 +58,8 @@ class Connection {
       throw std::runtime_error("client event_add");
     }
 
+    memset(&backend_event_, 0, sizeof(backend_event_));
+
     if (is_client_connection &&
         (!lite_core_.emergency_mode_ && !lite_core_.is_replaying_))
       ConnectBackend();
@@ -183,7 +185,7 @@ class Connection {
     }
 
     // remove previous event
-    event_del(&backend_event_);
+    if (backend_event_.ev_base) event_del(&backend_event_);
 
     // Add an event that listens to the backend server's messages
     event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
