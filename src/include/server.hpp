@@ -72,8 +72,9 @@ class LiteServer {
                   perror("failed writing to worker eventfd");
                 }
               }
+              barrier_.arrive_and_wait();
             }),
-        barrier_(nthreads, []() {
+        barrier_(nthreads + 1, []() {
           std::cerr << "Replay barrier completed" << std::endl;
         }) {
     struct event_config* ev_config;
