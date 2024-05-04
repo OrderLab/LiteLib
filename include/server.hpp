@@ -73,6 +73,9 @@ class LiteServer {
                 }
               }
               barrier_.arrive_and_wait();
+            },
+            [&]() {
+              barrier_.arrive_and_wait();
             }),
         barrier_(nthreads + 1, []() {
           std::cerr << "Replay barrier completed" << std::endl;
