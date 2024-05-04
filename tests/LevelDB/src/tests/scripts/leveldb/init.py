@@ -9,10 +9,11 @@ parser.add_argument('-s', '--memory_size', type=str, help='The memory limit of t
 args = parser.parse_args()
 
 os.system(r'pgrep "redis-leveldb" | xargs kill -9')
+os.system(r"rm redis.db -r")
 os.system(r'pgrep "LiteLevelDB" | xargs kill -9')
 os.system(r'pgrep "lite_cli" | xargs kill -9')
 os.system(r'pgrep "redis-server" | xargs kill -9')
-os.system(r"rm redis.db -r")
+os.system(r'rm dump.rdb')
 
 if (args.experiment_type == 'Full'):
     boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379"]

@@ -32,11 +32,11 @@ sleep_for(crash_time - time.time())
 # ---------------------------------------------------------------- crashes
 
 os.system(r'pgrep "redis-leveldb" | xargs kill -9')
-os.system(r'pgrep "redis-server" | xargs kill -9')
-
-# time.sleep(10)
+os.system(r'pgrep "redis-server" | xargs kill -2')
 
 if args.experiment_type == 'Full':
+  # time.sleep(10)
+
   boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379"]
   utils.StartBackgroundProcess(boot_command)
 else:
@@ -46,6 +46,8 @@ else:
   boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "60001"]
   # boot_command = ["redis-server", "--port", "60001"]
   utils.StartBackgroundProcess(boot_command)
+
+  # time.sleep(10)
 
   # TODO: how to know if redis-leveldb is initialized?
   boot_command = ["/workspace/server/lite_cli", "-t", "/tmp/lite_LevelDB", "-p", "60001", "-m", "0"]
