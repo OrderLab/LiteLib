@@ -145,10 +145,10 @@ class LiteCore : public Daemon {
     std::cerr << "Replay connected to backend in " << tries << " tries\n";
 
     typename LoggerInner<Request>::LogEntry *entry;
-    size_t log_cnt = 0, dirty_cnt = 0;
 
     for (int i = 0; i < 2; i++) {  // Double flush to ensure the consistency of
                                    // in-flight connections
+      size_t log_cnt = 0, dirty_cnt = 0;
       while (LoggerInstance::Pop(logger_inner_, entry)) {  // TODO: less writes
         if (entry->state) {
           dirty_cnt++;
@@ -184,13 +184,13 @@ class LiteCore : public Daemon {
         }
         delete entry;
       }
+      std::cerr << "Replay i = " << i << " finished with " << log_cnt
+                << " log entries and " << dirty_cnt << " dirty entries\n";
       if (!i) WaitForAllInFlightConnections_();
     }
 
     // TODO: in-flight requests after this?
     close(backend_fd);
-    std::cerr << "Replay finished with " << log_cnt << " log entries and "
-              << dirty_cnt << " dirty entries\n";
 
     is_replaying_ = false;
 
