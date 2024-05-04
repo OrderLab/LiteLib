@@ -135,6 +135,7 @@ class Worker {
           std::cerr << "Thread " << self->thread_id_
                     << " reaches replay sync point" << std::endl;
           self->barrier_.arrive_and_wait();
+          self->barrier_.arrive_and_wait();
         }
       }
     } else {

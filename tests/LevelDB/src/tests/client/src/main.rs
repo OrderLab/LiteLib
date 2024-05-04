@@ -137,7 +137,7 @@ async fn do_transaction(
         }
     };
     if new_value != new_value_expected || old_value != *old_value_expected {
-        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, old_suffix_expected, old_value, new_value_expected, new_value);
+        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, old_value_expected, old_value, new_value_expected, new_value);
         *old_suffix_expected = new_suffix_expected;
         Status::TransactionError
     } else {

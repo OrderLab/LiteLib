@@ -58,7 +58,10 @@ void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
   if (conn.is_in_transaction_) {
     RESPArray *responses_resp = dynamic_cast<RESPArray *>(resp->command.get());
     if (responses_resp == nullptr) {
-      std::cerr << "Invalid response for EXEC\n";
+      std::cerr << "Invalid response for EXEC:";
+      auto response_buffer = resp->Serialize();
+      for (const auto &c : *response_buffer) std::cerr << c;
+      std::cerr << std::endl;
       return;
     }
     auto &responses = responses_resp->value;
@@ -125,7 +128,12 @@ void LevelDB::HandleReplayResponse(
     const std::shared_ptr<Packet> &resp,
     std::vector<std::shared_ptr<Packet>> requests, ConnectionInfo &conn,
     Cache *cache) {
-  // TODO: handle errors
+  auto error_msg = dynamic_cast<RESPError *>(resp->command.get());
+  if (error_msg) {
+    std::cerr << "Received error msg from full during replay: "
+              << error_msg->value << std::endl;
+    exit(1);  // TODO: handle error
+  }
   return;
 }
 

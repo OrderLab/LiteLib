@@ -31,7 +31,8 @@ class LiteCore : public Daemon {
            std::function<evutil_socket_t(void *)> GetBackendFdFromConnPtr,
            std::function<void(void *, std::shared_ptr<Request>)>
                PushBackPendingRequestIntoConnPtr,
-           std::function<void()> WaitForAllInFlightConnections)
+           std::function<void()> WaitForAllInFlightConnections,
+           std::function<void()> UnblockWorkerThreads)
       : Daemon([&] { return Replay(); },
                [&] { DisconnectFromBackend_(live_connections_); }, backend_port,
                pipe_path),
@@ -43,7 +44,8 @@ class LiteCore : public Daemon {
         ReconnectToBackend_(ReconnectToBackend),
         GetBackendFdFromConnPtr_(GetBackendFdFromConnPtr),
         PushBackPendingRequestIntoConnPtr_(PushBackPendingRequestIntoConnPtr),
-        WaitForAllInFlightConnections_(WaitForAllInFlightConnections) {}
+        WaitForAllInFlightConnections_(WaitForAllInFlightConnections),
+        UnblockWorkerThreads_(UnblockWorkerThreads) {}
 
   bool HandleRequest(
       std::shared_ptr<Request> req, ConnectionInfo &conn_info,
@@ -129,9 +131,10 @@ class LiteCore : public Daemon {
 
   std::function<void()> WaitForAllInFlightConnections_;
 
+  std::function<void()> UnblockWorkerThreads_;
+
   bool Replay() {
     is_replaying_ = true;
-    ReconnectToBackend_(live_connections_);
 
     evutil_socket_t backend_fd;
     size_t tries = 0;
@@ -189,10 +192,10 @@ class LiteCore : public Daemon {
       if (!i) WaitForAllInFlightConnections_();
     }
 
-    // TODO: in-flight requests after this?
     close(backend_fd);
 
     is_replaying_ = false;
+    UnblockWorkerThreads_();
 
     return true;
   }
