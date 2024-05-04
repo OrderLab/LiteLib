@@ -84,18 +84,13 @@ struct Record {
     status: Status,
 }
 
-fn generate_new_value(old_value: &str) -> String {
-    let suffix_length = std::cmp::min(5, old_value.len());
-    let new_suffix: String = rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(suffix_length)
-        .map(char::from)
-        .collect();
-    let (base, _) = old_value.split_at(old_value.len() - suffix_length);
-    base.to_string() + &new_suffix
-}
-
-async fn do_transaction(i: usize, pool: Pool, key: usize, old_value_expected: &mut String) -> Status {
+async fn do_transaction(
+    i: usize,
+    pool: Pool,
+    key: usize,
+    base_value: &str,
+    old_suffix_expected: &mut usize,
+) -> Status {
     let conn = match pool.get().await {
         Ok(conn) => conn,
         Err(_) => {
@@ -104,7 +99,9 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, old_value_expected: &m
         }
     };
     let mut conn_guard = conn.lock().await;
-    let new_value_expected = generate_new_value(&old_value_expected);
+    let new_suffix_expected = *old_suffix_expected + 1;
+    let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
+    let old_value_expected = format!("{}_{}_{}", base_value, key, *old_suffix_expected);
     let (old_value, new_value): (Option<String>, Option<String>) = match pipe()
         .atomic()
         .cmd("GET")
@@ -135,16 +132,16 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, old_value_expected: &m
         Some(old_value) => old_value,
         None => {
             println!("i: {}, key: {} can't get old value", i, key);
-            *old_value_expected = new_value_expected;
+            *old_suffix_expected = new_suffix_expected;
             return Status::Miss;
         }
     };
     if new_value != new_value_expected || old_value != *old_value_expected {
-        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, old_value_expected, old_value, new_value_expected, new_value);
-        *old_value_expected = new_value_expected;
+        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, old_suffix_expected, old_value, new_value_expected, new_value);
+        *old_suffix_expected = new_suffix_expected;
         Status::TransactionError
     } else {
-        *old_value_expected = new_value_expected;
+        *old_suffix_expected = new_suffix_expected;
         Status::Success
     }
 }
@@ -206,14 +203,12 @@ async fn main() {
     let mut handles = Vec::new();
     let mut values = Vec::new();
     for _ in 0..cfg.benchmark.num_keys + 1 {
-        values.push(Arc::new(Mutex::new("".to_string())));
+        values.push(Arc::new(Mutex::new(0 as usize)));
     }
     for i in (1..cfg.benchmark.num_keys + 1).rev() {
         let pool = pool.clone();
         let i = i; // Copy i into the closure
-        let mut value_guard = values[i].lock().await;
-        let new_value = generate_new_value(&base_value);
-        *value_guard = new_value.clone();
+        let value = format!("{}_{}_{}", base_value, i, 0);
         let bar = bar.clone();
         let handle = tokio::spawn(async move {
             let conn = pool.get().await.unwrap_or_else(|e| {
@@ -222,7 +217,7 @@ async fn main() {
             let mut conn_guard = conn.lock().await;
             let _: () = cmd("SET")
                 .arg(&i)
-                .arg(&new_value)
+                .arg(&value)
                 .query_async(&mut *conn_guard)
                 .await
                 .unwrap();
@@ -304,6 +299,7 @@ async fn main() {
         let pool = pool.clone();
         let key = idx[i];
         let value = values[idx[i]].clone();
+        let base_value = base_value.clone();
         let records = Arc::clone(&records);
         let bar = bar.clone();
         let handle = tokio::spawn(async move {
@@ -314,17 +310,17 @@ async fn main() {
             let mut status = Status::Timeout;
             while tries <= cfg.benchmark.retry_count {
                 let mut value_guard = value.lock().await;
-                let mut old_value_expected = (*value_guard).clone();
+                let mut old_suffix_expected = (*value_guard).clone();
                 match timeout(
                     cfg.benchmark.timeout,
-                    do_transaction(i, pool.clone(), key, &mut old_value_expected),
+                    do_transaction(i, pool.clone(), key, &base_value, &mut old_suffix_expected),
                 )
                 .await
                 {
                     Ok(result) => {
                         if result != Status::Error {
                             status = result;
-                            *value_guard = old_value_expected;
+                            *value_guard = old_suffix_expected;
                             break;
                         }
                     }
