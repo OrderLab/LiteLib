@@ -95,7 +95,7 @@ fn generate_new_value(old_value: &str) -> String {
     base.to_string() + &new_suffix
 }
 
-async fn do_transaction(i: usize, pool: Pool, key: usize, value: Arc<Mutex<String>>) -> Status {
+async fn do_transaction(i: usize, pool: Pool, key: usize, old_value_expected: &mut String) -> Status {
     let conn = match pool.get().await {
         Ok(conn) => conn,
         Err(_) => {
@@ -104,8 +104,7 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: Arc<Mutex<Strin
         }
     };
     let mut conn_guard = conn.lock().await;
-    let mut value_guard = value.lock().await;
-    let new_value_expected = generate_new_value(&*value_guard);
+    let new_value_expected = generate_new_value(&old_value_expected);
     let (old_value, new_value): (Option<String>, Option<String>) = match pipe()
         .atomic()
         .cmd("GET")
@@ -136,14 +135,16 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: Arc<Mutex<Strin
         Some(old_value) => old_value,
         None => {
             println!("i: {}, key: {} can't get old value", i, key);
+            *old_value_expected = new_value_expected;
             return Status::Miss;
         }
     };
-    if new_value != new_value_expected || old_value != *value_guard {
-        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, *value_guard, old_value, new_value_expected, new_value);
+    if new_value != new_value_expected || old_value != *old_value_expected {
+        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, old_value_expected, old_value, new_value_expected, new_value);
+        *old_value_expected = new_value_expected;
         Status::TransactionError
     } else {
-        *value_guard = new_value_expected;
+        *old_value_expected = new_value_expected;
         Status::Success
     }
 }
@@ -312,15 +313,18 @@ async fn main() {
             let mut tries = 1;
             let mut status = Status::Timeout;
             while tries <= cfg.benchmark.retry_count {
+                let mut value_guard = value.lock().await;
+                let mut old_value_expected = (*value_guard).clone();
                 match timeout(
                     cfg.benchmark.timeout,
-                    do_transaction(i, pool.clone(), key, value.clone()),
+                    do_transaction(i, pool.clone(), key, &mut old_value_expected),
                 )
                 .await
                 {
                     Ok(result) => {
                         if result != Status::Error {
                             status = result;
+                            *value_guard = old_value_expected;
                             break;
                         }
                     }
@@ -329,6 +333,7 @@ async fn main() {
                     }
                 }
                 tries += 1;
+                drop(value_guard);
             }
             if tries > cfg.benchmark.retry_count {
                 status = Status::Timeout;
