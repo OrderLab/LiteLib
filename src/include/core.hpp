@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include "cache.hpp"
 #include "concept.hpp"
 #include "daemon.hpp"
@@ -134,6 +136,8 @@ class LiteCore : public Daemon {
   std::function<void()> UnblockWorkerThreads_;
 
   bool Replay() {
+    const auto start_time = std::chrono::high_resolution_clock::now();
+
     is_replaying_ = true;
 
     evutil_socket_t backend_fd;
@@ -196,6 +200,12 @@ class LiteCore : public Daemon {
 
     is_replaying_ = false;
     UnblockWorkerThreads_();
+
+    const auto end_time = std::chrono::high_resolution_clock::now();
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              end_time - start_time)
+                              .count();
+    std::cerr << "Replay took " << duration << " ms\n";
 
     return true;
   }

@@ -84,6 +84,14 @@ struct Record {
     status: Status,
 }
 
+fn get_last_n_char(string: &str, n: usize) -> &str {
+    let len = string.len();
+    if len < n {
+        return string;
+    }
+    &string[len - n..]
+}
+
 async fn do_transaction(
     i: usize,
     pool: Pool,
@@ -137,7 +145,7 @@ async fn do_transaction(
         }
     };
     if new_value != new_value_expected || old_value != *old_value_expected {
-        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, old_value_expected, old_value, new_value_expected, new_value);
+        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, get_last_n_char(&old_value_expected, 10), get_last_n_char(&old_value, 10), get_last_n_char(&new_value_expected, 10), get_last_n_char(&new_value, 10));
         *old_suffix_expected = new_suffix_expected;
         Status::TransactionError
     } else {
@@ -354,18 +362,25 @@ async fn main() {
         handles.push(handle);
         sleep_until(iter_end_time).await;
     }
-    let end_time = Instant::now();
-    let elapsed = end_time - start_time;
+    let spawn_end_time = Instant::now();
 
     for handle in handles {
         handle.await.unwrap();
     }
     bar.finish();
+    let end_time = Instant::now();
 
     println!("\nFinished benchmarking");
+    let spawn_elapsed = spawn_end_time - start_time;
+    let elapsed = end_time - start_time;
     println!(
-        "Spawning time: {:?}, actual rps: {:?}",
-        elapsed,
+        "Spawning time: {:?} ms, rps: {:?}",
+        spawn_elapsed.as_millis(),
+        num_requests as f64 / spawn_elapsed.as_secs_f64()
+    );
+    println!(
+        "Serve time: {:?} ms, rps: {:?}",
+        elapsed.as_millis(),
         num_requests as f64 / elapsed.as_secs_f64()
     );
 
