@@ -1,13 +1,8 @@
 #pragma once
 
-#include <event.h>
-#include <netinet/tcp.h>
-
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <string>
-#include <vector>
 
 #include "core.hpp"
 #include "logger.hpp"
@@ -16,17 +11,21 @@
 namespace lite {
 
 /// Represents a single connection from a client.
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 class Connection {
-  using ConnectionInstance = Connection<Request, Response, Application,
-                                        CacheKey, CacheEntry, ConnectionInfo>;
+  using ConnectionInstance = Connection<Application, Request, Response,
+                                        ConnectionInfo, CacheKey, CacheEntry>;
   using LiteCoreInstance = LiteCore<Application, Request, Response,
                                     ConnectionInfo, CacheKey, CacheEntry>;
-  using LoggerInstance = Logger<Request, CacheKey, CacheEntry>;
-  using LoggerInnerInstance = LoggerInner<Request>;
-  using CacheInstance = Cache<CacheKey, CacheEntry, Request>;
-  using CacheInnerInstance = CacheInner<CacheKey, CacheEntry>;
+  using LoggerInstance = Logger<Application, Request, Response, ConnectionInfo,
+                                CacheKey, CacheEntry>;
+  using LogEntryInstance = LogEntry<Application, Request, Response,
+                                    ConnectionInfo, CacheKey, CacheEntry>;
+  using CacheInstance = Cache<Application, Request, Response, ConnectionInfo,
+                              CacheKey, CacheEntry>;
+  using CacheInnerInstance = CacheInner<Application, Request, Response,
+                                        ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
   Connection(const Connection&) = delete;
@@ -70,7 +69,7 @@ class Connection {
   void* lite_server_;
 
  private:
-  std::shared_ptr<void*> self_;
+  std::shared_ptr<ConnectionInstance*> self_;
 
   /// Corresponding worker's event_base
   struct event_base* const base_;
@@ -90,7 +89,7 @@ class Connection {
   /// The outgoing response.
   std::shared_ptr<Response> response_;
 
-  typename LoggerInnerInstance::LogEntry log_head_;
+  LogEntryInstance log_head_;
   CacheInstance cache_;
   LoggerInstance logger_;
 };

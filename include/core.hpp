@@ -1,15 +1,22 @@
 #pragma once
 
-#include <chrono>
+#include <barrier>
 
 #include "cache.hpp"
 #include "concept.hpp"
 #include "daemon.hpp"
 #include "logger.hpp"
-#include "network_utils.hpp"
 #include "thread_safe_set.hpp"
 
 namespace lite {
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+class Connection;
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+class Worker;
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -17,24 +24,24 @@ template <typename Application, typename Request, typename Response,
                          CacheKey, CacheEntry> &&
            IsCacheEntry<CacheKey, CacheEntry>
 class LiteCore : public Daemon {
-  using LoggerInstance = Logger<Request, CacheKey, CacheEntry>;
-  using LoggerInnerInstance = LoggerInner<Request>;
-  using CacheInstance = Cache<CacheKey, CacheEntry, Request>;
-  using CacheInnerInstance = CacheInner<CacheKey, CacheEntry>;
+  using LoggerInstance = Logger<Application, Request, Response, ConnectionInfo,
+                                CacheKey, CacheEntry>;
+  using LoggerInnerInstance = LoggerInner<Application, Request, Response,
+                                          ConnectionInfo, CacheKey, CacheEntry>;
+  using CacheInstance = Cache<Application, Request, Response, ConnectionInfo,
+                              CacheKey, CacheEntry>;
+  using CacheInnerInstance = CacheInner<Application, Request, Response,
+                                        ConnectionInfo, CacheKey, CacheEntry>;
+  using ConnectionInstance = Connection<Application, Request, Response,
+                                        ConnectionInfo, CacheKey, CacheEntry>;
+  using WorkerInstance = Worker<Application, Request, Response, ConnectionInfo,
+                                CacheKey, CacheEntry>;
 
  public:
   LiteCore(Application &app, const size_t &max_item_count,
            std::string &backend_addr, std::string &backend_port,
-           const char pipe_path[],
-           std::function<void(ThreadSafeSet<void *> &live_connections)>
-               ReconnectToBackend,
-           std::function<void(ThreadSafeSet<void *> &live_connections)>
-               DisconnectFromBackend,
-           std::function<evutil_socket_t(void *)> GetBackendFdFromConnPtr,
-           std::function<void(void *, std::shared_ptr<Request>)>
-               PushBackPendingRequestIntoConnPtr,
-           std::function<void()> WaitForAllInFlightConnections,
-           std::function<void()> UnblockWorkerThreads);
+           const char pipe_path[], std::barrier<std::function<void()>> &barrier,
+           std::vector<std::unique_ptr<WorkerInstance>> &workers);
 
   bool HandleRequest(
       std::shared_ptr<Request> req, ConnectionInfo &conn_info,
@@ -51,7 +58,7 @@ class LiteCore : public Daemon {
 
   bool is_replaying_ = false;
 
-  ThreadSafeSet<void *> live_connections_;
+  ThreadSafeSet<ConnectionInstance *> live_connections_;
 
   CacheInnerInstance cache_inner_;
 
@@ -60,20 +67,9 @@ class LiteCore : public Daemon {
  private:
   Application &app_;
 
-  std::function<void(ThreadSafeSet<void *> &live_connections)>
-      ReconnectToBackend_;
+  std::barrier<std::function<void()>> &barrier_;
 
-  std::function<void(ThreadSafeSet<void *> &live_connections)>
-      DisconnectFromBackend_;
-
-  std::function<evutil_socket_t(void *)> GetBackendFdFromConnPtr_;
-
-  std::function<void(void *, std::shared_ptr<Request>)>
-      PushBackPendingRequestIntoConnPtr_;
-
-  std::function<void()> WaitForAllInFlightConnections_;
-
-  std::function<void()> UnblockWorkerThreads_;
+  std::vector<std::unique_ptr<WorkerInstance>> &workers_;
 
   bool Replay();
 };

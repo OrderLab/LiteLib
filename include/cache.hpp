@@ -5,37 +5,44 @@
 
 namespace lite {
 
-template <typename Key, typename CacheEntry, typename Request>
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 class Cache {  // A wrapper for CacheInner
-  using LoggerInnerInstance = LoggerInner<Request>;
-  using CacheInnerInstance = CacheInner<Key, CacheEntry>;
+  using LoggerInnerInstance = LoggerInner<Application, Request, Response,
+                                          ConnectionInfo, CacheKey, CacheEntry>;
+  using LogEntryInstance = LogEntry<Application, Request, Response,
+                                    ConnectionInfo, CacheKey, CacheEntry>;
+  using CacheInnerInstance = CacheInner<Application, Request, Response,
+                                        ConnectionInfo, CacheKey, CacheEntry>;
+  using CacheStateInstance = CacheState<Application, Request, Response,
+                                        ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
   explicit Cache(CacheInnerInstance &cache_inner,
                  LoggerInnerInstance &logger_inner,
-                 LoggerInnerInstance::LogEntry *const conn_head)
+                 LogEntryInstance *const conn_head)
       : cache_inner_(cache_inner),
         logger_inner_(logger_inner),
         conn_head_(conn_head) {}
 
   ~Cache() {}
 
-  bool Add(const Key &key, const CacheEntry &value,
+  bool Add(const CacheKey &key, const CacheEntry &value,
            bool in_transaction = false);
 
-  bool Get(const Key &key, CacheEntry &value, bool in_transaction = false);
+  bool Get(const CacheKey &key, CacheEntry &value, bool in_transaction = false);
 
   // TODO: how to force the application to log it?
-  bool Delete(const Key &key, bool in_transaction = false);
+  bool Delete(const CacheKey &key, bool in_transaction = false);
 
-  bool Replace(const Key &key, const CacheEntry &value,
+  bool Replace(const CacheKey &key, const CacheEntry &value,
                bool in_transaction = false);
 
-  bool Set(const Key &key, const CacheEntry &value,
+  bool Set(const CacheKey &key, const CacheEntry &value,
            bool in_transaction = false);
 
   void ConstVisitAll(
-      std::function<void(const Key &, const CacheEntry &)> visitor,
+      std::function<void(const CacheKey &, const CacheEntry &)> visitor,
       bool in_transaction = false);
 
   std::unique_lock<std::shared_mutex> TransactionLock() {
@@ -46,7 +53,7 @@ class Cache {  // A wrapper for CacheInner
   CacheInnerInstance &cache_inner_;
   LoggerInnerInstance &logger_inner_;
 
-  LoggerInnerInstance::LogEntry *const conn_head_;
+  LogEntryInstance *const conn_head_;
 };
 
 }  // namespace lite

@@ -1,28 +1,21 @@
 #pragma once
 
-#include <event.h>
 #include <pthread.h>
 #include <readerwriterqueue.h>
-#include <sys/eventfd.h>
-#include <unistd.h>
 
 #include <barrier>
-#include <cstdlib>
-#include <iostream>
-#include <memory>
 #include <queue>
-#include <string>
 
 #include "connection.hpp"
 #include "core.hpp"
 
 namespace lite {
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 class Worker {
-  using ConnectionInstance = Connection<Request, Response, Application,
-                                        CacheKey, CacheEntry, ConnectionInfo>;
+  using ConnectionInstance = Connection<Application, Request, Response,
+                                        ConnectionInfo, CacheKey, CacheEntry>;
   using LiteCoreInstance = LiteCore<Application, Request, Response,
                                     ConnectionInfo, CacheKey, CacheEntry>;
 

@@ -4,18 +4,22 @@
 
 namespace lite {
 
-template <typename Request>
-LoggerInner<Request>::LoggerInner()
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::LoggerInner()
     : chr_head_(nullptr, nullptr, nullptr),
       chr_tail_(nullptr, nullptr, nullptr) {
   chr_head_.chr_nxt = &chr_tail_;
   chr_tail_.chr_pre = &chr_head_;
 }
 
-template <typename Request>
-void LoggerInner<Request>::Log(
-    LogEntry *entry,
-    LogEntry *conn_head) {  // TODO: deal with capacity issues
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                 CacheEntry>::
+    Log(LogEntryInstance *entry,
+        LogEntryInstance *conn_head) {  // TODO: deal with capacity issues
   std::unique_lock<std::mutex> chr_lock(chr_mutex_);
   entry->chr_pre = &chr_head_;
   entry->chr_nxt = chr_head_.chr_nxt;
@@ -28,8 +32,10 @@ void LoggerInner<Request>::Log(
   conn_head->conn_nxt = entry;
 }
 
-template <typename Request>
-bool LoggerInner<Request>::Pop(LogEntry *&entry) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                 CacheEntry>::Pop(LogEntryInstance *&entry) {
   std::unique_lock<std::mutex> chr_lock(chr_mutex_);
   if (chr_tail_.chr_pre == &chr_head_) return false;
   entry = chr_tail_.chr_pre;
@@ -37,11 +43,14 @@ bool LoggerInner<Request>::Pop(LogEntry *&entry) {
   return true;
 }
 
-template <typename Request>
-bool LoggerInner<Request>::EraseConnectionLogs(LogEntry *conn_head,
-                                               const size_t number_of_entries) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                 CacheEntry>::EraseConnectionLogs(LogEntryInstance *conn_head,
+                                                  const size_t
+                                                      number_of_entries) {
   std::unique_lock<std::mutex> chr_lock(chr_mutex_);
-  LogEntry *entry = conn_head->conn_nxt, *nxt_entry;
+  LogEntryInstance *entry = conn_head->conn_nxt, *nxt_entry;
   for (size_t i = 0; i < number_of_entries; ++i, entry = nxt_entry) {
     if (!entry) {
       std::cerr << "Expected to erase " << number_of_entries
@@ -62,8 +71,10 @@ bool LoggerInner<Request>::EraseConnectionLogs(LogEntry *conn_head,
   return true;
 }
 
-template <typename Request>
-bool LoggerInner<Request>::Empty() {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                 CacheEntry>::Empty() {
   return chr_tail_.chr_pre == &chr_head_;
 }
 
