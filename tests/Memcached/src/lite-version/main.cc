@@ -3,7 +3,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread/thread.hpp>
 #include <iostream>
-#include <server.hpp>
+#include <lite.hpp>
 #include <string>
 
 #include "packet.hpp"

@@ -2,7 +2,6 @@
 
 #include <event.h>
 
-#include <core.hpp>
 #include <memory>
 #include <string>
 
