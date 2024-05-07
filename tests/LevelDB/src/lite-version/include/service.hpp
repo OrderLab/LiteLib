@@ -40,8 +40,10 @@ struct ConnectionInfo {
 };
 
 class LevelDB {
-  using Cache = lite::Cache<std::string, CacheEntry, Packet>;
-  using Logger = lite::Logger<Packet, std::string, CacheEntry>;
+  using Cache = lite::Cache<LevelDB, Packet, Packet, ConnectionInfo,
+                            std::string, CacheEntry>;
+  using Logger = lite::Logger<LevelDB, Packet, Packet, ConnectionInfo,
+                              std::string, CacheEntry>;
 
  public:
   std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(

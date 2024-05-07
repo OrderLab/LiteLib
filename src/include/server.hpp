@@ -1,32 +1,26 @@
 #pragma once
 
-#include <event.h>
-#include <fcntl.h>
-#include <netinet/tcp.h>
-#include <signal.h>
-#include <sysexits.h>
-
 #include <barrier>
-#include <core.hpp>
 #include <memory>
 #include <queue>
 #include <string>
 
 #include "connection.hpp"
+#include "core.hpp"
 #include "worker.hpp"
 
 namespace lite {
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 class LiteServer {
-  using ConnectionInstance = Connection<Request, Response, Application,
-                                        CacheKey, CacheEntry, ConnectionInfo>;
+  using ConnectionInstance = Connection<Application, Request, Response,
+                                        ConnectionInfo, CacheKey, CacheEntry>;
   using LiteCoreInstance = LiteCore<Application, Request, Response,
                                     ConnectionInfo, CacheKey, CacheEntry>;
-  using WorkerInstance = Worker<Request, Response, Application, CacheKey,
-                                CacheEntry, ConnectionInfo>;
+  using WorkerInstance = Worker<Application, Request, Response, ConnectionInfo,
+                                CacheKey, CacheEntry>;
 
  public:
   LiteServer& operator=(const LiteServer&) = delete;

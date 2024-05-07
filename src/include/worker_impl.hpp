@@ -1,14 +1,23 @@
 #pragma once
 
+#include <event.h>
+#include <pthread.h>
+#include <readerwriterqueue.h>
+#include <sys/eventfd.h>
+#include <unistd.h>
+
+#include <cstdlib>
+#include <iostream>
+
 #include "worker.hpp"
 
 namespace lite {
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-Worker<Request, Response, Application, CacheKey, CacheEntry,
-       ConnectionInfo>::Worker(LiteCoreInstance &lite_core,
-                               std::barrier<std::function<void()>> &barrier)
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+       CacheEntry>::Worker(LiteCoreInstance &lite_core,
+                           std::barrier<std::function<void()>> &barrier)
     : lite_core_(lite_core), barrier_(barrier) {
   notify_event_fd = eventfd(0, EFD_NONBLOCK);
   if (notify_event_fd == -1) {
@@ -35,10 +44,10 @@ Worker<Request, Response, Application, CacheKey, CacheEntry,
   }
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-void Worker<Request, Response, Application, CacheKey, CacheEntry,
-            ConnectionInfo>::Run() {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::Run() {
   pthread_attr_t attr;
   int ret;
 
@@ -52,10 +61,10 @@ void Worker<Request, Response, Application, CacheKey, CacheEntry,
   pthread_setname_np(thread_id_, "mc-worker");
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-void *Worker<Request, Response, Application, CacheKey, CacheEntry,
-             ConnectionInfo>::ThreadBody(void *arg_self) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void *Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+             CacheEntry>::ThreadBody(void *arg_self) {
   Worker *self = static_cast<Worker *>(arg_self);
 
   event_base_loop(self->base_, 0);
@@ -64,11 +73,11 @@ void *Worker<Request, Response, Application, CacheKey, CacheEntry,
   return NULL;
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-void Worker<Request, Response, Application, CacheKey, CacheEntry,
-            ConnectionInfo>::NotifyHandler(evutil_socket_t fd, short which,
-                                           void *arg_self) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::NotifyHandler(evutil_socket_t fd, short which,
+                                       void *arg_self) {
   Worker *self = static_cast<Worker *>(arg_self);
 
   if (fd == self->notify_event_fd) {

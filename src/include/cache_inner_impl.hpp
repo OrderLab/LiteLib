@@ -1,20 +1,26 @@
 #pragma once
 
+#include <iostream>
+
 #include "cache_inner.hpp"
 
 namespace lite {
 
-template <typename Key, typename CacheEntry>
-CacheInner<Key, CacheEntry>::CacheInner(const size_t &max_size,
-                                        std::atomic<bool> &emergency_mode)
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::CacheInner(const size_t &max_size,
+                                   std::atomic<bool> &emergency_mode)
     : max_size_(max_size), size(0), emergency_mode_(emergency_mode) {
   lru_head_.pre_ = nullptr;
   lru_head_.nxt_ = &lru_tail_;
   lru_tail_.pre_ = &lru_head_;
 }
 
-template <typename Key, typename CacheEntry>
-CacheInner<Key, CacheEntry>::~CacheInner() {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::~CacheInner() {
   ListNode *node = lru_head_.nxt_;
   ListNode *nxt;
 
@@ -25,10 +31,13 @@ CacheInner<Key, CacheEntry>::~CacheInner() {
   }
 }
 
-template <typename Key, typename CacheEntry>
-bool CacheInner<Key, CacheEntry>::Add(const Key &key, const CacheEntry &value,
-                                      const bool in_transaction,
-                                      void *dirty_node, State *&new_state) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::Add(const CacheKey &key, const CacheEntry &value,
+                                 const bool in_transaction,
+                                 LogEntryInstance *dirty_node,
+                                 CacheStateInstance *&new_state) {
   std::shared_lock<std::shared_mutex> transaction_lock;
   if (!in_transaction) {
     transaction_lock = std::shared_lock<std::shared_mutex>{transaction_mutex_};
@@ -55,9 +64,11 @@ bool CacheInner<Key, CacheEntry>::Add(const Key &key, const CacheEntry &value,
   return true;
 }
 
-template <typename Key, typename CacheEntry>
-bool CacheInner<Key, CacheEntry>::Get(const Key &key, CacheEntry &value,
-                                      bool in_transaction) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::Get(const CacheKey &key, CacheEntry &value,
+                                 bool in_transaction) {
   std::shared_lock<std::shared_mutex> transaction_lock;
   if (!in_transaction) {
     transaction_lock = std::shared_lock<std::shared_mutex>{transaction_mutex_};
@@ -80,9 +91,11 @@ bool CacheInner<Key, CacheEntry>::Get(const Key &key, CacheEntry &value,
   });
 }
 
-template <typename Key, typename CacheEntry>
-bool CacheInner<Key, CacheEntry>::Delete(const Key &key, bool in_transaction,
-                                         void *&dirty_node) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::Delete(const CacheKey &key, bool in_transaction,
+                                    LogEntryInstance *&dirty_node) {
   std::shared_lock<std::shared_mutex> transaction_lock;
   if (!in_transaction) {
     transaction_lock = std::shared_lock<std::shared_mutex>{transaction_mutex_};
@@ -107,12 +120,15 @@ bool CacheInner<Key, CacheEntry>::Delete(const Key &key, bool in_transaction,
   return true;
 }
 
-template <typename Key, typename CacheEntry>
-bool CacheInner<Key, CacheEntry>::Replace(const Key &key,
-                                          const CacheEntry &value,
-                                          bool in_transaction, void *dirty_node,
-                                          void *&old_dirty_node,
-                                          State *&new_state) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::Replace(const CacheKey &key,
+                                     const CacheEntry &value,
+                                     bool in_transaction,
+                                     LogEntryInstance *dirty_node,
+                                     LogEntryInstance *&old_dirty_node,
+                                     CacheStateInstance *&new_state) {
   std::shared_lock<std::shared_mutex> transaction_lock;
   if (!in_transaction) {
     transaction_lock = std::shared_lock<std::shared_mutex>{transaction_mutex_};
@@ -152,10 +168,13 @@ bool CacheInner<Key, CacheEntry>::Replace(const Key &key,
   return ret;
 }
 
-template <typename Key, typename CacheEntry>
-void CacheInner<Key, CacheEntry>::ConstVisitAll(
-    std::function<void(const Key &, const CacheEntry &)> visitor,
-    bool in_transaction) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::
+    ConstVisitAll(
+        std::function<void(const CacheKey &, const CacheEntry &)> visitor,
+        bool in_transaction) {
   std::shared_lock<std::shared_mutex> transaction_lock;
   if (!in_transaction) {
     transaction_lock = std::shared_lock<std::shared_mutex>{transaction_mutex_};
@@ -163,8 +182,10 @@ void CacheInner<Key, CacheEntry>::ConstVisitAll(
   cache_.visit_all([&](auto &x) { visitor(x.first, x.second.value); });
 }
 
-template <typename Key, typename CacheEntry>
-void CacheInner<Key, CacheEntry>::Evict() {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::Evict() {
   // std::cerr << "Evict" << std::endl;
   while (size > max_size_) {
     ListNode *moribund = lru_tail_.pre_;

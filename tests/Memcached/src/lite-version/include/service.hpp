@@ -61,8 +61,10 @@ struct ConnectionInfo {
 };
 
 class Memcached {
-  using Cache = lite::Cache<std::vector<uint8_t>, CacheEntry, Packet>;
-  using Logger = lite::Logger<Packet, std::vector<uint8_t>, CacheEntry>;
+  using Cache = lite::Cache<Memcached, Packet, Packet, ConnectionInfo,
+                            std::vector<uint8_t>, CacheEntry>;
+  using Logger = lite::Logger<Memcached, Packet, Packet, ConnectionInfo,
+                              std::vector<uint8_t>, CacheEntry>;
 
  public:
   std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(

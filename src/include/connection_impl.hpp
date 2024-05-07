@@ -1,19 +1,22 @@
 #pragma once
 
+#include <event.h>
+#include <netinet/tcp.h>
+
 #include "connection.hpp"
 
 namespace lite {
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-Connection<Request, Response, Application, CacheKey, CacheEntry,
-           ConnectionInfo>::Connection(const evutil_socket_t sfd,
-                                       const int event_flags,
-                                       struct event_base* base,
-                                       EventHandler event_handler,
-                                       void* lite_server,
-                                       LiteCoreInstance& lite_core,
-                                       bool is_client_connection)
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+Connection<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::Connection(const evutil_socket_t sfd,
+                                   const int event_flags,
+                                   struct event_base* base,
+                                   EventHandler event_handler,
+                                   void* lite_server,
+                                   LiteCoreInstance& lite_core,
+                                   bool is_client_connection)
     : base_(base),
       client_fd_(sfd),
       backend_fd_(-1),
@@ -21,7 +24,7 @@ Connection<Request, Response, Application, CacheKey, CacheEntry,
       response_(std::make_unique<Response>()),
       lite_server_(lite_server),
       lite_core_(lite_core),
-      self_(std::make_shared<void*>(this)),
+      self_(std::make_shared<ConnectionInstance*>(this)),
       log_head_(nullptr, nullptr, self_),
       cache_(lite_core.cache_inner_, lite_core.logger_inner_, &log_head_),
       logger_(lite_core.logger_inner_, &log_head_) {
@@ -40,10 +43,10 @@ Connection<Request, Response, Application, CacheKey, CacheEntry,
     ConnectBackend();
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-Connection<Request, Response, Application, CacheKey, CacheEntry,
-           ConnectionInfo>::~Connection() {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+Connection<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::~Connection() {
   lite_core_.live_connections_.erase(this);
   *self_ = nullptr;
 
@@ -56,11 +59,11 @@ Connection<Request, Response, Application, CacheKey, CacheEntry,
   // std::cerr << "connection closed" << std::endl;
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-void Connection<Request, Response, Application, CacheKey, CacheEntry,
-                ConnectionInfo>::ClientHandler(evutil_socket_t fd, short which,
-                                               void* arg_conn) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::ClientHandler(evutil_socket_t fd, short which,
+                                           void* arg_conn) {
   auto conn = static_cast<Connection*>(arg_conn);
   if (fd != conn->client_fd_) {
     std::cerr << "ClientHandler: fd mismatch. Expecting " << conn->client_fd_
@@ -106,11 +109,11 @@ void Connection<Request, Response, Application, CacheKey, CacheEntry,
   return;
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-void Connection<Request, Response, Application, CacheKey, CacheEntry,
-                ConnectionInfo>::BackendHandler(evutil_socket_t fd, short which,
-                                                void* arg_conn) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::BackendHandler(evutil_socket_t fd, short which,
+                                            void* arg_conn) {
   auto conn = static_cast<Connection*>(arg_conn);
   if (fd != conn->backend_fd_) {
     std::cerr << "BackendHandler: fd mismatch. Expecting " << conn->backend_fd_
@@ -152,10 +155,10 @@ void Connection<Request, Response, Application, CacheKey, CacheEntry,
   return;
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-bool Connection<Request, Response, Application, CacheKey, CacheEntry,
-                ConnectionInfo>::ConnectBackend() {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::ConnectBackend() {
   // Set up a socket connection to the backend server
   if ((backend_fd_ = network::TryConnectBackend(
            lite_core_.backend_addr_, lite_core_.backend_port_)) == -1) {

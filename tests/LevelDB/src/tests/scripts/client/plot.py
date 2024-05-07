@@ -13,6 +13,9 @@ def plot_throughput(ax, stat):
   ax.fill_between(range(len(stat["Timeout"])), base, base + stat["Timeout"], label="Timeout", alpha=0.5, color="tab:red")
   base += stat["Timeout"]
   ax.fill_between(range(len(stat["Error"])), base, base + stat["Error"], label="Error", alpha=0.5, color="tab:purple")
+  if np.max(stat["TransactionError"]) > 0:
+    base += stat["Error"]
+    ax.fill_between(range(len(stat["TransactionError"])), base, base + stat["TransactionError"], label="TransactionError", alpha=0.5, color="0")
   # ax.plot(stat["cnt"], label="Total")
   # ax.plot(stat["Success"], label="Success")
   # ax.plot(stat["Miss"], label="Miss")
@@ -80,7 +83,7 @@ for i in range(cnt):
 
 stats = []
 for i in range(cnt):
-  stat = {"cnt": [], "lat": [], "tries": [], "Success": [], "Miss": [], "Timeout": [], "Error": []}
+  stat = {"cnt": [], "lat": [], "tries": [], "Success": [], "Miss": [], "Timeout": [], "Error": [], "TransactionError": []}
   for line in logs[i]:
     index = math.floor(line["begin"] - logs[i][0]["begin"])
     if len(stat["cnt"]) < index + 1:
@@ -91,6 +94,7 @@ for i in range(cnt):
       stat["Miss"] += [0] * (index + 1 - len(stat["Miss"]))
       stat["Timeout"] += [0] * (index + 1 - len(stat["Timeout"]))
       stat["Error"] += [0] * (index + 1 - len(stat["Error"]))
+      stat["TransactionError"] += [0] * (index + 1 - len(stat["TransactionError"]))
     stat["cnt"][index] += 1
     if line["status"] == "Success":
       stat["lat"][index] += line["end"] - line["begin"]

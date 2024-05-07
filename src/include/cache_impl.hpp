@@ -4,15 +4,16 @@
 
 namespace lite {
 
-template <typename Key, typename CacheEntry, typename Request>
-bool Cache<Key, CacheEntry, Request>::Add(const Key &key,
-                                          const CacheEntry &value,
-                                          bool in_transaction) {
-  typename LoggerInnerInstance::LogEntry *dirty = nullptr;
-  typename CacheInnerInstance::State *state = nullptr;
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::Add(const CacheKey &key, const CacheEntry &value,
+                            bool in_transaction) {
+  LogEntryInstance *dirty = nullptr;
+  CacheStateInstance *state = nullptr;
   if (cache_inner_.emergency_mode_) {
-    dirty = new LoggerInnerInstance::LogEntry(nullptr, nullptr,
-                                              conn_head_->backend_conn_ptr);
+    dirty =
+        new LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
   }
 
   if (!cache_inner_.Add(key, value, in_transaction, dirty, state)) {
@@ -27,16 +28,19 @@ bool Cache<Key, CacheEntry, Request>::Add(const Key &key,
   return true;
 }
 
-template <typename Key, typename CacheEntry, typename Request>
-bool Cache<Key, CacheEntry, Request>::Get(const Key &key, CacheEntry &value,
-                                          bool in_transaction) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::Get(const CacheKey &key, CacheEntry &value,
+                            bool in_transaction) {
   return cache_inner_.Get(key, value, in_transaction);
 }
 
-template <typename Key, typename CacheEntry, typename Request>
-bool Cache<Key, CacheEntry, Request>::Delete(const Key &key,
-                                             bool in_transaction) {
-  typename LoggerInnerInstance::LogEntry *dirty = nullptr;
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::Delete(const CacheKey &key, bool in_transaction) {
+  LogEntryInstance *dirty = nullptr;
 
   if (!cache_inner_.Delete(key, in_transaction, dirty)) return false;
 
@@ -49,27 +53,29 @@ bool Cache<Key, CacheEntry, Request>::Delete(const Key &key,
   return true;
 }
 
-template <typename Key, typename CacheEntry, typename Request>
-bool Cache<Key, CacheEntry, Request>::Set(const Key &key,
-                                          const CacheEntry &value,
-                                          bool in_transaction) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::Set(const CacheKey &key, const CacheEntry &value,
+                            bool in_transaction) {
   if (Add(key, value, in_transaction)) return true;
   return Replace(key, value, in_transaction);
 }
 
-template <typename Key, typename CacheEntry, typename Request>
-bool Cache<Key, CacheEntry, Request>::Replace(const Key &key,
-                                              const CacheEntry &value,
-                                              bool in_transaction) {
-  void *old_dirty_void = nullptr;
-  typename LoggerInnerInstance::LogEntry *dirty = nullptr;
-  typename CacheInnerInstance::State *state = nullptr;
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::Replace(const CacheKey &key, const CacheEntry &value,
+                                bool in_transaction) {
+  LogEntryInstance *old_dirty = nullptr;
+  LogEntryInstance *dirty = nullptr;
+  CacheStateInstance *state = nullptr;
   if (cache_inner_.emergency_mode_) {
-    dirty = new LoggerInnerInstance::LogEntry(nullptr, nullptr,
-                                              conn_head_->backend_conn_ptr);
+    dirty =
+        new LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
   }
 
-  if (!cache_inner_.Replace(key, value, in_transaction, dirty, old_dirty_void,
+  if (!cache_inner_.Replace(key, value, in_transaction, dirty, old_dirty,
                             state)) {
     delete dirty;
     return false;
@@ -79,9 +85,7 @@ bool Cache<Key, CacheEntry, Request>::Replace(const Key &key,
     dirty->state = state;
     logger_inner_.Log(dirty, conn_head_);
   }
-  if (old_dirty_void) {
-    typename LoggerInnerInstance::LogEntry *old_dirty =
-        static_cast<LoggerInnerInstance::LogEntry *>(old_dirty_void);
+  if (old_dirty) {
     std::unique_lock<std::mutex> chr_lock(logger_inner_.chr_mutex_);
     old_dirty->Delink();
     chr_lock.unlock();
@@ -90,10 +94,13 @@ bool Cache<Key, CacheEntry, Request>::Replace(const Key &key,
   return true;
 }
 
-template <typename Key, typename CacheEntry, typename Request>
-void Cache<Key, CacheEntry, Request>::ConstVisitAll(
-    std::function<void(const Key &, const CacheEntry &)> visitor,
-    bool in_transaction) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Cache<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::ConstVisitAll(std::function<void(const CacheKey &,
+                                                         const CacheEntry &)>
+                                          visitor,
+                                      bool in_transaction) {
   cache_inner_.ConstVisitAll(visitor, in_transaction);
 }
 

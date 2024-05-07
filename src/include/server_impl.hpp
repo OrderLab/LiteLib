@@ -1,57 +1,25 @@
 #pragma once
 
+#include <event.h>
+#include <fcntl.h>
+#include <netinet/tcp.h>
+#include <signal.h>
+#include <sysexits.h>
+
 #include "server.hpp"
 
 namespace lite {
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-LiteServer<Request, Response, Application, CacheKey, CacheEntry,
-           ConnectionInfo>::LiteServer(const size_t& nthreads,
-                                       const size_t& max_item_count,
-                                       Application& app,
-                                       std::string& backend_addr,
-                                       std::string& backend_port,
-                                       const char pipe_path[])
-    : lite_core_(
-          app, max_item_count, backend_addr, backend_port, pipe_path,
-          [](ThreadSafeSet<void*>& live_connections) {
-            live_connections.visit_all([&](void* const& c) {
-              static_cast<ConnectionInstance*>(c)->ConnectBackend();
-              std::cerr << "Connect backend "
-                        << static_cast<ConnectionInstance*>(c)->backend_fd_
-                        << " to "
-                        << static_cast<ConnectionInstance*>(c)->client_fd_
-                        << std::endl;
-            });
-          },
-          [](ThreadSafeSet<void*>& live_connections) {
-            std::cerr << "Disconnect from backend" << std::endl;
-            live_connections.visit_all([&](void* const& c) {
-              close(static_cast<ConnectionInstance*>(c)->backend_fd_);
-              static_cast<ConnectionInstance*>(c)->backend_fd_ = -1;
-            });
-          },
-          [](void* conn) {
-            return static_cast<ConnectionInstance*>(conn)->backend_fd_;
-          },
-          [](void* conn, std::shared_ptr<Request> req) {
-            static_cast<ConnectionInstance*>(conn)->pending_requests_.push_back(
-                std::make_pair(req, false));
-          },
-          [&]() {
-            std::cerr << "Replay barrier initialized" << std::endl;
-            for (auto& worker : workers_) {
-              worker->notify_queue_.enqueue(-1);
-              uint64_t buf = 1;
-              if (write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
-                  sizeof(uint64_t)) {
-                perror("failed writing to worker eventfd");
-              }
-            }
-            barrier_.arrive_and_wait();
-          },
-          [&]() { barrier_.arrive_and_wait(); }),
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::LiteServer(const size_t& nthreads,
+                                   const size_t& max_item_count,
+                                   Application& app, std::string& backend_addr,
+                                   std::string& backend_port,
+                                   const char pipe_path[])
+    : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path,
+                 barrier_, workers_),
       barrier_(nthreads + 1,
                []() { std::cerr << "Replay barrier completed" << std::endl; }) {
   struct event_config* ev_config;
@@ -67,10 +35,10 @@ LiteServer<Request, Response, Application, CacheKey, CacheEntry,
   next_worker_ = workers_.begin();
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-bool LiteServer<Request, Response, Application, CacheKey, CacheEntry,
-                ConnectionInfo>::Run(const char* port) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::Run(const char* port) {
   signal(SIGPIPE, SIG_IGN);
 
   int sfd;
@@ -159,11 +127,10 @@ bool LiteServer<Request, Response, Application, CacheKey, CacheEntry,
   return 1;
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-void LiteServer<Request, Response, Application, CacheKey, CacheEntry,
-                ConnectionInfo>::DispatchNewConnection(const evutil_socket_t
-                                                           sfd) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::DispatchNewConnection(const evutil_socket_t sfd) {
   (**next_worker_).notify_queue_.enqueue(sfd);
   uint64_t buf = 1;
   if (write((**next_worker_).notify_event_fd, &buf, sizeof(uint64_t)) !=
@@ -175,10 +142,10 @@ void LiteServer<Request, Response, Application, CacheKey, CacheEntry,
   if (next_worker_ == workers_.end()) next_worker_ = workers_.begin();
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-int LiteServer<Request, Response, Application, CacheKey, CacheEntry,
-               ConnectionInfo>::NewSocket(struct addrinfo* addr_info) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+int LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
+               CacheEntry>::NewSocket(struct addrinfo* addr_info) {
   evutil_socket_t sfd;
   int flags;
 
@@ -196,12 +163,11 @@ int LiteServer<Request, Response, Application, CacheKey, CacheEntry,
   return sfd;
 }
 
-template <typename Request, typename Response, typename Application,
-          typename CacheKey, typename CacheEntry, typename ConnectionInfo>
-void LiteServer<Request, Response, Application, CacheKey, CacheEntry,
-                ConnectionInfo>::EventHandler(const evutil_socket_t fd,
-                                              const short which,
-                                              void* arg_conn) {
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::EventHandler(const evutil_socket_t fd,
+                                          const short which, void* arg_conn) {
   ConnectionInstance* c = static_cast<ConnectionInstance*>(arg_conn);
   const auto new_conn_fd = c->Accept();
   if (new_conn_fd == -1) {

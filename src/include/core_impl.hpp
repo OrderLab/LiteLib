@@ -1,6 +1,9 @@
 #pragma once
 
+#include <chrono>
+
 #include "core.hpp"
+#include "network_utils.hpp"
 
 namespace lite {
 
@@ -10,28 +13,23 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
     LiteCore(Application &app, const size_t &max_item_count,
              std::string &backend_addr, std::string &backend_port,
              const char pipe_path[],
-             std::function<void(ThreadSafeSet<void *> &live_connections)>
-                 ReconnectToBackend,
-             std::function<void(ThreadSafeSet<void *> &live_connections)>
-                 DisconnectFromBackend,
-             std::function<evutil_socket_t(void *)> GetBackendFdFromConnPtr,
-             std::function<void(void *, std::shared_ptr<Request>)>
-                 PushBackPendingRequestIntoConnPtr,
-             std::function<void()> WaitForAllInFlightConnections,
-             std::function<void()> UnblockWorkerThreads)
+             std::barrier<std::function<void()>> &barrier,
+             std::vector<std::unique_ptr<WorkerInstance>> &workers)
     : Daemon([&] { return Replay(); },
-             [&] { DisconnectFromBackend_(live_connections_); }, backend_port,
-             pipe_path),
+             [&] {
+               std::cerr << "Disconnect from backend" << std::endl;
+               live_connections_.visit_all([&](ConnectionInstance *const &c) {
+                 close(c->backend_fd_);
+                 c->backend_fd_ = -1;
+               });
+             },
+             backend_port, pipe_path),
       app_(app),
       cache_inner_(max_item_count, emergency_mode_),
       backend_addr_(backend_addr),
       backend_port_(backend_port),
-      DisconnectFromBackend_(DisconnectFromBackend),
-      ReconnectToBackend_(ReconnectToBackend),
-      GetBackendFdFromConnPtr_(GetBackendFdFromConnPtr),
-      PushBackPendingRequestIntoConnPtr_(PushBackPendingRequestIntoConnPtr),
-      WaitForAllInFlightConnections_(WaitForAllInFlightConnections),
-      UnblockWorkerThreads_(UnblockWorkerThreads) {}
+      barrier_(barrier),
+      workers_(workers) {}
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -106,6 +104,12 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   is_replaying_ = true;
 
+  live_connections_.visit_all([&](ConnectionInstance *const &c) {
+    c->ConnectBackend();
+    std::cerr << "Connect backend " << c->backend_fd_ << " to " << c->client_fd_
+              << std::endl;
+  });
+
   evutil_socket_t backend_fd;
   size_t tries = 0;
   while ((backend_fd =
@@ -117,7 +121,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
   std::cerr << "Replay connected to backend in " << tries << " tries\n";
 
-  typename LoggerInner<Request>::LogEntry *entry;
+  LogEntry<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>
+      *entry;
 
   for (int i = 0; i < 2; i++) {  // Double flush to ensure the consistency of
                                  // in-flight connections
@@ -125,10 +130,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     while (LoggerInstance::Pop(logger_inner_, entry)) {  // TODO: less writes
       if (entry->state) {
         dirty_cnt++;
-        auto state =
-            static_cast<typename CacheInner<CacheKey, CacheEntry>::State *>(
-                entry->state);
-        const auto buffer = state->value.ToRequests(state->key);
+        const auto buffer = entry->state->value.ToRequests(entry->state->key);
         if (!network::Write(backend_fd, buffer)) {
           std::cerr << "Replay failed to write dirty to backend\n";
           return false;
@@ -144,10 +146,12 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
           }
         } else {
           // TODO: lock the connection here
-          PushBackPendingRequestIntoConnPtr_(*entry->backend_conn_ptr,
-                                             entry->req);
+          static_cast<ConnectionInstance *>(*entry->backend_conn_ptr)
+              ->pending_requests_.push_back(std::make_pair(entry->req, false));
           if (!network::Write(
-                  GetBackendFdFromConnPtr_(*entry->backend_conn_ptr), buffer)) {
+                  static_cast<ConnectionInstance *>(*entry->backend_conn_ptr)
+                      ->backend_fd_,
+                  buffer)) {
             std::cerr << "Replay failed to write to backend\n";
             // TODO: push back entry
             return false;
@@ -158,13 +162,25 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     }
     std::cerr << "Replay i = " << i << " finished with " << log_cnt
               << " log entries and " << dirty_cnt << " dirty entries\n";
-    if (!i) WaitForAllInFlightConnections_();
+    if (!i) {  // Wait for all inflight connections
+      std::cerr << "Replay barrier initialized" << std::endl;
+      for (auto &worker : workers_) {
+        worker->notify_queue_.enqueue(-1);
+        uint64_t buf = 1;
+        if (write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
+            sizeof(uint64_t)) {
+          perror("failed writing to worker eventfd");
+        }
+      }
+      barrier_.arrive_and_wait();
+    }
   }
 
   close(backend_fd);
 
   is_replaying_ = false;
-  UnblockWorkerThreads_();
+
+  barrier_.arrive_and_wait();  // unblock worker threads
 
   const auto end_time = std::chrono::high_resolution_clock::now();
   const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
