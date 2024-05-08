@@ -12,6 +12,7 @@ namespace lite {
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::LiteServer(const size_t& nthreads,
                                    const size_t& max_item_count,
@@ -37,6 +38,7 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 bool LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Run(const char* port) {
   signal(SIGPIPE, SIG_IGN);
@@ -129,6 +131,7 @@ bool LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::DispatchNewConnection(const evutil_socket_t sfd) {
   (**next_worker_).notify_queue_.enqueue(sfd);
@@ -144,6 +147,7 @@ void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 int LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                CacheEntry>::NewSocket(struct addrinfo* addr_info) {
   evutil_socket_t sfd;
@@ -165,6 +169,7 @@ int LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::EventHandler(const evutil_socket_t fd,
                                           const short which, void* arg_conn) {
