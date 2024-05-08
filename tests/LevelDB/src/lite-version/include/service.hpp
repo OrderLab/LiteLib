@@ -49,8 +49,8 @@ class LevelDB {
  public:
   std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
       const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-      std::deque<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests)
-      const;
+      lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
+          &pending_requests) const;
 
   void NormalUpdate(const std::shared_ptr<Packet> &resp,
                     std::vector<std::shared_ptr<Packet>> requests,

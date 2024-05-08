@@ -2,8 +2,8 @@
 
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-    std::deque<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests)
-    const {
+    lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
+        &pending_requests) const {
   auto [req, is_not_replay] = pending_requests.front();
   pending_requests.pop_front();
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());

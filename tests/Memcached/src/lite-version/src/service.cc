@@ -4,8 +4,8 @@
 
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> Memcached::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &_,
-    std::deque<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests)
-    const {
+    lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
+        &pending_requests) const {
   const auto resp_opaque = resp->GetOpaque();
   std::vector<std::shared_ptr<Packet>> ret;
   while (!pending_requests.empty()) {
