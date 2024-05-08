@@ -2,11 +2,12 @@
 
 #include <concepts>
 #include <cstdint>
-#include <deque>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <vector>
+
+#include "thread_safe_queue.hpp"
 
 namespace lite {
 
@@ -30,7 +31,7 @@ template <typename Application, typename Request, typename Response,
 concept IsApplication = requires(
     Application app, std::shared_ptr<Request> req,
     std::shared_ptr<Response> resp, ConnectionInfo conn_info,
-    std::deque<std::pair<std::shared_ptr<Request>, bool>>
+    ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
         pending_requests,  // true: request forward from client, false:
                            // request generated during replay
     std::vector<std::shared_ptr<Request>> related_requests,

@@ -64,7 +64,7 @@ class Connection {
   evutil_socket_t client_fd_, backend_fd_;
 
   /// The pending requests
-  std::deque<std::pair<std::shared_ptr<Request>, bool>> pending_requests_;
+  ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> pending_requests_;
 
   void* lite_server_;
 

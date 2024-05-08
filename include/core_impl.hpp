@@ -43,7 +43,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
     HandleRequest(
         std::shared_ptr<Request> req, ConnectionInfo &conn_info,
-        std::deque<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
+        ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
         const evutil_socket_t client_fd, const evutil_socket_t backend_fd,
         CacheInstance *cache, LoggerInstance *logger) {
   if (!emergency_mode_ && backend_fd <= 0) {
@@ -79,7 +79,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
     HandleResponse(
         std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
-        std::deque<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
+        ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
         const evutil_socket_t client_fd, CacheInstance *cache) {
   const auto [related_stateful_request, forward_resp] =
       app_.Match(resp, conn_info, pending_requests);

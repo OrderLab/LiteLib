@@ -45,13 +45,13 @@ class LiteCore : public Daemon {
 
   bool HandleRequest(
       std::shared_ptr<Request> req, ConnectionInfo &conn_info,
-      std::deque<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
+      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
       const evutil_socket_t client_fd, const evutil_socket_t backend_fd,
       CacheInstance *cache, LoggerInstance *logger);
 
   bool HandleResponse(
       std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
-      std::deque<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
+      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
       const evutil_socket_t client_fd, CacheInstance *cache);
 
   std::string &backend_addr_, &backend_port_;
