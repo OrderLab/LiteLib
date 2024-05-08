@@ -28,6 +28,12 @@ struct RemoteScriptConfig {
     crash_time: Duration,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy, serde::Deserialize)]
+enum KeyDistribution {
+    Sequential,
+    Zipf(f64),
+}
+
 #[derive(Debug, serde::Deserialize)]
 struct BenchmarkConfig {
     num_keys: usize,
@@ -35,7 +41,7 @@ struct BenchmarkConfig {
     #[serde(deserialize_with = "deserialize_duration")]
     test_duration: Duration,
     rps: usize,
-    zipf_alpha: f64,
+    key_distribution: KeyDistribution,
     #[serde(deserialize_with = "deserialize_duration")]
     timeout: Duration,
     retry_count: usize,
@@ -240,11 +246,19 @@ async fn main() {
     println!("\nFinished initializing database");
 
     let mut idx = Vec::new();
-    let mut rng = rand::thread_rng();
-    let zipf =
-        zipf::ZipfDistribution::new(cfg.benchmark.num_keys, cfg.benchmark.zipf_alpha).unwrap();
-    for _ in 0..num_requests {
-        idx.push(zipf.sample(&mut rng));
+    match cfg.benchmark.key_distribution {
+        KeyDistribution::Sequential => {
+            for i in 0..num_requests {
+                idx.push(i % cfg.benchmark.num_keys + 1);
+            }
+        }
+        KeyDistribution::Zipf(alpha) => {
+            let mut rng = rand::thread_rng();
+            let zipf = zipf::ZipfDistribution::new(cfg.benchmark.num_keys, alpha).unwrap();
+            for _ in 0..num_requests {
+                idx.push(zipf.sample(&mut rng));
+            }
+        }
     }
 
     let mut handles = Vec::new();
@@ -358,6 +372,9 @@ async fn main() {
                 records_guard.push(record);
             }
             bar.inc(1);
+            if key == cfg.benchmark.num_keys && cfg.benchmark.key_distribution == KeyDistribution::Sequential {
+                println!("All keys are covered, go back to key 1 again");
+            }
         });
         handles.push(handle);
         sleep_until(iter_end_time).await;
