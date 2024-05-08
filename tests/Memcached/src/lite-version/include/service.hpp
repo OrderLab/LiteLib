@@ -17,24 +17,21 @@ struct CacheEntry {
            sizeof(CAS);
   }
 
-  std::shared_ptr<std::vector<uint8_t>> ToRequests(
-      const std::vector<uint8_t> &key) const {
-    ParsedPacket req;
+  std::shared_ptr<Packet> ToRequest(const std::vector<uint8_t> &key) const {
+    auto req = std::make_shared<ParsedPacket>();
     static std::vector<uint8_t> expiry(4, 0);  // TODO: use real one
-    req.header.magic = 0x80;
-    req.header.opcode = magic_enum::enum_underlying(Header::Opcode::kSetQ);
-    req.key = std::make_shared<std::vector<uint8_t>>(key);
-    req.value = value;
-    req.extra = flags;
-    req.header.CAS = CAS;
-    req.header.extras_length = 8;
-    req.header.key_length = req.key->size();
-    req.header.total_body_length =
-        req.value->size() + req.header.key_length + req.header.extras_length;
-    req.buffer->clear();
-    auto buffer = req.Serialize();
-    buffer->insert(buffer->begin() + 28, expiry.begin(), expiry.end());
-    return buffer;
+    req->header.magic = 0x80;
+    req->header.opcode = magic_enum::enum_underlying(Header::Opcode::kSetQ);
+    req->key = std::make_shared<std::vector<uint8_t>>(key);
+    req->value = value;
+    req->extra = flags;
+    req->header.CAS = CAS;
+    req->header.extras_length = 8;
+    req->header.key_length = req->key->size();
+    req->header.total_body_length =
+        req->value->size() + req->header.key_length + req->header.extras_length;
+    req->buffer->clear();
+    return req;
   }
 };
 
@@ -47,10 +44,6 @@ struct LogEntry {  // TODO: deal with expiry
 
   lite::DeserializeResult Deserialize(uint8_t *&begin, uint8_t *end) {
     return packet->Deserialize(begin, end);
-  }
-
-  std::shared_ptr<std::vector<uint8_t>> ToRequests() {
-    return packet->Serialize();
   }
 };
 

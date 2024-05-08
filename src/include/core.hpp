@@ -22,7 +22,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
-           IsCacheEntry<CacheKey, CacheEntry>
+           IsCacheEntry<Request, CacheKey, CacheEntry>
 class LiteCore : public Daemon {
   using LoggerInstance = Logger<Application, Request, Response, ConnectionInfo,
                                 CacheKey, CacheEntry>;

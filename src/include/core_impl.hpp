@@ -11,7 +11,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
-           IsCacheEntry<CacheKey, CacheEntry>
+               IsCacheEntry<Request, CacheKey, CacheEntry>
 LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
     LiteCore(Application &app, const size_t &max_item_count,
              std::string &backend_addr, std::string &backend_port,
@@ -38,7 +38,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
-           IsCacheEntry<CacheKey, CacheEntry>
+           IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
     HandleRequest(
@@ -74,18 +74,13 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
-           IsCacheEntry<CacheKey, CacheEntry>
+           IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
     HandleResponse(
         std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
         std::deque<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
         const evutil_socket_t client_fd, CacheInstance *cache) {
-  if (emergency_mode_) {
-    std::cerr << "Trying to handle a response in emergency mode" << std::endl;
-    return false;
-  }
-
   const auto [related_stateful_request, forward_resp] =
       app_.Match(resp, conn_info, pending_requests);
   if (forward_resp) {
@@ -109,7 +104,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
-           IsCacheEntry<CacheKey, CacheEntry>
+           IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::Replay() {
   const auto start_time = std::chrono::high_resolution_clock::now();
@@ -122,14 +117,18 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               << std::endl;
   });
 
-  evutil_socket_t backend_fd;
+  auto replay_base = event_base_new();
+  ConnectionInstance replay_conn(0, EV_READ | EV_PERSIST, replay_base,
+                                 ConnectionInstance::ClientHandler, nullptr,
+                                 *this, false);
+  replay_conn.ConnectBackend();
   size_t tries = 0;
-  while ((backend_fd =
-              network::TryConnectBackend(backend_addr_, backend_port_)) == -1) {
+  while (replay_conn.backend_fd_ == -1) {
     if (tries++ > 100) {
       std::cerr << "Replay failed to connect to backend\n";
       return false;
     }
+    replay_conn.ConnectBackend();
   }
   std::cerr << "Replay connected to backend in " << tries << " tries\n";
 
@@ -139,41 +138,58 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   for (int i = 0; i < 2; i++) {  // Double flush to ensure the consistency of
                                  // in-flight connections
     size_t log_cnt = 0, dirty_cnt = 0;
-    while (LoggerInstance::Pop(logger_inner_, entry)) {  // TODO: less writes
+    while (LoggerInstance::Pop(logger_inner_, entry)) {
       if (entry->state) {
         dirty_cnt++;
-        const auto buffer = entry->state->value.ToRequests(entry->state->key);
-        if (!network::Write(backend_fd, buffer)) {
+        const auto req = entry->state->value.ToRequest(entry->state->key);
+        const auto buffer = req->Serialize();
+        replay_conn.pending_requests_.push_back(std::make_pair(req, false));
+        if (!network::Write(replay_conn.backend_fd_, buffer)) {
           std::cerr << "Replay failed to write dirty to backend\n";
           return false;
+        }
+        // Wait for the full to handle it
+        // TODO: use batched requests
+        while (!replay_conn.pending_requests_.empty()) {
+          event_base_loop(replay_base, EVLOOP_ONCE);
+          // TODO: what if there're errors
         }
       } else {
         log_cnt++;
         const auto buffer = entry->req->Serialize();
-        if (!*entry->backend_conn_ptr) {
-          // TODO: what if there're errors? nothing will receive the response
-          if (!network::Write(backend_fd, buffer)) {
+        if (!*entry->backend_conn_ptr) {  // log belongs to a closed connection
+          replay_conn.pending_requests_.push_back(
+              std::make_pair(entry->req, false));
+          if (!network::Write(replay_conn.backend_fd_, buffer)) {
             std::cerr << "Replay failed to write to backend\n";
             return false;
           }
+          // Wait for the full to handle it
+          // TODO: use batched requests
+          while (!replay_conn.pending_requests_.empty()) {
+            event_base_loop(replay_base, EVLOOP_ONCE);
+            // TODO: what if there're errors
+          }
         } else {
           // TODO: lock the connection here
-          static_cast<ConnectionInstance *>(*entry->backend_conn_ptr)
+          // TODO: use batched requests
+          (*entry->backend_conn_ptr)
               ->pending_requests_.push_back(std::make_pair(entry->req, false));
-          if (!network::Write(
-                  static_cast<ConnectionInstance *>(*entry->backend_conn_ptr)
-                      ->backend_fd_,
-                  buffer)) {
+          if (!network::Write((*entry->backend_conn_ptr)->backend_fd_,
+                              buffer)) {
             std::cerr << "Replay failed to write to backend\n";
             // TODO: push back entry
             return false;
           }
+          // TODO: do we need to wait for the full to handle it so that the
+          // full won't be overloaded?
         }
       }
       delete entry;
     }
     std::cerr << "Replay i = " << i << " finished with " << log_cnt
               << " log entries and " << dirty_cnt << " dirty entries\n";
+
     if (!i) {  // Wait for all inflight connections
       std::cerr << "Replay barrier initialized" << std::endl;
       for (auto &worker : workers_) {
@@ -187,8 +203,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       barrier_.arrive_and_wait();
     }
   }
-
-  close(backend_fd);
 
   is_replaying_ = false;
 

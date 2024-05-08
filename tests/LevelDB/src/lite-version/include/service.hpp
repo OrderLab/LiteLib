@@ -11,13 +11,14 @@ struct CacheEntry {
   std::shared_ptr<std::string> value = nullptr;
   size_t GetSize() const { return (value ? value->size() : 0); }
 
-  std::shared_ptr<std::vector<uint8_t>> ToRequests(
-      const std::string &key) const {
-    std::vector<uint8_t> buffer = {'*',  '3', '\r', '\n', '$',  '3', '\r',
-                                   '\n', 'S', 'E',  'T',  '\r', '\n'};
-    AppendBulkString(buffer, key);
-    AppendBulkString(buffer, *value);
-    return std::make_shared<std::vector<uint8_t>>(std::move(buffer));
+  std::shared_ptr<Packet> ToRequest(const std::string &key) const {
+    auto commands = std::make_unique<RESPArray>();
+    commands->value.push_back(
+        std::make_unique<RESPBulkString>(std::make_shared<std::string>("SET")));
+    commands->value.push_back(
+        std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
+    commands->value.push_back(std::make_unique<RESPBulkString>(value));
+    return std::make_shared<Packet>(std::move(commands));
   }
 
  private:
