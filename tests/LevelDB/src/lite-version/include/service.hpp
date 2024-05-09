@@ -2,7 +2,6 @@
 
 #include <event.h>
 
-#include <core.hpp>
 #include <memory>
 #include <string>
 
@@ -12,13 +11,14 @@ struct CacheEntry {
   std::shared_ptr<std::string> value = nullptr;
   size_t GetSize() const { return (value ? value->size() : 0); }
 
-  std::shared_ptr<std::vector<uint8_t>> ToRequests(
-      const std::string &key) const {
-    std::vector<uint8_t> buffer = {'*',  '3', '\r', '\n', '$',  '3', '\r',
-                                   '\n', 'S', 'E',  'T',  '\r', '\n'};
-    AppendBulkString(buffer, key);
-    AppendBulkString(buffer, *value);
-    return std::make_shared<std::vector<uint8_t>>(std::move(buffer));
+  std::shared_ptr<Packet> ToRequest(const std::string &key) const {
+    auto commands = std::make_unique<RESPArray>();
+    commands->value.push_back(
+        std::make_unique<RESPBulkString>(std::make_shared<std::string>("SET")));
+    commands->value.push_back(
+        std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
+    commands->value.push_back(std::make_unique<RESPBulkString>(value));
+    return std::make_shared<Packet>(std::move(commands));
   }
 
  private:
@@ -41,14 +41,16 @@ struct ConnectionInfo {
 };
 
 class LevelDB {
-  using Cache = lite::Cache<std::string, CacheEntry, Packet>;
-  using Logger = lite::Logger<Packet, std::string, CacheEntry>;
+  using Cache = lite::Cache<LevelDB, Packet, Packet, ConnectionInfo,
+                            std::string, CacheEntry>;
+  using Logger = lite::Logger<LevelDB, Packet, Packet, ConnectionInfo,
+                              std::string, CacheEntry>;
 
  public:
   std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
       const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-      std::deque<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests)
-      const;
+      lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
+          &pending_requests) const;
 
   void NormalUpdate(const std::shared_ptr<Packet> &resp,
                     std::vector<std::shared_ptr<Packet>> requests,

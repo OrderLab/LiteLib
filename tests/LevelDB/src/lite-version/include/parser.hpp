@@ -1,8 +1,8 @@
 #pragma once
 
 #include <iostream>
+#include <lite.hpp>
 
-#include "concept.hpp"
 #include "packet.hpp"
 
 class RESPIntegerParser : public RESPTypeParser {

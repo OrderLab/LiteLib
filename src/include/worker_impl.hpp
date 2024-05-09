@@ -1,0 +1,117 @@
+#pragma once
+
+#include <event.h>
+#include <pthread.h>
+#include <readerwriterqueue.h>
+#include <sys/eventfd.h>
+#include <unistd.h>
+
+#include <cstdlib>
+#include <iostream>
+
+#include "worker.hpp"
+
+namespace lite {
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+       CacheEntry>::Worker(LiteCoreInstance &lite_core,
+                           std::barrier<std::function<void()>> &barrier)
+    : lite_core_(lite_core), barrier_(barrier) {
+  notify_event_fd = eventfd(0, EFD_NONBLOCK);
+  if (notify_event_fd == -1) {
+    perror("failed creating eventfd for worker thread");
+    exit(1);
+  }
+
+  struct event_config *ev_config;
+  ev_config = event_config_new();
+  event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
+  base_ = event_base_new_with_config(ev_config);
+  event_config_free(ev_config);
+  event_base_priority_init(base_, 2);
+
+  event_set(&notify_event_, notify_event_fd, EV_READ | EV_PERSIST,
+            NotifyHandler, this);
+
+  event_base_set(base_, &notify_event_);
+  event_priority_set(&notify_event_, 0);  // highest priority
+
+  if (event_add(&notify_event_, 0) == -1) {
+    fprintf(stderr, "Can't monitor libevent notify pipe\n");
+    exit(1);
+  }
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::Run() {
+  pthread_attr_t attr;
+  int ret;
+
+  pthread_attr_init(&attr);
+
+  if ((ret = pthread_create(&thread_id_, &attr, ThreadBody, this)) != 0) {
+    fprintf(stderr, "Can't create thread: %s\n", strerror(ret));
+    exit(1);
+  }
+
+  pthread_setname_np(thread_id_, "mc-worker");
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void *Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+             CacheEntry>::ThreadBody(void *arg_self) {
+  Worker *self = static_cast<Worker *>(arg_self);
+
+  event_base_loop(self->base_, 0);
+  event_base_free(self->base_);
+
+  return NULL;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::NotifyHandler(evutil_socket_t fd, short which,
+                                       void *arg_self) {
+  Worker *self = static_cast<Worker *>(arg_self);
+
+  if (fd == self->notify_event_fd) {
+    uint64_t counter = 0;
+    if (read(fd, &counter, sizeof(uint64_t)) != sizeof(uint64_t)) {
+      fprintf(stderr, "Worker can't read from libevent pipe\n");
+      return;
+    }
+    while (counter--) {
+      evutil_socket_t sfd;
+      if (!self->notify_queue_.try_dequeue(sfd)) {
+        fprintf(stderr, "Worker can't dequeue from notify_queue\n");
+        return;
+      }
+      if (sfd > 0) {  // new connections
+        std::unique_ptr<ConnectionInstance> new_connection;
+        if (!(new_connection = std::make_unique<ConnectionInstance>(
+                  sfd, EV_READ | EV_PERSIST, self->base_,
+                  ConnectionInstance::ClientHandler, nullptr, self->lite_core_,
+                  true))) {
+          fprintf(stderr, "failed to create listening connection\n");
+          exit(EXIT_FAILURE);
+        }
+        self->lite_core_.live_connections_.insert(new_connection.get());
+        self->conns_.push(std::move(new_connection));
+      } else if (sfd == -1) {  // replay sync
+        std::cerr << "Thread " << self->thread_id_
+                  << " reaches replay sync point" << std::endl;
+        self->barrier_.arrive_and_wait();
+        self->barrier_.arrive_and_wait();
+      }
+    }
+  } else {
+  }
+}
+
+}  // namespace lite

@@ -11,6 +11,7 @@ DATABASE_QUERY_WEIGHT=${3:-"5000"}
 # apt-get update
 # apt-get -y upgrade
 # apt-get -y install nginx
+apt install curl
 curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb
 dpkg -i /tmp/debsuryorg-archive-keyring.deb
 apt update

@@ -1,9 +1,8 @@
 #pragma once
 
-#include <concept.hpp>
 #include <cstdint>
 #include <iostream>
-#include <magic_enum.hpp>
+#include <lite.hpp>
 #include <memory>
 #include <string>
 #include <vector>

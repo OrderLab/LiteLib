@@ -13,6 +13,9 @@ def plot_throughput(ax, stat):
   ax.fill_between(range(len(stat["Timeout"])), base, base + stat["Timeout"], label="Timeout", alpha=0.5, color="tab:red")
   base += stat["Timeout"]
   ax.fill_between(range(len(stat["Error"])), base, base + stat["Error"], label="Error", alpha=0.5, color="tab:purple")
+  if np.max(stat["TransactionError"]) > 0:
+    base += stat["Error"]
+    ax.fill_between(range(len(stat["TransactionError"])), base, base + stat["TransactionError"], label="TransactionError", alpha=0.5, color="0")
   # ax.plot(stat["cnt"], label="Total")
   # ax.plot(stat["Success"], label="Success")
   # ax.plot(stat["Miss"], label="Miss")
@@ -23,9 +26,10 @@ def plot_throughput(ax, stat):
   ax.legend()
 
 def plot_latency(ax, stat):
-  ax.plot(stat["avg_lat"])
+  ax.plot(stat["avg_lat"] * 1000)
   ax.set_xlabel("Time (s)")
-  ax.set_ylabel("Latency (s) (Success)")
+  ax.set_ylabel("Latency (ms) (Success)")
+  ax.set_ylim(0, 2)
 
 def plot_tries(ax, stat):
   ax.plot(stat["avg_tries"])
@@ -36,6 +40,7 @@ def plot_resource(
   ax,
   stat,
   res_name,
+  ylim
 ):
   for process_name, process_usage in stat["resource"].items():
     ax.plot(
@@ -53,6 +58,7 @@ def plot_resource(
     borderaxespad=0,
     ncol=1,
   )
+  ax.set_ylim(0, ylim)
 
 parser = argparse.ArgumentParser(description='Process JSON files.')
 
@@ -77,7 +83,7 @@ for i in range(cnt):
 
 stats = []
 for i in range(cnt):
-  stat = {"cnt": [], "lat": [], "tries": [], "Success": [], "Miss": [], "Timeout": [], "Error": []}
+  stat = {"cnt": [], "lat": [], "tries": [], "Success": [], "Miss": [], "Timeout": [], "Error": [], "TransactionError": []}
   for line in logs[i]:
     index = math.floor(line["begin"] - logs[i][0]["begin"])
     if len(stat["cnt"]) < index + 1:
@@ -88,6 +94,7 @@ for i in range(cnt):
       stat["Miss"] += [0] * (index + 1 - len(stat["Miss"]))
       stat["Timeout"] += [0] * (index + 1 - len(stat["Timeout"]))
       stat["Error"] += [0] * (index + 1 - len(stat["Error"]))
+      stat["TransactionError"] += [0] * (index + 1 - len(stat["TransactionError"]))
     stat["cnt"][index] += 1
     if line["status"] == "Success":
       stat["lat"][index] += line["end"] - line["begin"]
@@ -101,6 +108,9 @@ for i in range(cnt):
   for array in stat:
     stat[array] = np.array(stat[array])
   stats.append(stat)
+
+cpu_ylim = 0
+mem_ylim = 0
 
 for i in range(cnt):
   dir_name, file_name = os.path.split(args.filenames[i])
@@ -131,6 +141,8 @@ for i in range(cnt):
       mem = np.array(mem) / 1024.0 / 1024.0
       process_usage["cpu"] = cpu
       process_usage["mem"] = mem
+      cpu_ylim = max(cpu_ylim, np.max(process_usage["cpu"]))
+      mem_ylim = max(mem_ylim, np.max(process_usage["mem"]))
   ordered_process_usages = {}
   ordered_process_usages['redis-leveldb'] = process_usages['redis-leveldb']
   for process_name in sorted(process_usages.keys()):
@@ -145,6 +157,6 @@ for i in range(cnt):
   plot_throughput(axs[0, i], stats[i])
   plot_latency(axs[1, i], stats[i])
   plot_tries(axs[2, i], stats[i])
-  plot_resource(axs[3, i], stats[i], "cpu")
-  plot_resource(axs[4, i], stats[i], "mem")
+  plot_resource(axs[3, i], stats[i], "cpu", cpu_ylim * 1.1)
+  plot_resource(axs[4, i], stats[i], "mem", mem_ylim * 1.1)
 plt.savefig(f"leveldb.png", bbox_inches="tight")

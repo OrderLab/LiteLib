@@ -3,7 +3,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread/thread.hpp>
 #include <iostream>
-#include <server.hpp>
+#include <lite.hpp>
 #include <string>
 
 #include "packet.hpp"
@@ -70,8 +70,8 @@ int main(int argc, char* argv[]) {
     std::string backend_addr = "localhost";
     std::string backend_port = "60000";
     LevelDB level_db;
-    lite::LiteServer<Packet, Packet, LevelDB, std::string, CacheEntry,
-                     ConnectionInfo>
+    lite::LiteServer<LevelDB, Packet, Packet, ConnectionInfo, std::string,
+                     CacheEntry>
         s(thread_pool_size, cache_size, level_db, backend_addr, backend_port,
           "/tmp/lite_LevelDB");
 

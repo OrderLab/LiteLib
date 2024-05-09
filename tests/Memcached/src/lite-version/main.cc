@@ -3,7 +3,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread/thread.hpp>
 #include <iostream>
-#include <server.hpp>
+#include <lite.hpp>
 #include <string>
 
 #include "packet.hpp"
@@ -70,8 +70,8 @@ int main(int argc, char* argv[]) {
     std::string backend_addr = "localhost";
     std::string backend_port = "60000";
     Memcached memcached;
-    lite::LiteServer<Packet, Packet, Memcached, std::vector<uint8_t>,
-                     CacheEntry, ConnectionInfo>
+    lite::LiteServer<Memcached, Packet, Packet, ConnectionInfo,
+                     std::vector<uint8_t>, CacheEntry>
         s(thread_pool_size, cache_size, memcached, backend_addr, backend_port,
           "/tmp/lite_memcached");
 

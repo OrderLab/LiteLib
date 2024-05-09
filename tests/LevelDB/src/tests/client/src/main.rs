@@ -1,3 +1,4 @@
+use async_mutex::Mutex;
 use deadpool_redis::{
     redis::{cmd, pipe},
     Pool, Runtime,
@@ -8,7 +9,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use rand::distributions::{Alphanumeric, Distribution};
 use rand::Rng;
 use std::process::Command;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::{sleep_until, timeout, Duration, Instant};
 
@@ -27,6 +28,12 @@ struct RemoteScriptConfig {
     crash_time: Duration,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy, serde::Deserialize)]
+enum KeyDistribution {
+    Sequential,
+    Zipf(f64),
+}
+
 #[derive(Debug, serde::Deserialize)]
 struct BenchmarkConfig {
     num_keys: usize,
@@ -34,7 +41,7 @@ struct BenchmarkConfig {
     #[serde(deserialize_with = "deserialize_duration")]
     test_duration: Duration,
     rps: usize,
-    zipf_alpha: f64,
+    key_distribution: KeyDistribution,
     #[serde(deserialize_with = "deserialize_duration")]
     timeout: Duration,
     retry_count: usize,
@@ -83,8 +90,21 @@ struct Record {
     status: Status,
 }
 
-async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Status {
-    // TODO: change value to reference
+fn get_last_n_char(string: &str, n: usize) -> &str {
+    let len = string.len();
+    if len < n {
+        return string;
+    }
+    &string[len - n..]
+}
+
+async fn do_transaction(
+    i: usize,
+    pool: Pool,
+    key: usize,
+    base_value: &str,
+    old_suffix_expected: &mut usize,
+) -> Status {
     let conn = match pool.get().await {
         Ok(conn) => conn,
         Err(_) => {
@@ -93,13 +113,16 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Stat
         }
     };
     let mut conn_guard = conn.lock().await;
+    let new_suffix_expected = *old_suffix_expected + 1;
+    let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
+    let old_value_expected = format!("{}_{}_{}", base_value, key, *old_suffix_expected);
     let (old_value, new_value): (Option<String>, Option<String>) = match pipe()
         .atomic()
         .cmd("GET")
         .arg(&key)
         .cmd("SET")
         .arg(&key)
-        .arg(&value)
+        .arg(&new_value_expected)
         .ignore()
         .cmd("GET")
         .arg(&key)
@@ -112,14 +135,27 @@ async fn do_transaction(i: usize, pool: Pool, key: usize, value: String) -> Stat
             return Status::Error;
         }
     };
-    if old_value.is_none() {
-        // println!("i: {}, key: {} miss", i, key);
-        return Status::Miss;
-    }
-    if new_value != Some(value) {
-        println!("i: {}, key: {}, value: {:?}", i, key, new_value);
+    let new_value = match new_value {
+        Some(new_value) => new_value,
+        None => {
+            println!("i: {}, key: {} can't get new value", i, key);
+            return Status::TransactionError;
+        }
+    };
+    let old_value = match old_value {
+        Some(old_value) => old_value,
+        None => {
+            println!("i: {}, key: {} can't get old value", i, key);
+            *old_suffix_expected = new_suffix_expected;
+            return Status::Miss;
+        }
+    };
+    if new_value != new_value_expected || old_value != *old_value_expected {
+        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, get_last_n_char(&old_value_expected, 10), get_last_n_char(&old_value, 10), get_last_n_char(&new_value_expected, 10), get_last_n_char(&new_value, 10));
+        *old_suffix_expected = new_suffix_expected;
         Status::TransactionError
     } else {
+        *old_suffix_expected = new_suffix_expected;
         Status::Success
     }
 }
@@ -179,10 +215,14 @@ async fn main() {
         .unwrap(),
     );
     let mut handles = Vec::new();
+    let mut values = Vec::new();
+    for _ in 0..cfg.benchmark.num_keys + 1 {
+        values.push(Arc::new(Mutex::new(0 as usize)));
+    }
     for i in (1..cfg.benchmark.num_keys + 1).rev() {
         let pool = pool.clone();
         let i = i; // Copy i into the closure
-        let value = base_value.clone();
+        let value = format!("{}_{}_{}", base_value, i, 0);
         let bar = bar.clone();
         let handle = tokio::spawn(async move {
             let conn = pool.get().await.unwrap_or_else(|e| {
@@ -206,11 +246,19 @@ async fn main() {
     println!("\nFinished initializing database");
 
     let mut idx = Vec::new();
-    let mut rng = rand::thread_rng();
-    let zipf =
-        zipf::ZipfDistribution::new(cfg.benchmark.num_keys, cfg.benchmark.zipf_alpha).unwrap();
-    for _ in 0..num_requests {
-        idx.push(zipf.sample(&mut rng));
+    match cfg.benchmark.key_distribution {
+        KeyDistribution::Sequential => {
+            for i in 0..num_requests {
+                idx.push(i % cfg.benchmark.num_keys + 1);
+            }
+        }
+        KeyDistribution::Zipf(alpha) => {
+            let mut rng = rand::thread_rng();
+            let zipf = zipf::ZipfDistribution::new(cfg.benchmark.num_keys, alpha).unwrap();
+            for _ in 0..num_requests {
+                idx.push(zipf.sample(&mut rng));
+            }
+        }
     }
 
     let mut handles = Vec::new();
@@ -272,7 +320,8 @@ async fn main() {
         let iter_end_time = start_time + interval * (i as u32 + 1);
         let pool = pool.clone();
         let key = idx[i];
-        let value = base_value.clone() + &idx[i].to_string();
+        let value = values[idx[i]].clone();
+        let base_value = base_value.clone();
         let records = Arc::clone(&records);
         let bar = bar.clone();
         let handle = tokio::spawn(async move {
@@ -282,15 +331,18 @@ async fn main() {
             let mut tries = 1;
             let mut status = Status::Timeout;
             while tries <= cfg.benchmark.retry_count {
+                let mut value_guard = value.lock().await;
+                let mut old_suffix_expected = (*value_guard).clone();
                 match timeout(
                     cfg.benchmark.timeout,
-                    do_transaction(i, pool.clone(), key, value.to_string()),
+                    do_transaction(i, pool.clone(), key, &base_value, &mut old_suffix_expected),
                 )
                 .await
                 {
                     Ok(result) => {
                         if result != Status::Error {
                             status = result;
+                            *value_guard = old_suffix_expected;
                             break;
                         }
                     }
@@ -299,6 +351,7 @@ async fn main() {
                     }
                 }
                 tries += 1;
+                drop(value_guard);
             }
             if tries > cfg.benchmark.retry_count {
                 status = Status::Timeout;
@@ -315,32 +368,42 @@ async fn main() {
                 status,
             };
             {
-                let mut records = records.lock().unwrap();
-                records.push(record);
+                let mut records_guard = records.lock().await;
+                records_guard.push(record);
             }
             bar.inc(1);
+            if key == cfg.benchmark.num_keys && cfg.benchmark.key_distribution == KeyDistribution::Sequential {
+                println!("All keys are covered, go back to key 1 again");
+            }
         });
         handles.push(handle);
         sleep_until(iter_end_time).await;
     }
-    let end_time = Instant::now();
-    let elapsed = end_time - start_time;
+    let spawn_end_time = Instant::now();
 
     for handle in handles {
         handle.await.unwrap();
     }
     bar.finish();
+    let end_time = Instant::now();
 
     println!("\nFinished benchmarking");
+    let spawn_elapsed = spawn_end_time - start_time;
+    let elapsed = end_time - start_time;
     println!(
-        "Spawning time: {:?}, actual rps: {:?}",
-        elapsed,
+        "Spawning time: {:?} ms, rps: {:?}",
+        spawn_elapsed.as_millis(),
+        num_requests as f64 / spawn_elapsed.as_secs_f64()
+    );
+    println!(
+        "Serve time: {:?} ms, rps: {:?}",
+        elapsed.as_millis(),
         num_requests as f64 / elapsed.as_secs_f64()
     );
 
     {
-        let records = records.lock().unwrap();
-        let json = serde_json::to_string(&(*records)).unwrap();
+        let records_guard = records.lock().await;
+        let json = serde_json::to_string(&(*records_guard)).unwrap();
         std::fs::write(cfg.benchmark.file_path, json).unwrap();
     }
 }
