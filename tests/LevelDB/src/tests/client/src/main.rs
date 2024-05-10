@@ -98,6 +98,40 @@ fn get_last_n_char(string: &str, n: usize) -> &str {
     &string[len - n..]
 }
 
+async fn do_set(
+    i: usize,
+    pool: Pool,
+    key: usize,
+    base_value: &str,
+    old_suffix_expected: &mut usize,
+) -> Status {
+    let conn = match pool.get().await {
+        Ok(conn) => conn,
+        Err(_) => {
+            // println!("i: {}, key: {}, error: {}", i, key, e);
+            return Status::Error;
+        }
+    };
+    let mut conn_guard = conn.lock().await;
+    let new_suffix_expected = *old_suffix_expected + 1;
+    let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
+    return match redis::cmd("SET")
+        .arg(&key)
+        .arg(&new_value_expected)
+        .query_async::<redis::aio::Connection, String>(&mut *conn_guard)
+        .await
+    {
+        Ok(result) => {
+            *old_suffix_expected = new_suffix_expected;
+            Status::Success
+        }
+        Err(_) => {
+            // println!("i: {}, key: {}, error: {}", i, key, e);
+            Status::Error
+        }
+    };
+}
+
 async fn do_transaction(
     i: usize,
     pool: Pool,
