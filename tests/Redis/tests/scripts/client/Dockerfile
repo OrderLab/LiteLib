@@ -1,1 +1,3 @@
-FROM redis
+FROM debian:12-slim
+
+WORKDIR /workspace

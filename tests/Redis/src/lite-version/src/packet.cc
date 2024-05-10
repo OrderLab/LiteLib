@@ -53,8 +53,39 @@ void RESPBulkString::AppendToBuffer(std::vector<uint8_t> &buffer)
 void RESPArray::AppendToBuffer(std::vector<uint8_t> &buffer)
 {
     auto len = std::to_string(value.size());
-    buffer.reserve(buffer.size() + len.size() + 3);
     buffer.push_back('*');
+    buffer.insert(buffer.end(), len.begin(), len.end());
+    buffer.push_back('\r');
+    buffer.push_back('\n');
+    for (auto &type : value)
+    {
+        type->AppendToBuffer(buffer);
+    }
+}
+
+void RESPNull::AppendToBuffer(std::vector<uint8_t> &buffer)
+{
+    buffer.insert(buffer.end(), "_\r\n", "_\r\n" + 3);
+}
+
+void RESPMap::AppendToBuffer(std::vector<uint8_t> &buffer)
+{
+    auto len = std::to_string(value.size());
+    buffer.push_back('%');
+    buffer.insert(buffer.end(), len.begin(), len.end());
+    buffer.push_back('\r');
+    buffer.push_back('\n');
+    for (auto &pair : value)
+    {
+        pair.first->AppendToBuffer(buffer);
+        pair.second->AppendToBuffer(buffer);
+    }
+}
+
+void RESPSet::AppendToBuffer(std::vector<uint8_t> &buffer)
+{
+    auto len = std::to_string(value.size());
+    buffer.push_back('~');
     buffer.insert(buffer.end(), len.begin(), len.end());
     buffer.push_back('\r');
     buffer.push_back('\n');

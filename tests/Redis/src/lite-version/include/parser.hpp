@@ -1,8 +1,8 @@
 #pragma once
 
 #include <iostream>
+#include <lite.hpp>
 
-#include "concept.hpp"
 #include "packet.hpp"
 
 class RESPIntegerParser : public RESPTypeParser
@@ -79,12 +79,14 @@ class RESPSimpleStringParser : public RESPTypeParser
         {
         case kCR: {
             auto start = begin;
-            while (begin != end && *(begin++) != '\r')
-            {
-            }
+            while (begin != end && *begin != '\r')
+                ++begin;
             typed_value.value->insert(typed_value.value->end(), start, begin);
-            if (*(begin - 1) == '\r')
+            if (*begin == '\r')
+            {
                 state_ = kLF;
+                ++begin;
+            }
         }
         case kLF: {
             if (begin == end)
@@ -122,8 +124,13 @@ class RESPBulkStringParser : public RESPTypeParser
             const auto result = length_parser_.Deserialize(begin, end, length_);
             if (result == lite::kGood)
             {
-                state_ = kData;
+                if (length_.value == -1)
+                {
+                    typed_value.value = nullptr;
+                    return lite::kGood;
+                }
                 typed_value.value->reserve(length_.value);
+                state_ = kData;
             }
             else
             {
@@ -298,6 +305,7 @@ class RESPMapParser : public RESPTypeParser
                     const auto value_result = value_parser_->Deserialize(begin, end);
                     if (value_result == lite::kGood)
                     {
+                        length_.value--;
                         typed_value.value.insert(
                             std::make_pair(std::move(key_parser_->value_), std::move(value_parser_->value_)));
                     }
@@ -324,7 +332,7 @@ class RESPSetParser : public RESPTypeParser
     enum State
     {
         kLength,
-        kData
+        kData,
     } state_ = kLength;
     RESPIntegerParser length_parser_;
     RESPInteger length_;

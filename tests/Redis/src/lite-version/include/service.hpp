@@ -2,7 +2,6 @@
 
 #include <event.h>
 
-#include <core.hpp>
 #include <memory>
 #include <string>
 
@@ -15,25 +14,27 @@ struct CacheEntry
     {
         return (value ? value->size() : 0);
     }
-};
 
-struct LogEntry
-{
-    std::shared_ptr<Packet> value;
-
-    std::shared_ptr<std::vector<uint8_t>> Serialize() const
+    std::shared_ptr<Packet> ToRequest(const std::string &key) const
     {
-        return value->Serialize();
+        auto commands = std::make_unique<RESPArray>();
+        commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("SET")));
+        commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
+        commands->value.push_back(std::make_unique<RESPBulkString>(value));
+        return std::make_shared<Packet>(std::move(commands));
     }
 
-    lite::DeserializeResult Deserialize(uint8_t *&begin, uint8_t *end)
+  private:
+    inline void AppendBulkString(std::vector<uint8_t> &buffer, const std::string &str) const
     {
-        return value->Deserialize(begin, end);
-    }
-
-    std::shared_ptr<std::vector<uint8_t>> ToRequests() const
-    {
-        return value->Serialize();
+        buffer.push_back('$');
+        const auto str_length = std::to_string(str.size());
+        buffer.insert(buffer.end(), str_length.begin(), str_length.end());
+        buffer.push_back('\r');
+        buffer.push_back('\n');
+        buffer.insert(buffer.end(), str.begin(), str.end());
+        buffer.push_back('\r');
+        buffer.push_back('\n');
     }
 };
 
@@ -45,22 +46,25 @@ struct ConnectionInfo
 
 class Redis
 {
-    using Cache = lite::Cache<std::string, CacheEntry>;
-    using Logger = lite::Logger<LogEntry>;
+    using Cache = lite::Cache<Redis, Packet, Packet, ConnectionInfo, std::string, CacheEntry>;
+    using Logger = lite::Logger<Redis, Packet, Packet, ConnectionInfo, std::string, CacheEntry>;
 
   public:
-    std::optional<std::vector<std::shared_ptr<Packet>>> Filter(
+    std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
         const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-        std::deque<std::shared_ptr<Packet>> &pending_requests) const;
+        lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests) const;
 
     void NormalUpdate(const std::shared_ptr<Packet> &resp, std::vector<std::shared_ptr<Packet>> requests,
-                      ConnectionInfo &conn, Cache &cache);
+                      ConnectionInfo &conn, Cache *cache);
 
-    Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn, Cache &cache, Logger &logger);
+    void HandleReplayResponse(const std::shared_ptr<Packet> &resp, std::vector<std::shared_ptr<Packet>> requests,
+                              ConnectionInfo &conn, Cache *cache);
+
+    Packet EmergencyServe(std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache, Logger *logger);
 
   private:
-    void NormalUpdateImpl(const std::shared_ptr<Packet> &p, Cache &cache, const bool in_transaction = false);
+    void NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, const bool in_transaction = false);
 
-    RESPType *EmergencyServeImpl(std::shared_ptr<Packet> p, ConnectionInfo &conn, Cache &cache, Logger &logger,
+    RESPType *EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache, Logger *logger,
                                  const bool in_transaction = false);
 };

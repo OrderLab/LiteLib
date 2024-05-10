@@ -3,7 +3,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread/thread.hpp>
 #include <iostream>
-#include <server.hpp>
+#include <lite.hpp>
 #include <string>
 
 #include "packet.hpp"
@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
                 break;
             case 'h':
                 address = optarg;
+                break;
             default:
                 PrintHelp();
                 return 0;
@@ -55,12 +56,11 @@ int main(int argc, char *argv[])
 
         // Initialise the server.
         // TODO: make address and port configurable.
-        std::string backend_addr = address;
-        std::string backend_port = port;
+        std::string backend_addr = "172.16.0.2";
+        std::string backend_port = "6379";
         Redis redis;
-        lite::LiteServer<Packet, Packet, Redis, std::string, CacheEntry, LogEntry, ConnectionInfo> s(
+        lite::LiteServer<Redis, Packet, Packet, ConnectionInfo, std::string, CacheEntry> s(
             thread_pool_size, cache_size, redis, backend_addr, backend_port, "/tmp/lite_Redis");
-
         // Run the server until stopped.
         s.Run(port);
     }

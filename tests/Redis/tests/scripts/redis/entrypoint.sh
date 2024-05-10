@@ -1,11 +1,8 @@
 #!/bin/bash
-RedisVersion=$(redis-cli info | grep redis_version)
-echo "Redis Server. Full Redis version: $RedisVersion"
 
-apt-get update && apt-get install -y htop net-tools
+apt-get update && apt-get install -y htop net-tools python3 python3-pip &
 
-apt-get install -y python3 python3-pip
-pip3 install matplotlib numpy pandas networkx scipy SciencePlots
+pip3 install matplotlib numpy pandas networkx scipy SciencePlots &
 
 redis-server /workspace/redis_full.conf
 
@@ -20,7 +17,15 @@ if [ "$IS_REPLICA" = "true" ]; then
     done
 else
     echo "Starting Redis Lite"
-    # TODO: Add Redis Lite
+    /workspace/lite-version/entrypoint.sh
+    if [ ! -x "/workspace/lite-version/build/redis-lite" ]; then
+        mkdir -p /workspace/lite-version/build
+        cd /workspace/lite-version/build && cmake.. && make
+    fi
+    /workspace/lite-version/build/redis-lite -h 172.16.0.2 -p 6479
 fi
+
+RedisVersion=$(redis-cli -h 172.16.0.2 info | grep redis_version)
+echo "Redis Server: $RedisVersion"
 
 tail -f /dev/null

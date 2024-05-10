@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
-project("LiteRedis"
-    VERSION 0.1.0
+project("redis-lite"
+    VERSION 0.1.3
     DESCRIPTION "The lite version of Redis"
 )
 

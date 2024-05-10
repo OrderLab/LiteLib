@@ -4,12 +4,13 @@ services:
     container_name: redis-server
     build: ./scripts/redis
     environment:
-      - REDIS_REPLICA=${REDIS_REPLICA}
+      - IS_REPLICA=${IS_REPLICA}
       # true for replica, otherwise lite
     entrypoint: /workspace/entrypoint.sh
-    privileged: true
     volumes:
       - ./scripts/redis:/workspace
+      - ../src/lite-version:/workspace/lite-version
+      - ../../../src:/workspace/lite-version/Lite
     working_dir: /workspace
     networks:
       redis_net:
@@ -19,7 +20,6 @@ services:
     container_name: redis-client
     build: ./scripts/client
     entrypoint: /workspace/entrypoint.sh
-    privileged: true
     volumes:
       - ./scripts/client:/workspace
     working_dir: /workspace

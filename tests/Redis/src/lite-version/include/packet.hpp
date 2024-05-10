@@ -3,14 +3,14 @@
 #include <event.h>
 
 #include <algorithm>
-#include <concept.hpp>
 #include <cstdint>
 #include <iostream>
+#include <lite.hpp>
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
-#include <set>
-#include <map>
 
 using InputIterator = uint8_t *;
 
@@ -18,7 +18,7 @@ struct RESPType
 {
     virtual ~RESPType(){};
 
-    virtual void AppendToBuffer(std::vector<uint8_t> &buffer){};
+    virtual void AppendToBuffer(std::vector<uint8_t> &buffer) {};
 };
 
 struct RESPString : public RESPType
@@ -39,7 +39,6 @@ struct RESPSimpleString : public RESPString
     {
     }
 
-    std::pair<lite::DeserializeResult, RESPSimpleString *> Deserialize(InputIterator &begin, InputIterator end);
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 struct RESPError : public RESPString
@@ -50,7 +49,6 @@ struct RESPError : public RESPString
     }
     virtual ~RESPError(){};
 
-    std::pair<lite::DeserializeResult, RESPError *> Deserialize(InputIterator &begin, InputIterator end);
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 struct RESPBulkString : public RESPString
@@ -61,7 +59,6 @@ struct RESPBulkString : public RESPString
     }
     virtual ~RESPBulkString(){};
 
-    std::pair<lite::DeserializeResult, RESPBulkString *> Deserialize(InputIterator &begin, InputIterator end);
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
@@ -71,7 +68,6 @@ struct RESPInteger : public RESPType
 
     virtual ~RESPInteger(){};
 
-    std::pair<lite::DeserializeResult, RESPInteger *> Deserialize(InputIterator &begin, InputIterator end);
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
@@ -81,36 +77,33 @@ struct RESPArray : public RESPType
 
     virtual ~RESPArray(){};
 
-    std::pair<lite::DeserializeResult, RESPArray *> Deserialize(InputIterator &begin, InputIterator end);
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
 struct RESPNull : public RESPType
 {
-    RESPNull() = default;
     virtual ~RESPNull(){};
 
-    std::pair<lite::DeserializeResult, RESPNull *> Deserialize(InputIterator &begin, InputIterator end);
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
 struct RESPMap : public RESPType
 {
     std::map<std::unique_ptr<RESPType>, std::unique_ptr<RESPType>> value;
+
     RESPMap() = default;
     virtual ~RESPMap(){};
 
-    std::pair<lite::DeserializeResult, RESPMap *> Deserialize(InputIterator &begin, InputIterator end);
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
 struct RESPSet : public RESPType
 {
     std::set<std::unique_ptr<RESPType>> value;
+
     RESPSet() = default;
     virtual ~RESPSet(){};
 
-    std::pair<lite::DeserializeResult, RESPSet *> Deserialize(InputIterator &begin, InputIterator end);
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
 };
 
