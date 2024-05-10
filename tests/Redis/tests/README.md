@@ -20,7 +20,7 @@ Redis provides replication model for high usability. A full server, a replica se
 
 ```sh
 # Make sure that you are in the cascade/tests/Redis/tests directory.
-export REDIS_REPLICA=true
+export IS_REPLICA=true
 docker compose up -d
 # Entering the container of Redis server
 docker exec -it redis-server bash
@@ -32,24 +32,24 @@ redis-cli ping
 
 ### Lite model
 
-> Still under construction
-
 Source code at `Redis/src`. In this setting, a full server and a lite server are involved. The function and performance overhead of switching is integrated in Lite-Redis.
 
 ```sh
-export REDIS_REPLICA=false
+export IS_REPLICA=false
 docker compose up -d
 # Entering the container of Redis server
 docker exec -it redis-server bash
 
-# Setting up the server takes a while. Use ping to check if the Redis server is on
+# If Redis-lite has not been built in advance, building process would be triggered.
+# Export the log to check if the setup is done. (optional)
+docker logs redis-server >& redis-server.log
 # Inside the server container, the server is up if it replies PONG
-redis-cli ping
+redis-cli ping -p 6479
 ```
 
 ## Benchmarking
 
-> probably needs to be modified, official benchmarking terminates if failure detected
+> Official benchmarking terminates if failure detected, the benchmark client is modified.
 
 To benchmark the Redis servers, Redis-benchmark utility from Redis is used. About how to use Redis-benchmark, please check the [official manual](https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/benchmarks/).
 

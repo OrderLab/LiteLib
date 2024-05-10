@@ -7,16 +7,8 @@
 docker build -t redis-build .
 docker run -d --rm -v .:/workspace -v "$(pwd)/../../../../src":/workspace/Lite --name redis-build redis-build
 
-# Check if the building env is setup (Optional)
+# Check if the building is done (Optional)
 docker logs redis-build >& redis-build.log
-
-# Enter CLI of redis-build
-docker exec -it redis-build bash
-
-# Inside the container, working directory: /workspace
-mkdir build && cd build
-cmake ..
-make
 ```
 
-The executable of lite-Redis is now built in `Redis/lite-version/build`
+The container stops and removes itself after building lite-Redis. The executable of lite-Redis is now built as `Redis/lite-version/build/Lite/lite-cli`
