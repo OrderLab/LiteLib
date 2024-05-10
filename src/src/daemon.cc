@@ -45,7 +45,7 @@ void Daemon::CreatePipeAndRegisterEvent() {
   if (named_pipe_fd_ == -1) {
     throw std::runtime_error("failed to open the named pipe");
   }
-  std::cout << "Deamon listening on " << pipe_path_ << std::endl;
+  std::cout << "Daemon listening on " << pipe_path_ << std::endl;
 
   event_set(&pipe_event_, named_pipe_fd_, EV_READ, PipeHandler, this);
   event_base_set(base_, &pipe_event_);
