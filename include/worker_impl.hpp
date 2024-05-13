@@ -8,6 +8,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <syncstream>
 
 #include "worker.hpp"
 
@@ -59,6 +60,7 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   pthread_setname_np(thread_id_, "mc-worker");
+  pthread_attr_destroy(&attr);
 }
 
 template <typename Application, typename Request, typename Response,
@@ -104,10 +106,13 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
         self->lite_core_.live_connections_.insert(new_connection.get());
         self->conns_.push(std::move(new_connection));
       } else if (sfd == -1) {  // replay sync
-        std::cerr << "Thread " << self->thread_id_
-                  << " reaches replay sync point" << std::endl;
+        std::osyncstream(std::cerr)
+            << "Thread " << self->thread_id_ << " reaches replay sync point"
+            << std::endl;
         self->barrier_.arrive_and_wait();
         self->barrier_.arrive_and_wait();
+        std::osyncstream(std::cerr) << "Thread " << self->thread_id_
+                                    << " exits replay sync point" << std::endl;
       }
     }
   } else {

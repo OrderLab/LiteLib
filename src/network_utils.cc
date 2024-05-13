@@ -75,6 +75,7 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
 
   // std::cerr << "Backend connected, fd: " << backend_fd << std::endl;
 
+  freeaddrinfo(res);
   return backend_fd;
 
 connect_backend_exit:

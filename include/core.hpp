@@ -28,6 +28,8 @@ class LiteCore : public Daemon {
                                 CacheKey, CacheEntry>;
   using LoggerInnerInstance = LoggerInner<Application, Request, Response,
                                           ConnectionInfo, CacheKey, CacheEntry>;
+  using LogEntryInstance = LogEntry<Application, Request, Response,
+                                    ConnectionInfo, CacheKey, CacheEntry>;
   using CacheInstance = Cache<Application, Request, Response, ConnectionInfo,
                               CacheKey, CacheEntry>;
   using CacheInnerInstance = CacheInner<Application, Request, Response,
@@ -43,16 +45,17 @@ class LiteCore : public Daemon {
            const char pipe_path[], std::barrier<std::function<void()>> &barrier,
            std::vector<std::unique_ptr<WorkerInstance>> &workers);
 
-  bool HandleRequest(
-      std::shared_ptr<Request> req, ConnectionInfo &conn_info,
-      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
-      const evutil_socket_t client_fd, const evutil_socket_t backend_fd,
-      CacheInstance *cache, LoggerInstance *logger);
+  bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
+                     ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+                         &pending_requests,
+                     const evutil_socket_t client_fd,
+                     const evutil_socket_t backend_fd, CacheInstance *cache,
+                     LoggerInstance *logger);
 
-  bool HandleResponse(
-      std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
-      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
-      const evutil_socket_t client_fd, CacheInstance *cache);
+  bool HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
+                      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+                          &pending_requests,
+                      const evutil_socket_t client_fd, CacheInstance *cache);
 
   std::string &backend_addr_, &backend_port_;
 
@@ -63,6 +66,8 @@ class LiteCore : public Daemon {
   CacheInnerInstance cache_inner_;
 
   LoggerInnerInstance logger_inner_;
+
+  ThreadSafeQueue<LogEntryInstance *> dead_connection_log_heads_;
 
  private:
   Application &app_;

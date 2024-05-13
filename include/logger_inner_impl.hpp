@@ -25,11 +25,11 @@ void LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
   entry->chr_nxt = chr_head_.chr_nxt;
   entry->chr_nxt->chr_pre = entry;
   chr_head_.chr_nxt = entry;
-  chr_lock.unlock();
   if (conn_head->conn_nxt) conn_head->conn_nxt->conn_pre = entry;
   entry->conn_nxt = conn_head->conn_nxt;
   entry->conn_pre = conn_head;
   conn_head->conn_nxt = entry;
+  chr_lock.unlock();
 }
 
 template <typename Application, typename Request, typename Response,
@@ -75,6 +75,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
                  CacheEntry>::Empty() {
+  std::unique_lock<std::mutex> chr_lock(chr_mutex_);
   return chr_tail_.chr_pre == &chr_head_;
 }
 

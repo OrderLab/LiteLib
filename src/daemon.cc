@@ -36,6 +36,7 @@ Daemon::Daemon(const std::function<bool()> &Replay,
     exit(1);
   }
   pthread_setname_np(thread_id_, "lite-daemon");
+  pthread_attr_destroy(&attr);
 }
 
 void Daemon::CreatePipeAndRegisterEvent() {
@@ -87,8 +88,6 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
           std::cerr << "Daemon: Failed to replay" << std::endl;
           break;
         }
-        self->emergency_mode_ = false;
-        std::cout << "Daemon: Exiting emergency mode" << std::endl;
         break;
     }
 

@@ -35,7 +35,6 @@ class LogEntry {
   void Delink() {
     if (chr_pre) chr_pre->chr_nxt = chr_nxt;
     if (chr_nxt) chr_nxt->chr_pre = chr_pre;
-    // TODO: lock for connection?
     if (conn_pre) conn_pre->conn_nxt = conn_nxt;
     if (conn_nxt) conn_nxt->conn_pre = conn_pre;
   }
