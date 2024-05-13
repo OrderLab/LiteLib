@@ -22,8 +22,10 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              [&] {
                std::cerr << "Disconnect from backend" << std::endl;
                live_connections_.visit_all([&](ConnectionInstance *const &c) {
-                 close(c->backend_fd_);
-                 c->backend_fd_ = -1;
+                 if (c->backend_fd_ > 0) {
+                   close(c->backend_fd_);
+                   c->backend_fd_ = -1;
+                 }
                });
              },
              backend_port, pipe_path),
@@ -41,11 +43,12 @@ template <typename Application, typename Request, typename Response,
            IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
-    HandleRequest(
-        std::shared_ptr<Request> req, ConnectionInfo &conn_info,
-        ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
-        const evutil_socket_t client_fd, const evutil_socket_t backend_fd,
-        CacheInstance *cache, LoggerInstance *logger) {
+    HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
+                  ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+                      &pending_requests,
+                  const evutil_socket_t client_fd,
+                  const evutil_socket_t backend_fd, CacheInstance *cache,
+                  LoggerInstance *logger) {
   if (!emergency_mode_ && backend_fd <= 0) {
     std::cerr << "Fallback to emergency mode" << std::endl;
     emergency_mode_ = true;
@@ -77,10 +80,10 @@ template <typename Application, typename Request, typename Response,
            IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
-    HandleResponse(
-        std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
-        ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
-        const evutil_socket_t client_fd, CacheInstance *cache) {
+    HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
+                   ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+                       &pending_requests,
+                   const evutil_socket_t client_fd, CacheInstance *cache) {
   const auto [related_stateful_request, forward_resp] =
       app_.Match(resp, conn_info, pending_requests);
   if (forward_resp) {
@@ -132,8 +135,17 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
   std::cerr << "Replay connected to backend in " << tries << " tries\n";
 
-  LogEntry<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>
-      *entry;
+#ifndef NDEBUG
+  auto backend_fd = network::TryConnectBackend(backend_addr_, backend_port_);
+  std::vector<uint8_t> debug_message = {
+      '*', '2',  '\r', '\n', '$', '4', '\r', '\n', 'P', 'I',  'N',
+      'G', '\r', '\n', '$',  '1', '2', '\r', '\n', 'r', 'e',  'p',
+      'l', 'a',  'y',  ' ',  's', 't', 'a',  'r',  't', '\r', '\n'};
+  auto _ = network::Write(backend_fd, std::move(debug_message));
+#endif
+
+  LogEntryInstance *entry;
+  std::set<ConnectionInstance *> dead_conns;
 
   for (int i = 0; i < 2; i++) {  // Double flush to ensure the consistency of
                                  // in-flight connections
@@ -158,20 +170,25 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         log_cnt++;
         const auto buffer = entry->req->Serialize();
         if (!*entry->backend_conn_ptr) {  // log belongs to a closed connection
-          replay_conn.pending_requests_.push_back(
+          auto conn_ptr = new ConnectionInstance(
+              0, EV_READ | EV_PERSIST, replay_base,
+              ConnectionInstance::ClientHandler, nullptr, *this, false);
+          dead_conns.insert(conn_ptr);
+          *entry->backend_conn_ptr = conn_ptr;
+          conn_ptr->ConnectBackend();
+          conn_ptr->pending_requests_.push_back(
               std::make_pair(entry->req, false));
-          if (!network::Write(replay_conn.backend_fd_, buffer)) {
+          if (!network::Write(conn_ptr->backend_fd_, buffer)) {
             std::cerr << "Replay failed to write to backend\n";
             return false;
           }
           // Wait for the full to handle it
           // TODO: use batched requests
-          while (!replay_conn.pending_requests_.empty()) {
+          while (!conn_ptr->pending_requests_.empty()) {
             event_base_loop(replay_base, EVLOOP_ONCE);
             // TODO: what if there're errors
           }
         } else {
-          // TODO: lock the connection here
           // TODO: use batched requests
           (*entry->backend_conn_ptr)
               ->pending_requests_.push_back(std::make_pair(entry->req, false));
@@ -181,12 +198,31 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
             // TODO: push back entry
             return false;
           }
-          // TODO: do we need to wait for the full to handle it so that the
-          // full won't be overloaded?
+          if (dead_conns.count(
+                  (*entry->backend_conn_ptr))) {  // a reestablished dead
+                                                  // connection
+            while (!replay_conn.pending_requests_.empty()) {
+              event_base_loop(replay_base, EVLOOP_ONCE);
+              // TODO: what if there're errors
+            }
+          } else {
+            if (!i) {
+              (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
+            } else {
+              // TODO: transfer the backend connection from its worker to the
+              // replay thread, process the response, and transfer it back
+            }
+          }
         }
       }
       delete entry;
     }
+#ifndef NDEBUG
+    debug_message = {'*', '2', '\r', '\n', '$',  '4', '\r', '\n', 'P',
+                     'I', 'N', 'G',  '\r', '\n', '$', '6',  '\r', '\n',
+                     'r', 'e', 'p',  'l',  'a',  'y', '\r', '\n'};
+    auto _ = network::Write(backend_fd, std::move(debug_message));
+#endif
     std::cerr << "Replay i = " << i << " finished with " << log_cnt
               << " log entries and " << dirty_cnt << " dirty entries\n";
 
@@ -205,6 +241,15 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   is_replaying_ = false;
+  emergency_mode_ = false;
+#ifndef NDEBUG
+  debug_message = {'*',  '2',  '\r', '\n', '$',  '4',  '\r', '\n',
+                   'P',  'I',  'N',  'G',  '\r', '\n', '$',  '4',
+                   '\r', '\n', 'm',  'o',  'd',  'e',  '\r', '\n'};
+  _ = network::Write(backend_fd, std::move(debug_message));
+  close(backend_fd);
+#endif
+  std::cout << "Daemon: Exiting emergency mode" << std::endl;
 
   barrier_.arrive_and_wait();  // unblock worker threads
 
@@ -213,6 +258,13 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                             end_time - start_time)
                             .count();
   std::cerr << "Replay took " << duration << " ms\n";
+
+  event_base_free(replay_base);
+
+  for (auto c : dead_conns) delete c;
+  while (!dead_connection_log_heads_.empty()) {
+    delete dead_connection_log_heads_.pop_front();
+  }
 
   return true;
 }

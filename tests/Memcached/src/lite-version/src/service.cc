@@ -9,8 +9,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Memcached::Match(
   const auto resp_opaque = resp->GetOpaque();
   std::vector<std::shared_ptr<Packet>> ret;
   while (!pending_requests.empty()) {
-    auto [req, _] = pending_requests.front();
-    pending_requests.pop_front();
+    auto [req, _] = pending_requests.pop_front();
     const auto req_opaque = req->GetOpaque();
     if (req_opaque != resp_opaque || !req->GetStatus()) {
       const auto OpCodeOption = req->GetOpcode();

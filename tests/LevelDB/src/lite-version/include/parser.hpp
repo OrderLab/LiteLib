@@ -82,6 +82,8 @@ class RESPBulkStringParser : public RESPTypeParser {
   RESPInteger length_;
 
  public:
+  virtual ~RESPBulkStringParser() {}
+
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end,
                                       RESPType &value) override {
     RESPString &typed_value = dynamic_cast<RESPBulkString &>(value);
@@ -140,6 +142,8 @@ class RESPArrayParser : public RESPTypeParser {
       std::make_unique<RESPTypeParser>();
 
  public:
+  virtual ~RESPArrayParser() {}
+
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end,
                                       RESPType &value) override {
     RESPArray &typed_value = dynamic_cast<RESPArray &>(value);

@@ -89,7 +89,7 @@ class Connection {
   /// The outgoing response.
   std::shared_ptr<Response> response_;
 
-  LogEntryInstance log_head_;
+  LogEntryInstance *log_head_;
   CacheInstance cache_;
   LoggerInstance logger_;
 };

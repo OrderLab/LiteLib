@@ -1,11 +1,21 @@
 #include "service.hpp"
 
+std::shared_ptr<Packet> LevelDB::abort_req_ = nullptr;
+
+LevelDB::LevelDB() {
+  if (abort_req_) return;
+  abort_req_ = std::make_shared<Packet>();
+  auto discard_comm = std::make_unique<RESPArray>();
+  discard_comm->value.emplace_back(std::make_unique<RESPBulkString>(
+      std::make_shared<std::string>("DISCARD")));
+  abort_req_->command = std::move(discard_comm);
+}
+
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
     lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
         &pending_requests) const {
-  auto [req, is_not_replay] = pending_requests.front();
-  pending_requests.pop_front();
+  auto [req, is_not_replay] = pending_requests.pop_front();
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
   if (opcode_resp == nullptr) {
@@ -62,6 +72,9 @@ void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
       auto response_buffer = resp->Serialize();
       for (const auto &c : *response_buffer) std::cerr << c;
       std::cerr << std::endl;
+#ifndef NDEBUG
+      throw std::runtime_error("Invalid response for EXEC");
+#endif
       return;
     }
     auto &responses = responses_resp->value;
@@ -131,7 +144,7 @@ void LevelDB::HandleReplayResponse(
   auto error_msg = dynamic_cast<RESPError *>(resp->command.get());
   if (error_msg) {
     std::cerr << "Received error msg from full during replay: "
-              << error_msg->value << std::endl;
+              << *error_msg->value << std::endl;
     exit(1);  // TODO: handle error
   }
   return;
@@ -155,12 +168,7 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
     if (*opcode == "exec") {
       if (!logger->EraseConnectionLogs(conn.transactions_.size() + 1)) {
         std::cerr << "Failed to undo log\n";
-        // Two cases that are expected
-        // 1) MULTI; switch to emergency; EXEC;
-        // 2) switch to emergency; MULTI; REPLAY; EXEC
-
-        // return Packet(std::unique_ptr<RESPType>(new RESPError(
-        //     std::make_shared<std::string>("ERR failed to undo log"))));
+        logger->Log(abort_req_);
       }
 
       auto response_array = new RESPArray;
@@ -261,6 +269,6 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
     return new RESPSimpleString(std::make_shared<std::string>("OK"));
   }
 
-  std::cerr << "Unknow opcode: " << opcode << std::endl;
-  return new RESPError(std::make_shared<std::string>("ERR unknow command"));
+  std::cerr << "unknown opcode: " << opcode << std::endl;
+  return new RESPError(std::make_shared<std::string>("ERR unknown command"));
 }

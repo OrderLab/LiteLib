@@ -47,6 +47,8 @@ class LevelDB {
                               std::string, CacheEntry>;
 
  public:
+  LevelDB();
+
   std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
       const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
       lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
@@ -71,4 +73,6 @@ class LevelDB {
                                ConnectionInfo &conn, Cache *cache,
                                Logger *logger,
                                const bool in_transaction = false);
+
+  static std::shared_ptr<Packet> abort_req_;
 };

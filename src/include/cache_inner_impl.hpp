@@ -186,7 +186,8 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Evict() {
-  // std::cerr << "Evict" << std::endl;
+  // TODO: don't evict during emergency
+  std::cerr << "Evict" << std::endl;
   while (size > max_size_) {
     ListNode *moribund = lru_tail_.pre_;
     if (moribund == &lru_head_) {

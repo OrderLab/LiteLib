@@ -15,7 +15,7 @@ using InputIterator = uint8_t *;
 struct RESPType {
   virtual ~RESPType(){};
 
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer){};
+  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) {};
 };
 
 struct RESPString : public RESPType {
@@ -69,6 +69,8 @@ class RESPTypeParser {
   std::unique_ptr<RESPTypeParser> parser_ = nullptr;
 
  public:
+  virtual ~RESPTypeParser() {}
+
   std::unique_ptr<RESPType> value_ = nullptr;
 
   virtual lite::DeserializeResult Deserialize(InputIterator &begin,

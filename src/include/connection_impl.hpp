@@ -25,9 +25,9 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       lite_server_(lite_server),
       lite_core_(lite_core),
       self_(std::make_shared<ConnectionInstance*>(this)),
-      log_head_(nullptr, nullptr, self_),
-      cache_(lite_core.cache_inner_, lite_core.logger_inner_, &log_head_),
-      logger_(lite_core.logger_inner_, &log_head_) {
+      log_head_(new LogEntryInstance(nullptr, nullptr, self_)),
+      cache_(lite_core.cache_inner_, lite_core.logger_inner_, log_head_),
+      logger_(lite_core.logger_inner_, log_head_) {
   event_set(&client_event_, sfd, event_flags, event_handler,
             static_cast<void*>(this));
   event_base_set(base, &client_event_);
@@ -50,12 +50,12 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   lite_core_.live_connections_.erase(this);
   *self_ = nullptr;
 
-  /* delete the event, the socket and the conn */
-  close(backend_fd_);
+  if (backend_fd_ > 0) close(backend_fd_);
   close(client_fd_);
-  // BUG: how to distinguish if the event is deletable?
   event_del(&client_event_);
   if (backend_event_.ev_base) event_del(&backend_event_);
+
+  lite_core_.dead_connection_log_heads_.push_back(log_head_);
   // std::cerr << "connection closed" << std::endl;
 }
 
@@ -116,6 +116,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
                                             void* arg_conn) {
   auto conn = static_cast<Connection*>(arg_conn);
   if (fd != conn->backend_fd_) {
+    // TODO: what if the client disconnects but the backend still sends a response?
     std::cerr << "BackendHandler: fd mismatch. Expecting " << conn->backend_fd_
               << " but got " << fd << std::endl;
     return;
