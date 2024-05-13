@@ -40,6 +40,9 @@ bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
   if (chr_tail_.chr_pre == &chr_head_) return false;
   entry = chr_tail_.chr_pre;
   entry->Delink();
+  if (entry->state) {
+    entry->state->dirty_node = nullptr;
+  }
   return true;
 }
 
