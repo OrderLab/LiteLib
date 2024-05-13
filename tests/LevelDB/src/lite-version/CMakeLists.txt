@@ -17,6 +17,8 @@ add_subdirectory(Lite)
 
 add_executable(${PROJECT_NAME})
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined")
+
 file(GLOB ALL_CC_FILES
   "src/*.cc"
 )

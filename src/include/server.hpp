@@ -50,7 +50,7 @@ class LiteServer {
   std::barrier<std::function<void()>> barrier_;
 
   /// The next thread to use for a new connection.
-  decltype(workers_)::iterator next_worker_;
+  typename decltype(workers_)::iterator next_worker_;
 
   /// The event base for the server thread.
   struct event_base* main_base_;

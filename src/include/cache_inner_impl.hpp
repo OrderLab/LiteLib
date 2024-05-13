@@ -127,7 +127,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                                      const CacheEntry &value,
                                      bool in_transaction,
                                      LogEntryInstance *dirty_node,
-                                     LogEntryInstance *&old_dirty_node,
+                                     std::mutex *logger_chr_mutex,
                                      CacheStateInstance *&new_state) {
   std::shared_lock<std::shared_mutex> transaction_lock;
   if (!in_transaction) {
@@ -136,8 +136,22 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
   bool ret = false;
   cache_.visit(key, [&](auto &element) {
     element.second.state->value = value;
-    old_dirty_node = element.second.state->dirty_node;
+
+    std::unique_lock<std::mutex> chr_lock;
+    if (logger_chr_mutex) {
+      chr_lock = std::unique_lock<std::mutex>{*logger_chr_mutex};
+    }
+    auto old_dirty_node = element.second.state->dirty_node;
     element.second.state->dirty_node = dirty_node;
+    if (old_dirty_node) {
+      old_dirty_node->Delink();
+    }
+    if (logger_chr_mutex) {
+      chr_lock.unlock();
+    }
+    if (old_dirty_node) {
+      delete old_dirty_node;
+    }
 
     size_t new_size;
     if constexpr (HasGetSize<CacheEntry>) {
