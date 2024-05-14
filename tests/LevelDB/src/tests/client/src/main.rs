@@ -24,6 +24,7 @@ struct RemoteScriptConfig {
     experiment_type: ExperimentType,
     remote_addr: String,
     monitor_file_path: String,
+    write_buffer_size: usize,
     #[serde(deserialize_with = "deserialize_duration")]
     crash_time: Duration,
 }
@@ -242,12 +243,13 @@ async fn main() {
                 "-tt",
                 &remote_script_config.remote_addr,
                 &match &remote_script_config.experiment_type {
-                    ExperimentType::Full => {
-                        r#"python3 /workspace/scripts/leveldb/init.py -t Full"#.to_string()
-                    }
+                    ExperimentType::Full => format!{
+                        r#"python3 /workspace/scripts/leveldb/init.py -t Full -b {}"#,
+                        remote_script_config.write_buffer_size,
+                    },
                     ExperimentType::Lite(num_threads, memory_size) => format!(
-                        r#"python3 /workspace/scripts/leveldb/init.py -t Lite -n {} -s {}"#,
-                        num_threads, memory_size,
+                        r#"python3 /workspace/scripts/leveldb/init.py -t Lite -n {} -s {} -b {}"#,
+                        num_threads, memory_size, remote_script_config.write_buffer_size
                     ),
                 },
             ])
@@ -346,7 +348,7 @@ async fn main() {
                     "-tt",
                     &remote_script_config.remote_addr,
                     &format!(
-                        r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {}"#,
+                        r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {}"#,
                         remote_script_config.crash_time.as_secs(),
                         target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
                         match &remote_script_config.experiment_type {
@@ -355,6 +357,7 @@ async fn main() {
                         },
                         cfg.benchmark.test_duration.as_secs(),
                         remote_script_config.monitor_file_path,
+                        remote_script_config.write_buffer_size,
                     ),
                 ])
                 .output()

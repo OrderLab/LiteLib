@@ -6,6 +6,7 @@ parser = argparse.ArgumentParser(description='Init experiment')
 parser.add_argument('-t', '--experiment_type', choices=['Full', 'Lite'], required=True, help='The type of the experiment')
 parser.add_argument('-n', '--num_threads', type=int, help='The number of threads of the lite version')
 parser.add_argument('-s', '--memory_size', type=str, help='The memory limit of the lite version')
+parser.add_argument('-b', '--write_buffer_size', type=int, help='The size of the write buffer of LevelDB')
 args = parser.parse_args()
 
 os.system(r'pgrep "redis-leveldb" | xargs kill -9')
@@ -16,11 +17,11 @@ os.system(r'pgrep "redis-server" | xargs kill -9')
 os.system(r'rm dump.rdb')
 
 if (args.experiment_type == 'Full'):
-    boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379"]
+    boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379", "-B", str(args.write_buffer_size)]
     utils.StartBackgroundProcess(boot_command)
 else:
     # boot_command = ["redis-server", "--port", "60000"]
-    boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "60000"]
+    boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "60000", "-B", str(args.write_buffer_size)]
     utils.StartBackgroundProcess(boot_command)
 
     boot_command = ["/workspace/server/LiteLevelDB", '-t', str(args.num_threads), '-s', args.memory_size]

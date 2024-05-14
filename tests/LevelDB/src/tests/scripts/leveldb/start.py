@@ -2,6 +2,7 @@ import argparse
 import time
 import os
 import utils
+import redis
 
 def sleep_for(seconds):
   if seconds > 0:
@@ -13,6 +14,7 @@ parser.add_argument('-s', '--start_time', type=int, required=True, help='The sta
 parser.add_argument('-t', '--experiment_type', choices=['Full', 'Lite'], required=True, help='The type of the experiment')
 parser.add_argument('-l', '--total_time', type=int, required=True, help='The total time')
 parser.add_argument('-f', '--monitor_log_file', type=str, required=True, help='The monitor log file')
+parser.add_argument('-b', '--write_buffer_size', type=int, help='The size of the write buffer of LevelDB')
 args = parser.parse_args()
 
 boot_command = ["python3", "/workspace/scripts/leveldb/monitor.py", str(args.total_time), args.monitor_log_file, str(args.start_time)]
@@ -31,24 +33,33 @@ sleep_for(start_time - time.time())
 sleep_for(crash_time - time.time())
 # ---------------------------------------------------------------- crashes
 
-os.system(r'pgrep "redis-leveldb" | xargs kill -9')
+os.system(r'pgrep "redis-leveldb" | xargs kill -2')
 os.system(r'pgrep "redis-server" | xargs kill -2')
 
 if args.experiment_type == 'Full':
   # time.sleep(10)
 
-  boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379"]
+  boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379", "-B", str(args.write_buffer_size)]
   utils.StartBackgroundProcess(boot_command)
 else:
   boot_command = ["/workspace/server/lite_cli", "-t", "/tmp/lite_LevelDB", "-p", "60001", "-m", "1"]
   utils.StartBackgroundProcess(boot_command)
 
-  boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "60001"]
+  # time.sleep(1)
+
+  boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "60001", "-B", str(args.write_buffer_size)]
   # boot_command = ["redis-server", "--port", "60001"]
   utils.StartBackgroundProcess(boot_command)
 
-  # time.sleep(10)
+  # time.sleep(9)
 
-  # TODO: how to know if redis-leveldb is initialized?
+  r = redis.Redis(host='localhost', port=60001)
+  result = False
+  while not result:
+    try:
+      result = r.ping()
+    except redis.exceptions.ConnectionError:
+      result = False
+
   boot_command = ["/workspace/server/lite_cli", "-t", "/tmp/lite_LevelDB", "-p", "60001", "-m", "0"]
   utils.StartBackgroundProcess(boot_command)
