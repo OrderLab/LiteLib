@@ -25,11 +25,10 @@ def plot_throughput(ax, stat):
   ax.set_ylabel("Throughput")
   ax.legend()
 
-def plot_latency(ax, stat):
-  ax.plot(stat["avg_lat"] * 1000)
+def plot_latency(ax, stat, type):
+  ax.plot(stat[type] * 1000)
   ax.set_xlabel("Time (s)")
-  ax.set_ylabel("Latency (ms) (Success)")
-  ax.set_ylim(0, 2)
+  ax.set_ylabel("Latency (ms) " + ("(EndToEnd)" if type == "agg_lat" else "(SuccessResp)"))
 
 def plot_tries(ax, stat):
   ax.plot(stat["avg_tries"])
@@ -77,18 +76,20 @@ for i in range(cnt):
     data = json.load(f)
     for line in data:
       line["begin"] = line["begin"]["secs"] + line["begin"]["nanos"] / 1e9
-      line["end"] = line["end"]["secs"] + line["end"]["nanos"] / 1e9
+      line["last_request_time"] = line["last_request_time"]["secs"] + line["last_request_time"]["nanos"] / 1e9
+      line["last_response_time"] = line["last_response_time"]["secs"] + line["last_response_time"]["nanos"] / 1e9
     sorted(data, key=lambda x: x["begin"])
     logs.append(data)
 
 stats = []
 for i in range(cnt):
-  stat = {"cnt": [], "lat": [], "tries": [], "Success": [], "Miss": [], "Timeout": [], "Error": [], "TransactionError": []}
+  stat = {"cnt": [], "suc_lat_sum": [], "agg_lat_sum": [], "tries": [], "Success": [], "Miss": [], "Timeout": [], "Error": [], "TransactionError": []}
   for line in logs[i]:
-    index = math.floor(line["begin"] - logs[i][0]["begin"])
+    index = math.floor(line["last_response_time"] - logs[i][0]["last_response_time"])
     if len(stat["cnt"]) < index + 1:
       stat["cnt"] += [0] * (index + 1 - len(stat["cnt"]))
-      stat["lat"] += [0] * (index + 1 - len(stat["lat"]))
+      stat["suc_lat_sum"] += [0] * (index + 1 - len(stat["suc_lat_sum"]))
+      stat["agg_lat_sum"] += [0] * (index + 1 - len(stat["agg_lat_sum"]))
       stat["tries"] += [0] * (index + 1 - len(stat["tries"]))
       stat["Success"] += [0] * (index + 1 - len(stat["Success"]))
       stat["Miss"] += [0] * (index + 1 - len(stat["Miss"]))
@@ -97,13 +98,16 @@ for i in range(cnt):
       stat["TransactionError"] += [0] * (index + 1 - len(stat["TransactionError"]))
     stat["cnt"][index] += 1
     if line["status"] == "Success":
-      stat["lat"][index] += line["end"] - line["begin"]
+      stat["suc_lat_sum"][index] += line["last_response_time"] - line["last_request_time"]
+      stat["agg_lat_sum"][index] += line["last_response_time"] - line["begin"]
       stat["tries"][index] += line["tries"]
     stat[line["status"]][index] += 1
-  stat["avg_lat"] = [0] * len(stat["cnt"])
+  stat["suc_lat"] = [0] * len(stat["cnt"])
+  stat["agg_lat"] = [0] * len(stat["cnt"])
   stat["avg_tries"] = [0] * len(stat["cnt"])
   for j in range(len(stat["Success"])):
-    stat["avg_lat"][j] = stat["lat"][j] / stat["Success"][j] if stat["Success"][j] > 0 else 5
+    stat["suc_lat"][j] = stat["suc_lat_sum"][j] / stat["Success"][j] if stat["Success"][j] > 0 else 5
+    stat["agg_lat"][j] = stat["agg_lat_sum"][j] / stat["Success"][j] if stat["Success"][j] > 0 else 5
     stat["avg_tries"][j] = stat["tries"][j] / stat["Success"][j] if stat["Success"][j] > 0 else 11
   for array in stat:
     stat[array] = np.array(stat[array])
@@ -150,13 +154,14 @@ for i in range(cnt):
           ordered_process_usages[process_name] = process_usages[process_name]
   stats[i]["resource"] = ordered_process_usages
 
-fig, axs = plt.subplots(5, cnt, figsize=(5 * cnt, 20))
+fig, axs = plt.subplots(6, cnt, figsize=(5 * cnt, 25))
 plt.subplots_adjust(hspace=0.3, wspace=0.3)
 for i in range(cnt):
   axs[0, i].set_title(args.filenames[i][:-6], y=1.2)
   plot_throughput(axs[0, i], stats[i])
-  plot_latency(axs[1, i], stats[i])
-  plot_tries(axs[2, i], stats[i])
-  plot_resource(axs[3, i], stats[i], "cpu", cpu_ylim * 1.1)
-  plot_resource(axs[4, i], stats[i], "mem", mem_ylim * 1.1)
+  plot_latency(axs[1, i], stats[i], "suc_lat")
+  plot_latency(axs[2, i], stats[i], "agg_lat")
+  plot_tries(axs[3, i], stats[i])
+  plot_resource(axs[4, i], stats[i], "cpu", cpu_ylim * 1.1)
+  plot_resource(axs[5, i], stats[i], "mem", mem_ylim * 1.1)
 plt.savefig(f"leveldb.png", bbox_inches="tight")

@@ -11,7 +11,7 @@ use rand::Rng;
 use std::process::Command;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::time::{sleep_until, timeout, Duration, Instant};
+use tokio::time::{sleep, sleep_until, timeout, Duration, Instant};
 
 #[derive(Debug, serde::Deserialize)]
 enum ExperimentType {
@@ -85,7 +85,8 @@ struct Record {
     i: usize,
     key: usize,
     begin: Duration,
-    end: Duration,
+    last_request_time: Duration,
+    last_response_time: Duration,
     tries: usize,
     status: Status,
 }
@@ -104,30 +105,43 @@ async fn do_set(
     key: usize,
     base_value: &str,
     old_suffix_expected: &mut usize,
-) -> Status {
+) -> (Status, Duration, Duration) {
     let conn = match pool.get().await {
         Ok(conn) => conn,
         Err(_) => {
-            // println!("i: {}, key: {}, error: {}", i, key, e);
-            return Status::Error;
+            // eprintln!("\ni: {}, key: {}, error: {}\n", i, key, e);
+            let now_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards");
+            return (Status::Error, now_time, now_time);
         }
     };
     let mut conn_guard = conn.lock().await;
     let new_suffix_expected = *old_suffix_expected + 1;
     let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
+    let response_time: Duration;
+    let request_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
     return match redis::cmd("SET")
         .arg(&key)
         .arg(&new_value_expected)
         .query_async::<redis::aio::Connection, String>(&mut *conn_guard)
         .await
     {
-        Ok(result) => {
+        Ok(_) => {
             *old_suffix_expected = new_suffix_expected;
-            Status::Success
+            response_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards");
+            (Status::Success, request_time, response_time)
         }
         Err(_) => {
-            // println!("i: {}, key: {}, error: {}", i, key, e);
-            Status::Error
+            // eprintln!("\ni: {}, key: {}, error: {}\n", i, key, e);
+            response_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards");
+            (Status::Error, request_time, response_time)
         }
     };
 }
@@ -138,18 +152,25 @@ async fn do_transaction(
     key: usize,
     base_value: &str,
     old_suffix_expected: &mut usize,
-) -> Status {
+) -> (Status, Duration, Duration) {
     let conn = match pool.get().await {
         Ok(conn) => conn,
         Err(_) => {
-            // println!("i: {}, key: {}, error: {}", i, key, e);
-            return Status::Error;
+            // eprintln!("\ni: {}, key: {}, error: {}\n", i, key, e);
+            let now_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards");
+            return (Status::Error, now_time, now_time);
         }
     };
     let mut conn_guard = conn.lock().await;
     let new_suffix_expected = *old_suffix_expected + 1;
     let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
     let old_value_expected = format!("{}_{}_{}", base_value, key, *old_suffix_expected);
+    let response_time: Duration;
+    let request_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
     let (old_value, new_value): (Option<String>, Option<String>) = match pipe()
         .atomic()
         .cmd("GET")
@@ -163,34 +184,42 @@ async fn do_transaction(
         .query_async(&mut *conn_guard)
         .await
     {
-        Ok(result) => result,
+        Ok(result) => {
+            response_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards");
+            result
+        }
         Err(_) => {
+            response_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards");
             // println!("i: {}, key: {}, error: {}", i, key, e);
-            return Status::Error;
+            return (Status::Error, request_time, response_time);
         }
     };
     let new_value = match new_value {
         Some(new_value) => new_value,
         None => {
-            println!("i: {}, key: {} can't get new value", i, key);
-            return Status::TransactionError;
+            eprintln!("\ni: {}, key: {} can't get new value\n", i, key);
+            return (Status::TransactionError, request_time, response_time);
         }
     };
     let old_value = match old_value {
         Some(old_value) => old_value,
         None => {
-            println!("i: {}, key: {} can't get old value", i, key);
+            eprintln!("\ni: {}, key: {} can't get old value\n", i, key);
             *old_suffix_expected = new_suffix_expected;
-            return Status::Miss;
+            return (Status::Miss, request_time, response_time);
         }
     };
     if new_value != new_value_expected || old_value != *old_value_expected {
-        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, get_last_n_char(&old_value_expected, 10), get_last_n_char(&old_value, 10), get_last_n_char(&new_value_expected, 10), get_last_n_char(&new_value, 10));
+        eprintln!("\ni: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}\n", i, key, get_last_n_char(&old_value_expected, 10), get_last_n_char(&old_value, 10), get_last_n_char(&new_value_expected, 10), get_last_n_char(&new_value, 10));
         *old_suffix_expected = new_suffix_expected;
-        Status::TransactionError
+        (Status::TransactionError, request_time, response_time)
     } else {
         *old_suffix_expected = new_suffix_expected;
-        Status::Success
+        (Status::Success, request_time, response_time)
     }
 }
 
@@ -362,6 +391,8 @@ async fn main() {
             let begin = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("Time went backwards");
+            let mut last_request_time = begin;
+            let mut last_response_time = begin;
             let mut tries = 1;
             let mut status = Status::Timeout;
             while tries <= cfg.benchmark.retry_count {
@@ -373,7 +404,9 @@ async fn main() {
                 )
                 .await
                 {
-                    Ok(result) => {
+                    Ok((result, request_time, response_time)) => {
+                        last_request_time = request_time;
+                        last_response_time = response_time;
                         if result != Status::Error {
                             status = result;
                             *value_guard = old_suffix_expected;
@@ -381,7 +414,7 @@ async fn main() {
                         }
                     }
                     Err(_) => {
-                        // println!("timeout");
+                        // eprintln!("\ntimeout\n");
                     }
                 }
                 tries += 1;
@@ -390,14 +423,12 @@ async fn main() {
             if tries > cfg.benchmark.retry_count {
                 status = Status::Timeout;
             }
-            let end = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards");
             let record = Record {
                 i,
                 key,
                 begin,
-                end,
+                last_request_time,
+                last_response_time,
                 tries,
                 status,
             };
@@ -406,8 +437,10 @@ async fn main() {
                 records_guard.push(record);
             }
             bar.inc(1);
-            if key == cfg.benchmark.num_keys && cfg.benchmark.key_distribution == KeyDistribution::Sequential {
-                println!("All keys are covered, go back to key 1 again");
+            if key == cfg.benchmark.num_keys
+                && cfg.benchmark.key_distribution == KeyDistribution::Sequential
+            {
+                println!("\nAll keys are covered, go back to key 1 again\n");
             }
         });
         handles.push(handle);
@@ -440,4 +473,58 @@ async fn main() {
         let json = serde_json::to_string(&(*records_guard)).unwrap();
         std::fs::write(cfg.benchmark.file_path, json).unwrap();
     }
+
+    // Check correctness
+    sleep(Duration::from_secs(1)).await; // Wait for the last transaction to finish
+    let mut handles = Vec::new();
+    let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Validating");
+    bar.set_style(
+        ProgressStyle::with_template(
+            "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",
+        )
+        .unwrap(),
+    );
+    for i in 1..cfg.benchmark.num_keys + 1 {
+        let pool = pool.clone();
+        let i = i; // Copy i into the closure
+        let expected_value = format!("{}_{}_{}", base_value, i, values[i].lock().await);
+        let bar = bar.clone();
+        let handle = tokio::spawn(async move {
+            let conn = pool.get().await.unwrap_or_else(|e| {
+                panic!("validating failed key: {}, error: {}", i, e);
+            });
+            let mut conn_guard = conn.lock().await;
+            let actual_value: Option<String> = cmd("GET")
+                .arg(&i)
+                .query_async(&mut *conn_guard)
+                .await
+                .unwrap();
+            match actual_value {
+                Some(actual_value) => {
+                    if actual_value != expected_value {
+                        eprintln!(
+                            "\nERR! key: {}, expected value: {:?}, actual value: {:?}\n",
+                            i,
+                            get_last_n_char(&expected_value, 10),
+                            get_last_n_char(&actual_value, 10)
+                        );
+                    }
+                }
+                None => {
+                    eprintln!(
+                        "\nERR! key: {}, expected value: {:?}, no actual value\n",
+                        i,
+                        get_last_n_char(&expected_value, 10)
+                    );
+                }
+            }
+            bar.inc(1);
+        });
+        handles.push(handle);
+    }
+    for handle in handles {
+        handle.await.unwrap();
+    }
+    bar.finish();
+    println!("\nFinished validating correctness");
 }
