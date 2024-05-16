@@ -37,7 +37,7 @@ class RESPIntegerParser : public RESPTypeParser {
       case kLF: {
         if (begin == end) return lite::kIndeterminate;
         if (*(begin++) != '\n') {
-          std::cerr << "Could not parse integer: no \\n" << std::endl;
+          LOG(ERROR) << "Could not parse integer: no \\n" << std::endl;
           return lite::kBad;
         }
         typed_value.value = typed_value.value * (is_positive_ ? 1 : -1);
@@ -67,7 +67,7 @@ class RESPSimpleStringParser : public RESPTypeParser {
       case kLF: {
         if (begin == end) return lite::kIndeterminate;
         if (*(begin++) != '\n') {
-          std::cerr << "Could not parse string: no \\n" << std::endl;
+          LOG(ERROR) << "Could not parse string: no \\n" << std::endl;
           return lite::kBad;
         }
         return lite::kGood;
@@ -117,7 +117,7 @@ class RESPBulkStringParser : public RESPTypeParser {
       case kCR: {
         if (begin == end) return lite::kIndeterminate;
         if (*(begin++) != '\r') {
-          std::cerr << "Could not parse bulk string: no \\r" << std::endl;
+          LOG(ERROR) << "Could not parse bulk string: no \\r" << std::endl;
           return lite::kBad;
         }
         state_ = kLF;
@@ -125,7 +125,7 @@ class RESPBulkStringParser : public RESPTypeParser {
       case kLF: {
         if (begin == end) return lite::kIndeterminate;
         if (*(begin++) != '\n') {
-          std::cerr << "Could not parse bulk string: no \\n" << std::endl;
+          LOG(ERROR) << "Could not parse bulk string: no \\n" << std::endl;
           return lite::kBad;
         }
         return lite::kGood;

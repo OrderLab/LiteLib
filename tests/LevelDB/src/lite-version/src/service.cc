@@ -19,7 +19,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
   if (opcode_resp == nullptr) {
-    std::cerr << "Invalid request\n";
+    LOG(ERROR) << "Invalid request\n";
     return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
                           is_not_replay);
   }
@@ -57,7 +57,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
     return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
                           is_not_replay);
   }
-  std::cerr << "Unknow opcode: " << *opcode << std::endl;
+  LOG(ERROR) << "Unknow opcode: " << *opcode << std::endl;
   return std::make_pair(std::vector<std::shared_ptr<Packet>>(), is_not_replay);
 }
 
@@ -68,10 +68,10 @@ void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
   if (conn.is_in_transaction_) {
     RESPArray *responses_resp = dynamic_cast<RESPArray *>(resp->command.get());
     if (responses_resp == nullptr) {
-      std::cerr << "Invalid response for EXEC:";
+      LOG(ERROR) << "Invalid response for EXEC:";
       auto response_buffer = resp->Serialize();
-      for (const auto &c : *response_buffer) std::cerr << c;
-      std::cerr << std::endl;
+      for (const auto &c : *response_buffer) LOG(ERROR) << c;
+      LOG(ERROR) << std::endl;
 #ifndef NDEBUG
       throw std::runtime_error("Invalid response for EXEC");
 #endif
@@ -79,9 +79,9 @@ void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
     }
     auto &responses = responses_resp->value;
     if (conn.transactions_.size() != responses.size()) {
-      std::cerr << "Invalid number of responses: trans "
-                << conn.transactions_.size() << " responses "
-                << responses.size() << std::endl;
+      LOG(ERROR) << "Invalid number of responses: trans "
+                 << conn.transactions_.size() << " responses "
+                 << responses.size() << std::endl;
       return;
     }
 
@@ -109,31 +109,31 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
     opcode = req->GetOpcode();
   } catch (const std::exception &e) {
     const auto buffer = req->Serialize();
-    std::cerr << "Unknow opcode: ";
-    for (const auto &c : *buffer) std::cerr << c;
-    std::cerr << std::endl;
+    LOG(ERROR) << "Unknow opcode: ";
+    for (const auto &c : *buffer) LOG(ERROR) << c;
+    LOG(ERROR) << std::endl;
   }
   CacheEntry entry;
   if (opcode == "set") {
     if (req->GetArgNum() != 2) {
-      std::cerr << "Invalid number of arguments for set\n";
+      LOG(ERROR) << "Invalid number of arguments for set\n";
       return;
     }
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     if (key == nullptr) {
-      std::cerr << "Invalid argument for set\n";
+      LOG(ERROR) << "Invalid argument for set\n";
       return;
     }
     const auto value = dynamic_cast<RESPString *>(req->GetArg(1));
     if (value == nullptr) {
-      std::cerr << "Invalid argument for set\n";
+      LOG(ERROR) << "Invalid argument for set\n";
       return;
     }
     entry.value = value->value;
     cache->Set(*(key->value), entry, in_transaction);
   } else if (opcode != "get" &&
              opcode != "ping") {  // TODO: update states using get
-    std::cerr << "Unknow opcode: " << opcode << std::endl;
+    LOG(ERROR) << "Unknow opcode: " << opcode << std::endl;
   }
 }
 
@@ -143,8 +143,8 @@ void LevelDB::HandleReplayResponse(
     Cache *cache) {
   auto error_msg = dynamic_cast<RESPError *>(resp->command.get());
   if (error_msg) {
-    std::cerr << "Received error msg from full during replay: "
-              << *error_msg->value << std::endl;
+    LOG(ERROR) << "Received error msg from full during replay: "
+               << *error_msg->value << std::endl;
     exit(1);  // TODO: handle error
   }
   return;
@@ -156,7 +156,7 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
   if (opcode_resp == nullptr) {
-    std::cerr << "Invalid request\n";
+    LOG(ERROR) << "Invalid request\n";
     return {};
   }
   auto &opcode = opcode_resp->value;
@@ -167,7 +167,7 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
   if (conn.is_in_transaction_) {
     if (*opcode == "exec") {
       if (!logger->EraseConnectionLogs(conn.transactions_.size() + 1)) {
-        std::cerr << "Failed to undo log\n";
+        LOG(ERROR) << "Failed to undo log\n";
         logger->Log(abort_req_);
       }
 
@@ -204,26 +204,26 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
     opcode = req->GetOpcode();
   } catch (const std::exception &e) {
     const auto buffer = req->Serialize();
-    std::cerr << "Unknow opcode: ";
-    for (const auto &c : *buffer) std::cerr << c;
-    std::cerr << std::endl;
+    LOG(ERROR) << "Unknow opcode: ";
+    for (const auto &c : *buffer) LOG(ERROR) << c;
+    LOG(ERROR) << std::endl;
   }
   CacheEntry entry;
   if (opcode == "set") {
     if (req->GetArgNum() != 2) {
-      std::cerr << "Invalid number of arguments for set" << std::endl;
+      LOG(ERROR) << "Invalid number of arguments for set" << std::endl;
       return new RESPError(
           std::make_shared<std::string>("ERR wrong number of arguments"));
     }
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     if (key == nullptr) {
-      std::cerr << "Invalid argument for set\n";
+      LOG(ERROR) << "Invalid argument for set\n";
       return new RESPError(
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
     const auto value = dynamic_cast<RESPString *>(req->GetArg(1));
     if (value == nullptr) {
-      std::cerr << "Invalid argument for set\n";
+      LOG(ERROR) << "Invalid argument for set\n";
       return new RESPError(
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
@@ -232,13 +232,13 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
       return new RESPSimpleString(std::make_shared<std::string>("OK"));
   } else if (opcode == "get") {
     if (req->GetArgNum() != 1) {
-      std::cerr << "Invalid number of arguments for get" << std::endl;
+      LOG(ERROR) << "Invalid number of arguments for get" << std::endl;
       return new RESPError(
           std::make_shared<std::string>("ERR wrong number of arguments"));
     }
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     if (key == nullptr) {
-      std::cerr << "Invalid argument for get\n";
+      LOG(ERROR) << "Invalid argument for get\n";
       return new RESPError(
           std::make_shared<std::string>("ERR wrong type of arguments"));
     }
@@ -253,13 +253,13 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
     } else if (req->GetArgNum() == 1) {
       const auto arg = dynamic_cast<RESPString *>(req->GetArg(0));
       if (arg == nullptr) {
-        std::cerr << "Invalid argument for ping\n";
+        LOG(ERROR) << "Invalid argument for ping\n";
         return new RESPError(
             std::make_shared<std::string>("ERR wrong type of arguments"));
       }
       return new RESPBulkString(arg->value);
     } else {
-      std::cerr << "Invalid number of arguments for ping" << std::endl;
+      LOG(ERROR) << "Invalid number of arguments for ping" << std::endl;
       return new RESPError(
           std::make_shared<std::string>("ERR wrong number of arguments"));
     }
@@ -269,6 +269,6 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
     return new RESPSimpleString(std::make_shared<std::string>("OK"));
   }
 
-  std::cerr << "unknown opcode: " << opcode << std::endl;
+  LOG(ERROR) << "unknown opcode: " << opcode << std::endl;
   return new RESPError(std::make_shared<std::string>("ERR unknown command"));
 }

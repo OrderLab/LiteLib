@@ -14,7 +14,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Memcached::Match(
     if (req_opaque != resp_opaque || !req->GetStatus()) {
       const auto OpCodeOption = req->GetOpcode();
       if (!OpCodeOption.has_value()) {
-        std::cerr << "Unknow opcode: " << (*req->buffer)[1] << std::endl;
+        LOG(ERROR) << "Unknow opcode: " << (*req->buffer)[1] << std::endl;
         continue;
       }
       const auto OpCode = OpCodeOption.value();
@@ -41,7 +41,7 @@ void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
     const auto opcode = req->GetOpcode().value();
     const auto packet = ParsedPacket(*req);
     if (packet.header.magic != 0x80) {
-      std::cerr << "Unsupported Protocol Version:\n" << packet << std::endl;
+      LOG(ERROR) << "Unsupported Protocol Version:\n" << packet << std::endl;
       // TODO: error handling
       exit(1);
     }
@@ -59,8 +59,8 @@ void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
       case Header::Opcode::kQuit:
         break;
       default:  // TODO: support CAS, Expiration, error and other operations
-        std::cerr << "Unknown OpCode: " << magic_enum::enum_name(opcode)
-                  << std::endl;
+        LOG(ERROR) << "Unknown OpCode: " << magic_enum::enum_name(opcode)
+                   << std::endl;
     }
   }
 }
@@ -76,14 +76,13 @@ Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
                                  Logger *logger) const {
   const auto req = ParsedPacket(*p);
   if (req.header.magic != 0x80) {
-    std::cerr << "Unsupported Protocol Version:\n" << req << std::endl;
-    // TODO: error handling
-    exit(1);
+    LOG(ERROR) << "Unsupported Protocol Version:\n" << req << std::endl;
+    exit(1);  // TODO: error handling
   }
 
   const auto opcode_option = p->GetOpcode();
   if (!opcode_option.has_value()) {
-    std::cerr << "Unknow opcode: " << (*p->buffer)[1] << std::endl;
+    LOG(ERROR) << "Unknow opcode: " << (*p->buffer)[1] << std::endl;
     exit(1);  // TODO: handle it
   }
   const auto opcode = opcode_option.value();
@@ -147,8 +146,7 @@ Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
       // NOTE: when adding support for DELETE, we need to modify Match and
       // HandleReplayResponse as we will have req entries in logs after
       // supporting DELETE
-      std::cerr << "Unsupported Opcode:\n" << req << std::endl;
-      exit(1);
+      LOG(ERROR) << "Unsupported Opcode:\n" << req << std::endl;
   }
   const auto buffer = resp.Serialize();
   conn_info.response_buffer->insert(conn_info.response_buffer->end(),
