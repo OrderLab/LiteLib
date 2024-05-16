@@ -115,6 +115,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   is_replaying_ = true;
 
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
+    c->pending_requests_
+        .clear();  // clear pending requests left by aborted connections
     c->ConnectBackend();
     std::cerr << "Connect backend " << c->backend_fd_ << " to " << c->client_fd_
               << std::endl;
