@@ -20,7 +20,7 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              std::vector<std::unique_ptr<WorkerInstance>> &workers)
     : Daemon([&] { return Replay(); },
              [&] {
-               std::cerr << "Disconnect from backend" << std::endl;
+               LOG(INFO) << "Disconnect all from backend" << std::endl;
                live_connections_.visit_all([&](ConnectionInstance *const &c) {
                  if (c->backend_fd_ > 0) {
                    close(c->backend_fd_);
@@ -50,7 +50,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
                   LoggerInstance *logger) {
   if (!emergency_mode_ && backend_fd <= 0) {
-    std::cerr << "Fallback to emergency mode" << std::endl;
+    LOG(WARNING) << "Fallback to emergency mode" << std::endl;
     emergency_mode_ = true;
   }
 
@@ -58,13 +58,13 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     auto packet = app_.EmergencyServe(std::move(req), conn_info, cache, logger);
     const auto buffer = packet.Serialize();
     if (!network::Write(client_fd, buffer)) {
-      std::cerr << "Failed to write response to client" << std::endl;
+      LOG(ERROR) << "Failed to write response to client" << std::endl;
       return false;
     }
   } else {
     const auto buffer = req->Serialize();
     if (!network::Write(backend_fd, buffer)) {
-      std::cerr << "Failed to write request to backend" << std::endl;
+      LOG(ERROR) << "Failed to write request to backend" << std::endl;
       return false;
     }
     // TODO: enable application to filter/modify requests before pushing back
@@ -89,7 +89,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   if (forward_resp) {
     const auto buffer = resp->Serialize();
     if (!network::Write(client_fd, buffer)) {
-      std::cerr << "Failed to write response to client" << std::endl;
+      LOG(ERROR) << "Failed to write response to client" << std::endl;
       return false;
     }
     // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
@@ -118,7 +118,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     c->pending_requests_
         .clear();  // clear pending requests left by aborted connections
     c->ConnectBackend();
-    std::cerr << "Connect backend " << c->backend_fd_ << " to " << c->client_fd_
+    LOG(INFO) << "Connect backend " << c->backend_fd_ << " to " << c->client_fd_
               << std::endl;
   });
 
@@ -130,12 +130,12 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   size_t tries = 0;
   while (replay_conn.backend_fd_ == -1) {
     if (tries++ > 100) {
-      std::cerr << "Replay failed to connect to backend\n";
+      LOG(ERROR) << "Replay failed to connect to backend\n";
       return false;
     }
     replay_conn.ConnectBackend();
   }
-  std::cerr << "Replay connected to backend in " << tries << " tries\n";
+  LOG(INFO) << "Replay connected to backend in " << tries << " tries\n";
 
 #ifndef NDEBUG
   auto backend_fd = network::TryConnectBackend(backend_addr_, backend_port_);
@@ -159,7 +159,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         const auto buffer = req->Serialize();
         replay_conn.pending_requests_.push_back(std::make_pair(req, false));
         if (!network::Write(replay_conn.backend_fd_, buffer)) {
-          std::cerr << "Replay failed to write dirty to backend\n";
+          LOG(ERROR) << "Replay failed to write dirty to backend\n";
           return false;
         }
         // Wait for the full to handle it
@@ -181,7 +181,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
           conn_ptr->pending_requests_.push_back(
               std::make_pair(entry->req, false));
           if (!network::Write(conn_ptr->backend_fd_, buffer)) {
-            std::cerr << "Replay failed to write to backend\n";
+            LOG(ERROR) << "Replay failed to write to backend\n";
             return false;
           }
           // Wait for the full to handle it
@@ -196,7 +196,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               ->pending_requests_.push_back(std::make_pair(entry->req, false));
           if (!network::Write((*entry->backend_conn_ptr)->backend_fd_,
                               buffer)) {
-            std::cerr << "Replay failed to write to backend\n";
+            LOG(ERROR) << "Replay failed to write to backend\n";
             // TODO: push back entry
             return false;
           }
@@ -225,18 +225,17 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                      'r', 'e', 'p',  'l',  'a',  'y', '\r', '\n'};
     auto _ = network::Write(backend_fd, std::move(debug_message));
 #endif
-    std::cerr << "Replay i = " << i << " finished with " << log_cnt
+    LOG(INFO) << "Replay i = " << i << " finished with " << log_cnt
               << " log entries and " << dirty_cnt << " dirty entries\n";
 
     if (!i) {  // Wait for all inflight connections
-      std::cerr << "Replay barrier initialized" << std::endl;
+      LOG(INFO) << "Replay barrier initialized" << std::endl;
       for (auto &worker : workers_) {
         worker->notify_queue_.enqueue(-1);
         uint64_t buf = 1;
-        if (write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
-            sizeof(uint64_t)) {
-          perror("failed writing to worker eventfd");
-        }
+        PLOG_IF(ERROR, write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
+                           sizeof(uint64_t))
+            << "failed writing to worker eventfd";
       }
       barrier_.arrive_and_wait();
     }
@@ -251,7 +250,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   _ = network::Write(backend_fd, std::move(debug_message));
   close(backend_fd);
 #endif
-  std::cout << "Daemon: Exiting emergency mode" << std::endl;
+  LOG(INFO) << "Daemon: Exiting emergency mode" << std::endl;
 
   barrier_.arrive_and_wait();  // unblock worker threads
 
@@ -259,7 +258,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                             end_time - start_time)
                             .count();
-  std::cerr << "Replay took " << duration << " ms\n";
+  LOG(INFO) << "Replay took " << duration << " ms\n";
 
   event_base_free(replay_base);
 

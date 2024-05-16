@@ -20,11 +20,8 @@ Worker<Application, Request, Response, ConnectionInfo, CacheKey,
        CacheEntry>::Worker(LiteCoreInstance &lite_core,
                            std::barrier<std::function<void()>> &barrier)
     : lite_core_(lite_core), barrier_(barrier) {
-  notify_event_fd = eventfd(0, EFD_NONBLOCK);
-  if (notify_event_fd == -1) {
-    perror("failed creating eventfd for worker thread");
-    exit(1);
-  }
+  PCHECK(notify_event_fd = eventfd(0, EFD_NONBLOCK))
+      << "failed creating eventfd for worker thread";
 
   struct event_config *ev_config;
   ev_config = event_config_new();
@@ -39,10 +36,8 @@ Worker<Application, Request, Response, ConnectionInfo, CacheKey,
   event_base_set(base_, &notify_event_);
   event_priority_set(&notify_event_, 0);  // highest priority
 
-  if (event_add(&notify_event_, 0) == -1) {
-    fprintf(stderr, "Can't monitor libevent notify pipe\n");
-    exit(1);
-  }
+  LOG_IF(FATAL, event_add(&notify_event_, 0) == -1)
+      << "Can't monitor libevent notify pipe\n";
 }
 
 template <typename Application, typename Request, typename Response,
@@ -50,14 +45,11 @@ template <typename Application, typename Request, typename Response,
 void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Run() {
   pthread_attr_t attr;
-  int ret;
 
   pthread_attr_init(&attr);
 
-  if ((ret = pthread_create(&thread_id_, &attr, ThreadBody, this)) != 0) {
-    fprintf(stderr, "Can't create thread: %s\n", strerror(ret));
-    exit(1);
-  }
+  PCHECK(!pthread_create(&thread_id_, &attr, ThreadBody, this))
+      << "Can't create thread: %s\n";
 
   pthread_setname_np(thread_id_, "mc-worker");
   pthread_attr_destroy(&attr);
@@ -85,13 +77,13 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
   if (fd == self->notify_event_fd) {
     uint64_t counter = 0;
     if (read(fd, &counter, sizeof(uint64_t)) != sizeof(uint64_t)) {
-      fprintf(stderr, "Worker can't read from libevent pipe\n");
+      LOG(ERROR) << "Worker can't read from libevent pipe\n";
       return;
     }
     while (counter--) {
       evutil_socket_t sfd;
       if (!self->notify_queue_.try_dequeue(sfd)) {
-        fprintf(stderr, "Worker can't dequeue from notify_queue\n");
+        LOG(ERROR) << "Worker can't dequeue from notify_queue\n";
         return;
       }
       if (sfd > 0) {  // new connections
@@ -100,19 +92,18 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
                   sfd, EV_READ | EV_PERSIST, self->base_,
                   ConnectionInstance::ClientHandler, nullptr, self->lite_core_,
                   true))) {
-          fprintf(stderr, "failed to create listening connection\n");
-          exit(EXIT_FAILURE);
+          LOG(ERROR) << "failed to create listening connection\n";
+          return;
         }
         self->lite_core_.live_connections_.insert(new_connection.get());
         self->conns_.push(std::move(new_connection));
       } else if (sfd == -1) {  // replay sync
-        std::osyncstream(std::cerr)
-            << "Thread " << self->thread_id_ << " reaches replay sync point"
-            << std::endl;
+        LOG(INFO) << "Thread " << self->thread_id_
+                  << " reaches replay sync point" << std::endl;
         self->barrier_.arrive_and_wait();
         self->barrier_.arrive_and_wait();
-        std::osyncstream(std::cerr) << "Thread " << self->thread_id_
-                                    << " exits replay sync point" << std::endl;
+        LOG(INFO) << "Thread " << self->thread_id_ << " exits replay sync point"
+                  << std::endl;
       }
     }
   } else {

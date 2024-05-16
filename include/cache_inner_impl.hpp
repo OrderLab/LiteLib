@@ -219,7 +219,7 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     cache_.erase(moribund->state_->key);
     delete moribund;
   }
-  // std::cerr << "Evict done: " << size << std::endl;
+  // LOG(INFO) << "Evict done: " << size << std::endl;
 }
 
 }  // namespace lite
