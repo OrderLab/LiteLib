@@ -11,7 +11,7 @@ use rand::Rng;
 use std::process::Command;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::time::{sleep, sleep_until, timeout, Duration, Instant};
+use tokio::{runtime::Handle, time::{sleep, sleep_until, timeout, Duration, Instant}};
 
 #[derive(Debug, serde::Deserialize)]
 enum ExperimentType {
@@ -243,7 +243,7 @@ async fn main() {
                 "-tt",
                 &remote_script_config.remote_addr,
                 &match &remote_script_config.experiment_type {
-                    ExperimentType::Full => format!{
+                    ExperimentType::Full => format! {
                         r#"python3 /workspace/scripts/leveldb/init.py -t Full -b {}"#,
                         remote_script_config.write_buffer_size,
                     },
@@ -451,8 +451,35 @@ async fn main() {
     }
     let spawn_end_time = Instant::now();
 
-    for handle in handles {
-        handle.await.unwrap();
+    let mut alive_handles = Vec::new();
+    for mut handle in handles {
+        match timeout(Duration::from_millis(100), &mut handle).await {
+            Ok(handle) => {
+                handle.unwrap();
+            }
+            Err(_) => {
+                alive_handles.push(handle);
+            }
+        }
+    }
+    sleep_until(
+        start_time
+            + cfg.benchmark.test_duration
+            + cfg.benchmark.timeout * cfg.benchmark.retry_count as u32,
+    )
+    .await;
+    let mut unfinished_time_out_requests = 0;
+    for mut handle in alive_handles {
+        match timeout(Duration::from_millis(100), &mut handle).await {
+            Ok(handle) => {
+                handle.unwrap();
+            }
+            Err(_) => {
+                handle.abort();
+                bar.inc(1);
+                unfinished_time_out_requests += 1;
+            }
+        }
     }
     bar.finish();
     let end_time = Instant::now();
@@ -469,6 +496,10 @@ async fn main() {
         "Serve time: {:?} ms, rps: {:?}",
         elapsed.as_millis(),
         num_requests as f64 / elapsed.as_secs_f64()
+    );
+    println!(
+        "Number of unfinished timeout requests: {}",
+        unfinished_time_out_requests
     );
 
     {
