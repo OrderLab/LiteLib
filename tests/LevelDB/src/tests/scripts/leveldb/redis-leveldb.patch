@@ -1,3 +1,13 @@
+diff --git a/.gitignore b/.gitignore
+index 1b34a3e..0049efd 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -8,3 +8,4 @@ tmp.*
+ .DS_Store
+ data/
+ *~
++*.txt
+\ No newline at end of file
 diff --git a/src/rl.cpp b/src/rl.cpp
 index 72d9685..2f67839 100644
 --- a/src/rl.cpp
@@ -98,7 +108,7 @@ index fb93138..8a61129 100644
      void rl_multi();
      void rl_exec();
 diff --git a/src/rl_server.cpp b/src/rl_server.cpp
-index 65c97ab..248a96d 100644
+index 65c97ab..e1e87dd 100644
 --- a/src/rl_server.cpp
 +++ b/src/rl_server.cpp
 @@ -33,7 +33,7 @@
@@ -118,15 +128,31 @@ index 65c97ab..248a96d 100644
  
      leveldb::Status status;
  
-@@ -48,6 +49,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+@@ -48,12 +49,21 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
          options = new leveldb::Options[1];
          options[0].create_if_missing = true;
          options[0].filter_policy = leveldb::NewBloomFilterPolicy(10);
 +        options[0].write_buffer_size = write_buffer_size;
  
          db=new leveldb::DB*[1];
-         status = leveldb::DB::Open(options[0], db_path.c_str(), &db[0]);
-@@ -63,6 +65,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+-        status = leveldb::DB::Open(options[0], db_path.c_str(), &db[0]);
+-        if(!status.ok()) {
++        size_t tries = 1000;
++        while(tries--) {
++            printf("trying to open db for %ld times\n",100-tries);
++            status = leveldb::DB::Open(options[0], db_path.c_str(), &db[0]);
++            if(status.ok()) break;
++            usleep(10*1000); // 10ms
++        }
++        if(!status.ok()){
+             puts("leveldb open error");
+             exit(1);
++        }else{
++            puts("leveldb open success");
+         }
+     }else{
+         options = new leveldb::Options[db_num];
+@@ -63,6 +73,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
          for(int i=0;i<db_num;i++){
              options[i].create_if_missing = true;
              options[i].filter_policy = leveldb::NewBloomFilterPolicy(16);

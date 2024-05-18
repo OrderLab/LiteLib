@@ -452,33 +452,46 @@ async fn main() {
     let spawn_end_time = Instant::now();
 
     let mut alive_handles = Vec::new();
+    println!("\nSpawn all requests. Trying to await for all requests to be finished\n");
     for mut handle in handles {
-        match timeout(Duration::from_millis(100), &mut handle).await {
-            Ok(handle) => {
-                handle.unwrap();
-            }
-            Err(_) => {
-                alive_handles.push(handle);
-            }
+        if handle.is_finished() {
+            handle.await.unwrap();
+        } else {
+            alive_handles.push(handle);
         }
     }
-    sleep_until(
-        start_time
-            + cfg.benchmark.test_duration
-            + cfg.benchmark.timeout * cfg.benchmark.retry_count as u32,
-    )
-    .await;
-    let mut unfinished_time_out_requests = 0;
+    println!("\n{} requests are still alive\n", alive_handles.len());
+    if !alive_handles.is_empty() {
+        sleep_until(
+            start_time
+                + cfg.benchmark.test_duration
+                + cfg.benchmark.timeout * cfg.benchmark.retry_count as u32
+        )
+        .await;
+    }
+    let mut wait_time = 30 / 5;
+    while alive_handles.len() > 0 && wait_time > 0 {
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        alive_handles.retain(|h| {
+            if h.is_finished() {
+                h.abort();
+                false
+            } else {
+                true
+            }
+        });
+        wait_time -= 1;
+        println!("{} requests are still alive\n", alive_handles.len());
+    }
+    println!("\nAbort all unfinished requests\n");
+    pool.close();
+    drop(pool);
     for mut handle in alive_handles {
-        match timeout(Duration::from_millis(100), &mut handle).await {
-            Ok(handle) => {
-                handle.unwrap();
-            }
-            Err(_) => {
-                handle.abort();
-                bar.inc(1);
-                unfinished_time_out_requests += 1;
-            }
+        if handle.is_finished() {
+            handle.await.unwrap();
+        } else {
+            handle.abort();
+            bar.inc(1);
         }
     }
     bar.finish();
@@ -499,7 +512,7 @@ async fn main() {
     );
     println!(
         "Number of unfinished timeout requests: {}",
-        unfinished_time_out_requests
+        num_requests - (*records.lock().await).len()
     );
 
     {
@@ -509,7 +522,8 @@ async fn main() {
     }
 
     // Check correctness
-    sleep(Duration::from_secs(1)).await; // Wait for the last transaction to finish
+    let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
+    // BUG: Error occurred while creating a new object: Cannot assign requested address (os error 99) if some connections are aborted
     let mut handles = Vec::new();
     let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Validating");
     bar.set_style(

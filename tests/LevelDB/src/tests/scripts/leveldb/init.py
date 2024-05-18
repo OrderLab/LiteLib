@@ -18,11 +18,11 @@ os.system(r'rm dump.rdb')
 
 if (args.experiment_type == 'Full'):
     boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379", "-B", str(args.write_buffer_size)]
-    utils.StartBackgroundProcess(boot_command)
+    utils.StartBackgroundProcess(boot_command, "/workspace/redis-leveldb/full-log-1.txt")
 else:
     # boot_command = ["redis-server", "--port", "60000"]
     boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "60000", "-B", str(args.write_buffer_size)]
-    utils.StartBackgroundProcess(boot_command)
+    utils.StartBackgroundProcess(boot_command, "/workspace/redis-leveldb/backend-log-1.txt")
 
     boot_command = ["/workspace/server/LiteLevelDB", '-t', str(args.num_threads), '-s', args.memory_size]
-    utils.StartBackgroundProcess(boot_command)
+    utils.StartBackgroundProcess(boot_command, "/workspace/server/lite-log.txt")
