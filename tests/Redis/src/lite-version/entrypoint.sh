@@ -17,7 +17,7 @@ if ! which cmake >/dev/null 2>&1; then
     sh cmake-$CMAKE_VERSION-linux-x86_64.sh --prefix=/opt/cmake --skip-license
     ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
     rm cmake-$CMAKE_VERSION-linux-x86_64.sh
-} &> /dev/null
+}
 fi
 
 if ! which boost >/dev/null 2>&1; then
@@ -30,7 +30,7 @@ if ! which boost >/dev/null 2>&1; then
     ./b2 install
     cd ..
     rm -rf boost-$BOOST_VERSION boost-$BOOST_VERSION.tar.gz
-} &> /dev/null
+}
 fi
 
 if ! which libevent >/dev/null 2>&1; then
@@ -45,7 +45,7 @@ if ! which libevent >/dev/null 2>&1; then
     make install
     cd ../..
     rm -rf libevent-$LIBEVENT_VERSION libevent-$LIBEVENT_VERSION.tar.gz
-} &> /dev/null
+}
 fi
 
 mkdir -p /workspace/build

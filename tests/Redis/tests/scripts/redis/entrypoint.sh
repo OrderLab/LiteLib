@@ -1,14 +1,18 @@
 #!/bin/bash
 
-apt-get update && apt-get install -y htop net-tools python3 python3-pip &
+apt-get update && apt-get install -y htop net-tools python3 python3-pip
 
-pip3 install matplotlib numpy pandas networkx scipy SciencePlots &
+pip3 install matplotlib numpy pandas networkx scipy SciencePlots psutil redis --break-system-packages
 
-redis-server /workspace/redis_full.conf
+find /workspace -name "*.rdb" -type f -delete
+
+cp /workspace/redis_full.conf /workspace/redis_full_running.conf
+redis-server /workspace/redis_full_running.conf
 
 if [ "$IS_REPLICA" = "true" ]; then
     echo "Starting Redis Replica"
-    redis-server /workspace/redis_replica.conf
+    cp /workspace/redis_replica.conf /workspace/redis_replica_running.conf
+    redis-server /workspace/redis_replica_running.conf
     cd sentinel
     for port in 26379 26380 26381; do
         cp redis_sentinel.conf redis_sentinel_${port}.conf

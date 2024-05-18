@@ -20,6 +20,9 @@ Redis provides replication model for high usability. A full server, a replica se
 
 ```sh
 # Make sure that you are in the cascade/tests/Redis/tests directory.
+
+# Any IS_REPLICA except "true" falls back to lite mode.
+# IS_REPLICA is by default a blank string, therefore the container boots in lite mode without setting IS_REPLICA.
 export IS_REPLICA=true
 docker compose up -d
 # Entering the container of Redis server
