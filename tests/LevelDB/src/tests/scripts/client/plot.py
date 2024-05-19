@@ -54,6 +54,7 @@ def plot_throughput(ax, stat, prefix):
         )
     ax.set_xlabel("Time (s)")
     ax.set_ylabel(prefix + "Throughput")
+    ax.set_xlim(0, total_time)
     ax.legend()
 
 
