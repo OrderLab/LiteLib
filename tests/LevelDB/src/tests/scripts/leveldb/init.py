@@ -25,4 +25,4 @@ else:
     utils.StartBackgroundProcess(boot_command, "/workspace/redis-leveldb/backend-log-1.txt")
 
     boot_command = ["/workspace/server/LiteLevelDB", '-t', str(args.num_threads), '-s', args.memory_size]
-    utils.StartBackgroundProcess(boot_command, "/workspace/server/lite-log.txt")
+    utils.StartBackgroundProcess(boot_command, "/workspace/server/lite-log.txt", env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"})
