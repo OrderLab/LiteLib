@@ -24,8 +24,8 @@ RUN apt-get update && \
         locales-all \
         vim \
         gdb \
-        valgrind && \
-        libgoogle-glog-dev \
+        valgrind \
+        libgoogle-glog-dev && \
     apt-get clean
 
 # System locale
