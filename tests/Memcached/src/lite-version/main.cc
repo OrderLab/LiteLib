@@ -10,19 +10,19 @@
 #include "service.hpp"
 
 void PrintHelp() {
-  std::cout << "Usage: LiteMemcached [-t thread_num] [-s size] \n"
+  LOG(INFO) << "Usage: LiteMemcached [-t thread_num] [-s size] \n"
                "       [-p port] [-h help]\n";
-  std::cout << "Options:\n";
-  std::cout << "  -t, --thread_num      Number of worker threads. Default: \n"
+  LOG(INFO) << "Options:\n";
+  LOG(INFO) << "  -t, --thread_num      Number of worker threads. Default: \n"
                "                          hardware_concurrency() - 1\n";
-  std::cout
+  LOG(INFO)
       << "  -s, --size            Max number of items in cache. Default: \n"
          "                          1024\n";
-  std::cout << "  -p, --port            Default: 11211\n";
-  std::cout << "  -h, --help            Show this help message.\n";
-  std::cout << "Example:\n";
-  std::cout << "  LiteMemcached -t 128 -m 1GiB -p 11211\n";
-  std::cout << "  LiteMemcached --thread_num=4 --size=256\n";
+  LOG(INFO) << "  -p, --port            Default: 11211\n";
+  LOG(INFO) << "  -h, --help            Show this help message.\n";
+  LOG(INFO) << "Example:\n";
+  LOG(INFO) << "  LiteMemcached -t 128 -m 1GiB -p 11211\n";
+  LOG(INFO) << "  LiteMemcached --thread_num=4 --size=256\n";
 }
 
 int main(int argc, char* argv[]) {
@@ -60,10 +60,10 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    std::cout << "LiteMemcached starts" << std::endl;
-    std::cout << "\tlistening on port: " << port << std::endl;
-    std::cout << "\tthread_pool_size: " << thread_pool_size << std::endl;
-    std::cout << "\tsize: " << cache_size << std::endl;
+    LOG(INFO) << "LiteMemcached starts" << std::endl;
+    LOG(INFO) << "\tlistening on port: " << port << std::endl;
+    LOG(INFO) << "\tthread_pool_size: " << thread_pool_size << std::endl;
+    LOG(INFO) << "\tsize: " << cache_size << std::endl;
 
     // Initialise the server.
     // TODO: make address and port configurable.

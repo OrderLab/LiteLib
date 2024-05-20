@@ -5,163 +5,231 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-def plot_throughput(ax, stat):
-  ax.fill_between(range(len(stat["Success"])), stat["Success"], label="Success", alpha=0.5, color="tab:green")
-  base = stat["Success"]
-  ax.fill_between(range(len(stat["Miss"])), base, base + stat["Miss"], label="Miss", alpha=0.5, color="tab:orange")
-  base += stat["Miss"]
-  ax.fill_between(range(len(stat["Timeout"])), base, base + stat["Timeout"], label="Timeout", alpha=0.5, color="tab:red")
-  base += stat["Timeout"]
-  ax.fill_between(range(len(stat["Error"])), base, base + stat["Error"], label="Error", alpha=0.5, color="tab:purple")
-  if np.max(stat["TransactionError"]) > 0:
-    base += stat["Error"]
-    ax.fill_between(range(len(stat["TransactionError"])), base, base + stat["TransactionError"], label="TransactionError", alpha=0.5, color="0")
-  # ax.plot(stat["cnt"], label="Total")
-  # ax.plot(stat["Success"], label="Success")
-  # ax.plot(stat["Miss"], label="Miss")
-  # ax.plot(stat["Timeout"], label="Timeout")
-  # ax.plot(stat["Error"], label="Error")
-  ax.set_xlabel("Time (s)")
-  ax.set_ylabel("Throughput")
-  ax.legend()
 
-def plot_latency(ax, stat, type):
-  ax.plot(stat[type] * 1000)
-  ax.set_xlabel("Time (s)")
-  ax.set_ylabel("Latency (ms) " + ("(EndToEnd)" if type == "agg_lat" else "(SuccessResp)"))
+def plot_throughput(ax, stat, prefix):
+    type = [("Success", "tab:green"), ("Miss", "tab:orange"), ("Timeout", "tab:red"), ("Error", "tab:purple"), ("TransactionError", "0")]
+    total_time = len(stat["cnt"])
+    base = np.zeros(total_time)
+    for t, c in type:
+        next_base = base + stat[prefix + t]
+        if (next_base != base).any():
+            ax.fill_between(
+                range(total_time),
+                base,
+                next_base,
+                label=t,
+                alpha=0.5,
+                color=c,
+            )
+            base = next_base
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel(prefix + " Throughput")
+    ax.set_xlim(0, total_time)
+    ax.legend()
+
+
+def plot_latency(ax, stat, type, ylabel):
+    total_time = len(stat["cnt"])
+    ax.plot(stat[type] * 1000)
+    ax.set_xlim(0, total_time)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel(ylabel + " (ms)")
+
 
 def plot_tries(ax, stat):
-  ax.plot(stat["avg_tries"])
-  ax.set_xlabel("Time (s)")
-  ax.set_ylabel("Tries (Success)")
+    total_time = len(stat["cnt"])
+    ax.plot(stat["avg_tries"])
+    ax.set_xlim(0, total_time)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Tries (Success)")
 
-def plot_resource(
-  ax,
-  stat,
-  res_name,
-  ylim
-):
-  for process_name, process_usage in stat["resource"].items():
-    ax.plot(
-      process_usage[res_name],
-      linewidth=2,
-      alpha=1,
-      label=process_name,
+
+def plot_resource(ax, stat, res_name, ylim):
+    total_time = len(stat["cnt"])
+    for process_name, process_usage in stat["resource"].items():
+        ax.plot(
+            process_usage[res_name],
+            linewidth=2,
+            alpha=1,
+            label=process_name,
+        )
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel(f"{res_name} usage" + (" (%)" if res_name == "cpu" else " (MB)"))
+    ax.legend(
+        bbox_to_anchor=(0, 1.02, 1, 0.2),
+        loc="lower left",
+        mode="expand",
+        borderaxespad=0,
+        ncol=1,
     )
-  ax.set_xlabel("Time (s)")
-  ax.set_ylabel(f"{res_name} usage" + (" (%)" if res_name == "cpu" else " (MB)"))
-  ax.legend(
-    bbox_to_anchor=(0, 1.02, 1, 0.2),
-    loc="lower left",
-    mode="expand",
-    borderaxespad=0,
-    ncol=1,
-  )
-  ax.set_ylim(0, ylim)
+    ax.set_xlim(0, total_time)
+    ax.set_ylim(0, ylim)
 
-parser = argparse.ArgumentParser(description='Process JSON files.')
 
-parser.add_argument('-f', '--filenames', nargs='+', help='The path to the JSON file(s)')
+def mean2d(arr):
+    ret = np.empty(len(arr))
+    for i in range(len(arr)):
+        if len(arr[i]) == 0:
+            ret[i] = np.nan
+        else:
+            ret[i] = np.mean(arr[i])
+    return ret
+
+
+def p2d(arr, p):
+    ret = np.empty(len(arr))
+    for i in range(len(arr)):
+        if len(arr[i]) == 0:
+            ret[i] = np.nan
+        else:
+            ret[i] = np.percentile(arr[i], p)
+    return ret
+
+
+begin_time = 0
+
+
+def get_index(time):
+    return math.floor(time - begin_time)
+
+
+parser = argparse.ArgumentParser(description="Process JSON files.")
+
+parser.add_argument("-f", "--filenames", nargs="+", help="The path to the JSON file(s)")
 
 args = parser.parse_args()
 
 cnt = len(args.filenames)
 for filename in args.filenames:
-  if not filename.endswith('.jsonl'):
-    raise argparse.ArgumentTypeError(f"Invalid file type: {filename}. Expected a '.jsonl' file.")
+    if not filename.endswith(".jsonl"):
+        raise argparse.ArgumentTypeError(
+            f"Invalid file type: {filename}. Expected a '.jsonl' file."
+        )
 
 logs = []
 for i in range(cnt):
-  with open(args.filenames[i], 'r') as f:
-    data = json.load(f)
-    for line in data:
-      line["begin"] = line["begin"]["secs"] + line["begin"]["nanos"] / 1e9
-      line["last_request_time"] = line["last_request_time"]["secs"] + line["last_request_time"]["nanos"] / 1e9
-      line["last_response_time"] = line["last_response_time"]["secs"] + line["last_response_time"]["nanos"] / 1e9
-    sorted(data, key=lambda x: x["begin"])
-    logs.append(data)
+    with open(args.filenames[i], "r") as f:
+        data = json.load(f)
+        for line in data:
+            line["begin"] = line["begin"]["secs"] + line["begin"]["nanos"] / 1e9
+            for query in line["queries"]:
+                query["request"] = (
+                    query["request"]["secs"] + query["request"]["nanos"] / 1e9
+                )
+                query["response"] = (
+                    query["response"]["secs"] + query["response"]["nanos"] / 1e9
+                )
+        logs.append(data)
 
 stats = []
 for i in range(cnt):
-  stat = {"cnt": [], "suc_lat_sum": [], "agg_lat_sum": [], "tries": [], "Success": [], "Miss": [], "Timeout": [], "Error": [], "TransactionError": []}
-  for line in logs[i]:
-    index = math.floor(line["last_response_time"] - logs[i][0]["last_response_time"])
-    if len(stat["cnt"]) < index + 1:
-      stat["cnt"] += [0] * (index + 1 - len(stat["cnt"]))
-      stat["suc_lat_sum"] += [0] * (index + 1 - len(stat["suc_lat_sum"]))
-      stat["agg_lat_sum"] += [0] * (index + 1 - len(stat["agg_lat_sum"]))
-      stat["tries"] += [0] * (index + 1 - len(stat["tries"]))
-      stat["Success"] += [0] * (index + 1 - len(stat["Success"]))
-      stat["Miss"] += [0] * (index + 1 - len(stat["Miss"]))
-      stat["Timeout"] += [0] * (index + 1 - len(stat["Timeout"]))
-      stat["Error"] += [0] * (index + 1 - len(stat["Error"]))
-      stat["TransactionError"] += [0] * (index + 1 - len(stat["TransactionError"]))
-    stat["cnt"][index] += 1
-    if line["status"] == "Success":
-      stat["suc_lat_sum"][index] += line["last_response_time"] - line["last_request_time"]
-      stat["agg_lat_sum"][index] += line["last_response_time"] - line["begin"]
-      stat["tries"][index] += line["tries"]
-    stat[line["status"]][index] += 1
-  stat["suc_lat"] = [0] * len(stat["cnt"])
-  stat["agg_lat"] = [0] * len(stat["cnt"])
-  stat["avg_tries"] = [0] * len(stat["cnt"])
-  for j in range(len(stat["Success"])):
-    stat["suc_lat"][j] = stat["suc_lat_sum"][j] / stat["Success"][j] if stat["Success"][j] > 0 else 5
-    stat["agg_lat"][j] = stat["agg_lat_sum"][j] / stat["Success"][j] if stat["Success"][j] > 0 else 5
-    stat["avg_tries"][j] = stat["tries"][j] / stat["Success"][j] if stat["Success"][j] > 0 else 11
-  for array in stat:
-    stat[array] = np.array(stat[array])
-  stats.append(stat)
+    begin_time = np.min([line["begin"] for line in logs[i]])
+    last_response_time = np.max(
+        [query["response"] for line in logs[i] for query in line["queries"]]
+    )
+    total_time = get_index(last_response_time) + 1
+    stat = {
+        "cnt": np.zeros(total_time),
+        "server_lat_list": [[] for _ in range(total_time)],
+        "agg_lat_list": [[] for _ in range(total_time)],
+        "tries": [[] for _ in range(total_time)],
+        "ClientSuccess": np.zeros(total_time),
+        "ClientMiss": np.zeros(total_time),
+        "ClientTimeout": np.zeros(total_time),
+        "ClientError": np.zeros(total_time),
+        "ClientTransactionError": np.zeros(total_time),
+        "ServerSuccess": np.zeros(total_time),
+        "ServerMiss": np.zeros(total_time),
+        "ServerError": np.zeros(total_time),
+        "ServerTimeout": np.zeros(total_time),
+        "ServerTransactionError": np.zeros(total_time),
+        "lock_wait_time": [[] for _ in range(total_time)],
+    }
+    for line in logs[i]:
+        begin_index = get_index(line["queries"][0]["request"])
+        stat["cnt"][begin_index] += 1
+        stat["lock_wait_time"][get_index(line["begin"])].append(
+            line["queries"][0]["request"] - line["begin"],
+        )
+        if line["queries"][-1]["status"] == "Success":
+            stat["agg_lat_list"][begin_index].append(
+                line["queries"][-1]["response"] - line["queries"][0]["request"],
+            )
+            assert len(stat["agg_lat_list"][begin_index]) > 0
+            stat["tries"][begin_index].append(len(line["queries"]))
+        stat["Client" + line["queries"][-1]["status"]][begin_index] += 1
+        for query in line["queries"]:
+            request_index = get_index(query["request"])
+            if query["status"] == "Success":
+                stat["server_lat_list"][request_index].append(
+                    query["response"] - query["request"],
+                )
+            stat["Server" + query["status"]][request_index] += 1
+    stat["avg_agg_lat"] = mean2d(stat["agg_lat_list"])
+    stat["p95_agg_lat"] = p2d(stat["agg_lat_list"], 95)
+    stat["avg_server_lat"] = mean2d(stat["server_lat_list"])
+    stat["p95_server_lat"] = p2d(stat["server_lat_list"], 95)
+    stat["avg_tries"] = mean2d(stat["tries"])
+    stat["avg_lock_wait_time"] = mean2d(stat["lock_wait_time"])
+    stats.append(stat)
 
 cpu_ylim = 0
 mem_ylim = 0
 
 for i in range(cnt):
-  dir_name, file_name = os.path.split(args.filenames[i])
-  args.filenames[i] = os.path.join(dir_name, "monitor." + file_name)
-  if not args.filenames[i].endswith('.jsonl'):
-    raise argparse.ArgumentTypeError(f"Invalid file type: {args.filenames[i]}. Expected a '.jsonl' file.")
-  with open(args.filenames[i], "r") as file:
-      lines = file.readlines()
-  process_usages = {}
-  for line in lines:
-      try:
-          data = json.loads(line)
-          time = 0
-          for process_name, process_info in data.items():
-              if process_name == "time":
-                  time = int(process_info)
-              else:
-                  if process_name not in process_usages:
-                      process_usages[process_name] = {"cpu": [0] * 100000, "mem": [0] * 100000}
-                  process_usages[process_name]["cpu"][time] = process_info["cpu"]
-                  process_usages[process_name]["mem"][time] = process_info["mem"]
-      except json.JSONDecodeError:
-          pass
-  for process_usage in process_usages.values():
-      cpu = process_usage["cpu"][0 : len(stats[i]["cnt"])]
-      mem = process_usage["mem"][0 : len(stats[i]["cnt"])]
-      cpu = np.array(cpu)
-      mem = np.array(mem) / 1024.0 / 1024.0
-      process_usage["cpu"] = cpu
-      process_usage["mem"] = mem
-      cpu_ylim = max(cpu_ylim, np.max(process_usage["cpu"]))
-      mem_ylim = max(mem_ylim, np.max(process_usage["mem"]))
-  ordered_process_usages = {}
-  ordered_process_usages['redis-leveldb'] = process_usages['redis-leveldb']
-  for process_name in sorted(process_usages.keys()):
-      if process_name != 'redis-leveldb':
-          ordered_process_usages[process_name] = process_usages[process_name]
-  stats[i]["resource"] = ordered_process_usages
+    dir_name, file_name = os.path.split(args.filenames[i])
+    args.filenames[i] = os.path.join(dir_name, "monitor." + file_name)
+    if not args.filenames[i].endswith(".jsonl"):
+        raise argparse.ArgumentTypeError(
+            f"Invalid file type: {args.filenames[i]}. Expected a '.jsonl' file."
+        )
+    with open(args.filenames[i], "r") as file:
+        lines = file.readlines()
+    process_usages = {}
+    for line in lines:
+        try:
+            data = json.loads(line)
+            time = 0
+            for process_name, process_info in data.items():
+                if process_name == "time":
+                    time = int(process_info)
+                else:
+                    if process_name not in process_usages:
+                        process_usages[process_name] = {
+                            "cpu": np.zeros(100000),
+                            "mem": np.zeros(100000),
+                        }
+                    process_usages[process_name]["cpu"][time] = process_info["cpu"]
+                    process_usages[process_name]["mem"][time] = process_info["mem"]
+        except json.JSONDecodeError:
+            pass
+    for process_usage in process_usages.values():
+        cpu = process_usage["cpu"][0 : len(stats[i]["cnt"])]
+        mem = process_usage["mem"][0 : len(stats[i]["cnt"])]
+        mem = mem / 1024.0 / 1024.0
+        process_usage["cpu"] = cpu
+        process_usage["mem"] = mem
+        cpu_ylim = max(cpu_ylim, np.max(process_usage["cpu"]))
+        mem_ylim = max(mem_ylim, np.max(process_usage["mem"]))
+    ordered_process_usages = {}
+    ordered_process_usages["redis-leveldb"] = process_usages["redis-leveldb"]
+    for process_name in sorted(process_usages.keys()):
+        if process_name != "redis-leveldb":
+            ordered_process_usages[process_name] = process_usages[process_name]
+    stats[i]["resource"] = ordered_process_usages
 
-fig, axs = plt.subplots(6, cnt, figsize=(5 * cnt, 25))
+fig, axs = plt.subplots(10, cnt, figsize=(5 * cnt, 40))
 plt.subplots_adjust(hspace=0.3, wspace=0.3)
 for i in range(cnt):
-  axs[0, i].set_title(args.filenames[i][:-6], y=1.2)
-  plot_throughput(axs[0, i], stats[i])
-  plot_latency(axs[1, i], stats[i], "suc_lat")
-  plot_latency(axs[2, i], stats[i], "agg_lat")
-  plot_tries(axs[3, i], stats[i])
-  plot_resource(axs[4, i], stats[i], "cpu", cpu_ylim * 1.1)
-  plot_resource(axs[5, i], stats[i], "mem", mem_ylim * 1.1)
+    axs[0, i].set_title(args.filenames[i][:-6], y=1.2)
+    plot_throughput(axs[0, i], stats[i], "Client")
+    plot_latency(axs[1, i], stats[i], "avg_agg_lat", "Avg Client Latency")
+    plot_latency(axs[2, i], stats[i], "p95_agg_lat", "95% Client Latency")
+    plot_tries(axs[3, i], stats[i])
+    plot_throughput(axs[4, i], stats[i], "Server")
+    plot_latency(axs[5, i], stats[i], "avg_server_lat", "Avg Server")
+    plot_latency(axs[6, i], stats[i], "p95_server_lat", "95% Server")
+    plot_resource(axs[7, i], stats[i], "cpu", cpu_ylim * 1.1)
+    plot_resource(axs[8, i], stats[i], "mem", mem_ylim * 1.1)
+    plot_latency(axs[9, i], stats[i], "avg_lock_wait_time", "Avg Lock Wait Time")
 plt.savefig(f"leveldb.png", bbox_inches="tight")

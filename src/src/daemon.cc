@@ -7,6 +7,9 @@
 #include <iostream>
 #include <stdexcept>
 
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
+
 #include "pipe_message_def.hpp"
 
 namespace lite {
@@ -31,12 +34,9 @@ Daemon::Daemon(const std::function<bool()> &Crash,
 
   // pthread create
   pthread_attr_t attr;
-  int ret;
   pthread_attr_init(&attr);
-  if ((ret = pthread_create(&thread_id_, &attr, ThreadBody, this)) != 0) {
-    fprintf(stderr, "Can't create thread: %s\n", strerror(ret));
-    exit(1);
-  }
+  PCHECK(!pthread_create(&thread_id_, &attr, ThreadBody, this))
+      << "Can't create daemon thread";
   pthread_setname_np(thread_id_, "lite-daemon");
   pthread_attr_destroy(&attr);
 }
@@ -48,14 +48,12 @@ void Daemon::CreatePipeAndRegisterEvent() {
   if (named_pipe_fd_ == -1) {
     throw std::runtime_error("failed to open the named pipe");
   }
-  std::cout << "Deamon listening on " << pipe_path_ << std::endl;
+  LOG(INFO) << "Deamon listening on " << pipe_path_ << std::endl;
 
   event_set(&pipe_event_, named_pipe_fd_, EV_READ, PipeHandler, this);
   event_base_set(base_, &pipe_event_);
-  if (event_add(&pipe_event_, 0) == -1) {
-    fprintf(stderr, "Can't monitor libevent notify pipe\n");
-    exit(1);
-  }
+  LOG_IF(FATAL, event_add(&pipe_event_, 0) == -1)
+      << "Can't monitor libevent notify pipe\n";
 };
 
 void *Daemon::ThreadBody(void *arg_self) {
@@ -75,7 +73,7 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
     auto bytes_read = read(fd, &message, sizeof(message));
     if (!bytes_read) return;
     if (bytes_read != sizeof(message)) {
-      fprintf(stderr, "Daemon: Error reading pipe");
+      LOG(ERROR) << "Daemon: Error reading pipe";
       return;
     }
     self->backend_port_ = std::to_string(message.backend_port);
@@ -84,11 +82,11 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
         self->emergency_mode_ = true;
         self->DisconnectFromBackend_();
         self->Crash_();
-        std::cout << "Daemon: Entering emergency mode" << std::endl;
+        LOG(WARNING) << "Daemon: Entering emergency mode" << std::endl;
         break;
       case PipeMessage::kExitEmergencyMode:
         if (!self->Replay_()) {
-          std::cerr << "Daemon: Failed to replay" << std::endl;
+          LOG(ERROR) << "Daemon: Failed to replay" << std::endl;
           break;
         }
         break;

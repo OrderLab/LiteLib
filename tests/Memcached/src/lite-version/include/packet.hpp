@@ -90,7 +90,7 @@ struct Packet {
       return std::make_shared<std::vector<uint8_t>>();
     }
     if (buffer->empty()) {
-      std::cerr << "Serialize: buffer is empty" << std::endl;
+      LOG(ERROR) << "Serialize: buffer is empty" << std::endl;
       return nullptr;
     }
     return buffer;

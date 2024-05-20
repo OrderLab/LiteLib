@@ -1,7 +1,7 @@
 use async_mutex::Mutex;
 use deadpool_redis::{
-    redis::{cmd, pipe},
-    Pool, Runtime,
+    redis::{aio::Connection, cmd, pipe},
+    Runtime,
 };
 use dotenvy::dotenv;
 use duration_str::deserialize_duration;
@@ -11,7 +11,7 @@ use rand::Rng;
 use std::process::Command;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::time::{sleep, sleep_until, timeout, Duration, Instant};
+use tokio::time::{sleep_until, timeout, Duration, Instant};
 
 #[derive(Debug, serde::Deserialize)]
 enum ExperimentType {
@@ -82,14 +82,18 @@ enum Status {
 }
 
 #[derive(Debug, serde::Serialize)]
+struct QueryRecord {
+    status: Status,
+    request: Duration,
+    response: Duration,
+}
+
+#[derive(Debug, serde::Serialize)]
 struct Record {
     i: usize,
     key: usize,
     begin: Duration,
-    last_request_time: Duration,
-    last_response_time: Duration,
-    tries: usize,
-    status: Status,
+    queries: Vec<QueryRecord>,
 }
 
 fn get_last_n_char(string: &str, n: usize) -> &str {
@@ -100,71 +104,14 @@ fn get_last_n_char(string: &str, n: usize) -> &str {
     &string[len - n..]
 }
 
-async fn do_set(
-    i: usize,
-    pool: Pool,
-    key: usize,
-    base_value: &str,
-    old_suffix_expected: &mut usize,
-) -> (Status, Duration, Duration) {
-    let conn = match pool.get().await {
-        Ok(conn) => conn,
-        Err(_) => {
-            // eprintln!("\ni: {}, key: {}, error: {}\n", i, key, e);
-            let now_time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards");
-            return (Status::Error, now_time, now_time);
-        }
-    };
-    let mut conn_guard = conn.lock().await;
-    let new_suffix_expected = *old_suffix_expected + 1;
-    let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
-    let response_time: Duration;
-    let request_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
-    return match redis::cmd("SET")
-        .arg(&key)
-        .arg(&new_value_expected)
-        .query_async::<redis::aio::Connection, String>(&mut *conn_guard)
-        .await
-    {
-        Ok(_) => {
-            *old_suffix_expected = new_suffix_expected;
-            response_time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards");
-            (Status::Success, request_time, response_time)
-        }
-        Err(_) => {
-            // eprintln!("\ni: {}, key: {}, error: {}\n", i, key, e);
-            response_time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards");
-            (Status::Error, request_time, response_time)
-        }
-    };
-}
-
 async fn do_transaction(
     i: usize,
-    pool: Pool,
+    conn: &mut Connection,
     key: usize,
     base_value: &str,
     old_suffix_expected: &mut usize,
-) -> (Status, Duration, Duration) {
-    let conn = match pool.get().await {
-        Ok(conn) => conn,
-        Err(_) => {
-            // eprintln!("\ni: {}, key: {}, error: {}\n", i, key, e);
-            let now_time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards");
-            return (Status::Error, now_time, now_time);
-        }
-    };
-    let mut conn_guard = conn.lock().await;
+    query_timeout: Duration,
+) -> QueryRecord {
     let new_suffix_expected = *old_suffix_expected + 1;
     let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
     let old_value_expected = format!("{}_{}_{}", base_value, key, *old_suffix_expected);
@@ -172,55 +119,97 @@ async fn do_transaction(
     let request_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
-    let (old_value, new_value): (Option<String>, Option<String>) = match pipe()
-        .atomic()
-        .cmd("GET")
-        .arg(&key)
-        .cmd("SET")
-        .arg(&key)
-        .arg(&new_value_expected)
-        .ignore()
-        .cmd("GET")
-        .arg(&key)
-        .query_async(&mut *conn_guard)
-        .await
+    match timeout(
+        query_timeout,
+        pipe()
+            .atomic()
+            .cmd("GET")
+            .arg(&key)
+            .cmd("SET")
+            .arg(&key)
+            .arg(&new_value_expected)
+            .ignore()
+            .cmd("GET")
+            .arg(&key)
+            .query_async::<_, (Option<String>, Option<String>)>(&mut *conn),
+    )
+    .await
     {
         Ok(result) => {
-            response_time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards");
-            result
+            match result {
+                Ok((old_value, new_value)) => {
+                    response_time = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("Time went backwards");
+                    let mut status = Status::Success;
+                    match old_value {
+                        Some(old_value) => {
+                            if old_value != old_value_expected {
+                                eprintln!(
+                                    "\ni: {}, key: {}, expected old value: {:?}, old value: {:?}\n",
+                                    i,
+                                    key,
+                                    get_last_n_char(&old_value_expected, 10),
+                                    get_last_n_char(&old_value, 10)
+                                );
+                                status = Status::Error;
+                            }
+                        }
+                        None => {
+                            eprintln!("\ni: {}, key: {} can't get old value\n", i, key);
+                            status = Status::Miss
+                        }
+                    };
+                    match new_value {
+                        Some(new_value) => {
+                            if new_value != new_value_expected {
+                                eprintln!(
+                                    "\ni: {}, key: {}, expected new value: {:?}, new value: {:?}\n",
+                                    i,
+                                    key,
+                                    get_last_n_char(&new_value_expected, 10),
+                                    get_last_n_char(&new_value, 10)
+                                );
+                                status = Status::TransactionError;
+                            } else {
+                                *old_suffix_expected = new_suffix_expected;
+                            }
+                        }
+                        None => {
+                            eprintln!("\ni: {}, key: {} can't get new value\n", i, key);
+                            status = Status::TransactionError;
+                        }
+                    };
+                    QueryRecord {
+                        status,
+                        request: request_time,
+                        response: response_time,
+                    }
+                }
+                Err(_) => {
+                    response_time = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("Time went backwards");
+                    // println!("i: {}, key: {}, error: {}", i, key, e);
+                    QueryRecord {
+                        status: Status::Error,
+                        request: request_time,
+                        response: response_time,
+                    }
+                }
+            }
         }
         Err(_) => {
             response_time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("Time went backwards");
-            // println!("i: {}, key: {}, error: {}", i, key, e);
-            return (Status::Error, request_time, response_time);
+            // eprintln!("\ni: {}, key: {} timeout\n", i, key);
+            QueryRecord {
+                status: Status::Timeout,
+                request: request_time,
+                response: response_time,
+            }
         }
-    };
-    let new_value = match new_value {
-        Some(new_value) => new_value,
-        None => {
-            eprintln!("\ni: {}, key: {} can't get new value\n", i, key);
-            return (Status::TransactionError, request_time, response_time);
-        }
-    };
-    let old_value = match old_value {
-        Some(old_value) => old_value,
-        None => {
-            eprintln!("\ni: {}, key: {} can't get old value\n", i, key);
-            *old_suffix_expected = new_suffix_expected;
-            return (Status::Miss, request_time, response_time);
-        }
-    };
-    if new_value != new_value_expected || old_value != *old_value_expected {
-        eprintln!("\ni: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}\n", i, key, get_last_n_char(&old_value_expected, 10), get_last_n_char(&old_value, 10), get_last_n_char(&new_value_expected, 10), get_last_n_char(&new_value, 10));
-        *old_suffix_expected = new_suffix_expected;
-        (Status::TransactionError, request_time, response_time)
-    } else {
-        *old_suffix_expected = new_suffix_expected;
-        (Status::Success, request_time, response_time)
     }
 }
 
@@ -243,7 +232,7 @@ async fn main() {
                 "-tt",
                 &remote_script_config.remote_addr,
                 &match &remote_script_config.experiment_type {
-                    ExperimentType::Full => format!{
+                    ExperimentType::Full => format! {
                         r#"python3 /workspace/scripts/leveldb/init.py -t Full -b {}"#,
                         remote_script_config.write_buffer_size,
                     },
@@ -294,10 +283,10 @@ async fn main() {
                 panic!("Initialize failed i: {}, error: {}", i, e);
             });
             let mut conn_guard = conn.lock().await;
-            let _: () = cmd("SET")
+            cmd("SET")
                 .arg(&i)
                 .arg(&value)
-                .query_async(&mut *conn_guard)
+                .query_async::<_, String>(&mut *conn_guard)
                 .await
                 .unwrap();
             bar.inc(1);
@@ -394,46 +383,50 @@ async fn main() {
             let begin = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("Time went backwards");
-            let mut last_request_time = begin;
-            let mut last_response_time = begin;
+            let mut queries = Vec::new();
             let mut tries = 1;
-            let mut status = Status::Timeout;
-            while tries <= cfg.benchmark.retry_count {
-                let mut value_guard = value.lock().await;
-                let mut old_suffix_expected = (*value_guard).clone();
-                match timeout(
-                    cfg.benchmark.timeout,
-                    do_transaction(i, pool.clone(), key, &base_value, &mut old_suffix_expected),
-                )
-                .await
-                {
-                    Ok((result, request_time, response_time)) => {
-                        last_request_time = request_time;
-                        last_response_time = response_time;
-                        if result != Status::Error {
-                            status = result;
-                            *value_guard = old_suffix_expected;
+            match pool.get().await {
+                Ok(conn) => {
+                    let mut conn_guard = conn.lock().await;
+                    while tries <= cfg.benchmark.retry_count {
+                        let mut value_guard = value.lock().await;
+                        let mut old_suffix_expected = (*value_guard).clone();
+                        let query_record = do_transaction(
+                            i,
+                            &mut *conn_guard,
+                            key,
+                            &base_value,
+                            &mut old_suffix_expected,
+                            cfg.benchmark.timeout,
+                        )
+                        .await;
+                        let finished = query_record.status != Status::Timeout;
+                        queries.push(query_record);
+                        *value_guard = old_suffix_expected;
+                        if finished {
                             break;
                         }
-                    }
-                    Err(_) => {
-                        // eprintln!("\ntimeout\n");
+                        tries += 1;
+                        drop(value_guard);
                     }
                 }
-                tries += 1;
-                drop(value_guard);
-            }
-            if tries > cfg.benchmark.retry_count {
-                status = Status::Timeout;
-            }
+                Err(_) => {
+                    // eprintln!("\ni: {}, key: {}, error: {}\n", i, key, e);
+                    let now_time = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("Time went backwards");
+                    queries.push(QueryRecord {
+                        status: Status::Error,
+                        request: now_time,
+                        response: now_time,
+                    });
+                }
+            };
             let record = Record {
                 i,
                 key,
                 begin,
-                last_request_time,
-                last_response_time,
-                tries,
-                status,
+                queries,
             };
             {
                 let mut records_guard = records.lock().await;
@@ -451,8 +444,48 @@ async fn main() {
     }
     let spawn_end_time = Instant::now();
 
+    let mut alive_handles = Vec::new();
+    println!("\nSpawn all requests. Trying to await for all requests to be finished\n");
     for handle in handles {
-        handle.await.unwrap();
+        if handle.is_finished() {
+            handle.await.unwrap();
+        } else {
+            alive_handles.push(handle);
+        }
+    }
+    println!("\n{} requests are still alive\n", alive_handles.len());
+    if !alive_handles.is_empty() {
+        sleep_until(
+            start_time
+                + cfg.benchmark.test_duration
+                + cfg.benchmark.timeout * cfg.benchmark.retry_count as u32,
+        )
+        .await;
+    }
+    let mut wait_time = 30 / 5;
+    while alive_handles.len() > 0 && wait_time > 0 {
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        alive_handles.retain(|h| {
+            if h.is_finished() {
+                h.abort();
+                false
+            } else {
+                true
+            }
+        });
+        wait_time -= 1;
+        println!("{} requests are still alive\n", alive_handles.len());
+    }
+    println!("\nAbort all unfinished requests\n");
+    pool.close();
+    drop(pool);
+    for handle in alive_handles {
+        if handle.is_finished() {
+            handle.await.unwrap();
+        } else {
+            handle.abort();
+            bar.inc(1);
+        }
     }
     bar.finish();
     let end_time = Instant::now();
@@ -470,6 +503,10 @@ async fn main() {
         elapsed.as_millis(),
         num_requests as f64 / elapsed.as_secs_f64()
     );
+    println!(
+        "Number of unfinished timeout requests: {}",
+        num_requests - (*records.lock().await).len()
+    );
 
     {
         let records_guard = records.lock().await;
@@ -478,7 +515,8 @@ async fn main() {
     }
 
     // Check correctness
-    sleep(Duration::from_secs(1)).await; // Wait for the last transaction to finish
+    let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
+    // BUG: Error occurred while creating a new object: Cannot assign requested address (os error 99) if some connections are aborted
     let mut handles = Vec::new();
     let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Validating");
     bar.set_style(

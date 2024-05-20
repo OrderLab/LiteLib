@@ -214,9 +214,10 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Evict() {
-  // TODO: don't evict during emergency
-  std::cerr << "Evict" << std::endl;
-  while (size > max_size_) {
+  if (emergency_mode_) return;
+  size_t threshold = 10; // prevent blocking for too long
+  // TODO: choose a better threshold
+  while (size > max_size_ && threshold--) {
     ListNode *moribund = lru_tail_.pre_;
     if (moribund == &lru_head_) {
       // List is empty, can't evict
@@ -232,7 +233,7 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     cache_.erase(moribund->state_->key);
     delete moribund;
   }
-  // std::cerr << "Evict done: " << size << std::endl;
+  // LOG(INFO) << "Evict done: " << size << std::endl;
 }
 
 }  // namespace lite

@@ -18,7 +18,7 @@ parser.add_argument('-b', '--write_buffer_size', type=int, help='The size of the
 args = parser.parse_args()
 
 boot_command = ["python3", "/workspace/scripts/leveldb/monitor.py", str(args.total_time), args.monitor_log_file, str(args.start_time)]
-utils.StartBackgroundProcess(boot_command)
+utils.StartBackgroundProcess(boot_command, "/workspace/scripts/leveldb/monitor-log.txt")
 
 start_time = args.start_time / 1e9
 crash_time = start_time + args.crash_time
@@ -40,16 +40,16 @@ if args.experiment_type == 'Full':
   # time.sleep(10)
 
   boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379", "-B", str(args.write_buffer_size)]
-  utils.StartBackgroundProcess(boot_command)
+  utils.StartBackgroundProcess(boot_command, "/workspace/redis-leveldb/full-log-1.txt")
 else:
   boot_command = ["/workspace/server/lite_cli", "-t", "/tmp/lite_LevelDB", "-p", "60001", "-m", "1"]
-  utils.StartBackgroundProcess(boot_command)
+  utils.StartBackgroundProcess(boot_command, "/workspace/server/lite-cli-log-1.txt")
 
   # time.sleep(1)
 
   boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "60001", "-B", str(args.write_buffer_size)]
   # boot_command = ["redis-server", "--port", "60001"]
-  utils.StartBackgroundProcess(boot_command)
+  utils.StartBackgroundProcess(boot_command, "/workspace/redis-leveldb/backend-log-2.txt")
 
   # time.sleep(9)
 
@@ -62,4 +62,4 @@ else:
       result = False
 
   boot_command = ["/workspace/server/lite_cli", "-t", "/tmp/lite_LevelDB", "-p", "60001", "-m", "0"]
-  utils.StartBackgroundProcess(boot_command)
+  utils.StartBackgroundProcess(boot_command, "/workspace/server/lite-cli-log-2.txt")

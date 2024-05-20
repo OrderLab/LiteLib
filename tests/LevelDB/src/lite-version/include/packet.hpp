@@ -76,7 +76,7 @@ class RESPTypeParser {
   virtual lite::DeserializeResult Deserialize(InputIterator &begin,
                                               InputIterator end,
                                               RESPType &value) {
-    std::cerr << "RESPTypeParser::Deserialize" << std::endl;
+    LOG(ERROR) << "RESPTypeParser::Deserialize" << std::endl;
     return lite::kBad;
   }
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
@@ -104,7 +104,7 @@ struct Packet {
           (dynamic_cast<RESPArray *>(command.get())->value)[0].get());
       return std::string_view(*opcode->value);
     } catch (const std::exception &e) {
-      std::cerr << "Unknow opcode: " << e.what() << std::endl;
+      LOG(ERROR) << "Unknow opcode: " << e.what() << std::endl;
       throw std::runtime_error("Invalid opcode");
     }
   }
