@@ -17,7 +17,7 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              std::string &backend_addr, std::string &backend_port,
              const char pipe_path[],
              std::barrier<std::function<void()>> &barrier,
-             std::vector<std::unique_ptr<WorkerInstance>> &workers)
+             std::vector<std::unique_ptr<WorkerInstance>> &workers, bool crash_recover)
     : Daemon([&] { return Crash(); }, [&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
              pipe_path),
       app_(app),
