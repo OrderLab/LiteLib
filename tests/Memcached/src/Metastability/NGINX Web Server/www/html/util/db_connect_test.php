@@ -1,5 +1,5 @@
 <?php
-$servername = "DATABASE_SERVER_IP";
+$servername = "mysql";
 $username = "metastable";
 $password = "hello@123";
  
