@@ -56,14 +56,15 @@ bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
   LogEntryInstance *entry = conn_head->conn_nxt, *nxt_entry;
   for (size_t i = 0; i < number_of_entries; ++i, entry = nxt_entry) {
     if (!entry) {
-      std::cerr << "Expected to erase " << number_of_entries
-                << " entries, but only erased " << i << " entries" << std::endl;
+      LOG(ERROR) << "Expected to erase " << number_of_entries
+                 << " entries, but only erased " << i << " entries"
+                 << std::endl;
       return false;
     }
     if (entry->state) {
-      std::cerr << "Expected to erase " << number_of_entries
-                << " requests in Log, but found a dirty state in " << i
-                << "th entry" << std::endl;
+      LOG(ERROR) << "Expected to erase " << number_of_entries
+                 << " requests in Log, but found a dirty state in " << i
+                 << "th entry" << std::endl;
       return false;
     }
     nxt_entry = entry->conn_nxt;

@@ -32,7 +32,7 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
             static_cast<void*>(this));
   event_base_set(base, &client_event_);
   if (event_add(&client_event_, 0) == -1) {
-    perror("client event_add");
+    PLOG(ERROR) << "client event_add";
     throw std::runtime_error("client event_add");
   }
 
@@ -56,7 +56,7 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   if (backend_event_.ev_base) event_del(&backend_event_);
 
   lite_core_.dead_connection_log_heads_.push_back(log_head_);
-  // std::cerr << "connection closed" << std::endl;
+  // LOG(INFO) << "connection closed" << std::endl;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -66,8 +66,8 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
                                            void* arg_conn) {
   auto conn = static_cast<Connection*>(arg_conn);
   if (fd != conn->client_fd_) {
-    std::cerr << "ClientHandler: fd mismatch. Expecting " << conn->client_fd_
-              << " but got " << fd << std::endl;
+    LOG(ERROR) << "ClientHandler: fd mismatch. Expecting " << conn->client_fd_
+               << " but got " << fd << std::endl;
     return;
   }
   // TODO: handle the case when the buffer is not large enough
@@ -75,9 +75,9 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   ssize_t bytes_transferred;
   if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
     if (bytes_transferred == 0)
-      ;  // std::cerr << "Client disconnected: " << fd << std::endl;
+      ;  // LOG(INFO) << "Client disconnected: " << fd << std::endl;
     else
-      perror("read from client");
+      PLOG(ERROR) << "read from client";
     delete conn;
     // TODO: how to properly handle the case when the client disconnects as
     // expected? (e.g. quit command in Memcached)
@@ -102,7 +102,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     } else if (result == kIndeterminate) {
       continue;
     } else if (result == kBad) {
-      std::cerr << "failed to parse request" << std::endl;
+      LOG(ERROR) << "failed to parse request" << std::endl;
       return;
     }
   }
@@ -116,20 +116,21 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
                                             void* arg_conn) {
   auto conn = static_cast<Connection*>(arg_conn);
   if (fd != conn->backend_fd_) {
-    // TODO: what if the client disconnects but the backend still sends a response?
-    std::cerr << "BackendHandler: fd mismatch. Expecting " << conn->backend_fd_
-              << " but got " << fd << std::endl;
+    // TODO: what if the client disconnects but the backend still sends a
+    // response?
+    LOG(ERROR) << "BackendHandler: fd mismatch. Expecting " << conn->backend_fd_
+               << " but got " << fd << std::endl;
     return;
   }
 
   ssize_t bytes_transferred;
   if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
     if (bytes_transferred == 0) {
-      ;  // std::cerr << "Backend disconnected: " << fd << std::endl;
+      ;  // LOG(WARNING) << "Backend disconnected: " << fd << std::endl;
       close(fd);
       conn->backend_fd_ = -1;
     } else {
-      perror("read from backend");
+      PLOG(ERROR) << "read from backend";
       delete conn;
     }
     return;
@@ -149,7 +150,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     } else if (result == kIndeterminate) {
       continue;
     } else if (result == kBad) {
-      std::cerr << "failed to parse response" << std::endl;
+      LOG(ERROR) << "failed to parse response" << std::endl;
       return;
     }
   }
@@ -174,7 +175,7 @@ bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
             Connection::BackendHandler, static_cast<void*>(this));
   event_base_set(base_, &backend_event_);
   if (event_add(&backend_event_, 0) == -1) {
-    perror("backend event_add");
+    PLOG(ERROR) << "backend event_add";
     throw std::runtime_error("backend event_add");
   }
 
