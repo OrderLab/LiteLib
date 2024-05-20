@@ -24,7 +24,7 @@ else
     /workspace/lite-version/entrypoint.sh
     if [ ! -x "/workspace/lite-version/build/redis-lite" ]; then
         mkdir -p /workspace/lite-version/build
-        cd /workspace/lite-version/build && cmake.. && make
+        cd /workspace/lite-version/build && cmake .. && make
     fi
     /workspace/lite-version/build/redis-lite -h 172.16.0.2 -p 6479
 fi

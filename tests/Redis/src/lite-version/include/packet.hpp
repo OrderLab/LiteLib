@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <list>
 #include <string>
 #include <vector>
 
@@ -66,6 +67,15 @@ struct RESPInteger : public RESPType
 {
     int64_t value = 0;
 
+    RESPInteger() = default;
+    RESPInteger(int64_t value) : value(value)
+    {
+    }
+    RESPInteger(const std::shared_ptr<std::string> &value)
+    {
+        this->value = std::stoll(*value);
+    }
+
     virtual ~RESPInteger(){};
 
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
@@ -82,6 +92,8 @@ struct RESPArray : public RESPType
 
 struct RESPNull : public RESPType
 {
+    char value = 0;
+
     virtual ~RESPNull(){};
 
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
@@ -89,9 +101,13 @@ struct RESPNull : public RESPType
 
 struct RESPMap : public RESPType
 {
-    std::map<std::unique_ptr<RESPType>, std::unique_ptr<RESPType>> value;
+    std::shared_ptr<std::map<std::unique_ptr<RESPType>, std::unique_ptr<RESPType>>> value =
+        std::make_shared<std::map<std::unique_ptr<RESPType>, std::unique_ptr<RESPType>>>();
 
     RESPMap() = default;
+    RESPMap(const std::shared_ptr<std::map<std::unique_ptr<RESPType>, std::unique_ptr<RESPType>>> &value) : value(value)
+    {
+    }
     virtual ~RESPMap(){};
 
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
@@ -99,9 +115,13 @@ struct RESPMap : public RESPType
 
 struct RESPSet : public RESPType
 {
-    std::set<std::unique_ptr<RESPType>> value;
+    std::shared_ptr<std::set<std::unique_ptr<RESPType>>> value =
+        std::make_shared<std::set<std::unique_ptr<RESPType>>>();
 
     RESPSet() = default;
+    RESPSet(const std::shared_ptr<std::set<std::unique_ptr<RESPType>>> &value) : value(value)
+    {
+    }
     virtual ~RESPSet(){};
 
     virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
@@ -155,7 +175,7 @@ struct Packet
         }
         catch (const std::exception &e)
         {
-            std::cerr << "Unknow opcode: " << e.what() << std::endl;
+            std::cerr << "Unknown opcode: " << e.what() << std::endl;
             throw std::runtime_error("Invalid opcode");
         }
     }

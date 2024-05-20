@@ -11,4 +11,4 @@ docker run -d --rm -v .:/workspace -v "$(pwd)/../../../../src":/workspace/Lite -
 docker logs redis-build >& redis-build.log
 ```
 
-The container stops and removes itself after building lite-Redis. The executable of lite-Redis is now built as `Redis/lite-version/build/Lite/lite-cli`
+The container stops and removes itself after building lite-Redis. The executable of lite-Redis is now built as `Redis/lite-version/build/Lite/redis-lite`

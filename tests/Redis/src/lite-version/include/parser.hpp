@@ -306,7 +306,7 @@ class RESPMapParser : public RESPTypeParser
                     if (value_result == lite::kGood)
                     {
                         length_.value--;
-                        typed_value.value.insert(
+                        (*typed_value.value).insert(
                             std::make_pair(std::move(key_parser_->value_), std::move(value_parser_->value_)));
                     }
                     else
@@ -362,7 +362,7 @@ class RESPSetParser : public RESPTypeParser
                 if (result == lite::kGood)
                 {
                     length_.value--;
-                    typed_value.value.insert(std::move(data_parser_->value_));
+                    (*typed_value.value).insert(std::move(data_parser_->value_));
                     data_parser_ = std::make_unique<RESPTypeParser>();
                 }
                 else

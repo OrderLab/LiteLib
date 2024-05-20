@@ -59,15 +59,15 @@ To benchmark the Redis servers, Redis-benchmark utility from Redis is used. Abou
 ```sh
 docker exec -it redis-client bash
 # Inside the client container
-# 1. To test with lite Redis server (currently proxy has bugs)
-redis-benchmark -h 172.16.0.2 -p 6279 -q -n 100000
+# 1. To test with lite Redis server
+redis-benchmark -h 172.16.0.2 -p 6479 --csv -n 100000 -t set,get,incr,lpush,rpush,lpop,rpop,sadd,spop,hset,hget
 # 2. To directly test with only the full Redis server
-redis-benchmark -h 172.16.0.2 -p 6379 -q -n 100000
+redis-benchmark -h 172.16.0.2 -p 6379 --csv -n 100000 -t set,get,incr,lpush,rpush,lpop,rpop,sadd,spop,hset,hget
 ```
 
 The lite Redis and one-step experiment scripts are still under construction.
 
-## Performance Monitoring
+## Container Performance Monitoring
 
 - cAdvisor: [localhost:8080](http://localhost:8080)
 - Prometheus: [localhost:9090](http://localhost:9090)

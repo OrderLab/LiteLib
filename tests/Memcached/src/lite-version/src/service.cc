@@ -15,7 +15,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Memcached::Match(
     if (req_opaque != resp_opaque || !req->GetStatus()) {
       const auto OpCodeOption = req->GetOpcode();
       if (!OpCodeOption.has_value()) {
-        std::cerr << "Unknow opcode: " << (*req->buffer)[1] << std::endl;
+        std::cerr << "Unknown opcode: " << (*req->buffer)[1] << std::endl;
         continue;
       }
       const auto OpCode = OpCodeOption.value();
@@ -84,7 +84,7 @@ Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
 
   const auto opcode_option = p->GetOpcode();
   if (!opcode_option.has_value()) {
-    std::cerr << "Unknow opcode: " << (*p->buffer)[1] << std::endl;
+    std::cerr << "Unknown opcode: " << (*p->buffer)[1] << std::endl;
     exit(1);  // TODO: handle it
   }
   const auto opcode = opcode_option.value();
