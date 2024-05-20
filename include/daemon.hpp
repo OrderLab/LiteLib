@@ -12,16 +12,17 @@ namespace lite {
 class Daemon {
  public:
   explicit Daemon(const std::function<bool()> &Replay,
-                  std::function<void()> DisconnectFromBackend,
-                  std::string &backend_port,
+                  std::function<void()> TakeOver, std::string &backend_port,
                   const std::string pipe_path = "/tmp/lite");
 
   std::atomic<bool> emergency_mode_ = false;
 
+  static size_t GetUNIXTimeStamp();
+
  private:
   std::function<bool()> Replay_;
 
-  std::function<void()> DisconnectFromBackend_;
+  std::function<void()> TakeOver_;
 
   pthread_t thread_id_;
 
