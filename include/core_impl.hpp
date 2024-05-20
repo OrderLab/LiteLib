@@ -15,10 +15,10 @@ template <typename Application, typename Request, typename Response,
 LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
     LiteCore(Application &app, const size_t &max_item_count,
              std::string &backend_addr, std::string &backend_port,
-             const char pipe_path[],
-             std::barrier<std::function<void()>> &barrier,
-             std::vector<std::unique_ptr<WorkerInstance>> &workers)
-    : Daemon([&] { return Replay(); },
+             const char pipe_path[], std::barrier<std::function<void()>> &barrier,
+             std::vector<std::unique_ptr<WorkerInstance>> &workers, bool crash_recover)
+    : Daemon([&] { return Crash(); },
+             [&] { return Replay(); },
              [&] {
                std::cerr << "Disconnect from backend" << std::endl;
                live_connections_.visit_all([&](ConnectionInstance *const &c) {
@@ -30,6 +30,7 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              },
              backend_port, pipe_path),
       app_(app),
+      crash_recover_(crash_recover),
       cache_inner_(max_item_count, emergency_mode_),
       backend_addr_(backend_addr),
       backend_port_(backend_port),
@@ -49,12 +50,12 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                   const evutil_socket_t client_fd,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
                   LoggerInstance *logger) {
-  if (!emergency_mode_ && backend_fd <= 0) {
+  if (!this->emergency_mode_ && backend_fd <= 0) {
     std::cerr << "Fallback to emergency mode" << std::endl;
-    emergency_mode_ = true;
+    this->emergency_mode_ = true;
   }
 
-  if (emergency_mode_) {
+  if (this->emergency_mode_) {
     auto packet = app_.EmergencyServe(std::move(req), conn_info, cache, logger);
     const auto buffer = packet.Serialize();
     if (!network::Write(client_fd, buffer)) {
@@ -113,7 +114,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   const auto start_time = std::chrono::high_resolution_clock::now();
 
   is_replaying_ = true;
-
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
     c->ConnectBackend();
     std::cerr << "Connect backend " << c->backend_fd_ << " to " << c->client_fd_
@@ -269,4 +269,24 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   return true;
 }
 
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsApplication<Application, Request, Response, ConnectionInfo,
+                         CacheKey, CacheEntry> &&
+           IsCacheEntry<Request, CacheKey, CacheEntry>
+bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
+              CacheEntry>::Crash(){
+  if (!crash_recover_){
+    // add all cache nodes to the log
+    crash_conn_head_ = new LogEntryInstance(nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
+    cache_inner_.VisitAllState([&](CacheStateInstance *state){
+    if (!state->dirty_node){
+    LogEntryInstance *dirty = new LogEntryInstance(state, nullptr, crash_conn_head_->backend_conn_ptr);
+    logger_inner_.Log(dirty, crash_conn_head_);
+    state->dirty_node = dirty;
+    }
+    }, false);
+  }
+  return true;
+}
 }  // namespace lite

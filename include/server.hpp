@@ -28,8 +28,8 @@ class LiteServer {
   /// Construct the server with the given thread pool size and maximum.
   explicit LiteServer(const size_t& nthreads, const size_t& max_item_count,
                       Application& app, std::string& backend_addr,
-                      std::string& backend_port,
-                      const char pipe_path[] = "/tmp/lite");
+                      std::string& backend_port, const char pipe_path[] = "/tmp/lite",
+                      bool crash_recover = true);
 
   /// Listen on the specified TCP port.
   bool Run(const char* port);

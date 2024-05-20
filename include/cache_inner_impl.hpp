@@ -199,6 +199,20 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::
+    VisitAllState(
+        std::function<void(CacheStateInstance *)> visitor,
+        bool in_transaction) {
+  std::shared_lock<std::shared_mutex> transaction_lock;
+  if (!in_transaction) {
+    transaction_lock = std::shared_lock<std::shared_mutex>{transaction_mutex_};
+  }
+  cache_.visit_all([&](auto &x) { visitor(x.second.state.get()); });
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Evict() {
   // TODO: don't evict during emergency
   std::cerr << "Evict" << std::endl;

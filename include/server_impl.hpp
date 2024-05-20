@@ -17,10 +17,10 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::LiteServer(const size_t& nthreads,
                                    const size_t& max_item_count,
                                    Application& app, std::string& backend_addr,
-                                   std::string& backend_port,
-                                   const char pipe_path[])
+                                   std::string& backend_port, const char pipe_path[],
+                                   bool crash_recover)
     : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path,
-                 barrier_, workers_),
+                 barrier_, workers_, crash_recover),
       barrier_(nthreads + 1,
                []() { std::cerr << "Replay barrier completed" << std::endl; }) {
   struct event_config* ev_config;
