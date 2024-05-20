@@ -53,19 +53,17 @@ def plot_throughput(ax, stat, prefix):
             color="0",
         )
     ax.set_xlabel("Time (s)")
-    ax.set_ylabel(prefix + "Throughput")
+    ax.set_ylabel(prefix + " Throughput")
     ax.set_xlim(0, total_time)
     ax.legend()
 
 
-def plot_latency(ax, stat, type):
+def plot_latency(ax, stat, type, ylabel):
     total_time = len(stat["cnt"])
     ax.plot(stat[type] * 1000)
     ax.set_xlim(0, total_time)
     ax.set_xlabel("Time (s)")
-    ax.set_ylabel(
-        "Latency (ms) " + ("(Client)" if type == "agg_lat" else "(Server)")
-    )
+    ax.set_ylabel(ylabel + "Latency (ms)")
 
 
 def plot_tries(ax, stat):
@@ -96,6 +94,26 @@ def plot_resource(ax, stat, res_name, ylim):
     )
     ax.set_xlim(0, total_time)
     ax.set_ylim(0, ylim)
+
+
+def mean2d(arr):
+    ret = np.empty(len(arr))
+    for i in range(len(arr)):
+        if len(arr[i]) == 0:
+            ret[i] = np.nan
+        else:
+            ret[i] = np.mean(arr[i])
+    return ret
+
+
+def p2d(arr, p):
+    ret = np.empty(len(arr))
+    for i in range(len(arr)):
+        if len(arr[i]) == 0:
+            ret[i] = np.nan
+        else:
+            ret[i] = np.percentile(arr[i], p)
+    return ret
 
 
 parser = argparse.ArgumentParser(description="Process JSON files.")
@@ -134,54 +152,43 @@ for i in range(cnt):
     )
     total_time = math.floor(last_response_time - begin_time) + 1
     stat = {
-        "cnt": [0] * total_time,
-        "server_lat_sum": [0] * total_time,
-        "agg_lat_sum": [0] * total_time,
-        "tries": [0] * total_time,
-        "Success": [0] * total_time,
-        "Miss": [0] * total_time,
-        "Timeout": [0] * total_time,
-        "Error": [0] * total_time,
-        "TransactionError": [0] * total_time,
-        "ServerSuccess": [0] * total_time,
-        "ServerMiss": [0] * total_time,
-        "ServerError": [0] * total_time,
-        "ServerTimeout": [0] * total_time,
-        "ServerTransactionError": [0] * total_time,
+        "cnt": np.zeros(total_time),
+        "server_lat_list": [[] for _ in range(total_time)],
+        "agg_lat_list": [[] for _ in range(total_time)],
+        "tries": [[] for _ in range(total_time)],
+        "ClientSuccess": np.zeros(total_time),
+        "ClientMiss": np.zeros(total_time),
+        "ClientTimeout": np.zeros(total_time),
+        "ClientError": np.zeros(total_time),
+        "ClientTransactionError": np.zeros(total_time),
+        "ServerSuccess": np.zeros(total_time),
+        "ServerMiss": np.zeros(total_time),
+        "ServerError": np.zeros(total_time),
+        "ServerTimeout": np.zeros(total_time),
+        "ServerTransactionError": np.zeros(total_time),
     }
     for line in logs[i]:
         begin_index = math.floor(line["begin"] - logs[i][0]["begin"])
         stat["cnt"][begin_index] += 1
         if line["queries"][-1]["status"] == "Success":
-            stat["agg_lat_sum"][begin_index] += (
-                line["queries"][-1]["response"] - line["begin"]
+            stat["agg_lat_list"][begin_index].append(
+                line["queries"][-1]["response"] - line["begin"],
             )
-            stat["tries"][begin_index] += len(line["queries"])
-        stat[line["queries"][-1]["status"]][begin_index] += 1
+            assert len(stat["agg_lat_list"][begin_index]) > 0
+            stat["tries"][begin_index].append(len(line["queries"]))
+        stat["Client" + line["queries"][-1]["status"]][begin_index] += 1
         for query in line["queries"]:
             request_index = math.floor(query["request"] - logs[i][0]["begin"])
             if query["status"] == "Success":
-                stat["server_lat_sum"][request_index] += query["response"] - query["request"]
+                stat["server_lat_list"][request_index].append(
+                    query["response"] - query["request"],
+                )
             stat["Server" + query["status"]][request_index] += 1
-    stat["agg_lat"] = [0] * total_time
-    stat["avg_tries"] = [0] * total_time
-    stat["server_lat"] = [0] * total_time
-    for j in range(total_time):
-        stat["agg_lat"][j] = (
-            stat["agg_lat_sum"][j] / stat["Success"][j]
-            if stat["Success"][j] > 0
-            else np.nan
-        )
-        stat["avg_tries"][j] = (
-            stat["tries"][j] / stat["Success"][j] if stat["Success"][j] > 0 else np.nan
-        )
-        stat["server_lat"][j] = (
-            stat["server_lat_sum"][j] / stat["ServerSuccess"][j]
-            if stat["ServerSuccess"][j] > 0
-            else np.nan
-        )
-    for array in stat:
-        stat[array] = np.array(stat[array])
+    stat["avg_agg_lat"] = mean2d(stat["agg_lat_list"])
+    stat["p95_agg_lat"] = p2d(stat["agg_lat_list"], 95)
+    stat["avg_server_lat"] = mean2d(stat["server_lat_list"])
+    stat["p95_server_lat"] = p2d(stat["server_lat_list"], 95)
+    stat["avg_tries"] = mean2d(stat["tries"])
     stats.append(stat)
 
 cpu_ylim = 0
@@ -207,8 +214,8 @@ for i in range(cnt):
                 else:
                     if process_name not in process_usages:
                         process_usages[process_name] = {
-                            "cpu": [0] * 100000,
-                            "mem": [0] * 100000,
+                            "cpu": np.zeros(100000),
+                            "mem": np.zeros(100000),
                         }
                     process_usages[process_name]["cpu"][time] = process_info["cpu"]
                     process_usages[process_name]["mem"][time] = process_info["mem"]
@@ -217,8 +224,7 @@ for i in range(cnt):
     for process_usage in process_usages.values():
         cpu = process_usage["cpu"][0 : len(stats[i]["cnt"])]
         mem = process_usage["mem"][0 : len(stats[i]["cnt"])]
-        cpu = np.array(cpu)
-        mem = np.array(mem) / 1024.0 / 1024.0
+        mem = mem / 1024.0 / 1024.0
         process_usage["cpu"] = cpu
         process_usage["mem"] = mem
         cpu_ylim = max(cpu_ylim, np.max(process_usage["cpu"]))
@@ -230,15 +236,17 @@ for i in range(cnt):
             ordered_process_usages[process_name] = process_usages[process_name]
     stats[i]["resource"] = ordered_process_usages
 
-fig, axs = plt.subplots(7, cnt, figsize=(5 * cnt, 28))
+fig, axs = plt.subplots(9, cnt, figsize=(5 * cnt, 36))
 plt.subplots_adjust(hspace=0.3, wspace=0.3)
 for i in range(cnt):
     axs[0, i].set_title(args.filenames[i][:-6], y=1.2)
-    plot_throughput(axs[0, i], stats[i], "")
-    plot_latency(axs[1, i], stats[i], "agg_lat")
-    plot_tries(axs[2, i], stats[i])
-    plot_throughput(axs[3, i], stats[i], "Server")
-    plot_latency(axs[4, i], stats[i], "server_lat")
-    plot_resource(axs[5, i], stats[i], "cpu", cpu_ylim * 1.1)
-    plot_resource(axs[6, i], stats[i], "mem", mem_ylim * 1.1)
+    plot_throughput(axs[0, i], stats[i], "Client")
+    plot_latency(axs[1, i], stats[i], "avg_agg_lat", "Avg Client")
+    plot_latency(axs[2, i], stats[i], "p95_agg_lat", "95% Client")
+    plot_tries(axs[3, i], stats[i])
+    plot_throughput(axs[4, i], stats[i], "Server")
+    plot_latency(axs[5, i], stats[i], "avg_server_lat", "Avg Server")
+    plot_latency(axs[6, i], stats[i], "p95_server_lat", "95% Server")
+    plot_resource(axs[7, i], stats[i], "cpu", cpu_ylim * 1.1)
+    plot_resource(axs[8, i], stats[i], "mem", mem_ylim * 1.1)
 plt.savefig(f"leveldb.png", bbox_inches="tight")
