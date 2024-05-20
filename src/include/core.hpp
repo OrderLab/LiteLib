@@ -81,6 +81,8 @@ class LiteCore : public Daemon {
 
   std::vector<std::unique_ptr<WorkerInstance>> &workers_;
 
+  void TakeOver();
+
   bool Replay();
 
   bool Crash();

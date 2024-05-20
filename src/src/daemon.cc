@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include <chrono>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -16,13 +17,13 @@ namespace lite {
 
 Daemon::Daemon(const std::function<bool()> &Crash,
                const std::function<bool()> &Replay,
-               std::function<void()> DisconnectFromBackend,
+               std::function<void()> TakeOver,
                std::string &backend_port, const std::string pipe_path)
     : Crash_(Crash),
       Replay_(Replay),
       pipe_path_(pipe_path),
       backend_port_(backend_port),
-      DisconnectFromBackend_(DisconnectFromBackend){
+      TakeOver_(TakeOver){
   // set up event_base
   struct event_config *ev_config;
   ev_config = event_config_new();
@@ -79,12 +80,16 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
     self->backend_port_ = std::to_string(message.backend_port);
     switch (message.action) {
       case PipeMessage::kEnterEmergencyMode:
-        self->emergency_mode_ = true;
-        self->DisconnectFromBackend_();
-        self->Crash_();
-        LOG(WARNING) << "Daemon: Entering emergency mode" << std::endl;
+        LOG(WARNING) << "Daemon: Entering emergency mode " << GetUNIXTimeStamp() << std::endl;
+        if (!self->emergency_mode_) {
+          self->TakeOver_();
+          self->Crash_();
+        } else {
+          LOG(WARNING) << "Daemon: Already in emergency mode" << std::endl;
+        }
         break;
       case PipeMessage::kExitEmergencyMode:
+        LOG(WARNING) << "Daemon: Exiting emergency mode " << GetUNIXTimeStamp() << std::endl;
         if (!self->Replay_()) {
           LOG(ERROR) << "Daemon: Failed to replay" << std::endl;
           break;
@@ -98,6 +103,13 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
     self->CreatePipeAndRegisterEvent();
   } else {
   }
+}
+
+size_t Daemon::GetUNIXTimeStamp() {
+  const auto now = std::chrono::system_clock::now();
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             now.time_since_epoch())
+      .count();
 }
 
 }  // namespace lite

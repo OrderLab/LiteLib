@@ -203,7 +203,8 @@ async fn do_transaction(
             response_time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("Time went backwards");
-            // eprintln!("\ni: {}, key: {} timeout\n", i, key);
+            eprintln!("\ni: {}, key: {} timeout\n", i, key);
+            drop(conn);
             QueryRecord {
                 status: Status::Timeout,
                 request: request_time,

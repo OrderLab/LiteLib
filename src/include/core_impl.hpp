@@ -15,20 +15,11 @@ template <typename Application, typename Request, typename Response,
 LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
     LiteCore(Application &app, const size_t &max_item_count,
              std::string &backend_addr, std::string &backend_port,
-             const char pipe_path[], std::barrier<std::function<void()>> &barrier,
-             std::vector<std::unique_ptr<WorkerInstance>> &workers, bool crash_recover)
-    : Daemon([&] { return Crash(); },
-             [&] { return Replay(); },
-             [&] {
-               LOG(INFO) << "Disconnect all from backend" << std::endl;
-               live_connections_.visit_all([&](ConnectionInstance *const &c) {
-                 if (c->backend_fd_ > 0) {
-                   close(c->backend_fd_);
-                   c->backend_fd_ = -1;
-                 }
-               });
-             },
-             backend_port, pipe_path),
+             const char pipe_path[],
+             std::barrier<std::function<void()>> &barrier,
+             std::vector<std::unique_ptr<WorkerInstance>> &workers)
+    : Daemon([&] { return Crash(); }, [&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
+             pipe_path),
       app_(app),
       crash_recover_(crash_recover),
       cache_inner_(max_item_count, emergency_mode_),
@@ -51,8 +42,9 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
                   LoggerInstance *logger) {
   if (!emergency_mode_ && backend_fd <= 0) {
-    LOG(WARNING) << "Fallback to emergency mode" << std::endl;
-    emergency_mode_ = true;
+    LOG(WARNING) << "Fallback to emergency mode " << GetUNIXTimeStamp()
+                 << std::endl;
+    TakeOver();
   }
 
   if (this->emergency_mode_) {
@@ -102,6 +94,24 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   return true;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsApplication<Application, Request, Response, ConnectionInfo,
+                         CacheKey, CacheEntry> &&
+           IsCacheEntry<Request, CacheKey, CacheEntry>
+void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
+              CacheEntry>::TakeOver() {
+  emergency_mode_ = true;
+  LOG(INFO) << "Disconnect all from backend" << std::endl;
+  live_connections_.visit_all([&](ConnectionInstance *const &c) {
+    if (c->backend_fd_ > 0) {
+      close(c->backend_fd_);
+      c->backend_fd_ = -1;
+    }
+  });
+  LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -250,7 +260,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   _ = network::Write(backend_fd, std::move(debug_message));
   close(backend_fd);
 #endif
-  LOG(INFO) << "Daemon: Exiting emergency mode" << std::endl;
+  LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
+               << std::endl;
 
   barrier_.arrive_and_wait();  // unblock worker threads
 
