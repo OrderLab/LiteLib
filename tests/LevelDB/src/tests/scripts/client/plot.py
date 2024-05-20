@@ -7,51 +7,21 @@ import os
 
 
 def plot_throughput(ax, stat, prefix):
+    type = [("Success", "tab:green"), ("Miss", "tab:orange"), ("Timeout", "tab:red"), ("Error", "tab:purple"), ("TransactionError", "0")]
     total_time = len(stat["cnt"])
-    ax.fill_between(
-        range(total_time),
-        stat[prefix + "Success"],
-        label="Success",
-        alpha=0.5,
-        color="tab:green",
-    )
-    base = stat[prefix + "Success"]
-    ax.fill_between(
-        range(total_time),
-        base,
-        base + stat[prefix + "Miss"],
-        label="Miss",
-        alpha=0.5,
-        color="tab:orange",
-    )
-    base += stat[prefix + "Miss"]
-    ax.fill_between(
-        range(total_time),
-        base,
-        base + stat[prefix + "Timeout"],
-        label="Timeout",
-        alpha=0.5,
-        color="tab:red",
-    )
-    base += stat[prefix + "Timeout"]
-    ax.fill_between(
-        range(total_time),
-        base,
-        base + stat[prefix + "Error"],
-        label="Error",
-        alpha=0.5,
-        color="tab:purple",
-    )
-    if np.max(stat[prefix + "TransactionError"]) > 0:
-        base += stat[prefix + "Error"]
-        ax.fill_between(
-            range(len(stat[prefix + "TransactionError"])),
-            base,
-            base + stat[prefix + "TransactionError"],
-            label="TransactionError",
-            alpha=0.5,
-            color="0",
-        )
+    base = np.zeros(total_time)
+    for t, c in type:
+        next_base = base + stat[prefix + t]
+        if (next_base != base).any():
+            ax.fill_between(
+                range(total_time),
+                base,
+                next_base,
+                label=t,
+                alpha=0.5,
+                color=c,
+            )
+            base = next_base
     ax.set_xlabel("Time (s)")
     ax.set_ylabel(prefix + " Throughput")
     ax.set_xlim(0, total_time)
@@ -63,7 +33,7 @@ def plot_latency(ax, stat, type, ylabel):
     ax.plot(stat[type] * 1000)
     ax.set_xlim(0, total_time)
     ax.set_xlabel("Time (s)")
-    ax.set_ylabel(ylabel + "Latency (ms)")
+    ax.set_ylabel(ylabel + " (ms)")
 
 
 def plot_tries(ax, stat):
@@ -116,6 +86,13 @@ def p2d(arr, p):
     return ret
 
 
+begin_time = 0
+
+
+def get_index(time):
+    return math.floor(time - begin_time)
+
+
 parser = argparse.ArgumentParser(description="Process JSON files.")
 
 parser.add_argument("-f", "--filenames", nargs="+", help="The path to the JSON file(s)")
@@ -150,7 +127,7 @@ for i in range(cnt):
     last_response_time = np.max(
         [query["response"] for line in logs[i] for query in line["queries"]]
     )
-    total_time = math.floor(last_response_time - begin_time) + 1
+    total_time = get_index(last_response_time) + 1
     stat = {
         "cnt": np.zeros(total_time),
         "server_lat_list": [[] for _ in range(total_time)],
@@ -166,19 +143,23 @@ for i in range(cnt):
         "ServerError": np.zeros(total_time),
         "ServerTimeout": np.zeros(total_time),
         "ServerTransactionError": np.zeros(total_time),
+        "lock_wait_time": [[] for _ in range(total_time)],
     }
     for line in logs[i]:
-        begin_index = math.floor(line["begin"] - logs[i][0]["begin"])
+        begin_index = get_index(line["queries"][0]["request"])
         stat["cnt"][begin_index] += 1
+        stat["lock_wait_time"][get_index(line["begin"])].append(
+            line["queries"][0]["request"] - line["begin"],
+        )
         if line["queries"][-1]["status"] == "Success":
             stat["agg_lat_list"][begin_index].append(
-                line["queries"][-1]["response"] - line["begin"],
+                line["queries"][-1]["response"] - line["queries"][0]["request"],
             )
             assert len(stat["agg_lat_list"][begin_index]) > 0
             stat["tries"][begin_index].append(len(line["queries"]))
         stat["Client" + line["queries"][-1]["status"]][begin_index] += 1
         for query in line["queries"]:
-            request_index = math.floor(query["request"] - logs[i][0]["begin"])
+            request_index = get_index(query["request"])
             if query["status"] == "Success":
                 stat["server_lat_list"][request_index].append(
                     query["response"] - query["request"],
@@ -189,6 +170,7 @@ for i in range(cnt):
     stat["avg_server_lat"] = mean2d(stat["server_lat_list"])
     stat["p95_server_lat"] = p2d(stat["server_lat_list"], 95)
     stat["avg_tries"] = mean2d(stat["tries"])
+    stat["avg_lock_wait_time"] = mean2d(stat["lock_wait_time"])
     stats.append(stat)
 
 cpu_ylim = 0
@@ -236,17 +218,18 @@ for i in range(cnt):
             ordered_process_usages[process_name] = process_usages[process_name]
     stats[i]["resource"] = ordered_process_usages
 
-fig, axs = plt.subplots(9, cnt, figsize=(5 * cnt, 36))
+fig, axs = plt.subplots(10, cnt, figsize=(5 * cnt, 40))
 plt.subplots_adjust(hspace=0.3, wspace=0.3)
 for i in range(cnt):
     axs[0, i].set_title(args.filenames[i][:-6], y=1.2)
     plot_throughput(axs[0, i], stats[i], "Client")
-    plot_latency(axs[1, i], stats[i], "avg_agg_lat", "Avg Client")
-    plot_latency(axs[2, i], stats[i], "p95_agg_lat", "95% Client")
+    plot_latency(axs[1, i], stats[i], "avg_agg_lat", "Avg Client Latency")
+    plot_latency(axs[2, i], stats[i], "p95_agg_lat", "95% Client Latency")
     plot_tries(axs[3, i], stats[i])
     plot_throughput(axs[4, i], stats[i], "Server")
     plot_latency(axs[5, i], stats[i], "avg_server_lat", "Avg Server")
     plot_latency(axs[6, i], stats[i], "p95_server_lat", "95% Server")
     plot_resource(axs[7, i], stats[i], "cpu", cpu_ylim * 1.1)
     plot_resource(axs[8, i], stats[i], "mem", mem_ylim * 1.1)
+    plot_latency(axs[9, i], stats[i], "avg_lock_wait_time", "Avg Lock Wait Time")
 plt.savefig(f"leveldb.png", bbox_inches="tight")
