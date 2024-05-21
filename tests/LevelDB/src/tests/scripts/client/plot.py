@@ -146,14 +146,11 @@ for i in range(cnt):
         "lock_wait_time": [[] for _ in range(total_time)],
     }
     for line in logs[i]:
-        begin_index = get_index(line["queries"][0]["request"])
+        begin_index = get_index(line["begin"])
         stat["cnt"][begin_index] += 1
-        stat["lock_wait_time"][get_index(line["begin"])].append(
-            line["queries"][0]["request"] - line["begin"],
-        )
         if line["queries"][-1]["status"] == "Success":
             stat["agg_lat_list"][begin_index].append(
-                line["queries"][-1]["response"] - line["queries"][0]["request"],
+                line["queries"][-1]["response"] - line["begin"],
             )
             assert len(stat["agg_lat_list"][begin_index]) > 0
             stat["tries"][begin_index].append(len(line["queries"]))
@@ -165,6 +162,13 @@ for i in range(cnt):
                     query["response"] - query["request"],
                 )
             stat["Server" + query["status"]][request_index] += 1
+        stat["lock_wait_time"][get_index(line["begin"])].append(
+            line["queries"][0]["request"] - line["begin"],
+        )
+        for i in range(len(line["queries"]) - 1):
+            stat["lock_wait_time"][get_index(line["queries"][i]["response"])].append(
+                line["queries"][i + 1]["request"] - line["queries"][i]["response"],
+            )
     stat["avg_agg_lat"] = mean2d(stat["agg_lat_list"])
     stat["p95_agg_lat"] = p2d(stat["agg_lat_list"], 95)
     stat["avg_server_lat"] = mean2d(stat["server_lat_list"])

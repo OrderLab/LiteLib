@@ -34,7 +34,7 @@ use async_mutex::Mutex;
 
 use deadpool::{async_trait, managed};
 use redis::{
-    aio::Connection as RedisConnection,
+    aio::MultiplexedConnection as RedisConnection,
     Client, IntoConnectionInfo, RedisError, RedisResult,
 };
 
@@ -128,7 +128,7 @@ impl managed::Manager for Manager {
     type Error = RedisError;
 
     async fn create(&self) -> Result<Arc<Mutex<RedisConnection>>, RedisError> {
-        let conn = self.client.get_async_connection().await?;
+        let conn = self.client.get_multiplexed_async_connection().await?;
         Ok(Arc::new(Mutex::new(conn)))
     }
 

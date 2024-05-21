@@ -1,6 +1,7 @@
 import os
 import argparse
 import utils
+import time
 
 parser = argparse.ArgumentParser(description='Init experiment')
 parser.add_argument('-t', '--experiment_type', choices=['Full', 'Lite'], required=True, help='The type of the experiment')
@@ -15,6 +16,7 @@ os.system(r'pgrep "LiteLevelDB" | xargs kill -9')
 os.system(r'pgrep "lite_cli" | xargs kill -9')
 os.system(r'pgrep "redis-server" | xargs kill -9')
 os.system(r'rm dump.rdb')
+time.sleep(1)
 
 if (args.experiment_type == 'Full'):
     boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379", "-B", str(args.write_buffer_size)]
