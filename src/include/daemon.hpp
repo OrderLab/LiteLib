@@ -11,8 +11,7 @@ namespace lite {
 
 class Daemon {
  public:
-  explicit Daemon(const std::function<bool()> &Crash,
-                  const std::function<bool()> &Replay,
+  explicit Daemon(const std::function<bool()> &Replay,
                   std::function<void()> TakeOver,
                   std::string &backend_port, const std::string pipe_path = "/tmp/lite");                  
 

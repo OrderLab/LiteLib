@@ -85,7 +85,6 @@ class LiteCore : public Daemon {
 
   bool Replay();
 
-  bool Crash();
 };
 
 }  // namespace lite
