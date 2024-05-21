@@ -27,6 +27,9 @@ void PrintHelp() {
 
 int main(int argc, char* argv[]) {
   try {
+    FLAGS_logtostderr = 0; 
+    FLAGS_log_dir = "/workspace/Memcached_codes";
+    google::InitGoogleLogging(argv[0]);
     size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t cache_size(1024);
     const char* port = "11211";
