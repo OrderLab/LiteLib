@@ -15,12 +15,10 @@
 
 namespace lite {
 
-Daemon::Daemon(const std::function<bool()> &Crash,
-               const std::function<bool()> &Replay,
+Daemon::Daemon(const std::function<bool()> &Replay,
                std::function<void()> TakeOver,
                std::string &backend_port, const std::string pipe_path)
-    : Crash_(Crash),
-      Replay_(Replay),
+    : Replay_(Replay),
       pipe_path_(pipe_path),
       backend_port_(backend_port),
       TakeOver_(TakeOver){
@@ -83,7 +81,6 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
         LOG(WARNING) << "Daemon: Entering emergency mode " << GetUNIXTimeStamp() << std::endl;
         if (!self->emergency_mode_) {
           self->TakeOver_();
-          self->Crash_();
         } else {
           LOG(WARNING) << "Daemon: Already in emergency mode" << std::endl;
         }

@@ -18,7 +18,7 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              const char pipe_path[],
              std::barrier<std::function<void()>> &barrier,
              std::vector<std::unique_ptr<WorkerInstance>> &workers, bool crash_recover)
-    : Daemon([&] { return Crash(); }, [&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
+    : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
              pipe_path),
       app_(app),
       crash_recover_(crash_recover),
@@ -111,6 +111,17 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       c->backend_fd_ = -1;
     }
   });
+  if (!crash_recover_){
+    // add all cache nodes to the log
+    crash_conn_head_ = new LogEntryInstance(nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
+    cache_inner_.VisitAllState([&](CacheStateInstance *state){
+    if (!state->dirty_node){
+    LogEntryInstance *dirty = new LogEntryInstance(state, nullptr, crash_conn_head_->backend_conn_ptr);
+    logger_inner_.Log(dirty, crash_conn_head_);
+    state->dirty_node = dirty;
+    }
+    }, false);
+  }
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
 
@@ -281,24 +292,4 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   return true;
 }
 
-template <typename Application, typename Request, typename Response,
-          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-  requires IsApplication<Application, Request, Response, ConnectionInfo,
-                         CacheKey, CacheEntry> &&
-           IsCacheEntry<Request, CacheKey, CacheEntry>
-bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-              CacheEntry>::Crash(){
-  if (!crash_recover_){
-    // add all cache nodes to the log
-    crash_conn_head_ = new LogEntryInstance(nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
-    cache_inner_.VisitAllState([&](CacheStateInstance *state){
-    if (!state->dirty_node){
-    LogEntryInstance *dirty = new LogEntryInstance(state, nullptr, crash_conn_head_->backend_conn_ptr);
-    logger_inner_.Log(dirty, crash_conn_head_);
-    state->dirty_node = dirty;
-    }
-    }, false);
-  }
-  return true;
-}
 }  // namespace lite
