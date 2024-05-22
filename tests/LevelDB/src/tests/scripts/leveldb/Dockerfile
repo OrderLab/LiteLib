@@ -21,6 +21,10 @@ RUN apt-get update && \
         cmake \
         libssl-dev \
         libgoogle-glog-dev \
+        htop \
+        iotop \
+        iftop \
+        tcpdump \
     && rm -rf /var/lib/apt/lists/*
 
 RUN cpanm --quiet --notest --skip-satisfied --force Redis

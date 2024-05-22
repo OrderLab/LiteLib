@@ -10,10 +10,7 @@ services:
       - type: bind
         source: .
         target: /workspace
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
+    cpuset: "0-3"
     ports:
       - "6379:6379"
     entrypoint: /workspace/scripts/leveldb/entrypoint.sh
@@ -22,6 +19,7 @@ services:
     image: rust:bookworm
     tty: true
     privileged: true
+    cpuset: "4-31"
     volumes:
       - type: bind
         source: .

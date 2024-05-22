@@ -1,6 +1,6 @@
 use async_mutex::Mutex;
 use deadpool_redis::{
-    redis::{aio::Connection, cmd, pipe},
+    redis::{aio::MultiplexedConnection as RedisConnection, cmd, pipe},
     Runtime,
 };
 use dotenvy::dotenv;
@@ -11,7 +11,7 @@ use rand::Rng;
 use std::process::Command;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::time::{sleep_until, timeout, Duration, Instant};
+use tokio::time::{sleep_until, Duration, Instant};
 
 #[derive(Debug, serde::Deserialize)]
 enum ExperimentType {
@@ -106,11 +106,10 @@ fn get_last_n_char(string: &str, n: usize) -> &str {
 
 async fn do_transaction(
     i: usize,
-    conn: &mut Connection,
+    conn: &mut RedisConnection,
     key: usize,
     base_value: &str,
     old_suffix_expected: &mut usize,
-    query_timeout: Duration,
 ) -> QueryRecord {
     let new_suffix_expected = *old_suffix_expected + 1;
     let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
@@ -119,93 +118,75 @@ async fn do_transaction(
     let request_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
-    match timeout(
-        query_timeout,
-        pipe()
-            .atomic()
-            .cmd("GET")
-            .arg(&key)
-            .cmd("SET")
-            .arg(&key)
-            .arg(&new_value_expected)
-            .ignore()
-            .cmd("GET")
-            .arg(&key)
-            .query_async::<_, (Option<String>, Option<String>)>(&mut *conn),
-    )
-    .await
+    match pipe()
+        .atomic()
+        .cmd("GET")
+        .arg(&key)
+        .cmd("SET")
+        .arg(&key)
+        .arg(&new_value_expected)
+        .ignore()
+        .cmd("GET")
+        .arg(&key)
+        .query_async::<_, (Option<String>, Option<String>)>(&mut *conn)
+        .await
     {
-        Ok(result) => {
-            match result {
-                Ok((old_value, new_value)) => {
-                    response_time = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Time went backwards");
-                    let mut status = Status::Success;
-                    match old_value {
-                        Some(old_value) => {
-                            if old_value != old_value_expected {
-                                eprintln!(
-                                    "\ni: {}, key: {}, expected old value: {:?}, old value: {:?}\n",
-                                    i,
-                                    key,
-                                    get_last_n_char(&old_value_expected, 10),
-                                    get_last_n_char(&old_value, 10)
-                                );
-                                status = Status::Error;
-                            }
-                        }
-                        None => {
-                            eprintln!("\ni: {}, key: {} can't get old value\n", i, key);
-                            status = Status::Miss
-                        }
-                    };
-                    match new_value {
-                        Some(new_value) => {
-                            if new_value != new_value_expected {
-                                eprintln!(
-                                    "\ni: {}, key: {}, expected new value: {:?}, new value: {:?}\n",
-                                    i,
-                                    key,
-                                    get_last_n_char(&new_value_expected, 10),
-                                    get_last_n_char(&new_value, 10)
-                                );
-                                status = Status::TransactionError;
-                            } else {
-                                *old_suffix_expected = new_suffix_expected;
-                            }
-                        }
-                        None => {
-                            eprintln!("\ni: {}, key: {} can't get new value\n", i, key);
-                            status = Status::TransactionError;
-                        }
-                    };
-                    QueryRecord {
-                        status,
-                        request: request_time,
-                        response: response_time,
+        Ok((old_value, new_value)) => {
+            response_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards");
+            let mut status = Status::Success;
+            match old_value {
+                Some(old_value) => {
+                    if old_value != old_value_expected {
+                        eprintln!(
+                            "\ni: {}, key: {}, expected old value: {:?}, old value: {:?}\n",
+                            i,
+                            key,
+                            get_last_n_char(&old_value_expected, 10),
+                            get_last_n_char(&old_value, 10)
+                        );
+                        status = Status::Error;
                     }
                 }
-                Err(_) => {
-                    response_time = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Time went backwards");
-                    // println!("i: {}, key: {}, error: {}", i, key, e);
-                    QueryRecord {
-                        status: Status::Error,
-                        request: request_time,
-                        response: response_time,
+                None => {
+                    eprintln!("\ni: {}, key: {} can't get old value\n", i, key);
+                    status = Status::Miss
+                }
+            };
+            match new_value {
+                Some(new_value) => {
+                    if new_value != new_value_expected {
+                        eprintln!(
+                            "\ni: {}, key: {}, expected new value: {:?}, new value: {:?}\n",
+                            i,
+                            key,
+                            get_last_n_char(&new_value_expected, 10),
+                            get_last_n_char(&new_value, 10)
+                        );
+                        status = Status::TransactionError;
+                    } else {
+                        *old_suffix_expected = new_suffix_expected;
                     }
                 }
+                None => {
+                    eprintln!("\ni: {}, key: {} can't get new value\n", i, key);
+                    status = Status::TransactionError;
+                }
+            };
+            QueryRecord {
+                status,
+                request: request_time,
+                response: response_time,
             }
         }
         Err(_) => {
             response_time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("Time went backwards");
-            eprintln!("\ni: {}, key: {} timeout\n", i, key);
-            drop(conn);
+            // println!("request error i: {}, key: {}, error: {:?}", i, key, e);
             QueryRecord {
+                // status: if e.is_timeout() { Status::Timeout } else { Status::Error },
                 status: Status::Timeout,
                 request: request_time,
                 response: response_time,
@@ -386,11 +367,12 @@ async fn main() {
                 .expect("Time went backwards");
             let mut queries = Vec::new();
             let mut tries = 1;
-            match pool.get().await {
-                Ok(conn) => {
-                    let mut conn_guard = conn.lock().await;
-                    while tries <= cfg.benchmark.retry_count {
+            while tries <= cfg.benchmark.retry_count {
+                match pool.get().await {
+                    Ok(conn) => {
+                        let mut conn_guard = conn.lock().await;
                         let mut value_guard = value.lock().await;
+                        (*conn_guard).set_response_timeout(cfg.benchmark.timeout);
                         let mut old_suffix_expected = (*value_guard).clone();
                         let query_record = do_transaction(
                             i,
@@ -398,7 +380,6 @@ async fn main() {
                             key,
                             &base_value,
                             &mut old_suffix_expected,
-                            cfg.benchmark.timeout,
                         )
                         .await;
                         let finished = query_record.status != Status::Timeout;
@@ -410,19 +391,20 @@ async fn main() {
                         tries += 1;
                         drop(value_guard);
                     }
-                }
-                Err(_) => {
-                    // eprintln!("\ni: {}, key: {}, error: {}\n", i, key, e);
-                    let now_time = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Time went backwards");
-                    queries.push(QueryRecord {
-                        status: Status::Error,
-                        request: now_time,
-                        response: now_time,
-                    });
-                }
-            };
+                    Err(_) => {
+                        // eprintln!("\npool error i: {}, key: {}, error: {}\n", i, key, e);
+                        let now_time = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .expect("Time went backwards");
+                        queries.push(QueryRecord {
+                            status: Status::Timeout,
+                            request: now_time,
+                            response: now_time,
+                        });
+                        tries += 1;
+                    }
+                };
+            }
             let record = Record {
                 i,
                 key,
