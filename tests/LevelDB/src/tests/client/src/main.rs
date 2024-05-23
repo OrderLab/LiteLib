@@ -39,6 +39,7 @@ enum KeyDistribution {
 struct BenchmarkConfig {
     num_keys: usize,
     value_length: usize,
+    init_rps: usize,
     #[serde(deserialize_with = "deserialize_duration")]
     test_duration: Duration,
     rps: usize,
@@ -202,6 +203,7 @@ async fn main() {
     println!("{:?}", cfg);
     let num_requests = cfg.benchmark.test_duration.as_secs() as usize * cfg.benchmark.rps;
     let interval = Duration::from_secs_f64(1.0 / cfg.benchmark.rps as f64);
+    let init_interval = Duration::from_secs_f64(1.0 / cfg.benchmark.init_rps as f64);
     let base_value: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(cfg.benchmark.value_length)
@@ -260,6 +262,7 @@ async fn main() {
         let i = i; // Copy i into the closure
         let value = format!("{}_{}_{}", base_value, i, 0);
         let bar = bar.clone();
+        tokio::time::sleep(init_interval).await;
         let handle = tokio::spawn(async move {
             let conn = pool.get().await.unwrap_or_else(|e| {
                 panic!("Initialize failed i: {}, error: {}", i, e);
