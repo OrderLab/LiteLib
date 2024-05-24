@@ -28,12 +28,14 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       log_head_(new LogEntryInstance(nullptr, nullptr, self_)),
       cache_(lite_core.cache_inner_, lite_core.logger_inner_, log_head_),
       logger_(lite_core.logger_inner_, log_head_) {
-  event_set(&client_event_, sfd, event_flags, event_handler,
-            static_cast<void*>(this));
-  event_base_set(base, &client_event_);
-  if (event_add(&client_event_, 0) == -1) {
-    PLOG(ERROR) << "client event_add";
-    throw std::runtime_error("client event_add");
+  if ( sfd != 0 ){
+    event_set(&client_event_, sfd, event_flags, event_handler,
+              static_cast<void*>(this));
+    event_base_set(base, &client_event_);
+    if (event_add(&client_event_, 0) == -1) {
+      PLOG(ERROR) << "client event_add";
+      throw std::runtime_error("client event_add");
+    }
   }
 
   memset(&backend_event_, 0, sizeof(backend_event_));
