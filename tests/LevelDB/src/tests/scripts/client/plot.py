@@ -175,6 +175,7 @@ for i in range(cnt):
         "ServerTimeout": np.zeros(total_time),
         "ServerTransactionError": np.zeros(total_time),
         "lock_wait_time": [[] for _ in range(total_time)],
+        "begin_time": begin_time,
     }
     for line in logs[i]:
         begin_index = get_index(line["begin"])
@@ -217,18 +218,23 @@ for i in range(cnt):
     if not os.path.exists(log_file):
         print(f"Log file {log_file} does not exist, won't plot special timestamps")
     else:
-        begin_time = np.min([line["begin"] for line in logs[i]])
+        begin_time = stat["begin_time"]
         with open(log_file, "r") as f:
             lines = f.readlines()
         for line in lines:
-            if "ntering emergency mode" in line or "crash time" in line:
+            if ("ntering emergency mode" in line or "crash time" in line) and stat[
+                "crash_time"
+            ] is np.nan:
                 stat["crash_time"] = get_timestamp_in_the_end_of_a_line(line)
             if "Exiting emergency mode" in line or "boot time" in line:
                 stat["reboot_time"] = get_timestamp_in_the_end_of_a_line(line)
             if "Exited emergency mode" in line:
                 stat["replay_time"] = get_timestamp_in_the_end_of_a_line(line)
+        begin_time_str = datetime.fromtimestamp(begin_time).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
         print(
-            f"Case: {args.filenames[i][:-6]}, crash time: {stat['crash_time']}, reboot time: {stat['reboot_time']}, replay time: {stat['replay_time']}"
+            f"Case: {args.filenames[i][:-6]}, begin_time: {begin_time_str}, crash time: {stat['crash_time']}, reboot time: {stat['reboot_time']}, replay time: {stat['replay_time']}"
         )
 
 cpu_ylim = 0
@@ -285,8 +291,8 @@ for i in range(cnt):
     plot_latency(axs[2, i], stats[i], "p95_agg_lat", "95% Client Latency")
     plot_tries(axs[3, i], stats[i])
     plot_throughput(axs[4, i], stats[i], "Server")
-    plot_latency(axs[5, i], stats[i], "avg_server_lat", "Avg Server")
-    plot_latency(axs[6, i], stats[i], "p95_server_lat", "95% Server")
+    plot_latency(axs[5, i], stats[i], "avg_server_lat", "Avg Server Latency")
+    plot_latency(axs[6, i], stats[i], "p95_server_lat", "95% Server Latency")
     plot_resource(axs[7, i], stats[i], "cpu", cpu_ylim * 1.1)
     plot_resource(axs[8, i], stats[i], "mem", mem_ylim * 1.1)
     plot_latency(axs[9, i], stats[i], "avg_lock_wait_time", "Avg Lock Wait Time")
