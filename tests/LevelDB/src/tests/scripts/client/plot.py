@@ -211,19 +211,19 @@ for i in range(cnt):
 for i in range(cnt):
     log_file = args.filenames[i][:-6] + ".log"
     stat = stats[i]
+    stat["crash_time"] = np.nan
+    stat["reboot_time"] = np.nan
+    stat["replay_time"] = np.nan
     if not os.path.exists(log_file):
         print(f"Log file {log_file} does not exist, won't plot special timestamps")
-        stat["crash_time"] = np.nan
-        stat["reboot_time"] = np.nan
-        stat["replay_time"] = np.nan
     else:
         begin_time = np.min([line["begin"] for line in logs[i]])
         with open(log_file, "r") as f:
             lines = f.readlines()
         for line in lines:
-            if "ntering emergency mode" in line:
+            if "ntering emergency mode" in line or "crash time" in line:
                 stat["crash_time"] = get_timestamp_in_the_end_of_a_line(line)
-            if "Exiting emergency mode" in line:
+            if "Exiting emergency mode" in line or "boot time" in line:
                 stat["reboot_time"] = get_timestamp_in_the_end_of_a_line(line)
             if "Exited emergency mode" in line:
                 stat["replay_time"] = get_timestamp_in_the_end_of_a_line(line)

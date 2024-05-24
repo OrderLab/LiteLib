@@ -9,10 +9,18 @@ index 1b34a3e..0049efd 100644
 +*.txt
 \ No newline at end of file
 diff --git a/src/rl.cpp b/src/rl.cpp
-index 72d9685..2f67839 100644
+index 72d9685..c0a8fd7 100644
 --- a/src/rl.cpp
 +++ b/src/rl.cpp
-@@ -33,6 +33,7 @@ int main(int argc, char** argv) {
+@@ -14,7 +14,6 @@
+ #include <sys/socket.h>
+ 
+ #include <algorithm>
+-
+ #include "rl_util.h"
+ #include "rl_server.h"
+ #include "rl_connection.h"
+@@ -33,6 +32,7 @@ int main(int argc, char** argv) {
  
      int port=8323;
      int db_num=0;
@@ -20,7 +28,7 @@ index 72d9685..2f67839 100644
  
      RLRequest::init_cmd_map();
  
-@@ -40,7 +41,7 @@ int main(int argc, char** argv) {
+@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
      memset(data_dir,0,128);
      strncpy(data_dir,"redis.db",8);
  
@@ -29,7 +37,7 @@ index 72d9685..2f67839 100644
          switch (ch) {
          case 'h':
              printf("Usage:\n\t./redis-leveldb [options]\n");
-@@ -51,6 +52,7 @@ int main(int argc, char** argv) {
+@@ -51,6 +51,7 @@ int main(int argc, char** argv) {
              printf("\t-P port:\t listen port\n");
              printf("\t-D data-dir:\t data dir\n");
              printf("\t-M number:\t DB count(run in multi-db mode)\n");
@@ -37,7 +45,7 @@ index 72d9685..2f67839 100644
              exit(0);
          case 'd':
              daemon_flag = 1;
-@@ -85,6 +87,18 @@ int main(int argc, char** argv) {
+@@ -85,6 +86,18 @@ int main(int argc, char** argv) {
                  exit(1);
              }
              break;
@@ -56,7 +64,7 @@ index 72d9685..2f67839 100644
          case '?':
              //if(optopt=='H' || optopt=='P' || optopt=='D' || optopt=='M')
              exit(1);
-@@ -108,10 +122,10 @@ int main(int argc, char** argv) {
+@@ -108,10 +121,10 @@ int main(int argc, char** argv) {
      atexit(&exit_hook);
  
      if(opt_host){
@@ -108,10 +116,20 @@ index fb93138..8a61129 100644
      void rl_multi();
      void rl_exec();
 diff --git a/src/rl_server.cpp b/src/rl_server.cpp
-index 65c97ab..a0475d6 100644
+index 65c97ab..8fd545a 100644
 --- a/src/rl_server.cpp
 +++ b/src/rl_server.cpp
-@@ -33,7 +33,7 @@
+@@ -17,6 +17,9 @@
+ 
+ #include <leveldb/filter_policy.h>
+ 
++#include <chrono>
++#include <iostream>
++
+ #include "rl_util.h"
+ #include "rl_server.h"
+ #include "rl_connection.h"
+@@ -33,7 +36,7 @@
  #define EVBACKEND EVBACKEND_KQUEUE
  #endif
  
@@ -120,7 +138,7 @@ index 65c97ab..a0475d6 100644
      db_num(dbn), db_path(_db_path), hostaddr(_hostaddr), port(_port),
      fd(-1), clients_num(0)
  {
-@@ -41,6 +41,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+@@ -41,6 +44,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
      printf("HOSTADDR:(%s)\n",hostaddr.c_str());
      printf("DB_PATH:(%s)\n",db_path.c_str());
      printf("PORT:(%d)\n",port);
@@ -128,7 +146,7 @@ index 65c97ab..a0475d6 100644
  
      leveldb::Status status;
  
-@@ -48,12 +49,20 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+@@ -48,12 +52,20 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
          options = new leveldb::Options[1];
          options[0].create_if_missing = true;
          options[0].filter_policy = leveldb::NewBloomFilterPolicy(10);
@@ -151,7 +169,7 @@ index 65c97ab..a0475d6 100644
          }
      }else{
          options = new leveldb::Options[db_num];
-@@ -63,6 +72,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+@@ -63,6 +75,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
          for(int i=0;i<db_num;i++){
              options[i].create_if_missing = true;
              options[i].filter_policy = leveldb::NewBloomFilterPolicy(16);
@@ -159,6 +177,17 @@ index 65c97ab..a0475d6 100644
  
              int count = sprintf(buf, "/db-%03d", i);
              //TODO the db path
+@@ -154,6 +167,10 @@ void RLServer::start()
+     ev_io_start(loop, &connection_watcher);
+ 
+     printf("Server running successfully\n");
++    const auto now = std::chrono::system_clock::now();
++    std::cout << "boot time " << std::chrono::duration_cast<std::chrono::nanoseconds>(
++                 now.time_since_epoch()).count() << std::endl;
++
+     ev_run(loop, 0);
+ }
+ 
 diff --git a/src/rl_server.h b/src/rl_server.h
 index 3356d66..82ff0d6 100644
 --- a/src/rl_server.h
@@ -172,6 +201,30 @@ index 3356d66..82ff0d6 100644
      ~RLServer();
      void start();
      static void on_connection(struct ev_loop *loop, ev_io *watcher, int revents);
+diff --git a/src/rl_util.cpp b/src/rl_util.cpp
+index 16bb92a..71794e1 100644
+--- a/src/rl_util.cpp
++++ b/src/rl_util.cpp
+@@ -18,6 +18,9 @@
+ #include <fcntl.h>
+ #include <sys/stat.h>
+ 
++#include <chrono>
++#include <iostream>
++
+ #include "rl_util.h"
+ #include "rl_server.h"
+ 
+@@ -83,6 +86,9 @@ void sig_term(int signo) {
+     if(signo==SIGINT ||
+         signo == SIGTERM ||
+         signo == SIGQUIT) {
++        const auto now = std::chrono::system_clock::now();
++        std::cout << "crash time " << std::chrono::duration_cast<std::chrono::nanoseconds>(
++                     now.time_since_epoch()).count() << std::endl;
+         exit_hook();
+         exit(0);
+     }
 diff --git a/t/Tester.pm b/t/Tester.pm
 index 341099f..8295608 100644
 --- a/t/Tester.pm
