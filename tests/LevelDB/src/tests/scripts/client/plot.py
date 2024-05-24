@@ -4,10 +4,30 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import re
+from datetime import datetime
+
+
+def annotate_time_points(ax, stat):
+    type = [
+        ("crash_time", "crash", "red", (2, 2, 2, 2)),
+        ("reboot_time", "rebooted", "orange", (3, 2, 2, 0)),
+        ("replay_time", "replayed", "green", (1, 2, 2, 2)),
+    ]
+    for t, label, c, dash in type:
+        if stat[t] is not np.nan:
+            ax.axvline(x=stat[t], color=c, dashes=dash, label=label)
 
 
 def plot_throughput(ax, stat, prefix):
-    type = [("Success", "tab:green"), ("Miss", "tab:orange"), ("Timeout", "tab:red"), ("Error", "tab:purple"), ("TransactionError", "0")]
+    annotate_time_points(ax, stat)
+    type = [
+        ("Success", "tab:green"),
+        ("Miss", "tab:orange"),
+        ("Timeout", "tab:red"),
+        ("Error", "tab:purple"),
+        ("TransactionError", "0"),
+    ]
     total_time = len(stat["cnt"])
     base = np.zeros(total_time)
     for t, c in type:
@@ -29,6 +49,7 @@ def plot_throughput(ax, stat, prefix):
 
 
 def plot_latency(ax, stat, type, ylabel):
+    annotate_time_points(ax, stat)
     total_time = len(stat["cnt"])
     ax.plot(stat[type] * 1000)
     ax.set_xlim(0, total_time)
@@ -37,6 +58,7 @@ def plot_latency(ax, stat, type, ylabel):
 
 
 def plot_tries(ax, stat):
+    annotate_time_points(ax, stat)
     total_time = len(stat["cnt"])
     ax.plot(stat["avg_tries"])
     ax.set_xlim(0, total_time)
@@ -45,6 +67,7 @@ def plot_tries(ax, stat):
 
 
 def plot_resource(ax, stat, res_name, ylim):
+    annotate_time_points(ax, stat)
     total_time = len(stat["cnt"])
     for process_name, process_usage in stat["resource"].items():
         ax.plot(
@@ -91,6 +114,14 @@ begin_time = 0
 
 def get_index(time):
     return math.floor(time - begin_time)
+
+
+def get_timestamp_in_the_end_of_a_line(line):
+    match = re.search(r"\b(\d+)\b$", line)
+    if match:
+        number = match.group(1)
+        return float(number) / 1e9 - begin_time
+    return np.nan
 
 
 parser = argparse.ArgumentParser(description="Process JSON files.")
@@ -176,6 +207,29 @@ for i in range(cnt):
     stat["avg_tries"] = mean2d(stat["tries"])
     stat["avg_lock_wait_time"] = mean2d(stat["lock_wait_time"])
     stats.append(stat)
+
+for i in range(cnt):
+    log_file = args.filenames[i][:-6] + ".log"
+    stat = stats[i]
+    if not os.path.exists(log_file):
+        print(f"Log file {log_file} does not exist, won't plot special timestamps")
+        stat["crash_time"] = np.nan
+        stat["reboot_time"] = np.nan
+        stat["replay_time"] = np.nan
+    else:
+        begin_time = np.min([line["begin"] for line in logs[i]])
+        with open(log_file, "r") as f:
+            lines = f.readlines()
+        for line in lines:
+            if "ntering emergency mode" in line:
+                stat["crash_time"] = get_timestamp_in_the_end_of_a_line(line)
+            if "Exiting emergency mode" in line:
+                stat["reboot_time"] = get_timestamp_in_the_end_of_a_line(line)
+            if "Exited emergency mode" in line:
+                stat["replay_time"] = get_timestamp_in_the_end_of_a_line(line)
+        print(
+            f"Case: {args.filenames[i][:-6]}, crash time: {stat['crash_time']}, reboot time: {stat['reboot_time']}, replay time: {stat['replay_time']}"
+        )
 
 cpu_ylim = 0
 mem_ylim = 0
