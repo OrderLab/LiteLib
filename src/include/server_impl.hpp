@@ -17,10 +17,17 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::LiteServer(const size_t& nthreads,
                                    const size_t& max_item_count,
                                    Application& app, std::string& backend_addr,
-                                   std::string& backend_port, const char pipe_path[],
+                                   std::string& backend_port,
+                                   const std::chrono::milliseconds
+                                       sliding_window_size,
+                                   const size_t replay_expected_rps,
+                                   const double flow_control_ratio,
+                                   const size_t n_replay_threads,
+                                   const char pipe_path[],
                                    bool crash_recover)
     : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path,
-                 barrier_, workers_, crash_recover),
+                 barrier_, workers_, sliding_window_size, replay_expected_rps,
+                 flow_control_ratio, n_replay_threads, crash_recover),
       barrier_(nthreads + 1,
                []() { LOG(INFO) << "Replay barrier completed" << std::endl; }) {
   struct event_config* ev_config;
@@ -133,7 +140,9 @@ template <typename Application, typename Request, typename Response,
   requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::DispatchNewConnection(const evutil_socket_t sfd) {
-  (**next_worker_).notify_queue_.enqueue(sfd);
+  (**next_worker_)
+      .notify_queue_.push_back(
+          {.type = WorkerMessage::Type::kNewClientConnection, .fd = sfd});
   uint64_t buf = 1;
   PLOG_IF(ERROR, write((**next_worker_).notify_event_fd, &buf,
                        sizeof(uint64_t)) != sizeof(uint64_t))

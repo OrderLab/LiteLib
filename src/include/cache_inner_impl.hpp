@@ -172,13 +172,18 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
           size += new_size - lru_node->size;
           lru_node->size = new_size;
         }
-        if (size > max_size_) Evict();
       }
       lru_lock.unlock();
     }
 
     new_state = element.second.state.get();
   });
+
+  if (size > max_size_) {
+    std::unique_lock<std::mutex> lru_lock(lru_mutex_, std::try_to_lock);
+    if (lru_lock && size > max_size_) Evict();
+  }
+
   return ret;
 }
 
@@ -215,7 +220,7 @@ template <typename Application, typename Request, typename Response,
 void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Evict() {
   if (emergency_mode_) return;
-  size_t threshold = 10; // prevent blocking for too long
+  size_t threshold = 10;  // prevent blocking for too long
   // TODO: choose a better threshold
   while (size > max_size_ && threshold--) {
     ListNode *moribund = lru_tail_.pre_;

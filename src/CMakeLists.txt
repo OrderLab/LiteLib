@@ -19,14 +19,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fconcepts-diagnostics-depth=10")
 endif()
 
-include(FetchContent)
-FetchContent_Declare(
-  readerwriterqueue
-  GIT_REPOSITORY    https://github.com/cameron314/readerwriterqueue
-  GIT_TAG           master
-)
-FetchContent_MakeAvailable(readerwriterqueue)
-
 add_library(${PROJECT_NAME} STATIC)
 
 file(GLOB_RECURSE ALL_CC_FILES

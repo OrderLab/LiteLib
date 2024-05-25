@@ -23,7 +23,6 @@ enum ExperimentType {
 struct RemoteScriptConfig {
     experiment_type: ExperimentType,
     remote_addr: String,
-    monitor_file_path: String,
     write_buffer_size: usize,
     #[serde(deserialize_with = "deserialize_duration")]
     crash_time: Duration,
@@ -47,7 +46,7 @@ struct BenchmarkConfig {
     #[serde(deserialize_with = "deserialize_duration")]
     timeout: Duration,
     retry_count: usize,
-    file_path: String,
+    file_prefix: String,
     remote_script: Option<RemoteScriptConfig>,
 }
 
@@ -64,10 +63,6 @@ impl Config {
             .add_source(config::Environment::default().separator("__"))
             .build()?
             .try_deserialize::<Config>()?;
-
-        if !cfg.benchmark.file_path.ends_with(".jsonl") {
-            panic!("file_path must end with .jsonl");
-        }
 
         Ok(cfg)
     }
@@ -217,12 +212,14 @@ async fn main() {
                 &remote_script_config.remote_addr,
                 &match &remote_script_config.experiment_type {
                     ExperimentType::Full => format! {
-                        r#"python3 /workspace/scripts/leveldb/init.py -t Full -b {}"#,
+                        r#"python3 /workspace/scripts/leveldb/init.py -t Full -b {} -f {}"#,
                         remote_script_config.write_buffer_size,
+                        cfg.benchmark.file_prefix
                     },
                     ExperimentType::Lite(num_threads, memory_size) => format!(
-                        r#"python3 /workspace/scripts/leveldb/init.py -t Lite -n {} -s {} -b {}"#,
-                        num_threads, memory_size, remote_script_config.write_buffer_size
+                        r#"python3 /workspace/scripts/leveldb/init.py -t Lite -n {} -s {} -b {} -f {}"#,
+                        num_threads, memory_size, remote_script_config.write_buffer_size,
+                        cfg.benchmark.file_prefix
                     ),
                 },
             ])
@@ -312,6 +309,7 @@ async fn main() {
 
     if let Some(remote_script_config) = cfg.benchmark.remote_script {
         let now = SystemTime::now();
+        let file_prefix = cfg.benchmark.file_prefix.clone();
         let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
         let secs = duration_since_epoch.as_secs();
         let target_time = UNIX_EPOCH + Duration::from_secs(secs + 3);
@@ -330,7 +328,7 @@ async fn main() {
                             ExperimentType::Lite(_, _) => "Lite",
                         },
                         cfg.benchmark.test_duration.as_secs(),
-                        remote_script_config.monitor_file_path,
+                        file_prefix,
                         remote_script_config.write_buffer_size,
                     ),
                 ])
@@ -497,7 +495,7 @@ async fn main() {
     {
         let records_guard = records.lock().await;
         let json = serde_json::to_string(&(*records_guard)).unwrap();
-        std::fs::write(cfg.benchmark.file_path, json).unwrap();
+        std::fs::write(format!("{}.jsonl", cfg.benchmark.file_prefix), json).unwrap();
     }
 
     // Check correctness

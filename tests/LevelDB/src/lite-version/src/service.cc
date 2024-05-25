@@ -150,9 +150,11 @@ void LevelDB::HandleReplayResponse(
   return;
 }
 
-Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
-                               ConnectionInfo &conn, Cache *cache,
-                               Logger *logger) {
+std::pair<Packet, bool> LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
+                                                ConnectionInfo &conn,
+                                                Cache *cache, Logger *logger,
+                                                bool flow_control) {
+  bool shutdown = false;
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
   if (opcode_resp == nullptr) {
@@ -172,12 +174,15 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
       }
 
       auto response_array = new RESPArray;
-
-      {
+      if (flow_control) {
+        response_array->value.emplace_back(
+            new RESPError(std::make_shared<std::string>("ERR flow control")));
+        shutdown = true;
+      } else {
         auto cache_lock = cache->TransactionLock();
         for (const auto &c : conn.transactions_) {
           response_array->value.emplace_back(
-              EmergencyServeImpl(c, conn, cache, logger, true));
+              EmergencyServeImpl(c, conn, cache, logger, false, true).first);
         }
       }
 
@@ -185,20 +190,32 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
       conn.transactions_.clear();
       response = response_array;
     } else {
-      conn.transactions_.push_back(req);
-      logger->Log(req);
-      response = new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
+      if (flow_control) {
+        response = new RESPError(
+            std::make_shared<std::string>("ERR flow control enabled"));
+        if (!logger->EraseConnectionLogs(conn.transactions_.size() + 1)) {
+          LOG(ERROR) << "Failed to undo log\n";
+          logger->Log(abort_req_);
+        }
+        conn.transactions_.clear();
+        shutdown = true;
+      } else {
+        conn.transactions_.push_back(req);
+        logger->Log(req);
+        response =
+            new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
+      }
     }
   } else {
-    response = EmergencyServeImpl(req, conn, cache, logger);
+    std::tie(response, shutdown) =
+        EmergencyServeImpl(req, conn, cache, logger, flow_control);
   }
-  return Packet(std::unique_ptr<RESPType>(response));
+  return {Packet(std::unique_ptr<RESPType>(response)), shutdown};
 }
 
-RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
-                                      ConnectionInfo &conn, Cache *cache,
-                                      Logger *logger,
-                                      const bool in_transaction) {
+std::pair<RESPType *, bool> LevelDB::EmergencyServeImpl(
+    std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache,
+    Logger *logger, bool flow_control, const bool in_transaction) {
   std::string_view opcode;
   try {
     opcode = req->GetOpcode();
@@ -212,63 +229,83 @@ RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
   if (opcode == "set") {
     if (req->GetArgNum() != 2) {
       LOG(ERROR) << "Invalid number of arguments for set" << std::endl;
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong number of arguments"));
+      return {new RESPError(std::make_shared<std::string>(
+                  "ERR wrong number of arguments")),
+              false};
     }
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     if (key == nullptr) {
       LOG(ERROR) << "Invalid argument for set\n";
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong type of arguments"));
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR wrong type of arguments")),
+              false};
     }
     const auto value = dynamic_cast<RESPString *>(req->GetArg(1));
     if (value == nullptr) {
       LOG(ERROR) << "Invalid argument for set\n";
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong type of arguments"));
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR wrong type of arguments")),
+              false};
+    }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
+              false};  // no need to close connection here, so that the client
+                       // can reuse it in the future
     }
     entry.value = value->value;
     if (cache->Set(*(key->value), entry, in_transaction))
-      return new RESPSimpleString(std::make_shared<std::string>("OK"));
+      return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
   } else if (opcode == "get") {
     if (req->GetArgNum() != 1) {
       LOG(ERROR) << "Invalid number of arguments for get" << std::endl;
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong number of arguments"));
+      return {new RESPError(std::make_shared<std::string>(
+                  "ERR wrong number of arguments")),
+              false};
     }
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     if (key == nullptr) {
       LOG(ERROR) << "Invalid argument for get\n";
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong type of arguments"));
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR wrong type of arguments")),
+              false};
     }
     if (cache->Get(*(key->value), entry, in_transaction)) {
-      return new RESPBulkString(entry.value);
+      return {new RESPBulkString(entry.value), false};
     } else {
-      return new RESPBulkString(nullptr);
+      return {new RESPBulkString(nullptr), false};
     }
   } else if (opcode == "ping") {
     if (req->GetArgNum() == 0) {
-      return new RESPSimpleString(std::make_shared<std::string>("PONG"));
+      return {new RESPSimpleString(std::make_shared<std::string>("PONG")),
+              false};
     } else if (req->GetArgNum() == 1) {
       const auto arg = dynamic_cast<RESPString *>(req->GetArg(0));
       if (arg == nullptr) {
         LOG(ERROR) << "Invalid argument for ping\n";
-        return new RESPError(
-            std::make_shared<std::string>("ERR wrong type of arguments"));
+        return {new RESPError(std::make_shared<std::string>(
+                    "ERR wrong type of arguments")),
+                false};
       }
-      return new RESPBulkString(arg->value);
+      return {new RESPBulkString(arg->value), false};
     } else {
       LOG(ERROR) << "Invalid number of arguments for ping" << std::endl;
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong number of arguments"));
+      return {new RESPError(std::make_shared<std::string>(
+                  "ERR wrong number of arguments")),
+              false};
     }
   } else if (opcode == "multi") {
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
+              true};
+    }
     conn.is_in_transaction_ = true;
     logger->Log(req);
-    return new RESPSimpleString(std::make_shared<std::string>("OK"));
+    return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
   }
 
-  LOG(ERROR) << "unknown opcode: " << opcode << std::endl;
-  return new RESPError(std::make_shared<std::string>("ERR unknown command"));
+  LOG(FATAL) << "unknown opcode: " << opcode << std::endl;
+  return {new RESPError(std::make_shared<std::string>("ERR unknown command")),
+          false};
 }

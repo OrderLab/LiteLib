@@ -38,7 +38,10 @@ concept IsApplication = requires(
     Cache<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>
         *cache,
     Logger<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>
-        *logger) {
+        *logger,
+    bool flow_control  // true: reject this request if it will trigger
+                       // replay packets
+) {
   // Find the corresponding requests of the response, return a subset of the
   // requests that contain information about state changes
   {
@@ -56,8 +59,10 @@ concept IsApplication = requires(
 
   // Perform any operation during emergency time
   {
-    app.EmergencyServe(std::move(req), conn_info, cache, logger)
-  } -> std::convertible_to<Response>;
+    app.EmergencyServe(std::move(req), conn_info, cache, logger, flow_control)
+  } -> std::convertible_to<std::pair<Response, bool>>;  // true: close the
+                                                        // connection after
+                                                        // sending the response
 };
 
 template <typename ProtocolMessage>

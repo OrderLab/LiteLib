@@ -44,7 +44,10 @@ class LiteCore : public Daemon {
   LiteCore(Application &app, const size_t &max_item_count,
            std::string &backend_addr, std::string &backend_port,
            const char pipe_path[], std::barrier<std::function<void()>> &barrier,
-           std::vector<std::unique_ptr<WorkerInstance>> &workers, bool crash_recover = true);
+           std::vector<std::unique_ptr<WorkerInstance>> &workers,
+           const std::chrono::milliseconds sliding_window_size,
+           const size_t replay_expected_rps, const double flow_control_ratio,
+           const size_t n_replay_threads, bool crash_recover = true);
 
   bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
                      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
@@ -82,6 +85,15 @@ class LiteCore : public Daemon {
   std::vector<std::unique_ptr<WorkerInstance>> &workers_;
 
   void TakeOver();
+
+  SlidingWindow replay_rate_;
+
+  const size_t replay_expected_rps_;  // TODO: configurable by lite_cli
+
+  const double flow_control_ratio_;  // TODO: configurable by lite_cli
+
+  std::vector<std::unique_ptr<WorkerInstance>> replay_workers_;
+  typename decltype(replay_workers_)::iterator next_replay_worker_;
 
   bool Replay();
 

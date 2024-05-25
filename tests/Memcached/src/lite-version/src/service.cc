@@ -71,9 +71,13 @@ void Memcached::HandleReplayResponse(
   return;
 }
 
-Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
-                                 ConnectionInfo &conn_info, Cache *cache,
-                                 Logger *logger) const {
+std::pair<Packet, bool> Memcached::EmergencyServe(std::shared_ptr<Packet> p,
+                                                  ConnectionInfo &conn_info,
+                                                  Cache *cache, Logger *logger,
+                                                  bool flow_control) const {
+  if (flow_control) {
+    return {Packet(nullptr), true};
+  }
   const auto req = ParsedPacket(*p);
   if (req.header.magic != 0x80) {
     LOG(ERROR) << "Unsupported Protocol Version:\n" << req << std::endl;
@@ -154,7 +158,7 @@ Packet Memcached::EmergencyServe(std::shared_ptr<Packet> p,
   if (!is_quite) {
     Packet p(std::move(conn_info.response_buffer));
     conn_info.response_buffer = std::make_unique<std::vector<uint8_t>>();
-    return p;
+    return {p, false};
   }
-  return Packet(nullptr);
+  return {Packet(nullptr), false};
 }

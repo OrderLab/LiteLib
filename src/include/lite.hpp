@@ -3,6 +3,9 @@
 #define GLOG_USE_GLOG_EXPORT 1
 #include <glog/logging.h>
 
+#include <chrono>
+using namespace std::chrono_literals;
+
 #include "cache_impl.hpp"
 #include "cache_inner_impl.hpp"
 #include "concept.hpp"

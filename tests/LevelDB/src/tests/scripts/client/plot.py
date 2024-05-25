@@ -4,10 +4,30 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import re
+from datetime import datetime
+
+
+def annotate_time_points(ax, stat):
+    type = [
+        ("crash_time", "crash", "red", (2, 2, 2, 2)),
+        ("reboot_time", "rebooted", "orange", (3, 2, 2, 0)),
+        ("replay_time", "replayed", "green", (1, 2, 2, 2)),
+    ]
+    for t, label, c, dash in type:
+        if stat[t] is not np.nan:
+            ax.axvline(x=stat[t], color=c, dashes=dash, label=label)
 
 
 def plot_throughput(ax, stat, prefix):
-    type = [("Success", "tab:green"), ("Miss", "tab:orange"), ("Timeout", "tab:red"), ("Error", "tab:purple"), ("TransactionError", "0")]
+    annotate_time_points(ax, stat)
+    type = [
+        ("Success", "tab:green"),
+        ("Miss", "tab:orange"),
+        ("Timeout", "tab:red"),
+        ("Error", "tab:purple"),
+        ("TransactionError", "0"),
+    ]
     total_time = len(stat["cnt"])
     base = np.zeros(total_time)
     for t, c in type:
@@ -29,6 +49,7 @@ def plot_throughput(ax, stat, prefix):
 
 
 def plot_latency(ax, stat, type, ylabel):
+    annotate_time_points(ax, stat)
     total_time = len(stat["cnt"])
     ax.plot(stat[type] * 1000)
     ax.set_xlim(0, total_time)
@@ -37,6 +58,7 @@ def plot_latency(ax, stat, type, ylabel):
 
 
 def plot_tries(ax, stat):
+    annotate_time_points(ax, stat)
     total_time = len(stat["cnt"])
     ax.plot(stat["avg_tries"])
     ax.set_xlim(0, total_time)
@@ -45,6 +67,7 @@ def plot_tries(ax, stat):
 
 
 def plot_resource(ax, stat, res_name, ylim):
+    annotate_time_points(ax, stat)
     total_time = len(stat["cnt"])
     for process_name, process_usage in stat["resource"].items():
         ax.plot(
@@ -91,6 +114,14 @@ begin_time = 0
 
 def get_index(time):
     return math.floor(time - begin_time)
+
+
+def get_timestamp_in_the_end_of_a_line(line):
+    match = re.search(r"\b(\d+)\b$", line)
+    if match:
+        number = match.group(1)
+        return float(number) / 1e9 - begin_time
+    return np.nan
 
 
 parser = argparse.ArgumentParser(description="Process JSON files.")
@@ -144,6 +175,7 @@ for i in range(cnt):
         "ServerTimeout": np.zeros(total_time),
         "ServerTransactionError": np.zeros(total_time),
         "lock_wait_time": [[] for _ in range(total_time)],
+        "begin_time": begin_time,
     }
     for line in logs[i]:
         begin_index = get_index(line["begin"])
@@ -176,6 +208,34 @@ for i in range(cnt):
     stat["avg_tries"] = mean2d(stat["tries"])
     stat["avg_lock_wait_time"] = mean2d(stat["lock_wait_time"])
     stats.append(stat)
+
+for i in range(cnt):
+    log_file = args.filenames[i][:-6] + ".log"
+    stat = stats[i]
+    stat["crash_time"] = np.nan
+    stat["reboot_time"] = np.nan
+    stat["replay_time"] = np.nan
+    if not os.path.exists(log_file):
+        print(f"Log file {log_file} does not exist, won't plot special timestamps")
+    else:
+        begin_time = stat["begin_time"]
+        with open(log_file, "r") as f:
+            lines = f.readlines()
+        for line in lines:
+            if ("ntering emergency mode" in line or "crash time" in line) and stat[
+                "crash_time"
+            ] is np.nan:
+                stat["crash_time"] = get_timestamp_in_the_end_of_a_line(line)
+            if "Exiting emergency mode" in line or "boot time" in line:
+                stat["reboot_time"] = get_timestamp_in_the_end_of_a_line(line)
+            if "Exited emergency mode" in line:
+                stat["replay_time"] = get_timestamp_in_the_end_of_a_line(line)
+        begin_time_str = datetime.fromtimestamp(begin_time).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        print(
+            f"Case: {args.filenames[i][:-6]}, begin_time: {begin_time_str}, crash time: {stat['crash_time']}, reboot time: {stat['reboot_time']}, replay time: {stat['replay_time']}"
+        )
 
 cpu_ylim = 0
 mem_ylim = 0
@@ -231,8 +291,8 @@ for i in range(cnt):
     plot_latency(axs[2, i], stats[i], "p95_agg_lat", "95% Client Latency")
     plot_tries(axs[3, i], stats[i])
     plot_throughput(axs[4, i], stats[i], "Server")
-    plot_latency(axs[5, i], stats[i], "avg_server_lat", "Avg Server")
-    plot_latency(axs[6, i], stats[i], "p95_server_lat", "95% Server")
+    plot_latency(axs[5, i], stats[i], "avg_server_lat", "Avg Server Latency")
+    plot_latency(axs[6, i], stats[i], "p95_server_lat", "95% Server Latency")
     plot_resource(axs[7, i], stats[i], "cpu", cpu_ylim * 1.1)
     plot_resource(axs[8, i], stats[i], "mem", mem_ylim * 1.1)
     plot_latency(axs[9, i], stats[i], "avg_lock_wait_time", "Avg Lock Wait Time")
