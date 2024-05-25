@@ -18,9 +18,14 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                                    const size_t& max_item_count,
                                    Application& app, std::string& backend_addr,
                                    std::string& backend_port,
+                                   const std::chrono::milliseconds
+                                       sliding_window_size,
+                                   const size_t replay_expected_rps,
+                                   const double flow_control_ratio,
                                    const char pipe_path[])
     : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path,
-                 barrier_, workers_),
+                 barrier_, workers_, sliding_window_size, replay_expected_rps,
+                 flow_control_ratio),
       barrier_(nthreads + 1,
                []() { LOG(INFO) << "Replay barrier completed" << std::endl; }) {
   struct event_config* ev_config;

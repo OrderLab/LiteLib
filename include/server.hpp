@@ -29,6 +29,9 @@ class LiteServer {
   explicit LiteServer(const size_t& nthreads, const size_t& max_item_count,
                       Application& app, std::string& backend_addr,
                       std::string& backend_port,
+                      const std::chrono::milliseconds sliding_window_size,
+                      const size_t replay_expected_rps,
+                      const double flow_control_ratio = 0.9,
                       const char pipe_path[] = "/tmp/lite");
 
   /// Listen on the specified TCP port.

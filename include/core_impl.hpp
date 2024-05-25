@@ -17,15 +17,21 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              std::string &backend_addr, std::string &backend_port,
              const char pipe_path[],
              std::barrier<std::function<void()>> &barrier,
-             std::vector<std::unique_ptr<WorkerInstance>> &workers)
+             std::vector<std::unique_ptr<WorkerInstance>> &workers,
+             const std::chrono::milliseconds sliding_window_size,
+             const size_t replay_expected_rps, const double flow_control_ratio)
     : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
              pipe_path),
       app_(app),
       cache_inner_(max_item_count, emergency_mode_),
+      logger_inner_(sliding_window_size),
       backend_addr_(backend_addr),
       backend_port_(backend_port),
       barrier_(barrier),
-      workers_(workers) {}
+      workers_(workers),
+      replay_rate_(sliding_window_size),
+      replay_expected_rps_(replay_expected_rps),
+      flow_control_ratio_(flow_control_ratio) {}
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -41,16 +47,28 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
                   LoggerInstance *logger) {
   if (!emergency_mode_ && backend_fd <= 0) {
-    LOG(WARNING) << "Fallback to emergency mode " << GetUNIXTimeStamp()
-                 << std::endl;
+    LOG(WARNING) << "Core: Fall back and entering emergency mode "
+                 << GetUNIXTimeStamp() << std::endl;
     TakeOver();
   }
 
   if (emergency_mode_) {
-    auto packet = app_.EmergencyServe(std::move(req), conn_info, cache, logger);
+    const bool flow_control =
+        is_replaying_ &
+        (flow_control_ratio_ * replay_rate_ < logger_inner_.inserting_rate_);
+    // if (flow_control) {
+    //   LOG(INFO) << "Flow control triggered, replay rate: " << replay_rate_
+    //             << ", inserting rate: " << logger_inner_.inserting_rate_
+    //             << std::endl;
+    // }
+    auto [packet, shutdown] = app_.EmergencyServe(std::move(req), conn_info,
+                                                  cache, logger, flow_control);
     const auto buffer = packet.Serialize();
     if (!network::Write(client_fd, buffer)) {
       LOG(ERROR) << "Failed to write response to client" << std::endl;
+      return false;
+    }
+    if (shutdown) {
       return false;
     }
   } else {
@@ -122,6 +140,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::Replay() {
   const auto start_time = std::chrono::high_resolution_clock::now();
 
+  replay_rate_.Reset(replay_expected_rps_);  // Reset the sliding window
   is_replaying_ = true;
 
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
@@ -228,6 +247,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         }
       }
       delete entry;
+      ++replay_rate_;
     }
 #ifndef NDEBUG
     debug_message = {'*', '2', '\r', '\n', '$',  '4', '\r', '\n', 'P',
