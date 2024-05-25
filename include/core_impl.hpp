@@ -4,6 +4,7 @@
 
 #include "core.hpp"
 #include "network_utils.hpp"
+#include "worker.hpp"
 
 namespace lite {
 
@@ -19,7 +20,8 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              std::barrier<std::function<void()>> &barrier,
              std::vector<std::unique_ptr<WorkerInstance>> &workers,
              const std::chrono::milliseconds sliding_window_size,
-             const size_t replay_expected_rps, const double flow_control_ratio)
+             const size_t replay_expected_rps, const double flow_control_ratio,
+             const size_t n_replay_threads)
     : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
              pipe_path),
       app_(app),
@@ -31,7 +33,13 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
       workers_(workers),
       replay_rate_(sliding_window_size),
       replay_expected_rps_(replay_expected_rps),
-      flow_control_ratio_(flow_control_ratio) {}
+      flow_control_ratio_(flow_control_ratio) {
+  for (int i = 0; i < n_replay_threads; i++) {
+    replay_workers_.emplace_back(new WorkerInstance(*this, barrier_));
+    (**replay_workers_.rbegin()).Run("lite-replay-worker");
+  }
+  next_replay_worker_ = replay_workers_.begin();
+}
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -131,6 +139,16 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
 
+#define SendReplayReq(conn, req, buffer)                               \
+  do {                                                                 \
+    (conn)->pending_requests_.push_back(std::make_pair((req), false)); \
+    if (!network::Write((conn)->backend_fd_, (buffer))) {              \
+      LOG(ERROR) << "line#" << __LINE__                                \
+                 << " Replay failed to write to backend\n";            \
+      return false;                                                    \
+    }                                                                  \
+  } while (0)
+
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
@@ -151,20 +169,15 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               << std::endl;
   });
 
-  auto replay_base = event_base_new();
-  ConnectionInstance replay_conn(0, EV_READ | EV_PERSIST, replay_base,
-                                 ConnectionInstance::ClientHandler, nullptr,
-                                 *this, false);
-  replay_conn.ConnectBackend();
-  size_t tries = 0;
-  while (replay_conn.backend_fd_ == -1) {
-    if (tries++ > 100) {
-      LOG(ERROR) << "Replay failed to connect to backend\n";
-      return false;
-    }
-    replay_conn.ConnectBackend();
+  for (auto &replay_worker_ : replay_workers_) {
+    replay_worker_->notify_queue_.push_back(
+        {.type = WorkerMessage::Type::kReplayStart, .fd = 0});
+    uint64_t buf = 1;
+    PLOG_IF(ERROR, write(replay_worker_->notify_event_fd, &buf,
+                         sizeof(uint64_t)) != sizeof(uint64_t))
+        << "failed writing to worker eventfd";
   }
-  LOG(INFO) << "Replay connected to backend in " << tries << " tries\n";
+  next_replay_worker_ = replay_workers_.begin();
 
 #ifndef NDEBUG
   auto backend_fd = network::TryConnectBackend(backend_addr_, backend_port_);
@@ -176,7 +189,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 #endif
 
   LogEntryInstance *entry;
-  std::set<ConnectionInstance *> dead_conns;
 
   for (int i = 0; i < 2; i++) {  // Double flush to ensure the consistency of
                                  // in-flight connections
@@ -186,64 +198,37 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         dirty_cnt++;
         const auto req = entry->state->value.ToRequest(entry->state->key);
         const auto buffer = req->Serialize();
-        replay_conn.pending_requests_.push_back(std::make_pair(req, false));
-        if (!network::Write(replay_conn.backend_fd_, buffer)) {
-          LOG(ERROR) << "Replay failed to write dirty to backend\n";
-          return false;
-        }
-        // Wait for the full to handle it
-        // TODO: use batched requests
-        while (!replay_conn.pending_requests_.empty()) {
-          event_base_loop(replay_base, EVLOOP_ONCE);
-          // TODO: what if there're errors
-        }
+        auto &replay_conn = (*next_replay_worker_)->conns_.front();
+        replay_conn->pending_requests_.wait_for_empty();
+        SendReplayReq(replay_conn, req, buffer);
+        next_replay_worker_++;
+        if (next_replay_worker_ == replay_workers_.end())
+          next_replay_worker_ = replay_workers_.begin();
       } else {
         log_cnt++;
         const auto buffer = entry->req->Serialize();
         if (!*entry->backend_conn_ptr) {  // log belongs to a closed connection
-          auto conn_ptr = new ConnectionInstance(
-              0, EV_READ | EV_PERSIST, replay_base,
-              ConnectionInstance::ClientHandler, nullptr, *this, false);
-          dead_conns.insert(conn_ptr);
-          *entry->backend_conn_ptr = conn_ptr;
-          conn_ptr->ConnectBackend();
-          conn_ptr->pending_requests_.push_back(
-              std::make_pair(entry->req, false));
-          if (!network::Write(conn_ptr->backend_fd_, buffer)) {
-            LOG(ERROR) << "Replay failed to write to backend\n";
-            return false;
-          }
-          // Wait for the full to handle it
-          // TODO: use batched requests
-          while (!conn_ptr->pending_requests_.empty()) {
-            event_base_loop(replay_base, EVLOOP_ONCE);
-            // TODO: what if there're errors
-          }
+          (*next_replay_worker_)
+              ->notify_queue_.push_back(
+                  {.type = WorkerMessage::Type::kNewReplayConnection, .fd = 0});
+          uint64_t buf = 1;
+          PLOG_IF(ERROR, write((*next_replay_worker_)->notify_event_fd, &buf,
+                               sizeof(uint64_t)) != sizeof(uint64_t))
+              << "failed writing to worker eventfd";
+          auto replay_conn = (*next_replay_worker_)->conns_.back().get();
+          *entry->backend_conn_ptr = replay_conn;
+          SendReplayReq(replay_conn, entry->req, buffer);
+          next_replay_worker_++;
+          if (next_replay_worker_ == replay_workers_.end())
+            next_replay_worker_ = replay_workers_.begin();
         } else {
-          // TODO: use batched requests
-          (*entry->backend_conn_ptr)
-              ->pending_requests_.push_back(std::make_pair(entry->req, false));
-          if (!network::Write((*entry->backend_conn_ptr)->backend_fd_,
-                              buffer)) {
-            LOG(ERROR) << "Replay failed to write to backend\n";
-            // TODO: push back entry
-            return false;
-          }
-          if (dead_conns.count(
-                  (*entry->backend_conn_ptr))) {  // a reestablished dead
-                                                  // connection
-            while (!replay_conn.pending_requests_.empty()) {
-              event_base_loop(replay_base, EVLOOP_ONCE);
-              // TODO: what if there're errors
-            }
+          if (!i) {
+            (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
           } else {
-            if (!i) {
-              (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
-            } else {
-              // TODO: transfer the backend connection from its worker to the
-              // replay thread, process the response, and transfer it back
-            }
+            // TODO: transfer the backend connection from its worker to a
+            // non-blocking thread, process the response, and transfer it back
           }
+          SendReplayReq(*entry->backend_conn_ptr, entry->req, buffer);
         }
       }
       delete entry;
@@ -261,7 +246,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     if (!i) {  // Wait for all inflight connections
       LOG(INFO) << "Replay barrier initialized" << std::endl;
       for (auto &worker : workers_) {
-        worker->notify_queue_.enqueue(-1);
+        worker->notify_queue_.push_back(
+            {.type = WorkerMessage::Type::kBarrier, .fd = 0});
         uint64_t buf = 1;
         PLOG_IF(ERROR, write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
                            sizeof(uint64_t))
@@ -270,6 +256,12 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       barrier_.arrive_and_wait();
     }
   }
+
+  LOG(INFO) << "Waiting for all replay connections to finish\n";
+  for (auto &replay_worker : replay_workers_) {
+    replay_worker->conns_.front()->pending_requests_.wait_for_empty();
+  }
+  // TODO: wait for all live connections to receive replay responses
 
   is_replaying_ = false;
   emergency_mode_ = false;
@@ -291,11 +283,17 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                             .count();
   LOG(INFO) << "Replay took " << duration << " ms\n";
 
-  event_base_free(replay_base);
-
-  for (auto c : dead_conns) delete c;
   while (!dead_connection_log_heads_.empty()) {
     delete dead_connection_log_heads_.pop_front();
+  }
+
+  for (auto &replay_worker_ : replay_workers_) {
+    replay_worker_->notify_queue_.push_back(
+        {.type = WorkerMessage::Type::kReplayEnd, .fd = 0});
+    uint64_t buf = 1;
+    PLOG_IF(ERROR, write(replay_worker_->notify_event_fd, &buf,
+                         sizeof(uint64_t)) != sizeof(uint64_t))
+        << "failed writing to worker eventfd";
   }
 
   return true;

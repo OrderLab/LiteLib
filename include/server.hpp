@@ -32,6 +32,7 @@ class LiteServer {
                       const std::chrono::milliseconds sliding_window_size,
                       const size_t replay_expected_rps,
                       const double flow_control_ratio = 0.9,
+                      const size_t n_replay_threads = 1,
                       const char pipe_path[] = "/tmp/lite");
 
   /// Listen on the specified TCP port.
