@@ -198,7 +198,14 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         dirty_cnt++;
         const auto req = entry->state->value.ToRequest(entry->state->key);
         const auto buffer = req->Serialize();
+        // Wait for the initialization of the replay connection
+        while ((*next_replay_worker_)->conns_.empty()) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
         auto &replay_conn = (*next_replay_worker_)->conns_.front();
+        while (replay_conn->backend_fd_ <= 0) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
         replay_conn->pending_requests_.wait_for_empty();
         SendReplayReq(replay_conn, req, buffer);
         next_replay_worker_++;
@@ -208,6 +215,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         log_cnt++;
         const auto buffer = entry->req->Serialize();
         if (!*entry->backend_conn_ptr) {  // log belongs to a closed connection
+          const auto &old_conn_back = (*next_replay_worker_)->conns_.back();
           (*next_replay_worker_)
               ->notify_queue_.push_back(
                   {.type = WorkerMessage::Type::kNewReplayConnection, .fd = 0});
@@ -215,7 +223,14 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
           PLOG_IF(ERROR, write((*next_replay_worker_)->notify_event_fd, &buf,
                                sizeof(uint64_t)) != sizeof(uint64_t))
               << "failed writing to worker eventfd";
+          // Wait for the initialization of the replay connection
+          while ((*next_replay_worker_)->conns_.back() == old_conn_back) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          }
           auto replay_conn = (*next_replay_worker_)->conns_.back().get();
+          while (replay_conn->backend_fd_ <= 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          }
           *entry->backend_conn_ptr = replay_conn;
           SendReplayReq(replay_conn, entry->req, buffer);
           next_replay_worker_++;
