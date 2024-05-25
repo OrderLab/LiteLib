@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
     lite::LiteServer<LevelDB, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s(thread_pool_size, cache_size, level_db, backend_addr, backend_port,
-          1000ms, 8000, 0.9, "/tmp/lite_LevelDB");
+          1000ms, 8000, 0.9, 1, "/tmp/lite_LevelDB");
 
     // Run the server until stopped.
     if (!s.Run(port)) {
