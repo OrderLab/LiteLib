@@ -74,10 +74,12 @@ int main(int argc, char* argv[]) {
     lite::LiteServer<LevelDB, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s(thread_pool_size, cache_size, level_db, backend_addr, backend_port,
-          "/tmp/lite_LevelDB");
+          1000ms, 8000, 0.9, "/tmp/lite_LevelDB");
 
     // Run the server until stopped.
-    s.Run(port);
+    if (!s.Run(port)) {
+      LOG(FATAL) << "Failed to start server" << std::endl;
+    }
   } catch (std::exception& e) {
     LOG(FATAL) << "exception: " << e.what() << "\n";
   }
