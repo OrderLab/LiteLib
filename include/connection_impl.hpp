@@ -28,7 +28,7 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       log_head_(new LogEntryInstance(nullptr, nullptr, self_)),
       cache_(lite_core.cache_inner_, lite_core.logger_inner_, log_head_),
       logger_(lite_core.logger_inner_, log_head_) {
-  if ( sfd != 0 ){
+  if (sfd) {
     event_set(&client_event_, sfd, event_flags, event_handler,
               static_cast<void*>(this));
     event_base_set(base, &client_event_);
@@ -36,6 +36,8 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       PLOG(ERROR) << "client event_add";
       throw std::runtime_error("client event_add");
     }
+  } else {
+    memset(&client_event_, 0, sizeof(client_event_));
   }
 
   memset(&backend_event_, 0, sizeof(backend_event_));
@@ -53,8 +55,8 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   *self_ = nullptr;
 
   if (backend_fd_ > 0) close(backend_fd_);
-  close(client_fd_);
-  event_del(&client_event_);
+  if (client_fd_ > 0) close(client_fd_);
+  if (client_event_.ev_base) event_del(&client_event_);
   if (backend_event_.ev_base) event_del(&backend_event_);
 
   lite_core_.dead_connection_log_heads_.push_back(log_head_);

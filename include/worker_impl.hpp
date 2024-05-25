@@ -2,7 +2,6 @@
 
 #include <event.h>
 #include <pthread.h>
-#include <readerwriterqueue.h>
 #include <sys/eventfd.h>
 #include <unistd.h>
 
@@ -43,7 +42,7 @@ Worker<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
-            CacheEntry>::Run() {
+            CacheEntry>::Run(const char name[]) {
   pthread_attr_t attr;
 
   pthread_attr_init(&attr);
@@ -51,7 +50,7 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
   PCHECK(!pthread_create(&thread_id_, &attr, ThreadBody, this))
       << "Can't create thread: %s\n";
 
-  pthread_setname_np(thread_id_, "mc-worker");
+  pthread_setname_np(thread_id_, name);
   pthread_attr_destroy(&attr);
 }
 
@@ -70,6 +69,21 @@ void *Worker<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::NewReplayConnection() {
+  std::unique_ptr<ConnectionInstance> new_connection;
+  if (!(new_connection = std::make_unique<ConnectionInstance>(
+            0, EV_READ | EV_PERSIST, base_, ConnectionInstance::ClientHandler,
+            nullptr, lite_core_, false))) {
+    LOG(ERROR) << "failed to create replay connection\n";
+    return;
+  }
+  new_connection->ConnectBackend();
+  conns_.push(std::move(new_connection));
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::NotifyHandler(evutil_socket_t fd, short which,
                                        void *arg_self) {
   Worker *self = static_cast<Worker *>(arg_self);
@@ -81,15 +95,11 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
       return;
     }
     while (counter--) {
-      evutil_socket_t sfd;
-      if (!self->notify_queue_.try_dequeue(sfd)) {
-        LOG(ERROR) << "Worker can't dequeue from notify_queue\n";
-        return;
-      }
-      if (sfd > 0) {  // new connections
+      const WorkerMessage msg = self->notify_queue_.pop_front();
+      if (msg.type == WorkerMessage::Type::kNewClientConnection) {
         std::unique_ptr<ConnectionInstance> new_connection;
         if (!(new_connection = std::make_unique<ConnectionInstance>(
-                  sfd, EV_READ | EV_PERSIST, self->base_,
+                  msg.fd, EV_READ | EV_PERSIST, self->base_,
                   ConnectionInstance::ClientHandler, nullptr, self->lite_core_,
                   true))) {
           LOG(ERROR) << "failed to create listening connection\n";
@@ -97,13 +107,21 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
         }
         self->lite_core_.live_connections_.insert(new_connection.get());
         self->conns_.push(std::move(new_connection));
-      } else if (sfd == -1) {  // replay sync
+      } else if (msg.type == WorkerMessage::Type::kBarrier) {
         LOG(INFO) << "Thread " << self->thread_id_
                   << " reaches replay sync point" << std::endl;
         self->barrier_.arrive_and_wait();
         self->barrier_.arrive_and_wait();
         LOG(INFO) << "Thread " << self->thread_id_ << " exits replay sync point"
                   << std::endl;
+      } else if (msg.type == WorkerMessage::Type::kReplayStart) {
+        // clear replay connection left by the last emergency
+        while (!self->conns_.empty()) self->conns_.pop();
+        self->NewReplayConnection();
+      } else if (msg.type == WorkerMessage::Type::kReplayEnd) {
+        while (!self->conns_.empty()) self->conns_.pop();
+      } else if (msg.type == WorkerMessage::Type::kNewReplayConnection) {
+        self->NewReplayConnection();
       }
     }
   } else {
