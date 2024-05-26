@@ -51,6 +51,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 Connection<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::~Connection() {
+  // TODO: remove this from Worker::conns_
   lite_core_.live_connections_.erase(this);
   *self_ = nullptr;
 
