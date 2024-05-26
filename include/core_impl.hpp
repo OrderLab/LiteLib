@@ -179,15 +179,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
   next_replay_worker_ = replay_workers_.begin();
 
-#ifndef NDEBUG
-  auto backend_fd = network::TryConnectBackend(backend_addr_, backend_port_);
-  std::vector<uint8_t> debug_message = {
-      '*', '2',  '\r', '\n', '$', '4', '\r', '\n', 'P', 'I',  'N',
-      'G', '\r', '\n', '$',  '1', '2', '\r', '\n', 'r', 'e',  'p',
-      'l', 'a',  'y',  ' ',  's', 't', 'a',  'r',  't', '\r', '\n'};
-  auto _ = network::Write(backend_fd, std::move(debug_message));
-#endif
-
   LogEntryInstance *entry;
 
   for (int i = 0; i < 2; i++) {  // Double flush to ensure the consistency of
@@ -249,12 +240,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       delete entry;
       ++replay_rate_;
     }
-#ifndef NDEBUG
-    debug_message = {'*', '2', '\r', '\n', '$',  '4', '\r', '\n', 'P',
-                     'I', 'N', 'G',  '\r', '\n', '$', '6',  '\r', '\n',
-                     'r', 'e', 'p',  'l',  'a',  'y', '\r', '\n'};
-    auto _ = network::Write(backend_fd, std::move(debug_message));
-#endif
     LOG(INFO) << "Replay i = " << i << " finished with " << log_cnt
               << " log entries and " << dirty_cnt << " dirty entries\n";
 
@@ -280,13 +265,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   is_replaying_ = false;
   emergency_mode_ = false;
-#ifndef NDEBUG
-  debug_message = {'*',  '2',  '\r', '\n', '$',  '4',  '\r', '\n',
-                   'P',  'I',  'N',  'G',  '\r', '\n', '$',  '4',
-                   '\r', '\n', 'm',  'o',  'd',  'e',  '\r', '\n'};
-  _ = network::Write(backend_fd, std::move(debug_message));
-  close(backend_fd);
-#endif
   LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
                << std::endl;
 
