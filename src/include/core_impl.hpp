@@ -115,6 +115,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     app_.NormalUpdate(resp, std::move(related_stateful_request), conn_info,
                       cache);
   } else {
+    LOG(INFO) << "replay response" << std::endl;
     app_.HandleReplayResponse(resp, std::move(related_stateful_request),
                               conn_info, cache);
   }
@@ -141,11 +142,11 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     // add all cache nodes to the log
     crash_conn_head_ = new LogEntryInstance(nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
     cache_inner_.VisitAllState([&](CacheStateInstance *state){
-    if (!state->dirty_node){
-    LogEntryInstance *dirty = new LogEntryInstance(state, nullptr, crash_conn_head_->backend_conn_ptr);
-    logger_inner_.Log(dirty, crash_conn_head_);
-    state->dirty_node = dirty;
-    }
+      if (!state->dirty_node){
+        LogEntryInstance *dirty = new LogEntryInstance(state, nullptr, crash_conn_head_->backend_conn_ptr);
+        logger_inner_.Log(dirty, crash_conn_head_);
+        state->dirty_node = dirty;
+      }
     }, false);
   }
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
@@ -159,6 +160,7 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                  << " Replay failed to write to backend\n";            \
       return false;                                                    \
     }                                                                  \
+    LOG(INFO) << "write a replay request" << std::endl;                \
   } while (0)
 
 template <typename Application, typename Request, typename Response,
@@ -206,6 +208,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     size_t log_cnt = 0, dirty_cnt = 0;
     while (LoggerInstance::Pop(logger_inner_, entry)) {
       if (entry->state) {
+        LOG(INFO) << "replay a dirty node" << std::endl;
         dirty_cnt++;
         const auto req = entry->state->value.ToRequest(entry->state->key);
         const auto buffer = req->Serialize();
@@ -222,7 +225,9 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         next_replay_worker_++;
         if (next_replay_worker_ == replay_workers_.end())
           next_replay_worker_ = replay_workers_.begin();
+        LOG(INFO) << "finish replaying a dirty node" << std::endl;
       } else {
+        LOG(INFO) << "replay a log node" << std::endl;
         log_cnt++;
         const auto buffer = entry->req->Serialize();
         if (!*entry->backend_conn_ptr) {  // log belongs to a closed connection
@@ -256,6 +261,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
           }
           SendReplayReq(*entry->backend_conn_ptr, entry->req, buffer);
         }
+        LOG(INFO) << "finish replaying a log node" << std::endl;
       }
       delete entry;
       ++replay_rate_;
