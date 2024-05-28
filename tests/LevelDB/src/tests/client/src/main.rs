@@ -175,11 +175,11 @@ async fn do_transaction(
                 response: response_time,
             }
         }
-        Err(_) => {
+        Err(e) => {
             // println!("request error i: {}, key: {}, error: {:?}", i, key, e);
             QueryRecord {
-                // status: if e.is_timeout() { Status::Timeout } else { Status::Error },
-                status: Status::Timeout,
+                status: if e.detail() != Some("flow control enabled") { Status::Timeout } else { Status::Error },
+                // status: Status::Timeout,
                 request: request_time,
                 response: response_time,
             }
