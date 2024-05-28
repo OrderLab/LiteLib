@@ -69,6 +69,9 @@ if args.experiment_type == "Full":
     # time.sleep(10)
 
     boot_command = [
+        "taskset",
+        "-c",
+        "0,1",
         "/workspace/redis-leveldb/redis-leveldb",
         "-P",
         "6379",
@@ -106,9 +109,9 @@ else:
 
     # time.sleep(9)
 
-    r = redis.Redis(host="localhost", port=60001)
     result = False
     while not result:
+        r = redis.Redis(host="localhost", port=60001)
         try:
             result = r.ping()
         except redis.exceptions.ConnectionError:

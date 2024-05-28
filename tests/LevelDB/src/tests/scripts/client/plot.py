@@ -19,7 +19,7 @@ def annotate_time_points(ax, stat):
             ax.axvline(x=stat[t], color=c, dashes=dash, label=label)
 
 
-def plot_throughput(ax, stat, prefix):
+def plot_throughput(ax, stat, prefix, ylim):
     annotate_time_points(ax, stat)
     type = [
         ("Success", "tab:green"),
@@ -45,23 +45,26 @@ def plot_throughput(ax, stat, prefix):
     ax.set_xlabel("Time (s)")
     ax.set_ylabel(prefix + " Throughput")
     ax.set_xlim(0, total_time)
+    ax.set_ylim(0, ylim)
     ax.legend()
 
 
-def plot_latency(ax, stat, type, ylabel):
+def plot_latency(ax, stat, type, ylabel, ylim):
     annotate_time_points(ax, stat)
     total_time = len(stat["cnt"])
-    ax.plot(stat[type] * 1000)
+    ax.plot(stat[type])
     ax.set_xlim(0, total_time)
+    ax.set_ylim(0, ylim)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel(ylabel + " (ms)")
 
 
-def plot_tries(ax, stat):
+def plot_tries(ax, stat, ylim):
     annotate_time_points(ax, stat)
     total_time = len(stat["cnt"])
     ax.plot(stat["avg_tries"])
     ax.set_xlim(0, total_time)
+    ax.set_ylim(0.8, ylim)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Tries (Success)")
 
@@ -121,6 +124,7 @@ def get_timestamp_in_the_end_of_a_line(line):
     if match:
         number = match.group(1)
         return float(number) / 1e9 - begin_time
+        # return np.floor(float(number) / 1e9 - begin_time)
     return np.nan
 
 
@@ -152,6 +156,13 @@ for i in range(cnt):
                 )
         logs.append(data)
 
+client_throughput_lim = np.nan
+client_latency_lim = np.nan
+tries_lim = np.nan
+server_throughput_lim = np.nan
+server_latency_lim = np.nan
+lock_time_lim = np.nan
+
 stats = []
 for i in range(cnt):
     begin_time = np.min([line["begin"] for line in logs[i]])
@@ -178,11 +189,11 @@ for i in range(cnt):
         "begin_time": begin_time,
     }
     for line in logs[i]:
-        begin_index = get_index(line["begin"])
+        begin_index = get_index(line["queries"][0]["request"])
         stat["cnt"][begin_index] += 1
         if line["queries"][-1]["status"] == "Success":
             stat["agg_lat_list"][begin_index].append(
-                line["queries"][-1]["response"] - line["begin"],
+                line["queries"][-1]["response"] - line["queries"][0]["request"],
             )
             assert len(stat["agg_lat_list"][begin_index]) > 0
             stat["tries"][begin_index].append(len(line["queries"]))
@@ -201,12 +212,42 @@ for i in range(cnt):
             stat["lock_wait_time"][get_index(line["queries"][i]["response"])].append(
                 line["queries"][i + 1]["request"] - line["queries"][i]["response"],
             )
-    stat["avg_agg_lat"] = mean2d(stat["agg_lat_list"])
-    stat["p95_agg_lat"] = p2d(stat["agg_lat_list"], 95)
-    stat["avg_server_lat"] = mean2d(stat["server_lat_list"])
-    stat["p95_server_lat"] = p2d(stat["server_lat_list"], 95)
+    stat["avg_agg_lat"] = mean2d(stat["agg_lat_list"]) * 1000
+    stat["p95_agg_lat"] = p2d(stat["agg_lat_list"], 95) * 1000
+    stat["avg_server_lat"] = mean2d(stat["server_lat_list"]) * 1000
+    stat["p95_server_lat"] = p2d(stat["server_lat_list"], 95) * 1000
     stat["avg_tries"] = mean2d(stat["tries"])
-    stat["avg_lock_wait_time"] = mean2d(stat["lock_wait_time"])
+    stat["avg_lock_wait_time"] = mean2d(stat["lock_wait_time"]) * 1000
+    client_throughput_lim = np.nanmax(
+        [
+            client_throughput_lim,
+            np.nanmax(
+                stat["ClientSuccess"]
+                + stat["ClientMiss"]
+                + stat["ClientTimeout"]
+                + stat["ClientError"]
+                + stat["ClientTransactionError"]
+            ),
+        ]
+    )
+    client_latency_lim = np.nanmax([client_latency_lim, np.nanmax(stat["p95_agg_lat"])])
+    server_throughput_lim = np.nanmax(
+        [
+            server_throughput_lim,
+            np.nanmax(
+                stat["ServerSuccess"]
+                + stat["ServerMiss"]
+                + stat["ServerError"]
+                + stat["ServerTimeout"]
+                + stat["ServerTransactionError"]
+            ),
+        ]
+    )
+    server_latency_lim = np.nanmax(
+        [server_latency_lim, np.nanmax(stat["p95_server_lat"])]
+    )
+    tries_lim = np.nanmax([tries_lim, np.nanmax(stat["avg_tries"])])
+    lock_time_lim = np.nanmax([lock_time_lim, np.nanmax(stat["avg_lock_wait_time"])])
     stats.append(stat)
 
 for i in range(cnt):
@@ -237,8 +278,8 @@ for i in range(cnt):
             f"Case: {args.filenames[i][:-6]}, begin_time: {begin_time_str}, crash time: {stat['crash_time']}, reboot time: {stat['reboot_time']}, replay time: {stat['replay_time']}"
         )
 
-cpu_ylim = 0
-mem_ylim = 0
+cpu_ylim = np.nan
+mem_ylim = np.nan
 
 for i in range(cnt):
     dir_name, file_name = os.path.split(args.filenames[i])
@@ -260,8 +301,8 @@ for i in range(cnt):
                 else:
                     if process_name not in process_usages:
                         process_usages[process_name] = {
-                            "cpu": np.zeros(100000),
-                            "mem": np.zeros(100000),
+                            "cpu": np.full(len(stats[i]["cnt"]) + 100, np.nan),
+                            "mem": np.full(len(stats[i]["cnt"]) + 100, np.nan),
                         }
                     process_usages[process_name]["cpu"][time] = process_info["cpu"]
                     process_usages[process_name]["mem"][time] = process_info["mem"]
@@ -273,8 +314,8 @@ for i in range(cnt):
         mem = mem / 1024.0 / 1024.0
         process_usage["cpu"] = cpu
         process_usage["mem"] = mem
-        cpu_ylim = max(cpu_ylim, np.max(process_usage["cpu"]))
-        mem_ylim = max(mem_ylim, np.max(process_usage["mem"]))
+        cpu_ylim = np.nanmax([cpu_ylim, np.nanmax(process_usage["cpu"])])
+        mem_ylim = np.nanmax([mem_ylim, np.nanmax(process_usage["mem"])])
     ordered_process_usages = {}
     ordered_process_usages["redis-leveldb"] = process_usages["redis-leveldb"]
     for process_name in sorted(process_usages.keys()):
@@ -286,14 +327,44 @@ fig, axs = plt.subplots(10, cnt, figsize=(5 * cnt, 40))
 plt.subplots_adjust(hspace=0.3, wspace=0.3)
 for i in range(cnt):
     axs[0, i].set_title(args.filenames[i][:-6], y=1.2)
-    plot_throughput(axs[0, i], stats[i], "Client")
-    plot_latency(axs[1, i], stats[i], "avg_agg_lat", "Avg Client Latency")
-    plot_latency(axs[2, i], stats[i], "p95_agg_lat", "95% Client Latency")
-    plot_tries(axs[3, i], stats[i])
-    plot_throughput(axs[4, i], stats[i], "Server")
-    plot_latency(axs[5, i], stats[i], "avg_server_lat", "Avg Server Latency")
-    plot_latency(axs[6, i], stats[i], "p95_server_lat", "95% Server Latency")
+    plot_throughput(axs[0, i], stats[i], "Client", client_throughput_lim * 1.1)
+    plot_latency(
+        axs[1, i],
+        stats[i],
+        "avg_agg_lat",
+        "Avg Client Latency",
+        client_latency_lim * 1.1,
+    )
+    plot_latency(
+        axs[2, i],
+        stats[i],
+        "p95_agg_lat",
+        "95% Client Latency",
+        client_latency_lim * 1.1,
+    )
+    plot_tries(axs[3, i], stats[i], tries_lim * 1.1)
+    plot_throughput(axs[4, i], stats[i], "Server", server_throughput_lim * 1.1)
+    plot_latency(
+        axs[5, i],
+        stats[i],
+        "avg_server_lat",
+        "Avg Server Latency",
+        server_latency_lim * 1.1,
+    )
+    plot_latency(
+        axs[6, i],
+        stats[i],
+        "p95_server_lat",
+        "95% Server Latency",
+        server_latency_lim * 1.1,
+    )
     plot_resource(axs[7, i], stats[i], "cpu", cpu_ylim * 1.1)
     plot_resource(axs[8, i], stats[i], "mem", mem_ylim * 1.1)
-    plot_latency(axs[9, i], stats[i], "avg_lock_wait_time", "Avg Lock Wait Time")
+    plot_latency(
+        axs[9, i],
+        stats[i],
+        "avg_lock_wait_time",
+        "Avg Lock Wait Time",
+        lock_time_lim * 1.1,
+    )
 plt.savefig(f"leveldb.png", bbox_inches="tight")

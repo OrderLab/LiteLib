@@ -116,7 +116,7 @@ index fb93138..8a61129 100644
      void rl_multi();
      void rl_exec();
 diff --git a/src/rl_server.cpp b/src/rl_server.cpp
-index 65c97ab..8fd545a 100644
+index 65c97ab..3caab45 100644
 --- a/src/rl_server.cpp
 +++ b/src/rl_server.cpp
 @@ -17,6 +17,9 @@
@@ -188,6 +188,16 @@ index 65c97ab..8fd545a 100644
      ev_run(loop, 0);
  }
  
+@@ -174,6 +191,9 @@ void RLServer::on_connection(struct ev_loop *loop, ev_io *watcher, int revents)
+         return;
+     }
+ 
++    int flags = 1;
++    setsockopt(s->fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
++
+     RLConnection *connection = new RLConnection(s, fd);
+ 
+     if(connection == NULL) {
 diff --git a/src/rl_server.h b/src/rl_server.h
 index 3356d66..82ff0d6 100644
 --- a/src/rl_server.h

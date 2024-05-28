@@ -16,5 +16,6 @@ Cargo.lock
 *.rdb
 *.jsonl
 *.log
+*.txt
 
 env.yaml
