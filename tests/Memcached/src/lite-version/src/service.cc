@@ -8,8 +8,12 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Memcached::Match(
         &pending_requests) const {
   const auto resp_opaque = resp->GetOpaque();
   std::vector<std::shared_ptr<Packet>> ret;
+  bool forward = 1;
   while (!pending_requests.empty()) {
-    auto [req, _] = pending_requests.pop_front();
+    // TODO: forward may be wrong
+    auto pair = pending_requests.pop_front();
+    auto req = pair.first;
+    forward = pair.second;
     const auto req_opaque = req->GetOpaque();
     if (req_opaque != resp_opaque || !req->GetStatus()) {
       const auto OpCodeOption = req->GetOpcode();
@@ -31,12 +35,14 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Memcached::Match(
     if (req_opaque == resp_opaque) break;
   }
 
-  return std::make_pair(ret, true);
+  return std::make_pair(ret, forward);
 }
 
 void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
                              std::vector<std::shared_ptr<Packet>> requests,
                              ConnectionInfo &_, Cache *cache) const {
+  if (requests.empty())
+    return;
   for (const auto &req : requests) {
     const auto opcode = req->GetOpcode().value();
     const auto packet = ParsedPacket(*req);
