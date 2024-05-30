@@ -16,7 +16,8 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
                                    EventHandler event_handler,
                                    void* lite_server,
                                    LiteCoreInstance& lite_core,
-                                   bool is_client_connection)
+                                   bool is_client_connection,
+                                   WorkerInstance* worker_ptr)
     : base_(base),
       client_fd_(sfd),
       backend_fd_(-1),
@@ -27,7 +28,8 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       self_(std::make_shared<ConnectionInstance*>(this)),
       log_head_(new LogEntryInstance(nullptr, nullptr, self_)),
       cache_(lite_core.cache_inner_, lite_core.logger_inner_, log_head_),
-      logger_(lite_core.logger_inner_, log_head_) {
+      logger_(lite_core.logger_inner_, log_head_),
+      worker_ptr_(worker_ptr) {
   if (sfd) {
     event_set(&client_event_, sfd, event_flags, event_handler,
               static_cast<void*>(this));
@@ -51,7 +53,9 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 Connection<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::~Connection() {
-  // TODO: remove this from Worker::conns_
+  if (worker_ptr_) {
+    worker_ptr_->conns_.erase(this);
+  }
   lite_core_.live_connections_.erase(this);
   *self_ = nullptr;
 
