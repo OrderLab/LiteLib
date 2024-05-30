@@ -62,6 +62,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   if (emergency_mode_) {
+    LOG(INFO) << "receive an emergency request" << std::endl;
     const bool flow_control =
         is_replaying_ &
         (flow_control_ratio_ * replay_rate_ < logger_inner_.inserting_rate_);
@@ -103,6 +104,9 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                    ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
                        &pending_requests,
                    const evutil_socket_t client_fd, CacheInstance *cache) {
+  if (pending_requests.empty()){
+    LOG(INFO) << "empty pending request" << std::endl;
+  }
   const auto [related_stateful_request, forward_resp] =
       app_.Match(resp, conn_info, pending_requests);
   if (forward_resp) {
@@ -132,6 +136,7 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::TakeOver() {
   emergency_mode_ = true;
   LOG(INFO) << "Disconnect all from backend" << std::endl;
+  LOG(INFO) << "live connections: " << live_connections_.size() << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
     if (c->backend_fd_ > 0) {
       close(c->backend_fd_);
@@ -159,8 +164,9 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       LOG(ERROR) << "line#" << __LINE__                                \
                  << " Replay failed to write to backend\n";            \
       return false;                                                    \
-    }                                                                  \
-    LOG(INFO) << "write a replay request" << std::endl;                \
+    } \
+    LOG(INFO) << "Buffer size: " << buffer->size() << std::endl;                                                                 \
+    LOG(INFO) << "write a replay request to " << (conn)->backend_fd_ << std::endl;    \
   } while (0)
 
 template <typename Application, typename Request, typename Response,
@@ -174,6 +180,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   replay_rate_.Reset(replay_expected_rps_);  // Reset the sliding window
   is_replaying_ = true;
+  LOG(INFO) << "replay start, live connections: " << live_connections_.size() << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
     c->pending_requests_
         .clear();  // clear pending requests left by aborted connections
@@ -191,15 +198,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         << "failed writing to worker eventfd";
   }
   next_replay_worker_ = replay_workers_.begin();
-
-#ifndef NDEBUG
-  auto backend_fd = network::TryConnectBackend(backend_addr_, backend_port_);
-  std::vector<uint8_t> debug_message = {
-      '*', '2',  '\r', '\n', '$', '4', '\r', '\n', 'P', 'I',  'N',
-      'G', '\r', '\n', '$',  '1', '2', '\r', '\n', 'r', 'e',  'p',
-      'l', 'a',  'y',  ' ',  's', 't', 'a',  'r',  't', '\r', '\n'};
-  auto _ = network::Write(backend_fd, std::move(debug_message));
-#endif
 
   LogEntryInstance *entry;
 
@@ -266,12 +264,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       delete entry;
       ++replay_rate_;
     }
-#ifndef NDEBUG
-    debug_message = {'*', '2', '\r', '\n', '$',  '4', '\r', '\n', 'P',
-                     'I', 'N', 'G',  '\r', '\n', '$', '6',  '\r', '\n',
-                     'r', 'e', 'p',  'l',  'a',  'y', '\r', '\n'};
-    auto _ = network::Write(backend_fd, std::move(debug_message));
-#endif
     LOG(INFO) << "Replay i = " << i << " finished with " << log_cnt
               << " log entries and " << dirty_cnt << " dirty entries\n";
 
@@ -297,13 +289,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   is_replaying_ = false;
   emergency_mode_ = false;
-#ifndef NDEBUG
-  debug_message = {'*',  '2',  '\r', '\n', '$',  '4',  '\r', '\n',
-                   'P',  'I',  'N',  'G',  '\r', '\n', '$',  '4',
-                   '\r', '\n', 'm',  'o',  'd',  'e',  '\r', '\n'};
-  _ = network::Write(backend_fd, std::move(debug_message));
-  close(backend_fd);
-#endif
   LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
                << std::endl;
 
