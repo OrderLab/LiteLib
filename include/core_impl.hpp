@@ -137,10 +137,25 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   emergency_mode_ = true;
   LOG(INFO) << "Disconnect all from backend" << std::endl;
   LOG(INFO) << "live connections: " << live_connections_.size() << std::endl;
+  LOG(INFO) << "Emergency barrier initialized" << std::endl;
+  for (auto &worker : workers_) {
+    worker->notify_queue_.push_back(
+        {.type = WorkerMessage::Type::kBarrier, .fd = 0});
+    uint64_t buf = 1;
+    PLOG_IF(ERROR, write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
+                       sizeof(uint64_t))
+        << "failed writing to worker eventfd";
+  }
+  barrier_.arrive_and_wait();
+
+  std::set<ConnectionInstance *> connections_to_be_closed;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
     if (c->backend_fd_ > 0) {
       close(c->backend_fd_);
       c->backend_fd_ = -1;
+    }
+    if (!c->pending_requests_.empty()) {
+      connections_to_be_closed.insert(c);
     }
   });
   if (!crash_recover_){
@@ -154,6 +169,12 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       }
     }, false);
   }
+  for (auto &conn : connections_to_be_closed) {
+    live_connections_.erase(conn);
+    delete conn;
+  }
+
+  barrier_.arrive_and_wait();  // unblock worker threads
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
 
@@ -182,8 +203,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   is_replaying_ = true;
   LOG(INFO) << "replay start, live connections: " << live_connections_.size() << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
-    c->pending_requests_
-        .clear();  // clear pending requests left by aborted connections
     c->ConnectBackend();
     LOG(INFO) << "Connect backend " << c->backend_fd_ << " to " << c->client_fd_
               << std::endl;

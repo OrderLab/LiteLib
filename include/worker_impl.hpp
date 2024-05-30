@@ -109,10 +109,10 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
         self->conns_.push(std::move(new_connection));
       } else if (msg.type == WorkerMessage::Type::kBarrier) {
         LOG(INFO) << "Thread " << self->thread_id_
-                  << " reaches replay sync point" << std::endl;
+                  << " reaches sync point" << std::endl;
         self->barrier_.arrive_and_wait();
         self->barrier_.arrive_and_wait();
-        LOG(INFO) << "Thread " << self->thread_id_ << " exits replay sync point"
+        LOG(INFO) << "Thread " << self->thread_id_ << " exits sync point"
                   << std::endl;
       } else if (msg.type == WorkerMessage::Type::kReplayStart) {
         // clear replay connection left by the last emergency

@@ -29,7 +29,7 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                  barrier_, workers_, sliding_window_size, replay_expected_rps,
                  flow_control_ratio, n_replay_threads, crash_recover),
       barrier_(nthreads + 1,
-               []() { LOG(INFO) << "Replay barrier completed" << std::endl; }) {
+               []() { LOG(INFO) << "Barrier completed" << std::endl; }) {
   struct event_config* ev_config;
   ev_config = event_config_new();
   event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
