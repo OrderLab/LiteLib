@@ -95,6 +95,7 @@ void ParsedPacket::ToBuffers(std::vector<uint8_t> &buffers) {
   ReverseAppendBuffer(buffers, &header.opaque, sizeof(header.opaque));
   ReverseAppendBuffer(buffers, &header.CAS, sizeof(header.CAS));
   AppendBuffer(buffers, extra.get());
+  buffers.resize(buffers.size() + header.extras_length - extra->size());
   AppendBuffer(buffers, key.get());
   AppendBuffer(buffers, value.get());
 
