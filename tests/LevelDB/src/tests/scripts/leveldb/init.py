@@ -38,6 +38,9 @@ time.sleep(1)
 
 if args.experiment_type == "Full":
     boot_command = [
+        "taskset",
+        "-c",
+        "0,1",
         "/workspace/redis-leveldb/redis-leveldb",
         "-P",
         "6379",

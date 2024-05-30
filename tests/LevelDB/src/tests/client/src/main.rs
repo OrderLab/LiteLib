@@ -1,6 +1,6 @@
 use async_mutex::Mutex;
 use deadpool_redis::{
-    redis::{aio::MultiplexedConnection as RedisConnection, cmd, pipe},
+    redis::{cmd, pipe, Connection as RedisConnection},
     Runtime,
 };
 use dotenvy::dotenv;
@@ -11,7 +11,7 @@ use rand::Rng;
 use std::process::Command;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::time::{sleep_until, Duration, Instant};
+use tokio::time::{sleep, sleep_until, Duration, Instant};
 
 #[derive(Debug, serde::Deserialize)]
 enum ExperimentType {
@@ -38,7 +38,6 @@ enum KeyDistribution {
 struct BenchmarkConfig {
     num_keys: usize,
     value_length: usize,
-    init_rps: usize,
     #[serde(deserialize_with = "deserialize_duration")]
     test_duration: Duration,
     rps: usize,
@@ -110,11 +109,8 @@ async fn do_transaction(
     let new_suffix_expected = *old_suffix_expected + 1;
     let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
     let old_value_expected = format!("{}_{}_{}", base_value, key, *old_suffix_expected);
-    let response_time: Duration;
-    let request_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
-    match pipe()
+    let mut pipe = pipe();
+    let cmd = pipe
         .atomic()
         .cmd("GET")
         .arg(&key)
@@ -123,20 +119,23 @@ async fn do_transaction(
         .arg(&new_value_expected)
         .ignore()
         .cmd("GET")
-        .arg(&key)
-        .query_async::<_, (Option<String>, Option<String>)>(&mut *conn)
-        .await
-    {
+        .arg(&key);
+    let request_time = SystemTime::now();
+    let result = cmd.query::<(Option<String>, Option<String>)>(&mut *conn);
+    let response_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    let request_time = request_time
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    match result {
         Ok((old_value, new_value)) => {
-            response_time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards");
             let mut status = Status::Success;
             match old_value {
                 Some(old_value) => {
                     if old_value != old_value_expected {
                         eprintln!(
-                            "\ni: {}, key: {}, expected old value: {:?}, old value: {:?}\n",
+                            "\ni: {}, key: {}, expected old value: {:?}, old value: {:?}. If the old value is newer than expected, it may be because a timeout occurred between the server sending the response and the client receiving it.\n",
                             i,
                             key,
                             get_last_n_char(&old_value_expected, 10),
@@ -176,14 +175,11 @@ async fn do_transaction(
                 response: response_time,
             }
         }
-        Err(_) => {
-            response_time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards");
+        Err(e) => {
             // println!("request error i: {}, key: {}, error: {:?}", i, key, e);
             QueryRecord {
-                // status: if e.is_timeout() { Status::Timeout } else { Status::Error },
-                status: Status::Timeout,
+                status: if e.detail() != Some("flow control enabled") { Status::Timeout } else { Status::Error },
+                // status: Status::Timeout,
                 request: request_time,
                 response: response_time,
             }
@@ -198,13 +194,13 @@ async fn main() {
     println!("{:?}", cfg);
     let num_requests = cfg.benchmark.test_duration.as_secs() as usize * cfg.benchmark.rps;
     let interval = Duration::from_secs_f64(1.0 / cfg.benchmark.rps as f64);
-    let init_interval = Duration::from_secs_f64(1.0 / cfg.benchmark.init_rps as f64);
     let base_value: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(cfg.benchmark.value_length)
         .map(char::from)
         .collect();
 
+    // -------------------------- Init remote servers -------------------------
     if let Some(remote_script_config) = &cfg.benchmark.remote_script {
         let output = Command::new("ssh")
             .args([
@@ -236,12 +232,12 @@ async fn main() {
                 panic!("Failed to init remote leveldb server: {:?}", output);
             }
         }
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_secs(1)).await;
     };
 
     let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
 
-    // Initialize the database
+    // -------------------------- Init the database ---------------------------
     let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Initializing");
     bar.set_style(
         ProgressStyle::with_template(
@@ -254,22 +250,20 @@ async fn main() {
     for _ in 0..cfg.benchmark.num_keys + 1 {
         values.push(Arc::new(Mutex::new(0 as usize)));
     }
+    let start_time = Instant::now();
     for i in (1..cfg.benchmark.num_keys + 1).rev() {
         let pool = pool.clone();
         let i = i; // Copy i into the closure
         let value = format!("{}_{}_{}", base_value, i, 0);
         let bar = bar.clone();
-        tokio::time::sleep(init_interval).await;
         let handle = tokio::spawn(async move {
-            let conn = pool.get().await.unwrap_or_else(|e| {
+            let mut conn = pool.get().await.unwrap_or_else(|e| {
                 panic!("Initialize failed i: {}, error: {}", i, e);
             });
-            let mut conn_guard = conn.lock().await;
             cmd("SET")
                 .arg(&i)
                 .arg(&value)
-                .query_async::<_, String>(&mut *conn_guard)
-                .await
+                .query::<String>(&mut conn)
                 .unwrap();
             bar.inc(1);
         });
@@ -278,9 +272,17 @@ async fn main() {
     for handle in handles {
         handle.await.unwrap();
     }
+    let end_time = Instant::now();
     bar.finish();
     println!("\nFinished initializing database");
+    let elapsed = end_time - start_time;
+    println!(
+        "Initialization time: {:?} ms, rps: {:?}",
+        elapsed.as_millis(),
+        cfg.benchmark.num_keys as f64 / elapsed.as_secs_f64()
+    );
 
+    // -------------------------- Generate requests ---------------------------
     let mut idx = Vec::new();
     match cfg.benchmark.key_distribution {
         KeyDistribution::Sequential => {
@@ -307,6 +309,7 @@ async fn main() {
         .unwrap(),
     );
 
+    // -------------------------- Set up remote scripts -----------------------
     if let Some(remote_script_config) = cfg.benchmark.remote_script {
         let now = SystemTime::now();
         let file_prefix = cfg.benchmark.file_prefix.clone();
@@ -350,9 +353,10 @@ async fn main() {
         let duration_until_target_time = target_time
             .duration_since(now)
             .expect("Target time is in the past");
-        tokio::time::sleep(duration_until_target_time).await;
+        sleep(duration_until_target_time).await;
     }
 
+    // -------------------------- Benchmark -----------------------------------
     let start_time = Instant::now();
     for i in 0..num_requests {
         let iter_end_time = start_time + interval * (i as u32 + 1);
@@ -370,14 +374,16 @@ async fn main() {
             let mut tries = 1;
             while tries <= cfg.benchmark.retry_count {
                 match pool.get().await {
-                    Ok(conn) => {
-                        let mut conn_guard = conn.lock().await;
+                    Ok(mut conn) => {
                         let mut value_guard = value.lock().await;
-                        (*conn_guard).set_response_timeout(cfg.benchmark.timeout);
+                        conn.set_read_timeout(Some(cfg.benchmark.timeout))
+                            .expect("set_read_timeout failed");
+                        conn.set_write_timeout(Some(cfg.benchmark.timeout))
+                            .expect("set_write_timeout failed");
                         let mut old_suffix_expected = (*value_guard).clone();
                         let query_record = do_transaction(
                             i,
-                            &mut *conn_guard,
+                            &mut conn,
                             key,
                             &base_value,
                             &mut old_suffix_expected,
@@ -448,7 +454,7 @@ async fn main() {
     }
     let mut wait_time = 30 / 5;
     while alive_handles.len() > 0 && wait_time > 0 {
-        tokio::time::sleep(Duration::from_secs(5)).await;
+        sleep(Duration::from_secs(5)).await;
         alive_handles.retain(|h| {
             if h.is_finished() {
                 h.abort();
@@ -498,7 +504,7 @@ async fn main() {
         std::fs::write(format!("{}.jsonl", cfg.benchmark.file_prefix), json).unwrap();
     }
 
-    // Check correctness
+    // -------------------------- Check correctness ---------------------------
     let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
     // BUG: Error occurred while creating a new object: Cannot assign requested address (os error 99) if some connections are aborted
     let mut handles = Vec::new();
@@ -509,26 +515,22 @@ async fn main() {
         )
         .unwrap(),
     );
+    let start_time = Instant::now();
     for i in 1..cfg.benchmark.num_keys + 1 {
         let pool = pool.clone();
         let i = i; // Copy i into the closure
         let expected_value = format!("{}_{}_{}", base_value, i, values[i].lock().await);
         let bar = bar.clone();
         let handle = tokio::spawn(async move {
-            let conn = pool.get().await.unwrap_or_else(|e| {
+            let mut conn = pool.get().await.unwrap_or_else(|e| {
                 panic!("validating failed key: {}, error: {}", i, e);
             });
-            let mut conn_guard = conn.lock().await;
-            let actual_value: Option<String> = cmd("GET")
-                .arg(&i)
-                .query_async(&mut *conn_guard)
-                .await
-                .unwrap();
+            let actual_value: Option<String> = cmd("GET").arg(&i).query(&mut conn).unwrap();
             match actual_value {
                 Some(actual_value) => {
                     if actual_value != expected_value {
                         eprintln!(
-                            "\nERR! key: {}, expected value: {:?}, actual value: {:?}\n",
+                            "\nERR! key: {}, expected value: {:?}, actual value: {:?}. If the actual value is newer than expected, it may be because a timeout occurred between the server sending the response and the client receiving it.\n",
                             i,
                             get_last_n_char(&expected_value, 10),
                             get_last_n_char(&actual_value, 10)
@@ -550,6 +552,13 @@ async fn main() {
     for handle in handles {
         handle.await.unwrap();
     }
+    let end_time = Instant::now();
     bar.finish();
     println!("\nFinished validating correctness");
+    let elapsed = end_time - start_time;
+    println!(
+        "Validation time: {:?} ms, rps: {:?}",
+        elapsed.as_millis(),
+        cfg.benchmark.num_keys as f64 / elapsed.as_secs_f64()
+    );
 }
