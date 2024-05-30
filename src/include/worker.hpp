@@ -3,11 +3,11 @@
 #include <pthread.h>
 
 #include <barrier>
-#include <queue>
 
 #include "connection.hpp"
 #include "core.hpp"
 #include "thread_safe_queue.hpp"
+#include "thread_safe_set.hpp"
 
 namespace lite {
 
@@ -15,9 +15,6 @@ struct WorkerMessage {
   enum class Type {
     kNewClientConnection,
     kBarrier,
-    kReplayStart,
-    kReplayEnd,
-    kNewReplayConnection
   };
 
   Type type;
@@ -36,6 +33,8 @@ class Worker {
   explicit Worker(LiteCoreInstance &lite_core,
                   std::barrier<std::function<void()>> &barrier);
 
+  ~Worker();
+
   /// Create the worker thread and start running the event loop.
   void Run(const char name[] = "lite-worker");
 
@@ -46,7 +45,11 @@ class Worker {
   ThreadSafeQueue<WorkerMessage> notify_queue_;
 
   /// The connections managed by the worker thread.
-  std::queue<std::unique_ptr<ConnectionInstance>> conns_;
+  ThreadSafeSet<ConnectionInstance *> conns_;
+
+  void RemoveAllConnections();
+
+  ConnectionInstance *NewReplayConnection();
 
  private:
   /// PID of the worker thread.
@@ -68,8 +71,6 @@ class Worker {
 
   /// Handle a new notification.
   static void NotifyHandler(evutil_socket_t fd, short which, void *arg_self);
-
-  void NewReplayConnection();
 };
 
 }  // namespace lite

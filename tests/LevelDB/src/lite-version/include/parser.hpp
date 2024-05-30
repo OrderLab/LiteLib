@@ -44,6 +44,7 @@ class RESPIntegerParser : public RESPTypeParser {
         return lite::kGood;
       }
     }
+    return lite::kBad;
   }
 };
 
@@ -73,6 +74,7 @@ class RESPSimpleStringParser : public RESPTypeParser {
         return lite::kGood;
       }
     }
+    return lite::kBad;
   }
 };
 
@@ -131,6 +133,7 @@ class RESPBulkStringParser : public RESPTypeParser {
         return lite::kGood;
       }
     }
+    return lite::kBad;
   }
 };
 
@@ -172,5 +175,6 @@ class RESPArrayParser : public RESPTypeParser {
         return lite::kGood;
       }
     }
+    return lite::kBad;
   }
 };

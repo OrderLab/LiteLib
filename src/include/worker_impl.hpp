@@ -41,6 +41,17 @@ Worker<Application, Request, Response, ConnectionInfo, CacheKey,
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+       CacheEntry>::~Worker() {
+  event_del(&notify_event_);
+  event_base_free(base_);
+  close(notify_event_fd);
+
+  conns_.visit_all([](const auto &conn) { delete conn; });
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Run(const char name[]) {
   pthread_attr_t attr;
@@ -69,16 +80,30 @@ void *Worker<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
-            CacheEntry>::NewReplayConnection() {
-  std::unique_ptr<ConnectionInstance> new_connection;
-  if (!(new_connection = std::make_unique<ConnectionInstance>(
-            0, EV_READ | EV_PERSIST, base_, ConnectionInstance::ClientHandler,
-            nullptr, lite_core_, false))) {
+            CacheEntry>::RemoveAllConnections() {
+  std::vector<ConnectionInstance *> conns_to_be_deleted;
+  conns_.visit_all(
+      [&](const auto &conn) { conns_to_be_deleted.push_back(conn); });
+  for (auto conn : conns_to_be_deleted) delete conn;
+  conns_.clear();
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+typename Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::ConnectionInstance *
+Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+       CacheEntry>::NewReplayConnection() {
+  auto new_connection = new ConnectionInstance(
+      0, EV_READ | EV_PERSIST, base_, ConnectionInstance::ClientHandler,
+      nullptr, lite_core_, false, this);
+  if (!new_connection) {
     LOG(ERROR) << "failed to create replay connection\n";
-    return;
+    return nullptr;
   }
   new_connection->ConnectBackend();
-  conns_.push(std::move(new_connection));
+  conns_.insert(new_connection);
+  return new_connection;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -97,31 +122,23 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
     while (counter--) {
       const WorkerMessage msg = self->notify_queue_.pop_front();
       if (msg.type == WorkerMessage::Type::kNewClientConnection) {
-        std::unique_ptr<ConnectionInstance> new_connection;
-        if (!(new_connection = std::make_unique<ConnectionInstance>(
-                  msg.fd, EV_READ | EV_PERSIST, self->base_,
-                  ConnectionInstance::ClientHandler, nullptr, self->lite_core_,
-                  true))) {
+        auto new_connection =
+            new ConnectionInstance(msg.fd, EV_READ | EV_PERSIST, self->base_,
+                                   ConnectionInstance::ClientHandler, nullptr,
+                                   self->lite_core_, true, self);
+        if (!new_connection) {
           LOG(ERROR) << "failed to create listening connection\n";
           return;
         }
-        self->lite_core_.live_connections_.insert(new_connection.get());
-        self->conns_.push(std::move(new_connection));
+        self->lite_core_.live_connections_.insert(new_connection);
+        self->conns_.insert(new_connection);
       } else if (msg.type == WorkerMessage::Type::kBarrier) {
-        LOG(INFO) << "Thread " << self->thread_id_
-                  << " reaches sync point" << std::endl;
+        LOG(INFO) << "Thread " << self->thread_id_ << " reaches sync point"
+                  << std::endl;
         self->barrier_.arrive_and_wait();
         self->barrier_.arrive_and_wait();
         LOG(INFO) << "Thread " << self->thread_id_ << " exits sync point"
                   << std::endl;
-      } else if (msg.type == WorkerMessage::Type::kReplayStart) {
-        // clear replay connection left by the last emergency
-        while (!self->conns_.empty()) self->conns_.pop();
-        self->NewReplayConnection();
-      } else if (msg.type == WorkerMessage::Type::kReplayEnd) {
-        while (!self->conns_.empty()) self->conns_.pop();
-      } else if (msg.type == WorkerMessage::Type::kNewReplayConnection) {
-        self->NewReplayConnection();
       }
     }
   } else {
