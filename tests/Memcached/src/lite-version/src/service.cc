@@ -8,31 +8,16 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Memcached::Match(
         &pending_requests) const {
   const auto resp_opaque = resp->GetOpaque();
   std::vector<std::shared_ptr<Packet>> ret;
-  bool forward = 1;
+  bool forward;
   while (!pending_requests.empty()) {
     // TODO: forward may be wrong
     auto pair = pending_requests.pop_front();
     auto req = pair.first;
     forward = pair.second;
+    ret.push_back(req);
     const auto req_opaque = req->GetOpaque();
-    if (req_opaque != resp_opaque || !req->GetStatus()) {
-      const auto OpCodeOption = req->GetOpcode();
-      if (!OpCodeOption.has_value()) {
-        LOG(ERROR) << "Unknow opcode: " << (*req->buffer)[1] << std::endl;
-        continue;
-      }
-      const auto OpCode = OpCodeOption.value();
-      if (OpCode == Header::Opcode::kGet || OpCode == Header::Opcode::kGetK ||
-          OpCode == Header::Opcode::kGetKQ || OpCode == Header::Opcode::kNoOp ||
-          OpCode == Header::Opcode::kStat ||
-          OpCode == Header::Opcode::kVersion) {
-        continue;
-        // TODO: update states using get
-      }
-      ret.push_back(req);
-    }
-
-    if (req_opaque == resp_opaque) break;
+    if (req_opaque == resp_opaque) 
+      break;
   }
 
   return std::make_pair(ret, forward);
@@ -43,6 +28,9 @@ void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
                              ConnectionInfo &_, Cache *cache) const {
   if (requests.empty())
     return;
+  if (resp->GetStatus()){
+    requests.pop_back();
+  }
   for (const auto &req : requests) {
     const auto opcode = req->GetOpcode().value();
     const auto packet = ParsedPacket(*req);
@@ -63,6 +51,13 @@ void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
         cache->Replace(*packet.key, entry);
         break;
       case Header::Opcode::kQuit:
+      case Header::Opcode::kGet:
+      case Header::Opcode::kGetK:
+      case Header::Opcode::kGetKQ:
+      case Header::Opcode::kNoOp:
+      case Header::Opcode::kStat:
+      case Header::Opcode::kVersion:
+      // TODO: update states using get
         break;
       default:  // TODO: support CAS, Expiration, error and other operations
         LOG(ERROR) << "Unknown OpCode: " << magic_enum::enum_name(opcode)
