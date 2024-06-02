@@ -73,6 +73,7 @@ std::shared_ptr<std::vector<uint8_t>> ParsedPacket::Serialize() {
   }
   auto buffers = std::make_shared<std::vector<uint8_t>>();
   ToBuffers(*buffers);
+  buffer = buffers;
   return buffers;
 }
 
