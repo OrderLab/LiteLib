@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     lite::LiteServer<Memcached, Packet, Packet, ConnectionInfo,
                      std::vector<uint8_t>, CacheEntry>
         s(thread_pool_size, cache_size, memcached, backend_addr, backend_port,
-          1000ms, 10000, 0.9, 1, "/tmp/lite_memcached", false);
+          1000ms, 10000, 0.9, 1, "/tmp/lite_memcached", true);
 
     // Run the server until stopped.
     s.Run(port);

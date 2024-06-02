@@ -120,7 +120,7 @@ bool LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
     std::unique_ptr<ConnectionInstance> new_connection;
     LOG_IF(FATAL, !(new_connection = std::make_unique<ConnectionInstance>(
                         sfd, EV_READ | EV_PERSIST, main_base_, EventHandler,
-                        this, lite_core_, false)))
+                        this, lite_core_, false, nullptr)))
         << "failed to create listening connection\n";
     conns_.push(std::move(new_connection));
   }
