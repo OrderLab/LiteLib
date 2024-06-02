@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <map>
 
 #include "core.hpp"
 #include "network_utils.hpp"
@@ -153,6 +154,9 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       c->backend_fd_ = -1;
     }
     if (!c->pending_requests_.empty()) {
+      // TODO: serve them using EmergencyServe
+      // Remaining issue: MULTI -> (switch to emergency) ->
+      // EXEC, service.cc will inject an illegal DISCARD
       connections_to_be_closed.insert(c);
     }
   });
@@ -178,6 +182,7 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
 #define SendReplayReq(conn, req, buffer)                               \
   do {                                                                 \
+    assert((conn)->pending_requests_.empty());                         \
     (conn)->pending_requests_.push_back(std::make_pair((req), false)); \
     if (!network::Write((conn)->backend_fd_, (buffer))) {              \
       LOG(ERROR) << "line#" << __LINE__                                \
@@ -204,34 +209,28 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               << std::endl;
   });
 
+  std::map<WorkerInstance *, ConnectionInstance *>
+      replay_worker_sync_state_conns;
+
   for (auto &replay_worker_ : replay_workers_) {
-    replay_worker_->notify_queue_.push_back(
-        {.type = WorkerMessage::Type::kReplayStart, .fd = 0});
-    uint64_t buf = 1;
-    PLOG_IF(ERROR, write(replay_worker_->notify_event_fd, &buf,
-                         sizeof(uint64_t)) != sizeof(uint64_t))
-        << "failed writing to worker eventfd";
+    replay_worker_->RemoveAllConnections();
+    replay_worker_sync_state_conns[replay_worker_.get()] =
+        replay_worker_->NewReplayConnection();
   }
   next_replay_worker_ = replay_workers_.begin();
 
   LogEntryInstance *entry;
 
-  for (int i = 0; i < 2; i++) {  // Double flush to ensure the consistency of
-                                 // in-flight connections
+  for (int i = 0; i < 2;
+       i++) {  // Double flush to process in-flight connections
     size_t log_cnt = 0, dirty_cnt = 0;
     while (LoggerInstance::Pop(logger_inner_, entry)) {
       if (entry->state) {
         dirty_cnt++;
         const auto req = entry->state->value.ToRequest(entry->state->key);
         const auto buffer = req->Serialize();
-        // Wait for the initialization of the replay connection
-        while ((*next_replay_worker_)->conns_.empty()) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-        auto &replay_conn = (*next_replay_worker_)->conns_.front();
-        while (replay_conn->backend_fd_ <= 0) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
+        auto &replay_conn =
+            replay_worker_sync_state_conns[next_replay_worker_->get()];
         replay_conn->pending_requests_.wait_for_empty();
         SendReplayReq(replay_conn, req, buffer);
         next_replay_worker_++;
@@ -241,22 +240,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         log_cnt++;
         const auto buffer = entry->req->Serialize();
         if (!*entry->backend_conn_ptr) {  // log belongs to a closed connection
-          const auto &old_conn_back = (*next_replay_worker_)->conns_.back();
-          (*next_replay_worker_)
-              ->notify_queue_.push_back(
-                  {.type = WorkerMessage::Type::kNewReplayConnection, .fd = 0});
-          uint64_t buf = 1;
-          PLOG_IF(ERROR, write((*next_replay_worker_)->notify_event_fd, &buf,
-                               sizeof(uint64_t)) != sizeof(uint64_t))
-              << "failed writing to worker eventfd";
-          // Wait for the initialization of the replay connection
-          while ((*next_replay_worker_)->conns_.back() == old_conn_back) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-          }
-          auto replay_conn = (*next_replay_worker_)->conns_.back().get();
-          while (replay_conn->backend_fd_ <= 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-          }
+          auto replay_conn = (*next_replay_worker_)->NewReplayConnection();
           *entry->backend_conn_ptr = replay_conn;
           SendReplayReq(replay_conn, entry->req, buffer);
           next_replay_worker_++;
@@ -294,7 +278,9 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   LOG(INFO) << "Waiting for all replay connections to finish\n";
   for (auto &replay_worker : replay_workers_) {
-    replay_worker->conns_.front()->pending_requests_.wait_for_empty();
+    replay_worker->conns_.visit_all([&](ConnectionInstance *const &c) {
+      c->pending_requests_.wait_for_empty();
+    });
   }
   // TODO: wait for all live connections to receive replay responses
 
@@ -316,12 +302,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   for (auto &replay_worker_ : replay_workers_) {
-    replay_worker_->notify_queue_.push_back(
-        {.type = WorkerMessage::Type::kReplayEnd, .fd = 0});
-    uint64_t buf = 1;
-    PLOG_IF(ERROR, write(replay_worker_->notify_event_fd, &buf,
-                         sizeof(uint64_t)) != sizeof(uint64_t))
-        << "failed writing to worker eventfd";
+    replay_worker_->RemoveAllConnections();
   }
 
   return true;

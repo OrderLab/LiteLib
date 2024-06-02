@@ -14,6 +14,11 @@ class ThreadSafeSet {
     return set_.erase(value);
   }
 
+  size_t erase_if(const std::function<bool(const T &)> &predicate) {
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    return std::erase_if(set_, predicate);
+  }
+
   auto insert(const T &value) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
     return set_.insert(value);
@@ -29,6 +34,12 @@ class ThreadSafeSet {
     std::shared_lock<std::shared_mutex> lock(mutex_);
     return set_.size();
   }
+
+  void clear() {
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    set_.clear();
+  }
+
  private:
   std::set<T> set_;
   std::shared_mutex mutex_;

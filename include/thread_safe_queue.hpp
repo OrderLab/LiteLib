@@ -11,6 +11,9 @@ template <typename T>
 class ThreadSafeQueue {
  public:
   ~ThreadSafeQueue() {
+    while (!queue_.empty()) {
+      queue_.pop();
+    }
     cv_.notify_one();
   }
 
