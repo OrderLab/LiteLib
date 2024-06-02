@@ -62,7 +62,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   if (emergency_mode_) {
-    LOG(INFO) << "receive an emergency request" << std::endl;
     const bool flow_control =
         is_replaying_ &
         (flow_control_ratio_ * replay_rate_ < logger_inner_.inserting_rate_);
@@ -105,7 +104,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                        &pending_requests,
                    const evutil_socket_t client_fd, CacheInstance *cache) {
   if (pending_requests.empty()){
-    LOG(INFO) << "empty pending request" << std::endl;
+    LOG(ERROR) << "empty pending request" << std::endl;
   }
   const auto [related_stateful_request, forward_resp] =
       app_.Match(resp, conn_info, pending_requests);
@@ -119,7 +118,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     app_.NormalUpdate(resp, std::move(related_stateful_request), conn_info,
                       cache);
   } else {
-    LOG(INFO) << "replay response" << std::endl;
     app_.HandleReplayResponse(resp, std::move(related_stateful_request),
                               conn_info, cache);
   }
@@ -136,7 +134,6 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::TakeOver() {
   emergency_mode_ = true;
   LOG(INFO) << "Disconnect all from backend" << std::endl;
-  LOG(INFO) << "live connections: " << live_connections_.size() << std::endl;
   LOG(INFO) << "Emergency barrier initialized" << std::endl;
   for (auto &worker : workers_) {
     worker->notify_queue_.push_back(
@@ -149,6 +146,7 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   barrier_.arrive_and_wait();
 
   std::set<ConnectionInstance *> connections_to_be_closed;
+  LOG(INFO) << "live connections: " << live_connections_.size() << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
     if (c->backend_fd_ > 0) {
       close(c->backend_fd_);
@@ -158,6 +156,12 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       connections_to_be_closed.insert(c);
     }
   });
+  for (auto &conn : connections_to_be_closed) {
+    live_connections_.erase(conn);
+    delete conn;
+  }
+
+  barrier_.arrive_and_wait();  // unblock worker threads
   if (!crash_recover_){
     // add all cache nodes to the log
     crash_conn_head_ = new LogEntryInstance(nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
@@ -169,12 +173,6 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       }
     }, false);
   }
-  for (auto &conn : connections_to_be_closed) {
-    live_connections_.erase(conn);
-    delete conn;
-  }
-
-  barrier_.arrive_and_wait();  // unblock worker threads
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
 
@@ -186,8 +184,6 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                  << " Replay failed to write to backend\n";            \
       return false;                                                    \
     } \
-    LOG(INFO) << "Buffer size: " << buffer->size() << std::endl;                                                                 \
-    LOG(INFO) << "write a replay request to " << (conn)->backend_fd_ << std::endl;    \
   } while (0)
 
 template <typename Application, typename Request, typename Response,
@@ -225,7 +221,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     size_t log_cnt = 0, dirty_cnt = 0;
     while (LoggerInstance::Pop(logger_inner_, entry)) {
       if (entry->state) {
-        LOG(INFO) << "replay a dirty node" << std::endl;
         dirty_cnt++;
         const auto req = entry->state->value.ToRequest(entry->state->key);
         const auto buffer = req->Serialize();
@@ -242,9 +237,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         next_replay_worker_++;
         if (next_replay_worker_ == replay_workers_.end())
           next_replay_worker_ = replay_workers_.begin();
-        LOG(INFO) << "finish replaying a dirty node" << std::endl;
       } else {
-        LOG(INFO) << "replay a log node" << std::endl;
         log_cnt++;
         const auto buffer = entry->req->Serialize();
         if (!*entry->backend_conn_ptr) {  // log belongs to a closed connection
@@ -278,7 +271,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
           }
           SendReplayReq(*entry->backend_conn_ptr, entry->req, buffer);
         }
-        LOG(INFO) << "finish replaying a log node" << std::endl;
       }
       delete entry;
       ++replay_rate_;

@@ -25,7 +25,10 @@ class ThreadSafeSet {
       visitor(value);
     }
   }
-
+  size_t size(){
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    return set_.size();
+  }
  private:
   std::set<T> set_;
   std::shared_mutex mutex_;
