@@ -1,15 +1,25 @@
 #pragma once
 
 #include <pthread.h>
-#include <readerwriterqueue.h>
 
 #include <barrier>
-#include <queue>
 
 #include "connection.hpp"
 #include "core.hpp"
+#include "thread_safe_queue.hpp"
+#include "thread_safe_set.hpp"
 
 namespace lite {
+
+struct WorkerMessage {
+  enum class Type {
+    kNewClientConnection,
+    kBarrier,
+  };
+
+  Type type;
+  evutil_socket_t fd;
+};
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -23,14 +33,23 @@ class Worker {
   explicit Worker(LiteCoreInstance &lite_core,
                   std::barrier<std::function<void()>> &barrier);
 
+  ~Worker();
+
   /// Create the worker thread and start running the event loop.
-  void Run();
+  void Run(const char name[] = "lite-worker");
 
   /// The file descriptor used to signal the worker thread.
   evutil_socket_t notify_event_fd;
 
   /// The queue used to store the notification.
-  moodycamel::ReaderWriterQueue<evutil_socket_t> notify_queue_;
+  ThreadSafeQueue<WorkerMessage> notify_queue_;
+
+  /// The connections managed by the worker thread.
+  ThreadSafeSet<ConnectionInstance *> conns_;
+
+  void RemoveAllConnections();
+
+  ConnectionInstance *NewReplayConnection();
 
  private:
   /// PID of the worker thread.
@@ -44,9 +63,6 @@ class Worker {
 
   /// The underlying service implementation.
   LiteCoreInstance &lite_core_;
-
-  /// The connections managed by the worker thread.
-  std::queue<std::unique_ptr<ConnectionInstance>> conns_;
 
   std::barrier<std::function<void()>> &barrier_;
 

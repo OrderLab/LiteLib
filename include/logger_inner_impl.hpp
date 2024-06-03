@@ -7,9 +7,11 @@ namespace lite {
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
-            CacheEntry>::LoggerInner()
+            CacheEntry>::LoggerInner(const std::chrono::milliseconds
+                                         sliding_window_size)
     : chr_head_(nullptr, nullptr, nullptr),
-      chr_tail_(nullptr, nullptr, nullptr) {
+      chr_tail_(nullptr, nullptr, nullptr),
+      inserting_rate_(sliding_window_size) {
   chr_head_.chr_nxt = &chr_tail_;
   chr_tail_.chr_pre = &chr_head_;
 }
@@ -21,15 +23,16 @@ void LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
     Log(LogEntryInstance *entry,
         LogEntryInstance *conn_head) {  // TODO: deal with capacity issues
   std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+  ++inserting_rate_;
   entry->chr_pre = &chr_head_;
   entry->chr_nxt = chr_head_.chr_nxt;
   entry->chr_nxt->chr_pre = entry;
   chr_head_.chr_nxt = entry;
-  chr_lock.unlock();
   if (conn_head->conn_nxt) conn_head->conn_nxt->conn_pre = entry;
   entry->conn_nxt = conn_head->conn_nxt;
   entry->conn_pre = conn_head;
   conn_head->conn_nxt = entry;
+  chr_lock.unlock();
 }
 
 template <typename Application, typename Request, typename Response,
@@ -40,6 +43,9 @@ bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
   if (chr_tail_.chr_pre == &chr_head_) return false;
   entry = chr_tail_.chr_pre;
   entry->Delink();
+  if (entry->state) {
+    entry->state->dirty_node = nullptr;
+  }
   return true;
 }
 
@@ -53,18 +59,20 @@ bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
   LogEntryInstance *entry = conn_head->conn_nxt, *nxt_entry;
   for (size_t i = 0; i < number_of_entries; ++i, entry = nxt_entry) {
     if (!entry) {
-      std::cerr << "Expected to erase " << number_of_entries
-                << " entries, but only erased " << i << " entries" << std::endl;
+      LOG(ERROR) << "Expected to erase " << number_of_entries
+                 << " entries, but only erased " << i << " entries"
+                 << std::endl;
       return false;
     }
     if (entry->state) {
-      std::cerr << "Expected to erase " << number_of_entries
-                << " requests in Log, but found a dirty state in " << i
-                << "th entry" << std::endl;
+      LOG(ERROR) << "Expected to erase " << number_of_entries
+                 << " requests in Log, but found a dirty state in " << i
+                 << "th entry" << std::endl;
       return false;
     }
     nxt_entry = entry->conn_nxt;
     entry->Delink();
+    --inserting_rate_;
     delete entry;
   }
   chr_lock.unlock();
@@ -75,6 +83,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
                  CacheEntry>::Empty() {
+  std::unique_lock<std::mutex> chr_lock(chr_mutex_);
   return chr_tail_.chr_pre == &chr_head_;
 }
 

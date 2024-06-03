@@ -3,6 +3,7 @@
 #include <mutex>
 
 #include "concept.hpp"
+#include "sliding_window.hpp"
 
 namespace lite {
 
@@ -35,7 +36,6 @@ class LogEntry {
   void Delink() {
     if (chr_pre) chr_pre->chr_nxt = chr_nxt;
     if (chr_nxt) chr_nxt->chr_pre = chr_pre;
-    // TODO: lock for connection?
     if (conn_pre) conn_pre->conn_nxt = conn_nxt;
     if (conn_nxt) conn_nxt->conn_pre = conn_pre;
   }
@@ -48,7 +48,7 @@ class LoggerInner {
                                     ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  LoggerInner();
+  LoggerInner(const std::chrono::milliseconds sliding_window_size);
 
   void Log(LogEntryInstance *entry, LogEntryInstance *conn_head);
 
@@ -60,6 +60,8 @@ class LoggerInner {
   bool Empty();
 
   std::mutex chr_mutex_;
+
+  SlidingWindow inserting_rate_;
 
  private:
   LogEntryInstance chr_head_, chr_tail_;

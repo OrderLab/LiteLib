@@ -26,6 +26,8 @@ class Connection {
                               CacheKey, CacheEntry>;
   using CacheInnerInstance = CacheInner<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>;
+  using WorkerInstance = Worker<Application, Request, Response, ConnectionInfo,
+                                CacheKey, CacheEntry>;
 
  public:
   Connection(const Connection&) = delete;
@@ -37,7 +39,7 @@ class Connection {
   explicit Connection(const evutil_socket_t sfd, const int event_flags,
                       struct event_base* base, EventHandler event_handler,
                       void* lite_server, LiteCoreInstance& lite_core,
-                      bool is_client_connection);
+                      bool is_client_connection, WorkerInstance* worker_ptr);
 
   ~Connection();
 
@@ -68,14 +70,24 @@ class Connection {
 
   void* lite_server_;
 
- private:
+  /// Underlying Lite Core.
+  LiteCoreInstance& lite_core_;
+
+ private:  // ensure the order of initialization
   std::shared_ptr<ConnectionInstance*> self_;
 
+  LogEntryInstance* log_head_;
+
+ public:
+  CacheInstance cache_;
+
+  LoggerInstance logger_;
+
+ private:
   /// Corresponding worker's event_base
   struct event_base* const base_;
 
-  /// Underlying Lite Core.
-  LiteCoreInstance& lite_core_;
+  WorkerInstance* worker_ptr_;
 
   /// The event associated with the connection.
   event client_event_, backend_event_;
@@ -88,10 +100,6 @@ class Connection {
 
   /// The outgoing response.
   std::shared_ptr<Response> response_;
-
-  LogEntryInstance log_head_;
-  CacheInstance cache_;
-  LoggerInstance logger_;
 };
 
 }  // namespace lite
