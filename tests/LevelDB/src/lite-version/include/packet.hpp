@@ -15,7 +15,7 @@ using InputIterator = uint8_t *;
 struct RESPType {
   virtual ~RESPType(){};
 
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer){};
+  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) {};
 };
 
 struct RESPString : public RESPType {
@@ -69,12 +69,14 @@ class RESPTypeParser {
   std::unique_ptr<RESPTypeParser> parser_ = nullptr;
 
  public:
+  virtual ~RESPTypeParser() {}
+
   std::unique_ptr<RESPType> value_ = nullptr;
 
   virtual lite::DeserializeResult Deserialize(InputIterator &begin,
                                               InputIterator end,
                                               RESPType &value) {
-    std::cerr << "RESPTypeParser::Deserialize" << std::endl;
+    LOG(ERROR) << "RESPTypeParser::Deserialize" << std::endl;
     return lite::kBad;
   }
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
@@ -102,7 +104,7 @@ struct Packet {
           (dynamic_cast<RESPArray *>(command.get())->value)[0].get());
       return std::string_view(*opcode->value);
     } catch (const std::exception &e) {
-      std::cerr << "Unknow opcode: " << e.what() << std::endl;
+      LOG(ERROR) << "Unknow opcode: " << e.what() << std::endl;
       throw std::runtime_error("Invalid opcode");
     }
   }

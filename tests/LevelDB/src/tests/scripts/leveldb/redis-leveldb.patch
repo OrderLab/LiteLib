@@ -1,3 +1,82 @@
+diff --git a/.gitignore b/.gitignore
+index 1b34a3e..0049efd 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -8,3 +8,4 @@ tmp.*
+ .DS_Store
+ data/
+ *~
++*.txt
+\ No newline at end of file
+diff --git a/src/rl.cpp b/src/rl.cpp
+index 72d9685..c0a8fd7 100644
+--- a/src/rl.cpp
++++ b/src/rl.cpp
+@@ -14,7 +14,6 @@
+ #include <sys/socket.h>
+ 
+ #include <algorithm>
+-
+ #include "rl_util.h"
+ #include "rl_server.h"
+ #include "rl_connection.h"
+@@ -33,6 +32,7 @@ int main(int argc, char** argv) {
+ 
+     int port=8323;
+     int db_num=0;
++    size_t write_buffer_size=leveldb::Options().write_buffer_size;
+ 
+     RLRequest::init_cmd_map();
+ 
+@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
+     memset(data_dir,0,128);
+     strncpy(data_dir,"redis.db",8);
+ 
+-    while ((ch = getopt(argc, argv, "hdr:H:P:D:M:")) != -1) {
++    while ((ch = getopt(argc, argv, "hdr:H:P:D:M:B:")) != -1) {
+         switch (ch) {
+         case 'h':
+             printf("Usage:\n\t./redis-leveldb [options]\n");
+@@ -51,6 +51,7 @@ int main(int argc, char** argv) {
+             printf("\t-P port:\t listen port\n");
+             printf("\t-D data-dir:\t data dir\n");
+             printf("\t-M number:\t DB count(run in multi-db mode)\n");
++            printf("\t-B size:\t write buffer size(Bytes)\n");
+             exit(0);
+         case 'd':
+             daemon_flag = 1;
+@@ -85,6 +86,18 @@ int main(int argc, char** argv) {
+                 exit(1);
+             }
+             break;
++        case 'B':
++            if(std::find_if(optarg,optarg+strlen(optarg),
++                            std::not1(std::ptr_fun(isdigit)))!=optarg+strlen(optarg)){
++                printf("Bad write buffer size(-B) value(must be a num)\n");
++                exit(1);
++            }
++            write_buffer_size=strtol(optarg,NULL,10);
++            if(write_buffer_size<1){
++                printf("Bad write buffer size(-B) value(must be a num)\n");
++                exit(1);
++            }
++            break;
+         case '?':
+             //if(optopt=='H' || optopt=='P' || optopt=='D' || optopt=='M')
+             exit(1);
+@@ -108,10 +121,10 @@ int main(int argc, char** argv) {
+     atexit(&exit_hook);
+ 
+     if(opt_host){
+-        server = new RLServer(data_dir, hostaddr, port, db_num);
++        server = new RLServer(data_dir, hostaddr, port, db_num, write_buffer_size);
+         server->start();
+     }else{
+-        server = new RLServer(data_dir, "", port, db_num);
++        server = new RLServer(data_dir, "", port, db_num, write_buffer_size);
+         server->start();
+     }
+ 
 diff --git a/src/rl_request.cpp b/src/rl_request.cpp
 index b9007a7..6819520 100644
 --- a/src/rl_request.cpp
@@ -36,6 +115,126 @@ index fb93138..8a61129 100644
  
      void rl_multi();
      void rl_exec();
+diff --git a/src/rl_server.cpp b/src/rl_server.cpp
+index 65c97ab..3caab45 100644
+--- a/src/rl_server.cpp
++++ b/src/rl_server.cpp
+@@ -17,6 +17,9 @@
+ 
+ #include <leveldb/filter_policy.h>
+ 
++#include <chrono>
++#include <iostream>
++
+ #include "rl_util.h"
+ #include "rl_server.h"
+ #include "rl_connection.h"
+@@ -33,7 +36,7 @@
+ #define EVBACKEND EVBACKEND_KQUEUE
+ #endif
+ 
+-RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int dbn):
++RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int dbn, size_t write_buffer_size):
+     db_num(dbn), db_path(_db_path), hostaddr(_hostaddr), port(_port),
+     fd(-1), clients_num(0)
+ {
+@@ -41,6 +44,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+     printf("HOSTADDR:(%s)\n",hostaddr.c_str());
+     printf("DB_PATH:(%s)\n",db_path.c_str());
+     printf("PORT:(%d)\n",port);
++    printf("WRITE_BUFFER_SIZE:(%ld)\n",write_buffer_size);
+ 
+     leveldb::Status status;
+ 
+@@ -48,12 +52,20 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+         options = new leveldb::Options[1];
+         options[0].create_if_missing = true;
+         options[0].filter_policy = leveldb::NewBloomFilterPolicy(10);
++        options[0].write_buffer_size = write_buffer_size;
+ 
+         db=new leveldb::DB*[1];
+-        status = leveldb::DB::Open(options[0], db_path.c_str(), &db[0]);
+-        if(!status.ok()) {
++        for (int tries = 0; tries < 1000; tries++) {
++            printf("trying to open db for %ld times\n", tries);
++            status = leveldb::DB::Open(options[0], db_path.c_str(), &db[0]);
++            if(status.ok()) break;
++            usleep(10*1000); // 10ms
++        }
++        if(!status.ok()){
+             puts("leveldb open error");
+             exit(1);
++        }else{
++            puts("leveldb open success");
+         }
+     }else{
+         options = new leveldb::Options[db_num];
+@@ -63,6 +75,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+         for(int i=0;i<db_num;i++){
+             options[i].create_if_missing = true;
+             options[i].filter_policy = leveldb::NewBloomFilterPolicy(16);
++            options[i].write_buffer_size = write_buffer_size;
+ 
+             int count = sprintf(buf, "/db-%03d", i);
+             //TODO the db path
+@@ -154,6 +167,10 @@ void RLServer::start()
+     ev_io_start(loop, &connection_watcher);
+ 
+     printf("Server running successfully\n");
++    const auto now = std::chrono::system_clock::now();
++    std::cout << "boot time " << std::chrono::duration_cast<std::chrono::nanoseconds>(
++                 now.time_since_epoch()).count() << std::endl;
++
+     ev_run(loop, 0);
+ }
+ 
+@@ -174,6 +191,9 @@ void RLServer::on_connection(struct ev_loop *loop, ev_io *watcher, int revents)
+         return;
+     }
+ 
++    int flags = 1;
++    setsockopt(s->fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
++
+     RLConnection *connection = new RLConnection(s, fd);
+ 
+     if(connection == NULL) {
+diff --git a/src/rl_server.h b/src/rl_server.h
+index 3356d66..82ff0d6 100644
+--- a/src/rl_server.h
++++ b/src/rl_server.h
+@@ -31,7 +31,7 @@ public:
+     leveldb::WriteOptions write_options;
+     leveldb::DB **db;
+ 
+-    RLServer(const char *db_path, const char *hostaddr, int port, int dbn=0);
++    RLServer(const char *db_path, const char *hostaddr, int port, int dbn=0, size_t write_buffer_size=0);
+     ~RLServer();
+     void start();
+     static void on_connection(struct ev_loop *loop, ev_io *watcher, int revents);
+diff --git a/src/rl_util.cpp b/src/rl_util.cpp
+index 16bb92a..71794e1 100644
+--- a/src/rl_util.cpp
++++ b/src/rl_util.cpp
+@@ -18,6 +18,9 @@
+ #include <fcntl.h>
+ #include <sys/stat.h>
+ 
++#include <chrono>
++#include <iostream>
++
+ #include "rl_util.h"
+ #include "rl_server.h"
+ 
+@@ -83,6 +86,9 @@ void sig_term(int signo) {
+     if(signo==SIGINT ||
+         signo == SIGTERM ||
+         signo == SIGQUIT) {
++        const auto now = std::chrono::system_clock::now();
++        std::cout << "crash time " << std::chrono::duration_cast<std::chrono::nanoseconds>(
++                     now.time_since_epoch()).count() << std::endl;
+         exit_hook();
+         exit(0);
+     }
 diff --git a/t/Tester.pm b/t/Tester.pm
 index 341099f..8295608 100644
 --- a/t/Tester.pm

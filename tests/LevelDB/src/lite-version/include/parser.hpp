@@ -37,13 +37,14 @@ class RESPIntegerParser : public RESPTypeParser {
       case kLF: {
         if (begin == end) return lite::kIndeterminate;
         if (*(begin++) != '\n') {
-          std::cerr << "Could not parse integer: no \\n" << std::endl;
+          LOG(ERROR) << "Could not parse integer: no \\n" << std::endl;
           return lite::kBad;
         }
         typed_value.value = typed_value.value * (is_positive_ ? 1 : -1);
         return lite::kGood;
       }
     }
+    return lite::kBad;
   }
 };
 
@@ -67,12 +68,13 @@ class RESPSimpleStringParser : public RESPTypeParser {
       case kLF: {
         if (begin == end) return lite::kIndeterminate;
         if (*(begin++) != '\n') {
-          std::cerr << "Could not parse string: no \\n" << std::endl;
+          LOG(ERROR) << "Could not parse string: no \\n" << std::endl;
           return lite::kBad;
         }
         return lite::kGood;
       }
     }
+    return lite::kBad;
   }
 };
 
@@ -82,6 +84,8 @@ class RESPBulkStringParser : public RESPTypeParser {
   RESPInteger length_;
 
  public:
+  virtual ~RESPBulkStringParser() {}
+
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end,
                                       RESPType &value) override {
     RESPString &typed_value = dynamic_cast<RESPBulkString &>(value);
@@ -115,7 +119,7 @@ class RESPBulkStringParser : public RESPTypeParser {
       case kCR: {
         if (begin == end) return lite::kIndeterminate;
         if (*(begin++) != '\r') {
-          std::cerr << "Could not parse bulk string: no \\r" << std::endl;
+          LOG(ERROR) << "Could not parse bulk string: no \\r" << std::endl;
           return lite::kBad;
         }
         state_ = kLF;
@@ -123,12 +127,13 @@ class RESPBulkStringParser : public RESPTypeParser {
       case kLF: {
         if (begin == end) return lite::kIndeterminate;
         if (*(begin++) != '\n') {
-          std::cerr << "Could not parse bulk string: no \\n" << std::endl;
+          LOG(ERROR) << "Could not parse bulk string: no \\n" << std::endl;
           return lite::kBad;
         }
         return lite::kGood;
       }
     }
+    return lite::kBad;
   }
 };
 
@@ -140,6 +145,8 @@ class RESPArrayParser : public RESPTypeParser {
       std::make_unique<RESPTypeParser>();
 
  public:
+  virtual ~RESPArrayParser() {}
+
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end,
                                       RESPType &value) override {
     RESPArray &typed_value = dynamic_cast<RESPArray &>(value);
@@ -168,5 +175,6 @@ class RESPArrayParser : public RESPTypeParser {
         return lite::kGood;
       }
     }
+    return lite::kBad;
   }
 };

@@ -28,6 +28,8 @@ class LiteCore : public Daemon {
                                 CacheKey, CacheEntry>;
   using LoggerInnerInstance = LoggerInner<Application, Request, Response,
                                           ConnectionInfo, CacheKey, CacheEntry>;
+  using LogEntryInstance = LogEntry<Application, Request, Response,
+                                    ConnectionInfo, CacheKey, CacheEntry>;
   using CacheInstance = Cache<Application, Request, Response, ConnectionInfo,
                               CacheKey, CacheEntry>;
   using CacheInnerInstance = CacheInner<Application, Request, Response,
@@ -41,18 +43,22 @@ class LiteCore : public Daemon {
   LiteCore(Application &app, const size_t &max_item_count,
            std::string &backend_addr, std::string &backend_port,
            const char pipe_path[], std::barrier<std::function<void()>> &barrier,
-           std::vector<std::unique_ptr<WorkerInstance>> &workers);
+           std::vector<std::unique_ptr<WorkerInstance>> &workers,
+           const std::chrono::milliseconds sliding_window_size,
+           const size_t replay_expected_rps, const double flow_control_ratio,
+           const size_t n_replay_threads);
 
-  bool HandleRequest(
-      std::shared_ptr<Request> req, ConnectionInfo &conn_info,
-      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
-      const evutil_socket_t client_fd, const evutil_socket_t backend_fd,
-      CacheInstance *cache, LoggerInstance *logger);
+  bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
+                     ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+                         &pending_requests,
+                     const evutil_socket_t client_fd,
+                     const evutil_socket_t backend_fd, CacheInstance *cache,
+                     LoggerInstance *logger);
 
-  bool HandleResponse(
-      std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
-      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> &pending_requests,
-      const evutil_socket_t client_fd, CacheInstance *cache);
+  bool HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
+                      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+                          &pending_requests,
+                      const evutil_socket_t client_fd, CacheInstance *cache);
 
   std::string &backend_addr_, &backend_port_;
 
@@ -64,12 +70,25 @@ class LiteCore : public Daemon {
 
   LoggerInnerInstance logger_inner_;
 
+  ThreadSafeQueue<LogEntryInstance *> dead_connection_log_heads_;
+
  private:
   Application &app_;
 
   std::barrier<std::function<void()>> &barrier_;
 
   std::vector<std::unique_ptr<WorkerInstance>> &workers_;
+
+  void TakeOver();
+
+  SlidingWindow replay_rate_;
+
+  const size_t replay_expected_rps_;  // TODO: configurable by lite_cli
+
+  const double flow_control_ratio_;  // TODO: configurable by lite_cli
+
+  std::vector<std::unique_ptr<WorkerInstance>> replay_workers_;
+  typename decltype(replay_workers_)::iterator next_replay_worker_;
 
   bool Replay();
 };

@@ -1,15 +1,25 @@
 #include "service.hpp"
 
+std::shared_ptr<Packet> LevelDB::abort_req_ = nullptr;
+
+LevelDB::LevelDB() {
+  if (abort_req_) return;
+  abort_req_ = std::make_shared<Packet>();
+  auto discard_comm = std::make_unique<RESPArray>();
+  discard_comm->value.emplace_back(std::make_unique<RESPBulkString>(
+      std::make_shared<std::string>("DISCARD")));
+  abort_req_->command = std::move(discard_comm);
+}
+
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
     lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
         &pending_requests) const {
-  auto [req, is_not_replay] = pending_requests.front();
-  pending_requests.pop_front();
+  auto [req, is_not_replay] = pending_requests.pop_front();
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
   if (opcode_resp == nullptr) {
-    std::cerr << "Invalid request\n";
+    LOG(ERROR) << "Invalid request\n";
     return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
                           is_not_replay);
   }
@@ -47,7 +57,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
     return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
                           is_not_replay);
   }
-  std::cerr << "Unknow opcode: " << *opcode << std::endl;
+  LOG(ERROR) << "Unknow opcode: " << *opcode << std::endl;
   return std::make_pair(std::vector<std::shared_ptr<Packet>>(), is_not_replay);
 }
 
@@ -58,17 +68,20 @@ void LevelDB::NormalUpdate(const std::shared_ptr<Packet> &resp,
   if (conn.is_in_transaction_) {
     RESPArray *responses_resp = dynamic_cast<RESPArray *>(resp->command.get());
     if (responses_resp == nullptr) {
-      std::cerr << "Invalid response for EXEC:";
+      LOG(ERROR) << "Invalid response for EXEC:";
       auto response_buffer = resp->Serialize();
-      for (const auto &c : *response_buffer) std::cerr << c;
-      std::cerr << std::endl;
+      for (const auto &c : *response_buffer) LOG(ERROR) << c;
+      LOG(ERROR) << std::endl;
+#ifndef NDEBUG
+      throw std::runtime_error("Invalid response for EXEC");
+#endif
       return;
     }
     auto &responses = responses_resp->value;
     if (conn.transactions_.size() != responses.size()) {
-      std::cerr << "Invalid number of responses: trans "
-                << conn.transactions_.size() << " responses "
-                << responses.size() << std::endl;
+      LOG(ERROR) << "Invalid number of responses: trans "
+                 << conn.transactions_.size() << " responses "
+                 << responses.size() << std::endl;
       return;
     }
 
@@ -96,31 +109,31 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
     opcode = req->GetOpcode();
   } catch (const std::exception &e) {
     const auto buffer = req->Serialize();
-    std::cerr << "Unknow opcode: ";
-    for (const auto &c : *buffer) std::cerr << c;
-    std::cerr << std::endl;
+    LOG(ERROR) << "Unknow opcode: ";
+    for (const auto &c : *buffer) LOG(ERROR) << c;
+    LOG(ERROR) << std::endl;
   }
   CacheEntry entry;
   if (opcode == "set") {
     if (req->GetArgNum() != 2) {
-      std::cerr << "Invalid number of arguments for set\n";
+      LOG(ERROR) << "Invalid number of arguments for set\n";
       return;
     }
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     if (key == nullptr) {
-      std::cerr << "Invalid argument for set\n";
+      LOG(ERROR) << "Invalid argument for set\n";
       return;
     }
     const auto value = dynamic_cast<RESPString *>(req->GetArg(1));
     if (value == nullptr) {
-      std::cerr << "Invalid argument for set\n";
+      LOG(ERROR) << "Invalid argument for set\n";
       return;
     }
     entry.value = value->value;
     cache->Set(*(key->value), entry, in_transaction);
   } else if (opcode != "get" &&
              opcode != "ping") {  // TODO: update states using get
-    std::cerr << "Unknow opcode: " << opcode << std::endl;
+    LOG(ERROR) << "Unknow opcode: " << opcode << std::endl;
   }
 }
 
@@ -130,20 +143,22 @@ void LevelDB::HandleReplayResponse(
     Cache *cache) {
   auto error_msg = dynamic_cast<RESPError *>(resp->command.get());
   if (error_msg) {
-    std::cerr << "Received error msg from full during replay: "
-              << error_msg->value << std::endl;
+    LOG(ERROR) << "Received error msg from full during replay: "
+               << *error_msg->value << std::endl;
     exit(1);  // TODO: handle error
   }
   return;
 }
 
-Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
-                               ConnectionInfo &conn, Cache *cache,
-                               Logger *logger) {
+std::pair<Packet, bool> LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
+                                                ConnectionInfo &conn,
+                                                Cache *cache, Logger *logger,
+                                                bool flow_control) {
+  bool shutdown = false;
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
   if (opcode_resp == nullptr) {
-    std::cerr << "Invalid request\n";
+    LOG(ERROR) << "Invalid request\n";
     return {};
   }
   auto &opcode = opcode_resp->value;
@@ -154,22 +169,20 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
   if (conn.is_in_transaction_) {
     if (*opcode == "exec") {
       if (!logger->EraseConnectionLogs(conn.transactions_.size() + 1)) {
-        std::cerr << "Failed to undo log\n";
-        // Two cases that are expected
-        // 1) MULTI; switch to emergency; EXEC;
-        // 2) switch to emergency; MULTI; REPLAY; EXEC
-
-        // return Packet(std::unique_ptr<RESPType>(new RESPError(
-        //     std::make_shared<std::string>("ERR failed to undo log"))));
+        LOG(ERROR) << "Failed to undo log\n";
+        logger->Log(abort_req_);
       }
 
       auto response_array = new RESPArray;
-
-      {
+      if (flow_control) {
+        response_array->value.emplace_back(
+            new RESPError(std::make_shared<std::string>("ERR flow control")));
+        shutdown = true;
+      } else {
         auto cache_lock = cache->TransactionLock();
         for (const auto &c : conn.transactions_) {
           response_array->value.emplace_back(
-              EmergencyServeImpl(c, conn, cache, logger, true));
+              EmergencyServeImpl(c, conn, cache, logger, false, true).first);
         }
       }
 
@@ -177,90 +190,122 @@ Packet LevelDB::EmergencyServe(std::shared_ptr<Packet> req,
       conn.transactions_.clear();
       response = response_array;
     } else {
-      conn.transactions_.push_back(req);
-      logger->Log(req);
-      response = new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
+      if (flow_control) {
+        response = new RESPError(
+            std::make_shared<std::string>("ERR flow control enabled"));
+        if (!logger->EraseConnectionLogs(conn.transactions_.size() + 1)) {
+          LOG(ERROR) << "Failed to undo log\n";
+          logger->Log(abort_req_);
+        }
+        conn.transactions_.clear();
+        shutdown = true;
+      } else {
+        conn.transactions_.push_back(req);
+        logger->Log(req);
+        response =
+            new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
+      }
     }
   } else {
-    response = EmergencyServeImpl(req, conn, cache, logger);
+    std::tie(response, shutdown) =
+        EmergencyServeImpl(req, conn, cache, logger, flow_control);
   }
-  return Packet(std::unique_ptr<RESPType>(response));
+  return {Packet(std::unique_ptr<RESPType>(response)), shutdown};
 }
 
-RESPType *LevelDB::EmergencyServeImpl(std::shared_ptr<Packet> req,
-                                      ConnectionInfo &conn, Cache *cache,
-                                      Logger *logger,
-                                      const bool in_transaction) {
+std::pair<RESPType *, bool> LevelDB::EmergencyServeImpl(
+    std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache,
+    Logger *logger, bool flow_control, const bool in_transaction) {
   std::string_view opcode;
   try {
     opcode = req->GetOpcode();
   } catch (const std::exception &e) {
     const auto buffer = req->Serialize();
-    std::cerr << "Unknow opcode: ";
-    for (const auto &c : *buffer) std::cerr << c;
-    std::cerr << std::endl;
+    LOG(ERROR) << "Unknow opcode: ";
+    for (const auto &c : *buffer) LOG(ERROR) << c;
+    LOG(ERROR) << std::endl;
   }
   CacheEntry entry;
   if (opcode == "set") {
     if (req->GetArgNum() != 2) {
-      std::cerr << "Invalid number of arguments for set" << std::endl;
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong number of arguments"));
+      LOG(ERROR) << "Invalid number of arguments for set" << std::endl;
+      return {new RESPError(std::make_shared<std::string>(
+                  "ERR wrong number of arguments")),
+              false};
     }
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     if (key == nullptr) {
-      std::cerr << "Invalid argument for set\n";
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong type of arguments"));
+      LOG(ERROR) << "Invalid argument for set\n";
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR wrong type of arguments")),
+              false};
     }
     const auto value = dynamic_cast<RESPString *>(req->GetArg(1));
     if (value == nullptr) {
-      std::cerr << "Invalid argument for set\n";
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong type of arguments"));
+      LOG(ERROR) << "Invalid argument for set\n";
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR wrong type of arguments")),
+              false};
+    }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
+              false};  // no need to close connection here, so that the client
+                       // can reuse it in the future
     }
     entry.value = value->value;
     if (cache->Set(*(key->value), entry, in_transaction))
-      return new RESPSimpleString(std::make_shared<std::string>("OK"));
+      return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
   } else if (opcode == "get") {
     if (req->GetArgNum() != 1) {
-      std::cerr << "Invalid number of arguments for get" << std::endl;
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong number of arguments"));
+      LOG(ERROR) << "Invalid number of arguments for get" << std::endl;
+      return {new RESPError(std::make_shared<std::string>(
+                  "ERR wrong number of arguments")),
+              false};
     }
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     if (key == nullptr) {
-      std::cerr << "Invalid argument for get\n";
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong type of arguments"));
+      LOG(ERROR) << "Invalid argument for get\n";
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR wrong type of arguments")),
+              false};
     }
     if (cache->Get(*(key->value), entry, in_transaction)) {
-      return new RESPBulkString(entry.value);
+      return {new RESPBulkString(entry.value), false};
     } else {
-      return new RESPBulkString(nullptr);
+      return {new RESPBulkString(nullptr), false};
     }
   } else if (opcode == "ping") {
     if (req->GetArgNum() == 0) {
-      return new RESPSimpleString(std::make_shared<std::string>("PONG"));
+      return {new RESPSimpleString(std::make_shared<std::string>("PONG")),
+              false};
     } else if (req->GetArgNum() == 1) {
       const auto arg = dynamic_cast<RESPString *>(req->GetArg(0));
       if (arg == nullptr) {
-        std::cerr << "Invalid argument for ping\n";
-        return new RESPError(
-            std::make_shared<std::string>("ERR wrong type of arguments"));
+        LOG(ERROR) << "Invalid argument for ping\n";
+        return {new RESPError(std::make_shared<std::string>(
+                    "ERR wrong type of arguments")),
+                false};
       }
-      return new RESPBulkString(arg->value);
+      return {new RESPBulkString(arg->value), false};
     } else {
-      std::cerr << "Invalid number of arguments for ping" << std::endl;
-      return new RESPError(
-          std::make_shared<std::string>("ERR wrong number of arguments"));
+      LOG(ERROR) << "Invalid number of arguments for ping" << std::endl;
+      return {new RESPError(std::make_shared<std::string>(
+                  "ERR wrong number of arguments")),
+              false};
     }
   } else if (opcode == "multi") {
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
+              true};
+    }
     conn.is_in_transaction_ = true;
     logger->Log(req);
-    return new RESPSimpleString(std::make_shared<std::string>("OK"));
+    return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
   }
 
-  std::cerr << "Unknow opcode: " << opcode << std::endl;
-  return new RESPError(std::make_shared<std::string>("ERR unknow command"));
+  LOG(FATAL) << "unknown opcode: " << opcode << std::endl;
+  return {new RESPError(std::make_shared<std::string>("ERR unknown command")),
+          false};
 }

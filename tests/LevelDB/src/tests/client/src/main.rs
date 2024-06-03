@@ -1,7 +1,7 @@
 use async_mutex::Mutex;
 use deadpool_redis::{
-    redis::{cmd, pipe},
-    Pool, Runtime,
+    redis::{cmd, pipe, Connection as RedisConnection},
+    Runtime,
 };
 use dotenvy::dotenv;
 use duration_str::deserialize_duration;
@@ -11,7 +11,7 @@ use rand::Rng;
 use std::process::Command;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::time::{sleep_until, timeout, Duration, Instant};
+use tokio::time::{sleep, sleep_until, Duration, Instant};
 
 #[derive(Debug, serde::Deserialize)]
 enum ExperimentType {
@@ -23,7 +23,7 @@ enum ExperimentType {
 struct RemoteScriptConfig {
     experiment_type: ExperimentType,
     remote_addr: String,
-    monitor_file_path: String,
+    write_buffer_size: usize,
     #[serde(deserialize_with = "deserialize_duration")]
     crash_time: Duration,
 }
@@ -45,7 +45,7 @@ struct BenchmarkConfig {
     #[serde(deserialize_with = "deserialize_duration")]
     timeout: Duration,
     retry_count: usize,
-    file_path: String,
+    file_prefix: String,
     remote_script: Option<RemoteScriptConfig>,
 }
 
@@ -63,10 +63,6 @@ impl Config {
             .build()?
             .try_deserialize::<Config>()?;
 
-        if !cfg.benchmark.file_path.ends_with(".jsonl") {
-            panic!("file_path must end with .jsonl");
-        }
-
         Ok(cfg)
     }
 }
@@ -81,13 +77,18 @@ enum Status {
 }
 
 #[derive(Debug, serde::Serialize)]
+struct QueryRecord {
+    status: Status,
+    request: Duration,
+    response: Duration,
+}
+
+#[derive(Debug, serde::Serialize)]
 struct Record {
     i: usize,
     key: usize,
     begin: Duration,
-    end: Duration,
-    tries: usize,
-    status: Status,
+    queries: Vec<QueryRecord>,
 }
 
 fn get_last_n_char(string: &str, n: usize) -> &str {
@@ -100,23 +101,16 @@ fn get_last_n_char(string: &str, n: usize) -> &str {
 
 async fn do_transaction(
     i: usize,
-    pool: Pool,
+    conn: &mut RedisConnection,
     key: usize,
     base_value: &str,
     old_suffix_expected: &mut usize,
-) -> Status {
-    let conn = match pool.get().await {
-        Ok(conn) => conn,
-        Err(_) => {
-            // println!("i: {}, key: {}, error: {}", i, key, e);
-            return Status::Error;
-        }
-    };
-    let mut conn_guard = conn.lock().await;
+) -> QueryRecord {
     let new_suffix_expected = *old_suffix_expected + 1;
     let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
     let old_value_expected = format!("{}_{}_{}", base_value, key, *old_suffix_expected);
-    let (old_value, new_value): (Option<String>, Option<String>) = match pipe()
+    let mut pipe = pipe();
+    let cmd = pipe
         .atomic()
         .cmd("GET")
         .arg(&key)
@@ -125,38 +119,71 @@ async fn do_transaction(
         .arg(&new_value_expected)
         .ignore()
         .cmd("GET")
-        .arg(&key)
-        .query_async(&mut *conn_guard)
-        .await
-    {
-        Ok(result) => result,
-        Err(_) => {
-            // println!("i: {}, key: {}, error: {}", i, key, e);
-            return Status::Error;
+        .arg(&key);
+    let request_time = SystemTime::now();
+    let result = cmd.query::<(Option<String>, Option<String>)>(&mut *conn);
+    let response_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    let request_time = request_time
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    match result {
+        Ok((old_value, new_value)) => {
+            let mut status = Status::Success;
+            match old_value {
+                Some(old_value) => {
+                    if old_value != old_value_expected {
+                        eprintln!(
+                            "\ni: {}, key: {}, expected old value: {:?}, old value: {:?}. If the old value is newer than expected, it may be because a timeout occurred between the server sending the response and the client receiving it.\n",
+                            i,
+                            key,
+                            get_last_n_char(&old_value_expected, 10),
+                            get_last_n_char(&old_value, 10)
+                        );
+                        status = Status::Error;
+                    }
+                }
+                None => {
+                    eprintln!("\ni: {}, key: {} can't get old value\n", i, key);
+                    status = Status::Miss
+                }
+            };
+            match new_value {
+                Some(new_value) => {
+                    if new_value != new_value_expected {
+                        eprintln!(
+                            "\ni: {}, key: {}, expected new value: {:?}, new value: {:?}\n",
+                            i,
+                            key,
+                            get_last_n_char(&new_value_expected, 10),
+                            get_last_n_char(&new_value, 10)
+                        );
+                        status = Status::TransactionError;
+                    } else {
+                        *old_suffix_expected = new_suffix_expected;
+                    }
+                }
+                None => {
+                    eprintln!("\ni: {}, key: {} can't get new value\n", i, key);
+                    status = Status::TransactionError;
+                }
+            };
+            QueryRecord {
+                status,
+                request: request_time,
+                response: response_time,
+            }
         }
-    };
-    let new_value = match new_value {
-        Some(new_value) => new_value,
-        None => {
-            println!("i: {}, key: {} can't get new value", i, key);
-            return Status::TransactionError;
+        Err(e) => {
+            // println!("request error i: {}, key: {}, error: {:?}", i, key, e);
+            QueryRecord {
+                status: if e.detail() != Some("flow control enabled") { Status::Timeout } else { Status::Error },
+                // status: Status::Timeout,
+                request: request_time,
+                response: response_time,
+            }
         }
-    };
-    let old_value = match old_value {
-        Some(old_value) => old_value,
-        None => {
-            println!("i: {}, key: {} can't get old value", i, key);
-            *old_suffix_expected = new_suffix_expected;
-            return Status::Miss;
-        }
-    };
-    if new_value != new_value_expected || old_value != *old_value_expected {
-        println!("i: {}, key: {}, expected old value: {:?}, old value: {:?}, expected new value: {:?}, new value: {:?}", i, key, get_last_n_char(&old_value_expected, 10), get_last_n_char(&old_value, 10), get_last_n_char(&new_value_expected, 10), get_last_n_char(&new_value, 10));
-        *old_suffix_expected = new_suffix_expected;
-        Status::TransactionError
-    } else {
-        *old_suffix_expected = new_suffix_expected;
-        Status::Success
     }
 }
 
@@ -173,18 +200,22 @@ async fn main() {
         .map(char::from)
         .collect();
 
+    // -------------------------- Init remote servers -------------------------
     if let Some(remote_script_config) = &cfg.benchmark.remote_script {
         let output = Command::new("ssh")
             .args([
                 "-tt",
                 &remote_script_config.remote_addr,
                 &match &remote_script_config.experiment_type {
-                    ExperimentType::Full => {
-                        r#"python3 /workspace/scripts/leveldb/init.py -t Full"#.to_string()
-                    }
+                    ExperimentType::Full => format! {
+                        r#"python3 /workspace/scripts/leveldb/init.py -t Full -b {} -f {}"#,
+                        remote_script_config.write_buffer_size,
+                        cfg.benchmark.file_prefix
+                    },
                     ExperimentType::Lite(num_threads, memory_size) => format!(
-                        r#"python3 /workspace/scripts/leveldb/init.py -t Lite -n {} -s {}"#,
-                        num_threads, memory_size,
+                        r#"python3 /workspace/scripts/leveldb/init.py -t Lite -n {} -s {} -b {} -f {}"#,
+                        num_threads, memory_size, remote_script_config.write_buffer_size,
+                        cfg.benchmark.file_prefix
                     ),
                 },
             ])
@@ -201,12 +232,12 @@ async fn main() {
                 panic!("Failed to init remote leveldb server: {:?}", output);
             }
         }
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_secs(1)).await;
     };
 
     let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
 
-    // Initialize the database
+    // -------------------------- Init the database ---------------------------
     let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Initializing");
     bar.set_style(
         ProgressStyle::with_template(
@@ -219,21 +250,20 @@ async fn main() {
     for _ in 0..cfg.benchmark.num_keys + 1 {
         values.push(Arc::new(Mutex::new(0 as usize)));
     }
+    let start_time = Instant::now();
     for i in (1..cfg.benchmark.num_keys + 1).rev() {
         let pool = pool.clone();
         let i = i; // Copy i into the closure
         let value = format!("{}_{}_{}", base_value, i, 0);
         let bar = bar.clone();
         let handle = tokio::spawn(async move {
-            let conn = pool.get().await.unwrap_or_else(|e| {
+            let mut conn = pool.get().await.unwrap_or_else(|e| {
                 panic!("Initialize failed i: {}, error: {}", i, e);
             });
-            let mut conn_guard = conn.lock().await;
-            let _: () = cmd("SET")
+            cmd("SET")
                 .arg(&i)
                 .arg(&value)
-                .query_async(&mut *conn_guard)
-                .await
+                .query::<String>(&mut conn)
                 .unwrap();
             bar.inc(1);
         });
@@ -242,9 +272,17 @@ async fn main() {
     for handle in handles {
         handle.await.unwrap();
     }
+    let end_time = Instant::now();
     bar.finish();
     println!("\nFinished initializing database");
+    let elapsed = end_time - start_time;
+    println!(
+        "Initialization time: {:?} ms, rps: {:?}",
+        elapsed.as_millis(),
+        cfg.benchmark.num_keys as f64 / elapsed.as_secs_f64()
+    );
 
+    // -------------------------- Generate requests ---------------------------
     let mut idx = Vec::new();
     match cfg.benchmark.key_distribution {
         KeyDistribution::Sequential => {
@@ -271,8 +309,10 @@ async fn main() {
         .unwrap(),
     );
 
+    // -------------------------- Set up remote scripts -----------------------
     if let Some(remote_script_config) = cfg.benchmark.remote_script {
         let now = SystemTime::now();
+        let file_prefix = cfg.benchmark.file_prefix.clone();
         let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
         let secs = duration_since_epoch.as_secs();
         let target_time = UNIX_EPOCH + Duration::from_secs(secs + 3);
@@ -283,7 +323,7 @@ async fn main() {
                     "-tt",
                     &remote_script_config.remote_addr,
                     &format!(
-                        r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {}"#,
+                        r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {}"#,
                         remote_script_config.crash_time.as_secs(),
                         target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
                         match &remote_script_config.experiment_type {
@@ -291,7 +331,8 @@ async fn main() {
                             ExperimentType::Lite(_, _) => "Lite",
                         },
                         cfg.benchmark.test_duration.as_secs(),
-                        remote_script_config.monitor_file_path,
+                        file_prefix,
+                        remote_script_config.write_buffer_size,
                     ),
                 ])
                 .output()
@@ -312,9 +353,10 @@ async fn main() {
         let duration_until_target_time = target_time
             .duration_since(now)
             .expect("Target time is in the past");
-        tokio::time::sleep(duration_until_target_time).await;
+        sleep(duration_until_target_time).await;
     }
 
+    // -------------------------- Benchmark -----------------------------------
     let start_time = Instant::now();
     for i in 0..num_requests {
         let iter_end_time = start_time + interval * (i as u32 + 1);
@@ -328,52 +370,63 @@ async fn main() {
             let begin = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("Time went backwards");
+            let mut queries = Vec::new();
             let mut tries = 1;
-            let mut status = Status::Timeout;
             while tries <= cfg.benchmark.retry_count {
-                let mut value_guard = value.lock().await;
-                let mut old_suffix_expected = (*value_guard).clone();
-                match timeout(
-                    cfg.benchmark.timeout,
-                    do_transaction(i, pool.clone(), key, &base_value, &mut old_suffix_expected),
-                )
-                .await
-                {
-                    Ok(result) => {
-                        if result != Status::Error {
-                            status = result;
-                            *value_guard = old_suffix_expected;
+                match pool.get().await {
+                    Ok(mut conn) => {
+                        let mut value_guard = value.lock().await;
+                        conn.set_read_timeout(Some(cfg.benchmark.timeout))
+                            .expect("set_read_timeout failed");
+                        conn.set_write_timeout(Some(cfg.benchmark.timeout))
+                            .expect("set_write_timeout failed");
+                        let mut old_suffix_expected = (*value_guard).clone();
+                        let query_record = do_transaction(
+                            i,
+                            &mut conn,
+                            key,
+                            &base_value,
+                            &mut old_suffix_expected,
+                        )
+                        .await;
+                        let finished = query_record.status != Status::Timeout;
+                        queries.push(query_record);
+                        *value_guard = old_suffix_expected;
+                        if finished {
                             break;
                         }
+                        tries += 1;
+                        drop(value_guard);
                     }
                     Err(_) => {
-                        // println!("timeout");
+                        // eprintln!("\npool error i: {}, key: {}, error: {}\n", i, key, e);
+                        let now_time = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .expect("Time went backwards");
+                        queries.push(QueryRecord {
+                            status: Status::Timeout,
+                            request: now_time,
+                            response: now_time,
+                        });
+                        tries += 1;
                     }
-                }
-                tries += 1;
-                drop(value_guard);
+                };
             }
-            if tries > cfg.benchmark.retry_count {
-                status = Status::Timeout;
-            }
-            let end = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards");
             let record = Record {
                 i,
                 key,
                 begin,
-                end,
-                tries,
-                status,
+                queries,
             };
             {
                 let mut records_guard = records.lock().await;
                 records_guard.push(record);
             }
             bar.inc(1);
-            if key == cfg.benchmark.num_keys && cfg.benchmark.key_distribution == KeyDistribution::Sequential {
-                println!("All keys are covered, go back to key 1 again");
+            if key == cfg.benchmark.num_keys
+                && cfg.benchmark.key_distribution == KeyDistribution::Sequential
+            {
+                println!("\nAll keys are covered, go back to key 1 again\n");
             }
         });
         handles.push(handle);
@@ -381,8 +434,48 @@ async fn main() {
     }
     let spawn_end_time = Instant::now();
 
+    let mut alive_handles = Vec::new();
+    println!("\nSpawn all requests. Trying to await for all requests to be finished\n");
     for handle in handles {
-        handle.await.unwrap();
+        if handle.is_finished() {
+            handle.await.unwrap();
+        } else {
+            alive_handles.push(handle);
+        }
+    }
+    println!("\n{} requests are still alive\n", alive_handles.len());
+    if !alive_handles.is_empty() {
+        sleep_until(
+            start_time
+                + cfg.benchmark.test_duration
+                + cfg.benchmark.timeout * cfg.benchmark.retry_count as u32,
+        )
+        .await;
+    }
+    let mut wait_time = 30 / 5;
+    while alive_handles.len() > 0 && wait_time > 0 {
+        sleep(Duration::from_secs(5)).await;
+        alive_handles.retain(|h| {
+            if h.is_finished() {
+                h.abort();
+                false
+            } else {
+                true
+            }
+        });
+        wait_time -= 1;
+        println!("{} requests are still alive\n", alive_handles.len());
+    }
+    println!("\nAbort all unfinished requests\n");
+    pool.close();
+    drop(pool);
+    for handle in alive_handles {
+        if handle.is_finished() {
+            handle.await.unwrap();
+        } else {
+            handle.abort();
+            bar.inc(1);
+        }
     }
     bar.finish();
     let end_time = Instant::now();
@@ -400,10 +493,72 @@ async fn main() {
         elapsed.as_millis(),
         num_requests as f64 / elapsed.as_secs_f64()
     );
+    println!(
+        "Number of unfinished timeout requests: {}",
+        num_requests - (*records.lock().await).len()
+    );
 
     {
         let records_guard = records.lock().await;
         let json = serde_json::to_string(&(*records_guard)).unwrap();
-        std::fs::write(cfg.benchmark.file_path, json).unwrap();
+        std::fs::write(format!("{}.jsonl", cfg.benchmark.file_prefix), json).unwrap();
     }
+
+    // -------------------------- Check correctness ---------------------------
+    let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
+    // BUG: Error occurred while creating a new object: Cannot assign requested address (os error 99) if some connections are aborted
+    let mut handles = Vec::new();
+    let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Validating");
+    bar.set_style(
+        ProgressStyle::with_template(
+            "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",
+        )
+        .unwrap(),
+    );
+    let start_time = Instant::now();
+    for i in 1..cfg.benchmark.num_keys + 1 {
+        let pool = pool.clone();
+        let i = i; // Copy i into the closure
+        let expected_value = format!("{}_{}_{}", base_value, i, values[i].lock().await);
+        let bar = bar.clone();
+        let handle = tokio::spawn(async move {
+            let mut conn = pool.get().await.unwrap_or_else(|e| {
+                panic!("validating failed key: {}, error: {}", i, e);
+            });
+            let actual_value: Option<String> = cmd("GET").arg(&i).query(&mut conn).unwrap();
+            match actual_value {
+                Some(actual_value) => {
+                    if actual_value != expected_value {
+                        eprintln!(
+                            "\nERR! key: {}, expected value: {:?}, actual value: {:?}. If the actual value is newer than expected, it may be because a timeout occurred between the server sending the response and the client receiving it.\n",
+                            i,
+                            get_last_n_char(&expected_value, 10),
+                            get_last_n_char(&actual_value, 10)
+                        );
+                    }
+                }
+                None => {
+                    eprintln!(
+                        "\nERR! key: {}, expected value: {:?}, no actual value\n",
+                        i,
+                        get_last_n_char(&expected_value, 10)
+                    );
+                }
+            }
+            bar.inc(1);
+        });
+        handles.push(handle);
+    }
+    for handle in handles {
+        handle.await.unwrap();
+    }
+    let end_time = Instant::now();
+    bar.finish();
+    println!("\nFinished validating correctness");
+    let elapsed = end_time - start_time;
+    println!(
+        "Validation time: {:?} ms, rps: {:?}",
+        elapsed.as_millis(),
+        cfg.benchmark.num_keys as f64 / elapsed.as_secs_f64()
+    );
 }

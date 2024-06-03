@@ -59,8 +59,7 @@ class CacheInner {
 
   bool Replace(const CacheKey &key, const CacheEntry &value,
                bool in_transaction, LogEntryInstance *dirty_node,
-               LogEntryInstance *&old_dirty_node,
-               CacheStateInstance *&new_state);
+               std::mutex *logger_chr_mutex, CacheStateInstance *&new_state);
 
   void ConstVisitAll(
       std::function<void(const CacheKey &, const CacheEntry &)> visitor,
