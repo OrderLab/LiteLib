@@ -6,8 +6,8 @@
 #include <sstream>
 #include <string>
 
-#define DELIMITER ':'
-#define SEPARATOR ';'
+#define DELIMITER '_'
+#define SEPARATOR '`'
 
 std::string mapToString(const std::shared_ptr<std::map<std::string, std::string>> &mapPtr)
 {

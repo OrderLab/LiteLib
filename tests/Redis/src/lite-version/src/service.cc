@@ -1,5 +1,4 @@
 #include "service.hpp"
-#include "serialize.hpp"
 
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
@@ -217,6 +216,337 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
         }
         return;
     }
+    else if (opcode == "lpush")
+    {
+        if (req->GetArgNum() < 2)
+        {
+            return;
+        }
+        const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+        if (key == nullptr)
+        {
+            return;
+        }
+        auto list = std::make_shared<std::list<std::string>>();
+        if (cache->Get(*(key->value), entry, in_transaction))
+        {
+            if (entry.value != nullptr)
+            {
+                list = stringToList(*entry.value);
+            }
+            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            {
+                const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
+                if (value == nullptr)
+                {
+                    return;
+                }
+                list->push_front(*value->value);
+            }
+            *(entry.value) = listToString(list);
+        }
+        else
+        {
+            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            {
+                const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
+                if (value == nullptr)
+                {
+                    return;
+                }
+                list->push_front(*value->value);
+            }
+            entry.value = std::make_shared<std::string>(listToString(list));
+        }
+        if (cache->Set(*(key->value), entry, in_transaction))
+        {
+            return;
+        }
+        return;
+    }
+    else if (opcode == "rpush")
+    {
+        if (req->GetArgNum() < 2)
+        {
+            return;
+        }
+        const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+        if (key == nullptr)
+        {
+            return;
+        }
+        auto list = std::make_shared<std::list<std::string>>();
+        if (cache->Get(*(key->value), entry, in_transaction))
+        {
+            if (entry.value != nullptr)
+            {
+                list = stringToList(*entry.value);
+            }
+            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            {
+                const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
+                if (value == nullptr)
+                {
+                    return;
+                }
+                list->push_back(*value->value);
+            }
+            *(entry.value) = listToString(list);
+        }
+        else
+        {
+            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            {
+                const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
+                if (value == nullptr)
+                {
+                    return;
+                }
+                list->push_back(*value->value);
+            }
+            entry.value = std::make_shared<std::string>(listToString(list));
+        }
+        if (cache->Set(*(key->value), entry, in_transaction))
+        {
+            return;
+        }
+        return;
+    }
+    else if (opcode == "lpop")
+    {
+        if (req->GetArgNum() != 1)
+        {
+            return;
+        }
+        const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+        if (key == nullptr)
+        {
+            return;
+        }
+        auto list = std::make_shared<std::list<std::string>>();
+        if (cache->Get(*(key->value), entry, in_transaction))
+        {
+            if (entry.value != nullptr)
+            {
+                list = stringToList(*entry.value);
+            }
+            if (list->empty())
+            {
+                return;
+            }
+            auto value = list->front();
+            list->pop_front();
+            *(entry.value) = listToString(list);
+            if (cache->Set(*(key->value), entry, in_transaction))
+            {
+                return;
+            }
+            return;
+        }
+        return;
+    }
+    else if (opcode == "rpop")
+    {
+        if (req->GetArgNum() != 1)
+        {
+            return;
+        }
+        const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+        if (key == nullptr)
+        {
+            return;
+        }
+        auto list = std::make_shared<std::list<std::string>>();
+        if (cache->Get(*(key->value), entry, in_transaction))
+        {
+            if (entry.value != nullptr)
+            {
+                list = stringToList(*entry.value);
+            }
+            if (list->empty())
+            {
+                return;
+            }
+            auto value = list->back();
+            list->pop_back();
+            *(entry.value) = listToString(list);
+            if (cache->Set(*(key->value), entry, in_transaction))
+            {
+                return;
+            }
+            return;
+        }
+        return;
+    }
+    else if (opcode == "sadd")
+    {
+        if (req->GetArgNum() < 2)
+        {
+            return;
+        }
+        const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+        if (key == nullptr)
+        {
+            return;
+        }
+        auto set = std::make_shared<std::set<std::string>>();
+        if (cache->Get(*(key->value), entry, in_transaction))
+        {
+            if (entry.value != nullptr)
+            {
+                set = stringToSet(*entry.value);
+            }
+            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            {
+                const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
+                if (value == nullptr)
+                {
+                    return;
+                }
+                set->insert(*value->value);
+            }
+            *(entry.value) = setToString(set);
+        }
+        else
+        {
+            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            {
+                const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
+                if (value == nullptr)
+                {
+                    return;
+                }
+                set->insert(*value->value);
+            }
+            entry.value = std::make_shared<std::string>(setToString(set));
+        }
+        if (cache->Set(*(key->value), entry, in_transaction))
+        {
+            return;
+        }
+        return;
+    }
+    else if (opcode == "spop")
+    {
+        if (req->GetArgNum() != 1)
+        {
+            return;
+        }
+        const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+        if (key == nullptr)
+        {
+            return;
+        }
+        auto set = std::make_shared<std::set<std::string>>();
+        if (cache->Get(*(key->value), entry, in_transaction))
+        {
+            if (entry.value != nullptr)
+            {
+                set = stringToSet(*entry.value);
+            }
+            if (set->empty())
+            {
+                return;
+            }
+            auto it = set->begin();
+            std::advance(it, rand() % set->size());
+            auto value = *it;
+            set->erase(it);
+            *(entry.value) = setToString(set);
+            if (cache->Set(*(key->value), entry, in_transaction))
+            {
+                return;
+            }
+            return;
+        }
+        return;
+    }
+    // else if (opcode == "zadd")
+    // {
+    //     if (req->GetArgNum() < 3 || (req->GetArgNum() - 1) % 2 != 0)
+    //     {
+    //         return new RESPError(std::make_shared<std::string>("ERR wrong number of arguments"));
+    //     }
+    //     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+    //     if (key == nullptr)
+    //     {
+    //         return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
+    //     }
+    //     auto zset = std::make_shared<std::set<std::pair<std::string, int>>>();
+    //     if (cache->Get(*(key->value), entry, in_transaction))
+    //     {
+    //         if (entry.value != nullptr)
+    //         {
+    //             zset = stringToZSet(*entry.value);
+    //         }
+    //         for (size_t i = 1; i < req->GetArgNum(); i += 2)
+    //         {
+    //             const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
+    //             const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
+    //             if (member == nullptr || score == nullptr)
+    //             {
+    //                 return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
+    //             }
+    //             zset->insert(std::make_pair(*member->value, std::stoi(*score->value)));
+    //         }
+    //         *(entry.value) = zSetToString(zset);
+    //     }
+    //     else
+    //     {
+    //         for (size_t i = 1; i < req->GetArgNum(); i += 2)
+    //         {
+    //             const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
+    //             const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
+    //             if (member == nullptr || score == nullptr)
+    //             {
+    //                 return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
+    //             }
+    //             zset->insert(std::make_pair(*member->value, std::stoi(*score->value)));
+    //         }
+    //         entry.value = std::make_shared<std::string>(zSetToString(zset));
+    //     }
+    //     if (cache->Set(*(key->value), entry, in_transaction))
+    //     {
+    //         return new RESPInteger(zset->size());
+    //     }
+    //     return new RESPError(std::make_shared<std::string>("ERR failed to set"));
+    // }
+    // else if (opcode == "zpopmin")
+    // {
+    //     if (req->GetArgNum() != 1)
+    //     {
+    //         return new RESPError(std::make_shared<std::string>("ERR wrong number of arguments"));
+    //     }
+    //     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+    //     if (key == nullptr)
+    //     {
+    //         return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
+    //     }
+    //     auto zset = std::make_shared<std::set<std::pair<std::string, int>>>();
+    //     if (cache->Get(*(key->value), entry, in_transaction))
+    //     {
+    //         if (entry.value != nullptr)
+    //         {
+    //             zset = stringToZSet(*entry.value);
+    //         }
+    //         if (zset->empty())
+    //         {
+    //             return new RESPBulkString(nullptr);
+    //         }
+    //         auto it = zset->begin();
+    //         auto value = it->first;
+    //         zset->erase(it);
+    //         *(entry.value) = zSetToString(zset);
+    //         if (cache->Set(*(key->value), entry, in_transaction))
+    //         {
+    //             return new RESPArray(std::vector<std::shared_ptr<RESPType>>{
+    //                 std::make_shared<RESPBulkString>(std::make_shared<std::string>(value)),
+    //                 std::make_shared<RESPInteger>(it.second)});
+    //         }
+    //         return new RESPError(std::make_shared<std::string>("ERR failed to set"));
+    //     }
+    //     return new RESPBulkString(nullptr);
+    // }
     else if (opcode != "get" && opcode != "ping" && opcode != "hget")
     { // TODO: update states using get
         std::cerr << "Unknown opcode: " << opcode << std::endl;
@@ -718,92 +1048,95 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         }
         return new RESPBulkString(nullptr);
     }
-    // else if (opcode == "zadd")
-    // {
-    //     if (req->GetArgNum() < 3 || (req->GetArgNum() - 1) % 2 != 0)
-    //     {
-    //         return new RESPError(std::make_shared<std::string>("ERR wrong number of arguments"));
-    //     }
-    //     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    //     if (key == nullptr)
-    //     {
-    //         return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
-    //     }
-    //     auto zset = std::make_shared<std::set<std::pair<std::string, int>>>();
-    //     if (cache->Get(*(key->value), entry, in_transaction))
-    //     {
-    //         if (entry.value != nullptr)
-    //         {
-    //             zset = stringToZSet(*entry.value);
-    //         }
-    //         for (size_t i = 1; i < req->GetArgNum(); i += 2)
-    //         {
-    //             const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
-    //             const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
-    //             if (member == nullptr || score == nullptr)
-    //             {
-    //                 return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
-    //             }
-    //             zset->insert(std::make_pair(*member->value, std::stoi(*score->value)));
-    //         }
-    //         *(entry.value) = zSetToString(zset);
-    //     }
-    //     else
-    //     {
-    //         for (size_t i = 1; i < req->GetArgNum(); i += 2)
-    //         {
-    //             const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
-    //             const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
-    //             if (member == nullptr || score == nullptr)
-    //             {
-    //                 return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
-    //             }
-    //             zset->insert(std::make_pair(*member->value, std::stoi(*score->value)));
-    //         }
-    //         entry.value = std::make_shared<std::string>(zSetToString(zset));
-    //     }
-    //     if (cache->Set(*(key->value), entry, in_transaction))
-    //     {
-    //         return new RESPInteger(zset->size());
-    //     }
-    //     return new RESPError(std::make_shared<std::string>("ERR failed to set"));
-    // }
-    // else if (opcode == "zpopmin")
-    // {
-    //     if (req->GetArgNum() != 1)
-    //     {
-    //         return new RESPError(std::make_shared<std::string>("ERR wrong number of arguments"));
-    //     }
-    //     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    //     if (key == nullptr)
-    //     {
-    //         return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
-    //     }
-    //     auto zset = std::make_shared<std::set<std::pair<std::string, int>>>();
-    //     if (cache->Get(*(key->value), entry, in_transaction))
-    //     {
-    //         if (entry.value != nullptr)
-    //         {
-    //             zset = stringToZSet(*entry.value);
-    //         }
-    //         if (zset->empty())
-    //         {
-    //             return new RESPBulkString(nullptr);
-    //         }
-    //         auto it = zset->begin();
-    //         auto value = it->first;
-    //         zset->erase(it);
-    //         *(entry.value) = zSetToString(zset);
-    //         if (cache->Set(*(key->value), entry, in_transaction))
-    //         {
-    //             return new RESPArray(std::vector<std::shared_ptr<RESPType>>{
-    //                 std::make_shared<RESPBulkString>(std::make_shared<std::string>(value)),
-    //                 std::make_shared<RESPInteger>(it.second)});
-    //         }
-    //         return new RESPError(std::make_shared<std::string>("ERR failed to set"));
-    //     }
-    //     return new RESPBulkString(nullptr);
-    // }
+    else if (opcode == "zadd")
+    {
+        if (req->GetArgNum() < 3 || (req->GetArgNum() - 1) % 2 != 0)
+        {
+            return new RESPError(std::make_shared<std::string>("ERR wrong number of arguments"));
+        }
+        const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+        if (key == nullptr)
+        {
+            return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
+        }
+        if (cache->Get(*(key->value), entry, in_transaction))
+        {
+            if (entry.type != CacheEntryType::ZSET)
+            {
+                return new RESPError(std::make_shared<std::string>("ERR value is not a sorted set"));
+            }
+            if (entry.sorted_set_value == nullptr)
+            {
+                entry.sorted_set_value = std::make_shared<std::set<std::pair<double, std::string>>>();
+            }
+            for (size_t i = 1; i < req->GetArgNum(); i += 2)
+            {
+                const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
+                const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
+                if (member == nullptr || score == nullptr)
+                {
+                    return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
+                }
+                entry.sorted_set_value->insert(std::make_pair(std::stod(*score->value), *member->value));
+            }
+        }
+        else
+        {
+            entry.type = CacheEntryType::ZSET;
+            entry.sorted_set_value = std::make_shared<std::set<std::pair<double, std::string>>>();
+            for (size_t i = 1; i < req->GetArgNum(); i += 2)
+            {
+                const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
+                const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
+                if (member == nullptr || score == nullptr)
+                {
+                    return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
+                }
+                entry.sorted_set_value->insert(std::make_pair(std::stod(*score->value), *member->value));
+            }
+        }
+        if (cache->Set(*(key->value), entry, in_transaction))
+        {
+            return new RESPInteger(zset->size());
+        }
+        return new RESPError(std::make_shared<std::string>("ERR failed to set"));
+    }
+    else if (opcode == "zpopmin")
+    {
+        if (req->GetArgNum() != 1)
+        {
+            return new RESPError(std::make_shared<std::string>("ERR wrong number of arguments"));
+        }
+        const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+        if (key == nullptr)
+        {
+            return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
+        }
+        auto zset = std::make_shared<std::set<std::pair<std::string, int>>>();
+        if (cache->Get(*(key->value), entry, in_transaction))
+        {
+            if (entry.value != nullptr)
+            {
+                zset = stringToZSet(*entry.value);
+            }
+            if (zset->empty())
+            {
+                return new RESPBulkString(nullptr);
+            }
+            auto it = zset->begin();
+            auto value = it->first;
+            zset->erase(it);
+            *(entry.value) = zSetToString(zset);
+            if (cache->Set(*(key->value), entry, in_transaction))
+            {
+                return new RESPArray(std::vector<std::shared_ptr<RESPType>>{
+                    std::make_shared<RESPBulkString>(std::make_shared<std::string>(value)),
+                    std::make_shared<RESPInteger>(it.second)});
+            }
+            return new RESPError(std::make_shared<std::string>("ERR failed to set"));
+        }
+        return new RESPBulkString(nullptr);
+    }
     std::cerr << "Unknown opcode: " << opcode << std::endl;
     return new RESPError(std::make_shared<std::string>("ERR unknown command"));
 }

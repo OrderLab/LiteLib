@@ -17,7 +17,6 @@ def get_usage(process):
         cpu_usage = process.cpu_percent()
         memory_usage = process.memory_info().rss
     except Exception:
-        # print('Error occurred')
         cpu_usage, memory_usage = 0 , 0
     return cpu_usage, memory_usage
 

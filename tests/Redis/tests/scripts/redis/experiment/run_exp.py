@@ -1,50 +1,36 @@
-import argparse
-import time
 import os
+import argparse
+
+import monitor
 import utils
+import crash
 
-def sleep_for(seconds):
-  if seconds > 0:
-    time.sleep(seconds)
-
-parser = argparse.ArgumentParser(description='Run experiment')
-parser.add_argument('-c', '--crash_time', type=int, required=True, help='The crash time')
-parser.add_argument('-s', '--start_time', type=int, required=True, help='The start time')
+parser = argparse.ArgumentParser(description='Init experiment')
 parser.add_argument('-t', '--experiment_type', choices=['Full', 'Lite'], required=True, help='The type of the experiment')
-parser.add_argument('-l', '--total_time', type=int, required=True, help='The total time')
-parser.add_argument('-f', '--monitor_log_file', type=str, required=True, help='The monitor log file')
+parser.add_argument('-s', '--memory_size', type=str, help='The memory limit of the lite version')
 args = parser.parse_args()
 
-boot_command = ["python3", "/workspace/experiment/monitor.py", str(args.total_time), args.monitor_log_file, str(args.start_time)]
-utils.StartBackgroundProcess(boot_command)
-
-start_time = args.start_time / 1e9
-crash_time = start_time + args.crash_time
-
-print(f"Current time: {time.time()}, Start time: {start_time}, Crash time: {crash_time}")
-
-sleep_for(start_time - time.time())
-# ---------------------------------------------------------------- exp begins
-
-
-
-sleep_for(crash_time - time.time())
-# ---------------------------------------------------------------- crashes
-
-os.system(r'pgrep "redis-leveldb" | xargs kill -9')
+os.system(r'pgrep "redis-lite" | xargs kill -9')
+os.system(r'pgrep "lite_cli" | xargs kill -9')
 os.system(r'pgrep "redis-server" | xargs kill -9')
+os.system(r'pgrep "redis-sentinel" | xargs kill -9')
 
-# time.sleep(10)
+os.system(r'find /workspace -name "*.rdb" -type f -delete')
 
-if args.experiment_type == 'Full':
-  boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379"]
-  utils.StartBackgroundProcess(boot_command)
+if (args.experiment_type == 'Full'):
+    os.system(r'cp /workspace/redis_full.conf /workspace/redis_full_running.conf')
+    boot_command = ["redis-server ", "/workspace/redis_full_running.conf"]
+    utils.StartBackgroundProcess(boot_command)
+    
+    os.system(r'cp /workspace/redis_replica.conf /workspace/redis_replica_running.conf')
+    boot_command = ["redis-server ", "/workspace/redis_replica_running.conf"]
+    utils.StartBackgroundProcess(boot_command)
+    
 else:
-  boot_command = ["/workspace/server/lite_cli", "-t", "/tmp/lite_LevelDB", "-p", "60001", "-m", "1"]
-  utils.StartBackgroundProcess(boot_command)
-
-  boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "60001"]
-  utils.StartBackgroundProcess(boot_command)
-
-  boot_command = ["/workspace/server/lite_cli", "-t", "/tmp/lite_LevelDB", "-p", "60001", "-m", "0"]
-  utils.StartBackgroundProcess(boot_command)
+    os.system(r'cp /workspace/redis_full.conf /workspace/redis_full_running.conf')
+    boot_command = ["redis-server ", "/workspace/redis_full_running.conf"]
+    utils.StartBackgroundProcess(boot_command)
+    
+    # boot_command = ["/workspace/server/redis-lite", '-s', args.memory_size]
+    boot_command = ["/workspace/redis-lite"]
+    utils.StartBackgroundProcess(boot_command)

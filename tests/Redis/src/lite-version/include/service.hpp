@@ -2,25 +2,101 @@
 
 #include <event.h>
 
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
+#include <vector>
 
 #include "packet.hpp"
 
+enum class CacheEntryType
+{
+    STRING,
+    LIST,
+    SET,
+    MAP,
+    SORTED_SET
+};
+
 struct CacheEntry
 {
+    CacheEntryType type=CacheEntryType::STRING;
     std::shared_ptr<std::string> value = nullptr;
+    std::shared_ptr<std::vector<std::string>> list_value = nullptr;
+    std::shared_ptr<std::set<std::string>> set_value = nullptr;
+    std::shared_ptr<std::map<std::string, std::string>> map_value = nullptr;
+    std::shared_ptr<std::map<double, std::string>> sorted_set_value = nullptr;
+
     size_t GetSize() const
     {
-        return (value ? value->size() : 0);
+        switch (type)
+        {
+        case CacheEntryType::STRING:
+            return (value ? value->size() : 0);
+        case CacheEntryType::LIST:
+            return (list_value ? list_value->size() : 0);
+        case CacheEntryType::SET:
+            return (set_value ? set_value->size() : 0);
+        case CacheEntryType::MAP:
+            return (map_value ? map_value->size() : 0);
+        case CacheEntryType::SORTED_SET:
+            return (sorted_set_value ? sorted_set_value->size() : 0);
+        default:
+            return 0;
+        }
     }
 
     std::shared_ptr<Packet> ToRequest(const std::string &key) const
     {
         auto commands = std::make_unique<RESPArray>();
-        commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("SET")));
-        commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
-        commands->value.push_back(std::make_unique<RESPBulkString>(value));
+
+        switch (type)
+        {
+        case CacheEntryType::STRING:
+            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("SET")));
+            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
+            commands->value.push_back(std::make_unique<RESPBulkString>(value));
+            break;
+        case CacheEntryType::LIST:
+            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("RPUSH")));
+            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
+            for (const auto &item : *list_value)
+            {
+                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(item)));
+            }
+            break;
+        case CacheEntryType::SET:
+            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("SADD")));
+            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
+            for (const auto &item : *set_value)
+            {
+                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(item)));
+            }
+            break;
+        case CacheEntryType::MAP:
+            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("HMSET")));
+            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
+            for (const auto &[field, value] : *map_value)
+            {
+                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(field)));
+                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(value)));
+            }
+            break;
+        case CacheEntryType::SORTED_SET:
+            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("ZADD")));
+            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
+            for (const auto &[member, score] : *sorted_set_value)
+            {
+                commands->value.push_back(
+                    std::make_unique<RESPBulkString>(std::make_shared<std::string>(std::to_string(score))));
+                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(member)));
+            }
+            break;
+        default:
+            break;
+        }
+
         return std::make_shared<Packet>(std::move(commands));
     }
 

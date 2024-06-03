@@ -1,6 +1,6 @@
 #!/bin/bash
 
-apt-get update && apt-get install -y htop net-tools wget gcc make git
+apt-get update && apt-get install -y htop net-tools wget gcc make git pkg-config
 
 git clone https://github.com/redis/redis.git /workspace/redis-code
 
