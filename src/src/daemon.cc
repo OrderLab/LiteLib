@@ -3,21 +3,25 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include <chrono>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
+
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
 
 #include "pipe_message_def.hpp"
 
 namespace lite {
 
 Daemon::Daemon(const std::function<bool()> &Replay,
-               std::function<void()> DisconnectFromBackend,
-               std::string &backend_port, const std::string pipe_path)
+               std::function<void()> TakeOver, std::string &backend_port,
+               const std::string pipe_path)
     : Replay_(Replay),
       pipe_path_(pipe_path),
       backend_port_(backend_port),
-      DisconnectFromBackend_(DisconnectFromBackend) {
+      TakeOver_(TakeOver) {
   // set up event_base
   struct event_config *ev_config;
   ev_config = event_config_new();
@@ -29,13 +33,11 @@ Daemon::Daemon(const std::function<bool()> &Replay,
 
   // pthread create
   pthread_attr_t attr;
-  int ret;
   pthread_attr_init(&attr);
-  if ((ret = pthread_create(&thread_id_, &attr, ThreadBody, this)) != 0) {
-    fprintf(stderr, "Can't create thread: %s\n", strerror(ret));
-    exit(1);
-  }
+  PCHECK(!pthread_create(&thread_id_, &attr, ThreadBody, this))
+      << "Can't create daemon thread";
   pthread_setname_np(thread_id_, "lite-daemon");
+  pthread_attr_destroy(&attr);
 }
 
 void Daemon::CreatePipeAndRegisterEvent() {
@@ -45,14 +47,12 @@ void Daemon::CreatePipeAndRegisterEvent() {
   if (named_pipe_fd_ == -1) {
     throw std::runtime_error("failed to open the named pipe");
   }
-  std::cout << "Daemon listening on " << pipe_path_ << std::endl;
+  LOG(INFO) << "Deamon listening on " << pipe_path_ << std::endl;
 
   event_set(&pipe_event_, named_pipe_fd_, EV_READ, PipeHandler, this);
   event_base_set(base_, &pipe_event_);
-  if (event_add(&pipe_event_, 0) == -1) {
-    fprintf(stderr, "Can't monitor libevent notify pipe\n");
-    exit(1);
-  }
+  LOG_IF(FATAL, event_add(&pipe_event_, 0) == -1)
+      << "Can't monitor libevent notify pipe\n";
 };
 
 void *Daemon::ThreadBody(void *arg_self) {
@@ -72,23 +72,25 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
     auto bytes_read = read(fd, &message, sizeof(message));
     if (!bytes_read) return;
     if (bytes_read != sizeof(message)) {
-      fprintf(stderr, "Daemon: Error reading pipe");
+      LOG(ERROR) << "Daemon: Error reading pipe";
       return;
     }
     self->backend_port_ = std::to_string(message.backend_port);
     switch (message.action) {
       case PipeMessage::kEnterEmergencyMode:
-        self->emergency_mode_ = true;
-        self->DisconnectFromBackend_();
-        std::cout << "Daemon: Entering emergency mode" << std::endl;
+        LOG(WARNING) << "Daemon: Entering emergency mode " << GetUNIXTimeStamp() << std::endl;
+        if (!self->emergency_mode_) {
+          self->TakeOver_();
+        } else {
+          LOG(WARNING) << "Daemon: Already in emergency mode" << std::endl;
+        }
         break;
       case PipeMessage::kExitEmergencyMode:
+        LOG(WARNING) << "Daemon: Exiting emergency mode " << GetUNIXTimeStamp() << std::endl;
         if (!self->Replay_()) {
-          std::cerr << "Daemon: Failed to replay" << std::endl;
+          LOG(ERROR) << "Daemon: Failed to replay" << std::endl;
           break;
         }
-        self->emergency_mode_ = false;
-        std::cout << "Daemon: Exiting emergency mode" << std::endl;
         break;
     }
 
@@ -98,6 +100,13 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
     self->CreatePipeAndRegisterEvent();
   } else {
   }
+}
+
+size_t Daemon::GetUNIXTimeStamp() {
+  const auto now = std::chrono::system_clock::now();
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             now.time_since_epoch())
+      .count();
 }
 
 }  // namespace lite
