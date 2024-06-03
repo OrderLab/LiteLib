@@ -37,6 +37,7 @@ os.system(r"rm dump.rdb")
 time.sleep(1)
 
 if args.experiment_type == "Full":
+    # boot_command = ["redis-server", "--port", "6379", "--protected-mode", "no"]
     boot_command = [
         "taskset",
         "-c",
@@ -51,7 +52,7 @@ if args.experiment_type == "Full":
         boot_command, "/workspace/client/" + args.file_prefix + ".log"
     )
 else:
-    # boot_command = ["redis-server", "--port", "60000"]
+    # boot_command = ["redis-server", "--port", "60000", "--protected-mode", "no"]
     boot_command = [
         "/workspace/redis-leveldb/redis-leveldb",
         "-P",
