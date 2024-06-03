@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 project("redis-lite"
-    VERSION 0.1.3
+    VERSION 0.1.5
     DESCRIPTION "The lite version of Redis"
 )
 
@@ -12,6 +12,7 @@ set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost 1.83 REQUIRED COMPONENTS
              system thread)
 find_package(Libevent REQUIRED)
+find_package(glog 0.4.0 REQUIRED)
 
 add_subdirectory(Lite)
 
@@ -28,5 +29,6 @@ target_sources(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
 target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread readerwriterqueue)
+target_link_libraries(${PROJECT_NAME} PRIVATE glog::glog)
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

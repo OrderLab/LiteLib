@@ -101,7 +101,7 @@ void Redis::NormalUpdate(const std::shared_ptr<Packet> &resp, std::vector<std::s
         const auto len = responses.size();
         {
             auto cache_lock = cache->TransactionLock();
-            for (size_t i = 0; i < len; ++i)
+            for (size_t i = 0; i < len; i++)
             {
                 if (!dynamic_cast<RESPError *>(responses[i].get()))
                     NormalUpdateImpl(conn.transactions_[i], cache, true);
@@ -153,6 +153,7 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
             std::cerr << "Invalid argument for set\n";
             return;
         }
+        entry.type = CacheEntryType::STRING;
         entry.value = value->value;
         cache->Set(*(key->value), entry, in_transaction);
     }
@@ -195,20 +196,18 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
         if (cache->Get(*(key->value), entry, in_transaction))
         {
             auto map = std::make_shared<std::map<std::string, std::string>>();
-            if (entry.value != nullptr)
+            if (entry.map_value == nullptr)
             {
-                map = stringToMap(*entry.value);
+                entry.map_value = std::make_shared<std::map<std::string, std::string>>();
             }
+            map = entry.map_value;
             (*map)[*field->value] = *value->value;
-            // serialize map to entry.value
-            *(entry.value) = mapToString(map);
         }
         else
         {
             auto map = std::make_shared<std::map<std::string, std::string>>();
             (*map)[*field->value] = *value->value;
-            // serialize map to entry.value
-            entry.value = std::make_shared<std::string>(mapToString(map));
+            entry.map_value = map;
         }
         if (cache->Set(*(key->value), entry, in_transaction))
         {
@@ -230,11 +229,12 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
         auto list = std::make_shared<std::list<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
+            if (entry.list_value == nullptr)
             {
-                list = stringToList(*entry.value);
+                entry.list_value = list;
             }
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            list = entry.list_value;
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -243,11 +243,10 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
                 }
                 list->push_front(*value->value);
             }
-            *(entry.value) = listToString(list);
         }
         else
         {
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -256,7 +255,7 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
                 }
                 list->push_front(*value->value);
             }
-            entry.value = std::make_shared<std::string>(listToString(list));
+            entry.list_value = list;
         }
         if (cache->Set(*(key->value), entry, in_transaction))
         {
@@ -278,11 +277,12 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
         auto list = std::make_shared<std::list<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
+            if (entry.list_value == nullptr)
             {
-                list = stringToList(*entry.value);
+                entry.list_value = std::make_shared<std::list<std::string>>();
             }
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            list = entry.list_value;
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -291,11 +291,10 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
                 }
                 list->push_back(*value->value);
             }
-            *(entry.value) = listToString(list);
         }
         else
         {
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -304,7 +303,7 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
                 }
                 list->push_back(*value->value);
             }
-            entry.value = std::make_shared<std::string>(listToString(list));
+            entry.list_value = list;
         }
         if (cache->Set(*(key->value), entry, in_transaction))
         {
@@ -323,24 +322,20 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
         {
             return;
         }
-        auto list = std::make_shared<std::list<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
-            {
-                list = stringToList(*entry.value);
-            }
-            if (list->empty())
+            if (entry.list_value == nullptr)
             {
                 return;
             }
-            auto value = list->front();
-            list->pop_front();
-            *(entry.value) = listToString(list);
-            if (cache->Set(*(key->value), entry, in_transaction))
+            if (entry.list_value->empty())
             {
                 return;
             }
+            entry.list_value->pop_front();
+        }
+        if (cache->Set(*(key->value), entry, in_transaction))
+        {
             return;
         }
         return;
@@ -356,24 +351,20 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
         {
             return;
         }
-        auto list = std::make_shared<std::list<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
-            {
-                list = stringToList(*entry.value);
-            }
-            if (list->empty())
+            if (entry.list_value == nullptr)
             {
                 return;
             }
-            auto value = list->back();
-            list->pop_back();
-            *(entry.value) = listToString(list);
-            if (cache->Set(*(key->value), entry, in_transaction))
+            if (entry.list_value->empty())
             {
                 return;
             }
+            entry.list_value->pop_back();
+        }
+        if (cache->Set(*(key->value), entry, in_transaction))
+        {
             return;
         }
         return;
@@ -392,11 +383,12 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
         auto set = std::make_shared<std::set<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
+            if (entry.set_value == nullptr)
             {
-                set = stringToSet(*entry.value);
+                entry.set_value = std::make_shared<std::set<std::string>>();
             }
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            set = entry.set_value;
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -405,11 +397,10 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
                 }
                 set->insert(*value->value);
             }
-            *(entry.value) = setToString(set);
         }
         else
         {
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -418,7 +409,7 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
                 }
                 set->insert(*value->value);
             }
-            entry.value = std::make_shared<std::string>(setToString(set));
+            entry.set_value = set;
         }
         if (cache->Set(*(key->value), entry, in_transaction))
         {
@@ -440,19 +431,18 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
         auto set = std::make_shared<std::set<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
-            {
-                set = stringToSet(*entry.value);
-            }
-            if (set->empty())
+            if (entry.set_value == nullptr)
             {
                 return;
             }
-            auto it = set->begin();
+            if (entry.set_value->empty())
+            {
+                return;
+            }
+            auto it = entry.set_value->begin();
             std::advance(it, rand() % set->size());
             auto value = *it;
-            set->erase(it);
-            *(entry.value) = setToString(set);
+            entry.set_value->erase(it);
             if (cache->Set(*(key->value), entry, in_transaction))
             {
                 return;
@@ -461,92 +451,74 @@ void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, c
         }
         return;
     }
-    // else if (opcode == "zadd")
-    // {
-    //     if (req->GetArgNum() < 3 || (req->GetArgNum() - 1) % 2 != 0)
-    //     {
-    //         return new RESPError(std::make_shared<std::string>("ERR wrong number of arguments"));
-    //     }
-    //     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    //     if (key == nullptr)
-    //     {
-    //         return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
-    //     }
-    //     auto zset = std::make_shared<std::set<std::pair<std::string, int>>>();
-    //     if (cache->Get(*(key->value), entry, in_transaction))
-    //     {
-    //         if (entry.value != nullptr)
-    //         {
-    //             zset = stringToZSet(*entry.value);
-    //         }
-    //         for (size_t i = 1; i < req->GetArgNum(); i += 2)
-    //         {
-    //             const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
-    //             const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
-    //             if (member == nullptr || score == nullptr)
-    //             {
-    //                 return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
-    //             }
-    //             zset->insert(std::make_pair(*member->value, std::stoi(*score->value)));
-    //         }
-    //         *(entry.value) = zSetToString(zset);
-    //     }
-    //     else
-    //     {
-    //         for (size_t i = 1; i < req->GetArgNum(); i += 2)
-    //         {
-    //             const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
-    //             const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
-    //             if (member == nullptr || score == nullptr)
-    //             {
-    //                 return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
-    //             }
-    //             zset->insert(std::make_pair(*member->value, std::stoi(*score->value)));
-    //         }
-    //         entry.value = std::make_shared<std::string>(zSetToString(zset));
-    //     }
-    //     if (cache->Set(*(key->value), entry, in_transaction))
-    //     {
-    //         return new RESPInteger(zset->size());
-    //     }
-    //     return new RESPError(std::make_shared<std::string>("ERR failed to set"));
-    // }
-    // else if (opcode == "zpopmin")
-    // {
-    //     if (req->GetArgNum() != 1)
-    //     {
-    //         return new RESPError(std::make_shared<std::string>("ERR wrong number of arguments"));
-    //     }
-    //     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    //     if (key == nullptr)
-    //     {
-    //         return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
-    //     }
-    //     auto zset = std::make_shared<std::set<std::pair<std::string, int>>>();
-    //     if (cache->Get(*(key->value), entry, in_transaction))
-    //     {
-    //         if (entry.value != nullptr)
-    //         {
-    //             zset = stringToZSet(*entry.value);
-    //         }
-    //         if (zset->empty())
-    //         {
-    //             return new RESPBulkString(nullptr);
-    //         }
-    //         auto it = zset->begin();
-    //         auto value = it->first;
-    //         zset->erase(it);
-    //         *(entry.value) = zSetToString(zset);
-    //         if (cache->Set(*(key->value), entry, in_transaction))
-    //         {
-    //             return new RESPArray(std::vector<std::shared_ptr<RESPType>>{
-    //                 std::make_shared<RESPBulkString>(std::make_shared<std::string>(value)),
-    //                 std::make_shared<RESPInteger>(it.second)});
-    //         }
-    //         return new RESPError(std::make_shared<std::string>("ERR failed to set"));
-    //     }
-    //     return new RESPBulkString(nullptr);
-    // }
+    else if (opcode == "zadd")
+    {
+        if (req->GetArgNum() < 3 || (req->GetArgNum() - 1) % 2 != 0)
+        {
+            return;
+        }
+        const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+        if (key == nullptr)
+        {
+            return;
+        }
+        auto zset = std::make_shared<std::map<double, std::string>>();
+        if (cache->Get(*(key->value), entry, in_transaction))
+        {
+            if (entry.sorted_set_value == nullptr)
+            {
+                entry.sorted_set_value = std::make_shared<std::map<double, std::string>>();
+            }
+            zset = entry.sorted_set_value;
+            for (size_t i = 1; i < req->GetArgNum(); i += 2)
+            {
+                const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
+                const auto value = dynamic_cast<RESPString *>(req->GetArg(i + 1));
+                if (score == nullptr || value == nullptr)
+                {
+                    return;
+                }
+                (*zset)[std::stod(*score->value)] = *value->value;
+            }
+            if (cache->Set(*(key->value), entry, in_transaction))
+            {
+                return;
+            }
+            return;
+        }
+    }
+    else if (opcode == "zpopmin")
+    {
+        if (req->GetArgNum() != 1)
+        {
+            return;
+        }
+        const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+        if (key == nullptr)
+        {
+            return;
+        }
+        auto zset = std::make_shared<std::set<std::pair<std::string, int>>>();
+        if (cache->Get(*(key->value), entry, in_transaction))
+        {
+            if (entry.sorted_set_value == nullptr)
+            {
+                return;
+            }
+            if (entry.sorted_set_value->empty())
+            {
+                return;
+            }
+            auto it = entry.sorted_set_value->begin();
+            auto value = it->second;
+            entry.sorted_set_value->erase(it);
+            if (cache->Set(*(key->value), entry, in_transaction))
+            {
+                return;
+            }
+        }
+        return;
+    }
     else if (opcode != "get" && opcode != "ping" && opcode != "hget")
     { // TODO: update states using get
         std::cerr << "Unknown opcode: " << opcode << std::endl;
@@ -731,6 +703,7 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         {
             entry.value = std::make_shared<std::string>("1");
         }
+        entry.type = CacheEntryType::STRING;
         if (cache->Set(*(key->value), entry, in_transaction))
         {
             return new RESPInteger(entry.value);
@@ -752,21 +725,20 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         if (cache->Get(*(key->value), entry, in_transaction))
         {
             auto map = std::make_shared<std::map<std::string, std::string>>();
-            if (entry.value != nullptr)
+            if (entry.map_value == nullptr)
             {
-                map = stringToMap(*entry.value);
+                entry.map_value = std::make_shared<std::map<std::string, std::string>>();
             }
+            map = entry.map_value;
             (*map)[*field->value] = *value->value;
-            // serialize map to entry.value
-            *(entry.value) = mapToString(map);
         }
         else
         {
             auto map = std::make_shared<std::map<std::string, std::string>>();
             (*map)[*field->value] = *value->value;
-            // serialize map to entry.value
-            entry.value = std::make_shared<std::string>(mapToString(map));
+            entry.map_value = map;
         }
+        entry.type = CacheEntryType::MAP;
         if (cache->Set(*(key->value), entry, in_transaction))
         {
             return new RESPSimpleString(std::make_shared<std::string>("OK"));
@@ -791,11 +763,10 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         }
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value)
+            if (entry.map_value != nullptr)
             {
-                auto map = stringToMap(*entry.value);
-                auto it = map->find(*field->value);
-                if (it != map->end())
+                auto it = entry.map_value->find(*field->value);
+                if (it != entry.map_value->end())
                 {
                     return new RESPBulkString(std::make_shared<std::string>(it->second));
                 }
@@ -817,11 +788,11 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         auto list = std::make_shared<std::list<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
+            if(entry.list_value != nullptr)
             {
-                list = stringToList(*entry.value);
+                list = entry.list_value;
             }
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -830,11 +801,10 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
                 }
                 list->push_front(*value->value);
             }
-            *(entry.value) = listToString(list);
         }
         else
         {
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -843,8 +813,9 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
                 }
                 list->push_front(*value->value);
             }
-            entry.value = std::make_shared<std::string>(listToString(list));
+            entry.list_value = list;
         }
+        entry.type = CacheEntryType::LIST;
         if (cache->Set(*(key->value), entry, in_transaction))
         {
             return new RESPInteger(list->size());
@@ -865,11 +836,11 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         auto list = std::make_shared<std::list<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
+            if(entry.list_value != nullptr)
             {
-                list = stringToList(*entry.value);
+                list = entry.list_value;
             }
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -878,11 +849,10 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
                 }
                 list->push_back(*value->value);
             }
-            *(entry.value) = listToString(list);
         }
         else
         {
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -891,8 +861,9 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
                 }
                 list->push_back(*value->value);
             }
-            entry.value = std::make_shared<std::string>(listToString(list));
+            entry.list_value = list;
         }
+        entry.type = CacheEntryType::LIST;
         if (cache->Set(*(key->value), entry, in_transaction))
         {
             return new RESPInteger(list->size());
@@ -913,9 +884,13 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         auto list = std::make_shared<std::list<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
+            if(entry.list_value != nullptr)
             {
-                list = stringToList(*entry.value);
+                list = entry.list_value;
+            }
+            else
+            {
+                return new RESPBulkString(nullptr);
             }
             if (list->empty())
             {
@@ -923,7 +898,6 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
             }
             auto value = list->front();
             list->pop_front();
-            *(entry.value) = listToString(list);
             if (cache->Set(*(key->value), entry, in_transaction))
             {
                 return new RESPBulkString(std::make_shared<std::string>(value));
@@ -946,9 +920,13 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         auto list = std::make_shared<std::list<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
+            if(entry.list_value != nullptr)
             {
-                list = stringToList(*entry.value);
+                list = entry.list_value;
+            }
+            else
+            {
+                return new RESPBulkString(nullptr);
             }
             if (list->empty())
             {
@@ -956,7 +934,6 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
             }
             auto value = list->back();
             list->pop_back();
-            *(entry.value) = listToString(list);
             if (cache->Set(*(key->value), entry, in_transaction))
             {
                 return new RESPBulkString(std::make_shared<std::string>(value));
@@ -979,11 +956,15 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         auto set = std::make_shared<std::set<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
+            if(entry.set_value != nullptr)
             {
-                set = stringToSet(*entry.value);
+                set = entry.set_value;
             }
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            else
+            {
+                return new RESPError(std::make_shared<std::string>("ERR wrong type of object"));
+            }
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -992,11 +973,10 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
                 }
                 set->insert(*value->value);
             }
-            *(entry.value) = setToString(set);
         }
         else
         {
-            for (size_t i = 1; i < req->GetArgNum(); ++i)
+            for (size_t i = 1; i < req->GetArgNum(); i++)
             {
                 const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
                 if (value == nullptr)
@@ -1005,8 +985,9 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
                 }
                 set->insert(*value->value);
             }
-            entry.value = std::make_shared<std::string>(setToString(set));
+            entry.set_value = set;
         }
+        entry.type = CacheEntryType::SET;
         if (cache->Set(*(key->value), entry, in_transaction))
         {
             return new RESPInteger(set->size());
@@ -1027,9 +1008,13 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         auto set = std::make_shared<std::set<std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
+            if(entry.set_value != nullptr)
             {
-                set = stringToSet(*entry.value);
+                set = entry.set_value;
+            }
+            else
+            {
+                return new RESPBulkString(nullptr);
             }
             if (set->empty())
             {
@@ -1039,7 +1024,6 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
             std::advance(it, rand() % set->size());
             auto value = *it;
             set->erase(it);
-            *(entry.value) = setToString(set);
             if (cache->Set(*(key->value), entry, in_transaction))
             {
                 return new RESPBulkString(std::make_shared<std::string>(value));
@@ -1067,7 +1051,7 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
             }
             if (entry.sorted_set_value == nullptr)
             {
-                entry.sorted_set_value = std::make_shared<std::set<std::pair<double, std::string>>>();
+                entry.sorted_set_value = std::make_shared<std::map<double, std::string>>();
             }
             for (size_t i = 1; i < req->GetArgNum(); i += 2)
             {
@@ -1083,7 +1067,7 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         else
         {
             entry.type = CacheEntryType::ZSET;
-            entry.sorted_set_value = std::make_shared<std::set<std::pair<double, std::string>>>();
+            entry.sorted_set_value = std::make_shared<std::map<double, std::string>>();
             for (size_t i = 1; i < req->GetArgNum(); i += 2)
             {
                 const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
@@ -1097,7 +1081,7 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         }
         if (cache->Set(*(key->value), entry, in_transaction))
         {
-            return new RESPInteger(zset->size());
+            return new RESPInteger(entry.sorted_set_value->size());
         }
         return new RESPError(std::make_shared<std::string>("ERR failed to set"));
     }
@@ -1112,28 +1096,29 @@ RESPType *Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo 
         {
             return new RESPError(std::make_shared<std::string>("ERR wrong type of arguments"));
         }
-        auto zset = std::make_shared<std::set<std::pair<std::string, int>>>();
+        auto zset = std::make_shared<std::map<double, std::string>>();
         if (cache->Get(*(key->value), entry, in_transaction))
         {
-            if (entry.value != nullptr)
+            if(entry.sorted_set_value != nullptr)
             {
-                zset = stringToZSet(*entry.value);
+                zset = entry.sorted_set_value;
+            }
+            else
+            {
+                return new RESPBulkString(nullptr);
             }
             if (zset->empty())
             {
                 return new RESPBulkString(nullptr);
             }
             auto it = zset->begin();
-            auto value = it->first;
+            auto value = it->second;
             zset->erase(it);
-            *(entry.value) = zSetToString(zset);
             if (cache->Set(*(key->value), entry, in_transaction))
             {
-                return new RESPArray(std::vector<std::shared_ptr<RESPType>>{
-                    std::make_shared<RESPBulkString>(std::make_shared<std::string>(value)),
-                    std::make_shared<RESPInteger>(it.second)});
+                return new RESPBulkString(std::make_shared<std::string>(value));
             }
-            return new RESPError(std::make_shared<std::string>("ERR failed to set"));
+            return new RESPError(std::make_shared<std::string>("ERR failed to pop"));
         }
         return new RESPBulkString(nullptr);
     }

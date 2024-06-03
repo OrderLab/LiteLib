@@ -7,8 +7,6 @@ LIBEVENT_VERSION="2.1.12-stable"
 apt update
 apt install -y build-essential wget libssl-dev git
 
-cd /tmp
-
 if ! which cmake >/dev/null 2>&1; then
 {
     # echo "-----------------Installing CMake-----------------"
@@ -48,8 +46,12 @@ if ! which libevent >/dev/null 2>&1; then
 }
 fi
 
-mkdir -p /workspace/build
-cd /workspace/build
-cmake .. && make
+# install glog
 
-echo "-----------------Building complete-----------------"
+git clone https://github.com/google/glog.git /tmp/glog
+cd /tmp/glog && cmake -S . -B build -G "Unix Makefiles" && cmake --build build --target install
+
+# mkdir -p /workspace/build
+# cd /workspace/build && cmake .. && make
+
+# echo "-----------------Building complete-----------------"
