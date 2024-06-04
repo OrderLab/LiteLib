@@ -28,7 +28,7 @@ def get_process():
   processes = []
   process_names = []
   for proc in psutil.process_iter():
-    if 'evel' in proc.name():
+    if 'evel' in proc.name() or "ite" in proc.name() or "redis" in proc.name():
       processes.append(proc)
       process_names.append(proc.name())
 
