@@ -82,7 +82,7 @@ template <typename Application, typename Request, typename Response,
 void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::RemoveAllConnections() {
   std::vector<ConnectionInstance *> conns_to_be_deleted;
-  conns_.visit_Fall(
+  conns_.visit_all(
       [&](const auto &conn) { conns_to_be_deleted.push_back(conn); });
   for (auto conn : conns_to_be_deleted) delete conn;
   conns_.clear();

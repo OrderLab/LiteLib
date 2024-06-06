@@ -20,8 +20,6 @@ class Daemon {
   static size_t GetUNIXTimeStamp();
 
  private:
-  std::function<bool()> Crash_;
-
   std::function<bool()> Replay_;
 
   std::function<void()> TakeOver_;
