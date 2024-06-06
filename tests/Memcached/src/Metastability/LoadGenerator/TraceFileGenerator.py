@@ -8,7 +8,7 @@ import os.path
 import numpy as np 
 import collections
 
-row_nums_in_db = 140000 
+row_nums_in_db = 140000
 print("TraceFileGenerator: parameters: " + str(sys.argv[1:]))
 
 # command line arguments 

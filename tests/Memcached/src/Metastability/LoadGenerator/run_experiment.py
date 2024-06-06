@@ -57,7 +57,7 @@ else:
 # config for connecting to memcached server VM
 user = "root"
 memcached_host = 'memcached'
-master_vm = 'client' 
+master_vm = 'client'
 memcached_VM_command = f"python3 warm_up_cache.py {exp_type}"
 path_to_rsa_key = "/root/.ssh/id_ed25519" # path to rsa key on local machine
 """
