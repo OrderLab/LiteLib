@@ -104,9 +104,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                    ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
                        &pending_requests,
                    const evutil_socket_t client_fd, CacheInstance *cache) {
-  if (pending_requests.empty()){
-    LOG(ERROR) << "empty pending request" << std::endl;
-  }
   const auto [related_stateful_request, forward_resp] =
       app_.Match(resp, conn_info, pending_requests);
   if (forward_resp) {
@@ -166,16 +163,20 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   barrier_.arrive_and_wait();  // unblock worker threads
-  if (!crash_recover_){
+  if (!crash_recover_) {
     // add all cache nodes to the log
-    crash_conn_head_ = new LogEntryInstance(nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
-    cache_inner_.VisitAllState([&](CacheStateInstance *state){
-      if (!state->dirty_node){
-        LogEntryInstance *dirty = new LogEntryInstance(state, nullptr, crash_conn_head_->backend_conn_ptr);
-        logger_inner_.Log(dirty, crash_conn_head_);
-        state->dirty_node = dirty;
-      }
-    }, false);
+    crash_conn_head_ = new LogEntryInstance(
+        nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
+    cache_inner_.VisitAllState(
+        [&](CacheStateInstance *state) {
+          if (!state->dirty_node) {
+            LogEntryInstance *dirty = new LogEntryInstance(
+                state, nullptr, crash_conn_head_->backend_conn_ptr);
+            logger_inner_.Log(dirty, crash_conn_head_);
+            state->dirty_node = dirty;
+          }
+        },
+        false);
   }
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
@@ -188,7 +189,7 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       LOG(ERROR) << "line#" << __LINE__                                \
                  << " Replay failed to write to backend\n";            \
       return false;                                                    \
-    } \
+    }                                                                  \
   } while (0)
 
 template <typename Application, typename Request, typename Response,
@@ -202,7 +203,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   replay_rate_.Reset(replay_expected_rps_);  // Reset the sliding window
   is_replaying_ = true;
-  LOG(INFO) << "replay start, live connections: " << live_connections_.size() << std::endl;
+  LOG(INFO) << "replay start, live connections: " << live_connections_.size()
+            << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
     c->ConnectBackend();
     LOG(INFO) << "Connect backend " << c->backend_fd_ << " to " << c->client_fd_

@@ -16,8 +16,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Memcached::Match(
     forward = pair.second;
     ret.push_back(req);
     const auto req_opaque = req->GetOpaque();
-    if (req_opaque == resp_opaque) 
-      break;
+    if (req_opaque == resp_opaque) break;
   }
 
   return std::make_pair(ret, forward);
@@ -26,9 +25,8 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Memcached::Match(
 void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
                              std::vector<std::shared_ptr<Packet>> requests,
                              ConnectionInfo &_, Cache *cache) const {
-  if (requests.empty())
-    return;
-  if (resp->GetStatus()){
+  if (requests.empty()) return;
+  if (resp->GetStatus()) {
     requests.pop_back();
   }
   for (const auto &req : requests) {
@@ -57,7 +55,7 @@ void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
       case Header::Opcode::kNoOp:
       case Header::Opcode::kStat:
       case Header::Opcode::kVersion:
-      // TODO: update states using get
+        // TODO: update states using get
         break;
       default:  // TODO: support CAS, Expiration, error and other operations
         LOG(ERROR) << "Unknown OpCode: " << magic_enum::enum_name(opcode)
