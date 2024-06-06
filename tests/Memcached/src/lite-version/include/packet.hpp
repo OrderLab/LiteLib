@@ -85,7 +85,7 @@ struct Packet {
   Packet() : buffer(std::make_shared<std::vector<uint8_t>>()) {}
   Packet(std::shared_ptr<std::vector<uint8_t>> buffer) : buffer(buffer) {}
 
-  std::shared_ptr<std::vector<uint8_t>> Serialize() {
+  virtual std::shared_ptr<std::vector<uint8_t>> Serialize() {
     if (!buffer) {  // empty packet (quiet response)
       return std::make_shared<std::vector<uint8_t>>();
     }

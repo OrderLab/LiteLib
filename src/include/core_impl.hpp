@@ -22,10 +22,11 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              std::vector<std::unique_ptr<WorkerInstance>> &workers,
              const std::chrono::milliseconds sliding_window_size,
              const size_t replay_expected_rps, const double flow_control_ratio,
-             const size_t n_replay_threads)
+             const size_t n_replay_threads, bool crash_recover)
     : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
              pipe_path),
       app_(app),
+      crash_recover_(crash_recover),
       cache_inner_(max_item_count, emergency_mode_),
       logger_inner_(sliding_window_size),
       backend_addr_(backend_addr),
@@ -131,7 +132,6 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::TakeOver() {
   emergency_mode_ = true;
   LOG(INFO) << "Disconnect all from backend" << std::endl;
-
   LOG(INFO) << "Emergency barrier initialized" << std::endl;
   for (auto &worker : workers_) {
     worker->notify_queue_.push_back(
@@ -144,6 +144,7 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   barrier_.arrive_and_wait();
 
   std::set<ConnectionInstance *> connections_to_be_closed;
+  LOG(INFO) << "live connections: " << live_connections_.size() << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
     if (c->backend_fd_ > 0) {
       close(c->backend_fd_);
@@ -162,6 +163,21 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   barrier_.arrive_and_wait();  // unblock worker threads
+  if (!crash_recover_) {
+    // add all cache nodes to the log
+    crash_conn_head_ = new LogEntryInstance(
+        nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
+    cache_inner_.VisitAllState(
+        [&](CacheStateInstance *state) {
+          if (!state->dirty_node) {
+            LogEntryInstance *dirty = new LogEntryInstance(
+                state, nullptr, crash_conn_head_->backend_conn_ptr);
+            logger_inner_.Log(dirty, crash_conn_head_);
+            state->dirty_node = dirty;
+          }
+        },
+        false);
+  }
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
 
@@ -187,7 +203,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   replay_rate_.Reset(replay_expected_rps_);  // Reset the sliding window
   is_replaying_ = true;
-
+  LOG(INFO) << "replay start, live connections: " << live_connections_.size()
+            << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
     c->ConnectBackend();
     LOG(INFO) << "Connect backend " << c->backend_fd_ << " to " << c->client_fd_

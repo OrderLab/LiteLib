@@ -21,7 +21,7 @@ struct CacheEntry {
     auto req = std::make_shared<ParsedPacket>();
     static std::vector<uint8_t> expiry(4, 0);  // TODO: use real one
     req->header.magic = 0x80;
-    req->header.opcode = magic_enum::enum_underlying(Header::Opcode::kSetQ);
+    req->header.opcode = magic_enum::enum_underlying(Header::Opcode::kSet);
     req->key = std::make_shared<std::vector<uint8_t>>(key);
     req->value = value;
     req->extra = flags;

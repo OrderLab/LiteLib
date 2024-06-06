@@ -38,6 +38,8 @@ class LiteCore : public Daemon {
                                         ConnectionInfo, CacheKey, CacheEntry>;
   using WorkerInstance = Worker<Application, Request, Response, ConnectionInfo,
                                 CacheKey, CacheEntry>;
+  using CacheStateInstance = CacheState<Application, Request, Response,
+                                        ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
   LiteCore(Application &app, const size_t &max_item_count,
@@ -46,7 +48,7 @@ class LiteCore : public Daemon {
            std::vector<std::unique_ptr<WorkerInstance>> &workers,
            const std::chrono::milliseconds sliding_window_size,
            const size_t replay_expected_rps, const double flow_control_ratio,
-           const size_t n_replay_threads);
+           const size_t n_replay_threads, bool crash_recover = true);
 
   bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
                      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
@@ -72,7 +74,11 @@ class LiteCore : public Daemon {
 
   ThreadSafeQueue<LogEntryInstance *> dead_connection_log_heads_;
 
+  LogEntryInstance *crash_conn_head_ = nullptr;
+
  private:
+  bool crash_recover_;
+
   Application &app_;
 
   std::barrier<std::function<void()>> &barrier_;
