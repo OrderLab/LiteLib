@@ -40,6 +40,7 @@ class LiteCore : public Daemon {
                                 CacheKey, CacheEntry>;
   using CacheStateInstance = CacheState<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>;
+
  public:
   LiteCore(Application &app, const size_t &max_item_count,
            std::string &backend_addr, std::string &backend_port,
@@ -73,7 +74,7 @@ class LiteCore : public Daemon {
 
   ThreadSafeQueue<LogEntryInstance *> dead_connection_log_heads_;
 
-  LogEntryInstance * crash_conn_head_ = nullptr;
+  LogEntryInstance *crash_conn_head_ = nullptr;
 
  private:
   bool crash_recover_;
@@ -96,7 +97,6 @@ class LiteCore : public Daemon {
   typename decltype(replay_workers_)::iterator next_replay_worker_;
 
   bool Replay();
-
 };
 
 }  // namespace lite

@@ -16,12 +16,12 @@
 namespace lite {
 
 Daemon::Daemon(const std::function<bool()> &Replay,
-               std::function<void()> TakeOver,
-               std::string &backend_port, const std::string pipe_path)
+               std::function<void()> TakeOver, std::string &backend_port,
+               const std::string pipe_path)
     : Replay_(Replay),
       pipe_path_(pipe_path),
       backend_port_(backend_port),
-      TakeOver_(TakeOver){
+      TakeOver_(TakeOver) {
   // set up event_base
   struct event_config *ev_config;
   ev_config = event_config_new();
@@ -82,7 +82,8 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
     self->backend_port_ = std::to_string(message.backend_port);
     switch (message.action) {
       case PipeMessage::kEnterEmergencyMode:
-        LOG(WARNING) << "Daemon: Entering emergency mode " << GetUNIXTimeStamp() << std::endl;
+        LOG(WARNING) << "Daemon: Entering emergency mode " << GetUNIXTimeStamp()
+                     << std::endl;
         if (!self->emergency_mode_) {
           self->TakeOver_();
         } else {
@@ -90,7 +91,8 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
         }
         break;
       case PipeMessage::kExitEmergencyMode:
-        LOG(WARNING) << "Daemon: Exiting emergency mode " << GetUNIXTimeStamp() << std::endl;
+        LOG(WARNING) << "Daemon: Exiting emergency mode " << GetUNIXTimeStamp()
+                     << std::endl;
         if (!self->Replay_()) {
           LOG(ERROR) << "Daemon: Failed to replay" << std::endl;
           break;
