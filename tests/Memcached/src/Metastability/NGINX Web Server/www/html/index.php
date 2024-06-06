@@ -11,10 +11,10 @@ $start_time = microtime(true);
 
 //$total_num_db_entries = 34511000; 
 $total_num_db_entries = 140000;
-// $database_query_weight = 5000;
+// $database_query_weight = DATABASE_QUERY_WEIGHT;
 $database_query_weight = 50;
 // $database_query_weight = 375;
-$servername = "mysql";
+$servername = "DATABASE_SERVER_IP";
 $username = "metastable";
 $password = "hello@123";
 $memcached_server = "10.0.233.7";

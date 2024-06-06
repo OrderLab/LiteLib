@@ -1,6 +1,6 @@
 <?php
 //fill memcached with data
-$memcached_server = "10.0.233.7"
+$memcached_server = "MEMCACHED_SERVER_IP"
 ini_set('max_execution_time', '0'); // for infinite time of execution 
 $mem_var = new Memcached();
 $mem_var->addServer($memcached_server , 11211); 

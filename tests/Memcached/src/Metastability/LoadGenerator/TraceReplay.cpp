@@ -20,7 +20,7 @@
 #include <chrono>
 
 using namespace std;
-string ngnix_server_ip ="web";
+string ngnix_server_ip ="web"; 
 string baseUrl = "http://"+ngnix_server_ip+ "/index.php";
 
 BaseTraceReader* traceReader = NULL; 
