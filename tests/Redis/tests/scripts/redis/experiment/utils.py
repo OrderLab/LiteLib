@@ -37,3 +37,9 @@ def StartBackgroundProcess(boot_command):
         exit(1)
     else:
         print("The process is still running")
+
+def IsProcessRunning(process_name):
+    for proc in psutil.process_iter(['name']):
+        if proc.info['name'] == process_name:
+            return True
+    return False

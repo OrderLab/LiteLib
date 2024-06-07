@@ -51,8 +51,8 @@ def benchmark_client(host, port, command_set, duration):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Redis benchmark tool")
-    parser.add_argument('--host', required=True, help="Redis master host")
-    parser.add_argument('--port', type=int, required=True, help="Redis master port")
+    parser.add_argument('--host', required=True, help="Redis lite host")
+    parser.add_argument('--port', type=int, required=True, help="Redis lite port")
     parser.add_argument('--duration', type=int, default=10, help="Benchmark duration in seconds")
     parser.add_argument('--commands', nargs='+', required=True, help="List of Redis commands to benchmark, e.g., 'PING SET key value'")
     parser.add_argument('--clients', type=int, default=1, help="Number of client connections")
