@@ -2,146 +2,153 @@
 
 #include <event.h>
 
+#include <list>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
-#include <list>
 
 #include "packet.hpp"
 
-enum class CacheEntryType
-{
-    STRING,
-    LIST,
-    SET,
-    MAP,
-    ZSET
-};
+enum class CacheEntryType { STRING, LIST, SET, MAP, ZSET };
 
-struct CacheEntry
-{
-    CacheEntryType type = CacheEntryType::STRING;
-    std::shared_ptr<std::string> value = nullptr;
-    std::shared_ptr<std::list<std::string>> list_value = nullptr;
-    std::shared_ptr<std::set<std::string>> set_value = nullptr;
-    std::shared_ptr<std::map<std::string, std::string>> map_value = nullptr;
-    std::shared_ptr<std::map<double, std::string>> sorted_set_value = nullptr;
+struct CacheEntry {
+  CacheEntryType type = CacheEntryType::STRING;
+  std::shared_ptr<std::string> value = nullptr;
+  std::shared_ptr<std::list<std::string>> list_value = nullptr;
+  std::shared_ptr<std::set<std::string>> set_value = nullptr;
+  std::shared_ptr<std::map<std::string, std::string>> map_value = nullptr;
+  std::shared_ptr<std::map<double, std::string>> sorted_set_value = nullptr;
 
-    size_t GetSize() const
-    {
-        switch (type)
-        {
-        case CacheEntryType::STRING:
-            return (value ? value->size() : 0);
-        case CacheEntryType::LIST:
-            return (list_value ? list_value->size() : 0);
-        case CacheEntryType::SET:
-            return (set_value ? set_value->size() : 0);
-        case CacheEntryType::MAP:
-            return (map_value ? map_value->size() : 0);
-        case CacheEntryType::ZSET:
-            return (sorted_set_value ? sorted_set_value->size() : 0);
-        default:
-            return 0;
+  size_t GetSize() const {
+    switch (type) {
+      case CacheEntryType::STRING:
+        return (value ? value->size() : 0);
+      case CacheEntryType::LIST:
+        return (list_value ? list_value->size() : 0);
+      case CacheEntryType::SET:
+        return (set_value ? set_value->size() : 0);
+      case CacheEntryType::MAP:
+        return (map_value ? map_value->size() : 0);
+      case CacheEntryType::ZSET:
+        return (sorted_set_value ? sorted_set_value->size() : 0);
+      default:
+        return 0;
+    }
+  }
+
+  std::shared_ptr<Packet> ToRequest(const std::string &key) const {
+    auto commands = std::make_unique<RESPArray>();
+
+    switch (type) {
+      case CacheEntryType::STRING:
+        commands->value.push_back(std::make_unique<RESPBulkString>(
+            std::make_shared<std::string>("SET")));
+        commands->value.push_back(std::make_unique<RESPBulkString>(
+            std::make_shared<std::string>(key)));
+        commands->value.push_back(std::make_unique<RESPBulkString>(value));
+        break;
+      case CacheEntryType::LIST:
+        commands->value.push_back(std::make_unique<RESPBulkString>(
+            std::make_shared<std::string>("RPUSH")));
+        commands->value.push_back(std::make_unique<RESPBulkString>(
+            std::make_shared<std::string>(key)));
+        for (const auto &item : *list_value) {
+          commands->value.push_back(std::make_unique<RESPBulkString>(
+              std::make_shared<std::string>(item)));
         }
-    }
-
-    std::shared_ptr<Packet> ToRequest(const std::string &key) const
-    {
-        auto commands = std::make_unique<RESPArray>();
-
-        switch (type)
-        {
-        case CacheEntryType::STRING:
-            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("SET")));
-            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
-            commands->value.push_back(std::make_unique<RESPBulkString>(value));
-            break;
-        case CacheEntryType::LIST:
-            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("RPUSH")));
-            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
-            for (const auto &item : *list_value)
-            {
-                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(item)));
-            }
-            break;
-        case CacheEntryType::SET:
-            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("SADD")));
-            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
-            for (const auto &item : *set_value)
-            {
-                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(item)));
-            }
-            break;
-        case CacheEntryType::MAP:
-            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("HMSET")));
-            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
-            for (const auto &[field, value] : *map_value)
-            {
-                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(field)));
-                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(value)));
-            }
-            break;
-        case CacheEntryType::ZSET:
-            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>("ZADD")));
-            commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(key)));
-            for (const auto& entry : *sorted_set_value)
-            {
-                const auto& score = entry.first;
-                const auto& member = entry.second;
-                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(std::to_string(score))));
-                commands->value.push_back(std::make_unique<RESPBulkString>(std::make_shared<std::string>(member)));
-            }
-            break;
-        default:
-            break;
+        break;
+      case CacheEntryType::SET:
+        commands->value.push_back(std::make_unique<RESPBulkString>(
+            std::make_shared<std::string>("SADD")));
+        commands->value.push_back(std::make_unique<RESPBulkString>(
+            std::make_shared<std::string>(key)));
+        for (const auto &item : *set_value) {
+          commands->value.push_back(std::make_unique<RESPBulkString>(
+              std::make_shared<std::string>(item)));
         }
-
-        return std::make_shared<Packet>(std::move(commands));
+        break;
+      case CacheEntryType::MAP:
+        commands->value.push_back(std::make_unique<RESPBulkString>(
+            std::make_shared<std::string>("HMSET")));
+        commands->value.push_back(std::make_unique<RESPBulkString>(
+            std::make_shared<std::string>(key)));
+        for (const auto &[field, value] : *map_value) {
+          commands->value.push_back(std::make_unique<RESPBulkString>(
+              std::make_shared<std::string>(field)));
+          commands->value.push_back(std::make_unique<RESPBulkString>(
+              std::make_shared<std::string>(value)));
+        }
+        break;
+      case CacheEntryType::ZSET:
+        commands->value.push_back(std::make_unique<RESPBulkString>(
+            std::make_shared<std::string>("ZADD")));
+        commands->value.push_back(std::make_unique<RESPBulkString>(
+            std::make_shared<std::string>(key)));
+        for (const auto &entry : *sorted_set_value) {
+          const auto &score = entry.first;
+          const auto &member = entry.second;
+          commands->value.push_back(std::make_unique<RESPBulkString>(
+              std::make_shared<std::string>(std::to_string(score))));
+          commands->value.push_back(std::make_unique<RESPBulkString>(
+              std::make_shared<std::string>(member)));
+        }
+        break;
+      default:
+        break;
     }
 
-  private:
-    inline void AppendBulkString(std::vector<uint8_t> &buffer, const std::string &str) const
-    {
-        buffer.push_back('$');
-        const auto str_length = std::to_string(str.size());
-        buffer.insert(buffer.end(), str_length.begin(), str_length.end());
-        buffer.push_back('\r');
-        buffer.push_back('\n');
-        buffer.insert(buffer.end(), str.begin(), str.end());
-        buffer.push_back('\r');
-        buffer.push_back('\n');
-    }
+    return std::make_shared<Packet>(std::move(commands));
+  }
+
+ private:
+  inline void AppendBulkString(std::vector<uint8_t> &buffer,
+                               const std::string &str) const {
+    buffer.push_back('$');
+    const auto str_length = std::to_string(str.size());
+    buffer.insert(buffer.end(), str_length.begin(), str_length.end());
+    buffer.push_back('\r');
+    buffer.push_back('\n');
+    buffer.insert(buffer.end(), str.begin(), str.end());
+    buffer.push_back('\r');
+    buffer.push_back('\n');
+  }
 };
 
-struct ConnectionInfo
-{
-    bool is_in_transaction_ = false;
-    std::vector<std::shared_ptr<Packet>> transactions_;
+struct ConnectionInfo {
+  bool is_in_transaction_ = false;
+  std::vector<std::shared_ptr<Packet>> transactions_;
 };
 
-class Redis
-{
-    using Cache = lite::Cache<Redis, Packet, Packet, ConnectionInfo, std::string, CacheEntry>;
-    using Logger = lite::Logger<Redis, Packet, Packet, ConnectionInfo, std::string, CacheEntry>;
+class Redis {
+  using Cache = lite::Cache<Redis, Packet, Packet, ConnectionInfo, std::string,
+                            CacheEntry>;
+  using Logger = lite::Logger<Redis, Packet, Packet, ConnectionInfo,
+                              std::string, CacheEntry>;
 
-  public:
-    std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
-        const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-        lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>> &pending_requests) const;
+ public:
+  std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
+      const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
+      lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
+          &pending_requests) const;
 
-    void NormalUpdate(const std::shared_ptr<Packet> &resp, std::vector<std::shared_ptr<Packet>> requests,
-                      ConnectionInfo &conn, Cache *cache);
+  void NormalUpdate(const std::shared_ptr<Packet> &resp,
+                    std::vector<std::shared_ptr<Packet>> requests,
+                    ConnectionInfo &conn, Cache *cache);
 
-    void HandleReplayResponse(const std::shared_ptr<Packet> &resp, std::vector<std::shared_ptr<Packet>> requests,
-                              ConnectionInfo &conn, Cache *cache);
+  void HandleReplayResponse(const std::shared_ptr<Packet> &resp,
+                            std::vector<std::shared_ptr<Packet>> requests,
+                            ConnectionInfo &conn, Cache *cache);
 
-    Packet EmergencyServe(std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache, Logger *logger);
+  Packet EmergencyServe(std::shared_ptr<Packet> req, ConnectionInfo &conn,
+                        Cache *cache, Logger *logger);
 
-  private:
-    void NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache, const bool in_transaction = false);
+ private:
+  void NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
+                        const bool in_transaction = false);
 
-    RESPType *EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache, Logger *logger,
-                                 const bool in_transaction = false);
+  RESPType *EmergencyServeImpl(std::shared_ptr<Packet> req,
+                               ConnectionInfo &conn, Cache *cache,
+                               Logger *logger,
+                               const bool in_transaction = false);
 };
