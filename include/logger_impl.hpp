@@ -19,11 +19,6 @@ bool Logger<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Pop(LoggerInnerInstance &logger_inner,
                              LogEntryInstance *&entry) {
   auto ret = logger_inner.Pop(entry);
-
-  if (ret && entry->state) {
-    entry->state->dirty_node = nullptr;
-  }
-
   return ret;
 }
 

@@ -75,8 +75,10 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
         new LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
   }
 
-  if (!cache_inner_.Replace(key, value, in_transaction, dirty, old_dirty,
-                            state)) {
+  if (!cache_inner_.Replace(
+          key, value, in_transaction, dirty,
+          cache_inner_.emergency_mode_ ? &logger_inner_.chr_mutex_ : nullptr,
+          state)) {
     delete dirty;
     return false;
   }
@@ -84,12 +86,6 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
   if (dirty) {
     dirty->state = state;
     logger_inner_.Log(dirty, conn_head_);
-  }
-  if (old_dirty) {
-    std::unique_lock<std::mutex> chr_lock(logger_inner_.chr_mutex_);
-    old_dirty->Delink();
-    chr_lock.unlock();
-    delete old_dirty;
   }
   return true;
 }

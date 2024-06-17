@@ -75,10 +75,15 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
       LOG(ERROR) << "Daemon: Error reading pipe";
       return;
     }
+    // Close Pipe
+    close(self->named_pipe_fd_);
+    unlink(self->pipe_path_.c_str());
+    self->CreatePipeAndRegisterEvent();
     self->backend_port_ = std::to_string(message.backend_port);
     switch (message.action) {
       case PipeMessage::kEnterEmergencyMode:
-        LOG(WARNING) << "Daemon: Entering emergency mode " << GetUNIXTimeStamp() << std::endl;
+        LOG(WARNING) << "Daemon: Entering emergency mode " << GetUNIXTimeStamp()
+                     << std::endl;
         if (!self->emergency_mode_) {
           self->TakeOver_();
         } else {
@@ -86,18 +91,14 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
         }
         break;
       case PipeMessage::kExitEmergencyMode:
-        LOG(WARNING) << "Daemon: Exiting emergency mode " << GetUNIXTimeStamp() << std::endl;
+        LOG(WARNING) << "Daemon: Exiting emergency mode " << GetUNIXTimeStamp()
+                     << std::endl;
         if (!self->Replay_()) {
           LOG(ERROR) << "Daemon: Failed to replay" << std::endl;
           break;
         }
         break;
     }
-
-    // Close Pipe
-    close(self->named_pipe_fd_);
-    unlink(self->pipe_path_.c_str());
-    self->CreatePipeAndRegisterEvent();
   } else {
   }
 }

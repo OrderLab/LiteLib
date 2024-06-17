@@ -2,12 +2,12 @@
 
 #include <event.h>
 #include <pthread.h>
-#include <readerwriterqueue.h>
 #include <sys/eventfd.h>
 #include <unistd.h>
 
 #include <cstdlib>
 #include <iostream>
+#include <syncstream>
 
 #include "worker.hpp"
 
@@ -19,11 +19,8 @@ Worker<Application, Request, Response, ConnectionInfo, CacheKey,
        CacheEntry>::Worker(LiteCoreInstance &lite_core,
                            std::barrier<std::function<void()>> &barrier)
     : lite_core_(lite_core), barrier_(barrier) {
-  notify_event_fd = eventfd(0, EFD_NONBLOCK);
-  if (notify_event_fd == -1) {
-    perror("failed creating eventfd for worker thread");
-    exit(1);
-  }
+  PCHECK(notify_event_fd = eventfd(0, EFD_NONBLOCK))
+      << "failed creating eventfd for worker thread";
 
   struct event_config *ev_config;
   ev_config = event_config_new();
@@ -38,27 +35,34 @@ Worker<Application, Request, Response, ConnectionInfo, CacheKey,
   event_base_set(base_, &notify_event_);
   event_priority_set(&notify_event_, 0);  // highest priority
 
-  if (event_add(&notify_event_, 0) == -1) {
-    fprintf(stderr, "Can't monitor libevent notify pipe\n");
-    exit(1);
-  }
+  LOG_IF(FATAL, event_add(&notify_event_, 0) == -1)
+      << "Can't monitor libevent notify pipe\n";
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+       CacheEntry>::~Worker() {
+  event_del(&notify_event_);
+  event_base_free(base_);
+  close(notify_event_fd);
+
+  conns_.visit_all([](const auto &conn) { delete conn; });
 }
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
-            CacheEntry>::Run() {
+            CacheEntry>::Run(const char name[]) {
   pthread_attr_t attr;
-  int ret;
 
   pthread_attr_init(&attr);
 
-  if ((ret = pthread_create(&thread_id_, &attr, ThreadBody, this)) != 0) {
-    fprintf(stderr, "Can't create thread: %s\n", strerror(ret));
-    exit(1);
-  }
+  PCHECK(!pthread_create(&thread_id_, &attr, ThreadBody, this))
+      << "Can't create thread: %s\n";
 
-  pthread_setname_np(thread_id_, "mc-worker");
+  pthread_setname_np(thread_id_, name);
+  pthread_attr_destroy(&attr);
 }
 
 template <typename Application, typename Request, typename Response,
@@ -76,6 +80,35 @@ void *Worker<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::RemoveAllConnections() {
+  std::vector<ConnectionInstance *> conns_to_be_deleted;
+  conns_.visit_all(
+      [&](const auto &conn) { conns_to_be_deleted.push_back(conn); });
+  for (auto conn : conns_to_be_deleted) delete conn;
+  conns_.clear();
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+typename Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::ConnectionInstance *
+Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+       CacheEntry>::NewReplayConnection() {
+  auto new_connection = new ConnectionInstance(
+      0, EV_READ | EV_PERSIST, base_, ConnectionInstance::ClientHandler,
+      nullptr, lite_core_, false, this);
+  if (!new_connection) {
+    LOG(ERROR) << "failed to create replay connection\n";
+    return nullptr;
+  }
+  new_connection->ConnectBackend();
+  conns_.insert(new_connection);
+  return new_connection;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::NotifyHandler(evutil_socket_t fd, short which,
                                        void *arg_self) {
   Worker *self = static_cast<Worker *>(arg_self);
@@ -83,31 +116,29 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
   if (fd == self->notify_event_fd) {
     uint64_t counter = 0;
     if (read(fd, &counter, sizeof(uint64_t)) != sizeof(uint64_t)) {
-      fprintf(stderr, "Worker can't read from libevent pipe\n");
+      LOG(ERROR) << "Worker can't read from libevent pipe\n";
       return;
     }
     while (counter--) {
-      evutil_socket_t sfd;
-      if (!self->notify_queue_.try_dequeue(sfd)) {
-        fprintf(stderr, "Worker can't dequeue from notify_queue\n");
-        return;
-      }
-      if (sfd > 0) {  // new connections
-        std::unique_ptr<ConnectionInstance> new_connection;
-        if (!(new_connection = std::make_unique<ConnectionInstance>(
-                  sfd, EV_READ | EV_PERSIST, self->base_,
-                  ConnectionInstance::ClientHandler, nullptr, self->lite_core_,
-                  true))) {
-          fprintf(stderr, "failed to create listening connection\n");
-          exit(EXIT_FAILURE);
+      const WorkerMessage msg = self->notify_queue_.pop_front();
+      if (msg.type == WorkerMessage::Type::kNewClientConnection) {
+        auto new_connection =
+            new ConnectionInstance(msg.fd, EV_READ | EV_PERSIST, self->base_,
+                                   ConnectionInstance::ClientHandler, nullptr,
+                                   self->lite_core_, true, self);
+        if (!new_connection) {
+          LOG(ERROR) << "failed to create listening connection\n";
+          return;
         }
-        self->lite_core_.live_connections_.insert(new_connection.get());
-        self->conns_.push(std::move(new_connection));
-      } else if (sfd == -1) {  // replay sync
-        std::cerr << "Thread " << self->thread_id_
-                  << " reaches replay sync point" << std::endl;
+        self->lite_core_.live_connections_.insert(new_connection);
+        self->conns_.insert(new_connection);
+      } else if (msg.type == WorkerMessage::Type::kBarrier) {
+        LOG(INFO) << "Thread " << self->thread_id_ << " reaches sync point"
+                  << std::endl;
         self->barrier_.arrive_and_wait();
         self->barrier_.arrive_and_wait();
+        LOG(INFO) << "Thread " << self->thread_id_ << " exits sync point"
+                  << std::endl;
       }
     }
   } else {
