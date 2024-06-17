@@ -59,12 +59,14 @@ class CacheInner {
 
   bool Replace(const CacheKey &key, const CacheEntry &value,
                bool in_transaction, LogEntryInstance *dirty_node,
-               LogEntryInstance *&old_dirty_node,
-               CacheStateInstance *&new_state);
+               std::mutex *logger_chr_mutex, CacheStateInstance *&new_state);
 
   void ConstVisitAll(
       std::function<void(const CacheKey &, const CacheEntry &)> visitor,
       bool in_transaction);
+
+  void VisitAllState(std::function<void(CacheStateInstance *)> visitor,
+                     bool in_transaction);
 
   std::unique_lock<std::shared_mutex> TransactionLock() {
     return std::unique_lock<std::shared_mutex>{transaction_mutex_};

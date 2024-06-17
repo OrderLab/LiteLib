@@ -29,7 +29,12 @@ class LiteServer {
   explicit LiteServer(const size_t& nthreads, const size_t& max_item_count,
                       Application& app, std::string& backend_addr,
                       std::string& backend_port,
-                      const char pipe_path[] = "/tmp/lite");
+                      const std::chrono::milliseconds sliding_window_size,
+                      const size_t replay_expected_rps,
+                      const double flow_control_ratio = 0.9,
+                      const size_t n_replay_threads = 1,
+                      const char pipe_path[] = "/tmp/lite",
+                      bool crash_recover = true);
 
   /// Listen on the specified TCP port.
   bool Run(const char* port);
@@ -50,7 +55,7 @@ class LiteServer {
   std::barrier<std::function<void()>> barrier_;
 
   /// The next thread to use for a new connection.
-  decltype(workers_)::iterator next_worker_;
+  typename decltype(workers_)::iterator next_worker_;
 
   /// The event base for the server thread.
   struct event_base* main_base_;
