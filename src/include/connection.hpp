@@ -93,7 +93,7 @@ class Connection {
   event client_event_, backend_event_;
 
   /// Buffer for incoming data.
-  std::array<uint8_t, 16384> buffer_;
+  alignas(16) uint8_t buffer_[131072];
 
   /// The incoming request.
   std::shared_ptr<Request> request_;

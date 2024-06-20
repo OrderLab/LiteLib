@@ -1,5 +1,6 @@
 #include "network_utils.hpp"
 
+#include <fcntl.h>
 #include <netinet/tcp.h>
 
 #include <cstring>
@@ -61,10 +62,26 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
       continue;
     }
 
-    if (connect(backend_fd, res->ai_addr, res->ai_addrlen) == -1) {
-      // PLOG(ERROR) << "failed to connect backend";
-      // goto connect_backend_exit;
+    // set non-blocking
+    int flags;
+    if ((flags = fcntl(backend_fd, F_GETFL)) == -1) {
+      PLOG(ERROR) << "failed to get flags for backend";
       continue;
+    }
+    flags |= O_NONBLOCK;
+    if (fcntl(backend_fd, F_SETFL, flags) == -1) {
+      PLOG(ERROR) << "failed to set backend to non-blocking";
+      continue;
+    }
+
+    if (connect(backend_fd, res->ai_addr, res->ai_addrlen) == -1) {
+      /* If the socket is non-blocking, it is ok for connect() to
+       * return an EINPROGRESS error here. */
+      if (errno != EINPROGRESS) {
+        // PLOG(ERROR) << "failed to connect backend";
+        // goto connect_backend_exit;
+        continue;
+      }
     }
 
     connected = true;
@@ -86,33 +103,39 @@ connect_backend_exit:
   return -1;
 }
 
-bool Write(const evutil_socket_t fd, const std::vector<uint8_t> buffer,
-           size_t len) {
-  // TODO: async?
-  // TODO: use transmit() implementation in Memcached
-  const uint8_t* begin = buffer.data();
+bool Write(const evutil_socket_t fd, const uint8_t buffer[], size_t len) {
+  const uint8_t* begin = buffer;
   while (len) {
-    ssize_t bytes_written = write(fd, begin, len);  // BUG: it's nonblocking
-    if (bytes_written <= 0) {
+    ssize_t bytes_written = write(fd, begin, len);
+    if (bytes_written <= 0 && errno != EAGAIN) {
       PLOG(ERROR) << "write to " << fd;  // TODO: max tries
       return false;
     } else {
+      // TODO: how to handle EAGAIN?
       len -= bytes_written;
       begin += bytes_written;
     }
   }
   return true;
 }
-bool Write(const evutil_socket_t fd, const std::vector<uint8_t>&& buffer) {
-  return Write(fd, buffer, buffer.size());
+
+bool Write(const evutil_socket_t fd, const std::vector<uint8_t> buffer,
+           size_t len) {
+  return Write(fd, buffer.data(), len);
 }
+
+bool Write(const evutil_socket_t fd, const std::vector<uint8_t>&& buffer) {
+  return Write(fd, buffer.data(), buffer.size());
+}
+
 bool Write(const evutil_socket_t fd,
            const std::unique_ptr<std::vector<uint8_t>>&& buffer) {
-  return Write(fd, *buffer, buffer->size());
+  return Write(fd, buffer->data(), buffer->size());
 }
+
 bool Write(const evutil_socket_t fd,
            const std::shared_ptr<std::vector<uint8_t>> buffer) {
-  return Write(fd, *buffer, buffer->size());
+  return Write(fd, buffer->data(), buffer->size());
 }
 
 }  // namespace network
