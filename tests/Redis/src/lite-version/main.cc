@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     lite::LiteServer<Redis, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s(thread_pool_size, cache_size, redis, backend_addr, backend_port,
-          "/tmp/lite_Redis");
+          1000ms, 20000, 0.9, 1,"/tmp/lite_Redis");
     // Run the server until stopped.
     s.Run(port);
   } catch (std::exception &e) {

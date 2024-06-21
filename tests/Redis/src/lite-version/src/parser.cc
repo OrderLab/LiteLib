@@ -31,21 +31,21 @@ lite::DeserializeResult RESPTypeParser::Deserialize(InputIterator &begin,
             std::unique_ptr<RESPType>{dynamic_cast<RESPType *>(new RESPArray)};
         parser_ = std::make_unique<RESPArrayParser>();
         break;
-      case '_':
-        value_ =
-            std::unique_ptr<RESPType>{dynamic_cast<RESPType *>(new RESPNull)};
-        parser_ = std::make_unique<RESPNullParser>();
-        break;
-      case '%':
-        value_ =
-            std::unique_ptr<RESPType>{dynamic_cast<RESPType *>(new RESPMap)};
-        parser_ = std::make_unique<RESPMapParser>();
-        break;
-      case '~':
-        value_ =
-            std::unique_ptr<RESPType>{dynamic_cast<RESPType *>(new RESPSet)};
-        parser_ = std::make_unique<RESPSetParser>();
-        break;
+      // case '_':
+      //   value_ =
+      //       std::unique_ptr<RESPType>{dynamic_cast<RESPType *>(new RESPNull)};
+      //   parser_ = std::make_unique<RESPNullParser>();
+      //   break;
+      // case '%':
+      //   value_ =
+      //       std::unique_ptr<RESPType>{dynamic_cast<RESPType *>(new RESPMap)};
+      //   parser_ = std::make_unique<RESPMapParser>();
+      //   break;
+      // case '~':
+      //   value_ =
+      //       std::unique_ptr<RESPType>{dynamic_cast<RESPType *>(new RESPSet)};
+      //   parser_ = std::make_unique<RESPSetParser>();
+      //   break;
       default:
         std::cerr << "Unknown RESPType: " << *(begin - 1) << std::endl;
         return lite::kBad;

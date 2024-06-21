@@ -115,6 +115,7 @@ class RESPTypeParser {
  public:
   std::unique_ptr<RESPType> value_ = nullptr;
 
+  virtual ~RESPTypeParser() = default;
   virtual lite::DeserializeResult Deserialize(InputIterator &begin,
                                               InputIterator end,
                                               RESPType &value) {
