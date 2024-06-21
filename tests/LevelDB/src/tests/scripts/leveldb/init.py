@@ -15,13 +15,33 @@ os.system(r'pgrep "lite_cli" | xargs kill -9')
 os.system(r'pgrep "redis-server" | xargs kill -9')
 os.system(r'rm dump.rdb')
 
-if (args.experiment_type == 'Full'):
-    boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "6379"]
-    utils.StartBackgroundProcess(boot_command)
+if args.experiment_type == "Full":
+    # boot_command = ["redis-server", "--port", "6379", "--protected-mode", "no"]
+    boot_command = [
+        "taskset",
+        "-c",
+        "0,1",
+        "/workspace/redis-leveldb/redis-leveldb",
+        "-P",
+        "6379",
+        "-B",
+        str(args.write_buffer_size),
+    ]
+    utils.StartBackgroundProcess(
+        boot_command, "/workspace/client/" + args.file_prefix + ".log"
+    )
 else:
-    # boot_command = ["redis-server", "--port", "60000"]
-    boot_command = ["/workspace/redis-leveldb/redis-leveldb", "-P", "60000"]
-    utils.StartBackgroundProcess(boot_command)
+    # boot_command = ["redis-server", "--port", "60000", "--protected-mode", "no"]
+    boot_command = [
+        "/workspace/redis-leveldb/redis-leveldb",
+        "-P",
+        "60000",
+        "-B",
+        str(args.write_buffer_size),
+    ]
+    utils.StartBackgroundProcess(
+        boot_command, "/workspace/redis-leveldb/backend-log-1.txt"
+    )
 
     boot_command = ["/workspace/server/LiteLevelDB", '-t', str(args.num_threads), '-s', args.memory_size]
     utils.StartBackgroundProcess(boot_command)

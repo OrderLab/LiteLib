@@ -11,6 +11,9 @@ namespace network {
 evutil_socket_t TryConnectBackend(const std::string& addr,
                                   const std::string& port);
 
+[[nodiscard]] bool Write(const evutil_socket_t fd, const uint8_t buffer[],
+                         size_t len);
+
 [[nodiscard]] bool Write(const evutil_socket_t fd,
                          const std::vector<uint8_t> buffer, size_t len);
 

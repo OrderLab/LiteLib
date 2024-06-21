@@ -74,6 +74,7 @@ std::shared_ptr<std::vector<uint8_t>> ParsedPacket::Serialize() {
   }
   auto buffers = std::make_shared<std::vector<uint8_t>>();
   ToBuffers(*buffers);
+  buffer = buffers;
   return buffers;
 }
 
@@ -82,7 +83,7 @@ void ParsedPacket::ToBuffers(std::vector<uint8_t> &buffers) {
     AppendBuffer(buffers, buffer.get());
     return;
   }
-  buffers.reserve(buffers.size() + 24 + (extra ? extra->size() : 0) +
+  buffers.reserve(buffers.size() + 24 + (extra ? header.extras_length : 0) +
                   (key ? key->size() : 0) + (value ? value->size() : 0));
   ReverseAppendBuffer(buffers, &header.magic, sizeof(header.magic));
   ReverseAppendBuffer(buffers, &header.opcode, sizeof(header.opcode));
@@ -96,6 +97,8 @@ void ParsedPacket::ToBuffers(std::vector<uint8_t> &buffers) {
   ReverseAppendBuffer(buffers, &header.opaque, sizeof(header.opaque));
   ReverseAppendBuffer(buffers, &header.CAS, sizeof(header.CAS));
   AppendBuffer(buffers, extra.get());
+  if (extra)
+    buffers.resize(buffers.size() + header.extras_length - extra->size());
   AppendBuffer(buffers, key.get());
   AppendBuffer(buffers, value.get());
 

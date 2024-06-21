@@ -252,8 +252,9 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
           if (!i) {
             (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
           } else {
-            // TODO: transfer the backend connection from its worker to a
-            // non-blocking thread, process the response, and transfer it back
+            // TODO: how to disable the reading from client event, instead of
+            // blocking the worker. So that we can wait for the server's
+            // responses
           }
           SendReplayReq(*entry->backend_conn_ptr, entry->req, buffer);
         }
