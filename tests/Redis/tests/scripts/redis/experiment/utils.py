@@ -4,11 +4,14 @@ import subprocess
 
 
 def get_process(name, port):
-    for proc in psutil.process_iter(['name', 'connections']):
+    for proc in psutil.process_iter(['name']):
         if proc.info['name'] == name:
-            for conn in proc.info['connections']:
-                if conn.laddr.port == port:
-                    return proc
+            try:
+                for conn in proc.connections(kind='inet'):
+                    if conn.laddr.port == port:
+                        return proc
+            except psutil.AccessDenied:
+                continue
     return None
 
 

@@ -46,6 +46,17 @@ if ! which libevent >/dev/null 2>&1; then
 }
 fi
 
+#install readerwriterqueue
+if ! which readerwriterqueue >/dev/null 2>&1; then
+{
+    # echo "-----------------Installing readerwriterqueue-----------------"
+    git clone https://github.com/cameron314/readerwriterqueue.git /tmp/readerwriterqueue
+    cd /tmp/readerwriterqueue
+    mkdir build && cd build
+    cmake ..
+    make install
+}
+fi
 # install glog
 
 git clone https://github.com/google/glog.git /tmp/glog

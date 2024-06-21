@@ -35,7 +35,7 @@ def generate_command_args(command, max_key_length, max_value_length):
     elif command == 'ZPOPMIN':
         return [random_string(max_key_length)]
     else:
-        raise ValueError(f"Unsupported command: {command}")
+        raise ValueError("Unsupported command:", command)
 
 
 def execute_command(redis_client, command, args):
@@ -57,7 +57,7 @@ def worker(redis_client, commands, args, result_queue):
 
     for command in commands:
         for _ in range(args.num_requests):
-            cmd_args = generate_command_args(command, args.max_key_length, args.max_value_length)
+            cmd_args = generate_command_args(command.upper(), args.max_key_length, args.max_value_length)
             status, _, latency = execute_command(redis_client, command, cmd_args)
             if status == 'success':
                 result_queue.put((1, 0, 0, latency))
@@ -65,7 +65,6 @@ def worker(redis_client, commands, args, result_queue):
                 result_queue.put((0, 1, 0, latency))
             elif status == 'error':
                 result_queue.put((0, 0, 1, latency))
-            
 
 
 def get_redis_client(args):

@@ -42,20 +42,27 @@ else:
     utils.StartBackgroundProcess(boot_command)
     
     if utils.IsProcessRunning("redis-server") and utils.IsProcessRunning("redis-lite"):
+        os.system("kill -2 $(ps aux | grep 'monitor.py' | awk '{print $2}')")
+        os.system("kill -2 $(ps aux | grep 'omni_bench.py' | awk '{print $2}')")
+        
         monitor_command = ["python3", "/workspace/experiment/monitor.py", "--mode", "lite", "--duration", "120"]
         utils.StartBackgroundProcess(monitor_command)
         
-        bench_command = ["python3", "/workspace/experiment/omni_bench.py", "--mode", "lite", "-t", "10", "-p", "6479", "-n", "2000", "--commands", "HSET", "LPUSH", "SADD", "ZADD"]
+        bench_command = ["python3", "/workspace/experiment/omni_bench.py", "--mode", "lite", "-t", "5", "-p", "6479", "-n", "2000", "--commands", "HSET", "LPUSH", "SADD", "ZADD"]
         utils.StartBackgroundProcess(bench_command)
         
         start_time = time.time()
         time.sleep(args.crashtime)
         
         os.system(r'pgrep "redis-server" | xargs kill -2')
-        time.sleep(1)
         boot_command = ["/workspace/lite-version/build/Lite/lite_cli", "-t", "/tmp/lite_Redis", "-p", "6379", "-m", "1"]
         utils.StartBackgroundProcess(boot_command)
         boot_command = ["redis-server", "/workspace/redis_full_running.conf"]
         utils.StartBackgroundProcess(boot_command)
+        time.sleep(1)
         boot_command = ["/workspace/lite-version/build/Lite/lite_cli", "-t", "/tmp/lite_Redis", "-p", "6379", "-m", "0"]
         utils.StartBackgroundProcess(boot_command)
+        
+        time.sleep(30)
+        
+        os.system("kill -2 $(ps aux | grep 'monitor.py' | awk '{print $2}')")
