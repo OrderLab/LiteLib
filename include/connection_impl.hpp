@@ -82,7 +82,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   // TODO: handle the case when the buffer is not large enough
   // TODO: above TODOs apply to BackendHandler as well
   ssize_t bytes_transferred;
-  if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
+  if ((bytes_transferred = read(fd, conn->buffer_, 131072)) <= 0) {
     if (bytes_transferred == 0)
       ;  // LOG(INFO) << "Client disconnected: " << fd << std::endl;
     else
@@ -92,7 +92,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     // expected? (e.g. quit command in Memcached)
     return;
   }
-  uint8_t* begin = conn->buffer_.data();
+  uint8_t* begin = conn->buffer_;
   uint8_t* end = begin + bytes_transferred;
   while (begin != end) {
     const auto result = conn->request_->Deserialize(begin, end);
@@ -133,7 +133,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   ssize_t bytes_transferred;
-  if ((bytes_transferred = read(fd, conn->buffer_.data(), 16384)) <= 0) {
+  if ((bytes_transferred = read(fd, conn->buffer_, 131072)) <= 0) {
     if (bytes_transferred == 0) {
       ;  // LOG(WARNING) << "Backend disconnected: " << fd << std::endl;
       close(fd);
@@ -144,7 +144,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     }
     return;
   }
-  uint8_t* begin = conn->buffer_.data();
+  uint8_t* begin = conn->buffer_;
   uint8_t* end = begin + bytes_transferred;
   while (begin != end) {
     const auto result = conn->response_->Deserialize(begin, end);

@@ -23,8 +23,7 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                                    const size_t replay_expected_rps,
                                    const double flow_control_ratio,
                                    const size_t n_replay_threads,
-                                   const char pipe_path[],
-                                   bool crash_recover)
+                                   const char pipe_path[], bool crash_recover)
     : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path,
                  barrier_, workers_, sliding_window_size, replay_expected_rps,
                  flow_control_ratio, n_replay_threads, crash_recover),
