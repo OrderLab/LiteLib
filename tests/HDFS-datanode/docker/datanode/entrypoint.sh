@@ -1,0 +1,2 @@
+/workspace/LiteHdfsDatanode
+# hdfs datanode

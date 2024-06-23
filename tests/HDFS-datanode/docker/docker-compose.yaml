@@ -5,39 +5,52 @@ services:
       hostname: namenode
       command: ["hdfs", "namenode"]
       ports:
-        - 9870:9870
+        - 8020:8020
+        - 8022:8022
       env_file:
-        - ./config
+        - ./namenode_config
+      tty: true
       environment:
           ENSURE_NAMENODE_DIR: "/tmp/hadoop-root/dfs/name"
-   datanode1:
+   datanode:
       image: apache/hadoop:3
+      hostname: datanode
       command: ["hdfs", "datanode"]
-      env_file:
-        - ./config
-   datanode2:
-      image: apache/hadoop:3
-      command: ["hdfs", "datanode"]
-      env_file:
-        - ./config
-   datanode3:
-      image: apache/hadoop:3
-      command: ["hdfs", "datanode"]
-      env_file:
-        - ./config       
-   resourcemanager:
-      image: apache/hadoop:3
-      hostname: resourcemanager
-      command: ["yarn", "resourcemanager"]
       ports:
-         - 8088:8088
+        - 11211:11211
+        - 9867:9867
       env_file:
-        - ./config
+        - ./datanode_config  
+      tty: true    
       volumes:
-        - ./test.sh:/opt/test.sh
-   nodemanager:
-      image: apache/hadoop:3
-      command: ["yarn", "nodemanager"]
-      env_file:
-        - ./config
+        - type: bind
+          source: ./datanode
+          target: /workspace 
+   lite:
+      hostname: lite
+      build:
+        context: .
+        dockerfile: ./dev/Dockerfile
+      volumes:
+        - type: bind
+          source: /home/maizhezh/cascade
+          target: /workspace 
+      tty: true
+
+      # entrypoint: /workspace/entrypoint.sh
+  #  resourcemanager:
+  #     image: apache/hadoop:3
+  #     hostname: resourcemanager
+  #     command: ["yarn", "resourcemanager"]
+  #     ports:
+  #        - 8088:8088
+  #     env_file:
+  #       - ./config
+  #     volumes:
+  #       - ./test.sh:/opt/test.sh
+  #  nodemanager:
+  #     image: apache/hadoop:3
+  #     command: ["yarn", "nodemanager"]
+  #     env_file:
+  #       - ./config
 
