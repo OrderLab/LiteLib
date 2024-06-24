@@ -3,13 +3,14 @@
 This consists of setting up 4 Docker containers:
 
 - Redis server (172.16.0.2)
-  - A custom proxy listening to port `6279`
   - Full Redis server listening to port `6379`
   - Lite Redis server listening to port `6479`
 - Redis benchmarking client (172.16.0.3)
-- Monitoring tools
-  - cAdvisor(v0.49.1)
-  - Prometheus
+- Monitoring tools(optional, config in [docker compose file](./docker-compose.yml))
+  - cAdvisor: [localhost:8080](http://localhost:8080)
+  - Prometheus: [localhost:9090](http://localhost:9090)
+    - [CPU Usage of Redis Container](http://localhost:9090/graph?g0.expr=rate(container_cpu_usage_seconds_total%7Bname%3D%22redis-server%22%7D%5B1m%5D)&g0.tab=0&g0.display_mode=lines&g0.show_exemplars=0&g0.range_input=1h)
+    - [Memory Usage of Redis Container](http://localhost:9090/graph?g0.expr=container_memory_usage_bytes%7Bname%3D%22redis-server%22%7D&g0.tab=0&g0.display_mode=lines&g0.show_exemplars=0&g0.range_input=1h)
 
 ### Replica model
 
@@ -65,12 +66,15 @@ redis-benchmark -h 172.16.0.2 -p 6479 --csv -n 100000 -t set,get,incr,lpush,rpus
 redis-benchmark -h 172.16.0.2 -p 6379 --csv -n 100000 -t set,get,incr,lpush,rpush,lpop,rpop,sadd,spop,hset,hget
 ```
 
-The lite Redis and one-step experiment scripts are still under construction.
+Also, a customized Python-based [benchmarking tool](./scripts/redis/experiment/omni_bench.py) with more configurable parameters are implemented.
 
-## Container Performance Monitoring
+```sh
+# A usage example of the custom benchmark
+python3 monitor.py --mode lite --duration 120
 
-- cAdvisor: [localhost:8080](http://localhost:8080)
-- Prometheus: [localhost:9090](http://localhost:9090)
-  - [CPU Usage of Redis Container](http://localhost:9090/graph?g0.expr=rate(container_cpu_usage_seconds_total%7Bname%3D%22redis-server%22%7D%5B1m%5D)&g0.tab=0&g0.display_mode=lines&g0.show_exemplars=0&g0.range_input=1h)
-  - [Memory Usage of Redis Container](http://localhost:9090/graph?g0.expr=container_memory_usage_bytes%7Bname%3D%22redis-server%22%7D&g0.tab=0&g0.display_mode=lines&g0.show_exemplars=0&g0.range_input=1h)
+python3 omni_bench.py --mode lite -p 6479 -t 5 -n 30000 --commands set get hset zadd lpush
 
+python3 plot.py --mode lite
+```
+
+Further works required to uniform the data collection and plotting process.
