@@ -10,22 +10,23 @@
 #include "service.hpp"
 
 void PrintHelp() {
-  std::cout << "Usage: LiteLevelDB [-t thread_num] [-s size] \n"
+  LOG(INFO) << "Usage: LiteLevelDB [-t thread_num] [-s size] \n"
                "       [-p port] [-h help]\n";
-  std::cout << "Options:\n";
-  std::cout << "  -t, --thread_num      Number of worker threads. Default: \n"
+  LOG(INFO) << "Options:\n";
+  LOG(INFO) << "  -t, --thread_num      Number of worker threads. Default: \n"
                "                          hardware_concurrency() - 1\n";
-  std::cout
+  LOG(INFO)
       << "  -s, --size            Max number of items in cache. Default: \n"
          "                          1024\n";
-  std::cout << "  -p, --port            Default: 6379\n";
-  std::cout << "  -h, --help            Show this help message.\n";
-  std::cout << "Example:\n";
-  std::cout << "  LiteLevelDB -t 128 -m 1GiB -p 6379\n";
-  std::cout << "  LiteLevelDB --thread_num=4 --size=256\n";
+  LOG(INFO) << "  -p, --port            Default: 6379\n";
+  LOG(INFO) << "  -h, --help            Show this help message.\n";
+  LOG(INFO) << "Example:\n";
+  LOG(INFO) << "  LiteLevelDB -t 128 -m 1GiB -p 6379\n";
+  LOG(INFO) << "  LiteLevelDB --thread_num=4 --size=256\n";
 }
 
 int main(int argc, char* argv[]) {
+  google::InitGoogleLogging(argv[0]);
   try {
     size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t cache_size(1024);
@@ -60,10 +61,10 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    std::cout << "LiteLevelDB starts" << std::endl;
-    std::cout << "\tlistening on port: " << port << std::endl;
-    std::cout << "\tthread_pool_size: " << thread_pool_size << std::endl;
-    std::cout << "\tsize: " << cache_size << std::endl;
+    LOG(INFO) << "LiteLevelDB starts" << std::endl;
+    LOG(INFO) << "\tlistening on port: " << port << std::endl;
+    LOG(INFO) << "\tthread_pool_size: " << thread_pool_size << std::endl;
+    LOG(INFO) << "\tsize: " << cache_size << std::endl;
 
     // Initialise the server.
     // TODO: make address and port configurable.
@@ -73,12 +74,14 @@ int main(int argc, char* argv[]) {
     lite::LiteServer<LevelDB, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s(thread_pool_size, cache_size, level_db, backend_addr, backend_port,
-          "/tmp/lite_LevelDB");
+          1000ms, 20000, 0.9, 1, "/tmp/lite_LevelDB");
 
     // Run the server until stopped.
-    s.Run(port);
+    if (!s.Run(port)) {
+      LOG(FATAL) << "Failed to start server" << std::endl;
+    }
   } catch (std::exception& e) {
-    std::cerr << "exception: " << e.what() << "\n";
+    LOG(FATAL) << "exception: " << e.what() << "\n";
   }
 
   return 0;

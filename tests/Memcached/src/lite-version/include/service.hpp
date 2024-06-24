@@ -73,6 +73,8 @@ class Memcached {
                             std::vector<std::shared_ptr<Packet>> requests,
                             ConnectionInfo &_, Cache *cache) const;
 
-  Packet EmergencyServe(std::shared_ptr<Packet> p, ConnectionInfo &conn_info,
-                        Cache *cache, Logger *logger) const;
+  std::pair<Packet, bool> EmergencyServe(std::shared_ptr<Packet> p,
+                                         ConnectionInfo &conn_info,
+                                         Cache *cache, Logger *logger,
+                                         bool flow_control) const;
 };

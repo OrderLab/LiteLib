@@ -46,7 +46,6 @@ uint16_t Packet::GetStatus() const {
   return ntohs(*reinterpret_cast<const uint16_t *>(&(*buffer)[6]));
 }
 
-
 ParsedPacket::ParsedPacket(const Packet &packet) {
   const auto &data = *(packet.buffer);
   header.magic = data[0];
@@ -133,13 +132,13 @@ void ParsedPacket::ToBuffers(std::vector<uint8_t> &buffers) {
   // buffers.push_back(boost::asio::mutable_buffer(key.data(), key.size()));
   // buffers.push_back(boost::asio::mutable_buffer(value.data(), value.size()));
 
-  // std::cerr << "ToBuffers: " << std::endl;
+  // DLOG(INFO) << "ToBuffers: " << std::endl;
   // for (auto &buffer : buffers) {
   //   for (const u_char *c = (const u_char *)buffer.data();
   //        c != (const u_char *)buffer.data() + buffer.size(); ++c) {
-  //     std::cerr << std::hex << "0x" << static_cast<uint32_t>(*c) << std::dec
+  //     DLOG(INFO) << std::hex << "0x" << static_cast<uint32_t>(*c) << std::dec
   //               << " ";
   //   }
-  //   std::cerr << std::endl;
+  //   DLOG(INFO) << std::endl;
   // }
 }

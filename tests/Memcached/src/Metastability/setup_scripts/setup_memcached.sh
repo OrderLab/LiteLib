@@ -8,6 +8,7 @@ apt-get update
 apt-get -y install memcached libevent-dev
 apt-get -y install libmemcached-tools
 apt-get -y install ipvsadm iproute2
+apt-get -y install libgoogle-glog-dev
 ln -s /usr/bin/memcached /usr/bin/memcached.replica
 # chmod 777 /etc/memcached.conf
 # sed -i 's/-l 127.0.0.1/-l 0.0.0.0/' /etc/memcached.conf 

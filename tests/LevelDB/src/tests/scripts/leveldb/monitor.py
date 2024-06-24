@@ -39,12 +39,7 @@ def do(i):
   data = {"time": i}
   while exception:
     try:
-      re_scan_process = False
-      for proc in processes:
-        if proc.is_running() == False:
-          re_scan_process = True
-      if re_scan_process or len(processes) == 0:
-        get_process()
+      get_process()
       for name in process_names:
         data[name] = {"cpu": 0.0, "mem": 0.0}
       for proc in processes:
@@ -64,7 +59,7 @@ def do(i):
 
 if __name__ == '__main__':
   time_interval = 1.0
-  total_time = int(sys.argv[1:][0])
+  total_time = int(sys.argv[1:][0]) + 5
   start_time = int(sys.argv[3:][0])
   print(f'total time: {total_time}')
   print(f'start time: {start_time}')

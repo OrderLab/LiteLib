@@ -55,6 +55,13 @@ features = ["derive"]
 optional = true
 package = "serde"
 
+[dependencies.tokio]
+version = "1.0"
+features = [
+    "macros",
+    "rt-multi-thread",
+]
+
 [dev-dependencies.config]
 version = "0.13"
 features = ["json"]
@@ -69,13 +76,6 @@ version = "0.3.15"
 version = "0.24"
 features = ["tokio-comp"]
 default-features = false
-
-[dev-dependencies.tokio]
-version = "1.0"
-features = [
-    "macros",
-    "rt-multi-thread",
-]
 
 [features]
 cluster = ["redis/cluster-async"]

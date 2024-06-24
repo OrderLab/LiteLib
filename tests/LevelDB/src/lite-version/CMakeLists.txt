@@ -12,10 +12,13 @@ set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost 1.83 REQUIRED COMPONENTS
              system thread)
 find_package(Libevent REQUIRED)
+find_package (glog 0.6.0 REQUIRED)
 
 add_subdirectory(Lite)
 
 add_executable(${PROJECT_NAME})
+
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined")
 
 file(GLOB ALL_CC_FILES
   "src/*.cc"
@@ -27,6 +30,6 @@ target_sources(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
-target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread readerwriterqueue)
+target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog)
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)
