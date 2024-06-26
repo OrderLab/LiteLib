@@ -13,6 +13,7 @@ find_package(Boost 1.83 REQUIRED COMPONENTS
              system thread)
 find_package(Libevent REQUIRED)
 find_package (glog 0.6.0 REQUIRED)
+find_package(Protobuf REQUIRED)
 
 add_subdirectory(Lite)
 
@@ -20,6 +21,7 @@ add_executable(${PROJECT_NAME})
 
 file(GLOB ALL_CC_FILES
   "src/*.cc"
+  "protocpp/*.cc"
 )
 target_sources(${PROJECT_NAME}
     PRIVATE
@@ -28,5 +30,6 @@ target_sources(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
-target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog)
+target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog ${PROTOBUF_LIBRARY})
 target_include_directories(${PROJECT_NAME} PRIVATE include)
+target_include_directories(${PROJECT_NAME} PRIVATE protocpp)

@@ -26,7 +26,8 @@ RUN apt-get update && \
         vim \
         gdb \
         libgoogle-glog-dev \
-        valgrind && \
+        valgrind \
+        protobuf-compiler && \
     apt-get clean
 
 # System locale
