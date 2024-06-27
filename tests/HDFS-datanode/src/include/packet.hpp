@@ -1,6 +1,7 @@
 #pragma once
 
 #include <lite.hpp>
+#include <unordered_map>
 #include "RpcHeader.pb.h"
 #include "IpcConnectionContext.pb.h"
 #include "ProtobufRpcEngine.pb.h"
@@ -18,6 +19,10 @@ class Packet {
   std::shared_ptr<std::vector<uint8_t>> Serialize() const { return buffer; }
 
  private:
-  bool ReadDelimitedFrom(google::protobuf::io::CodedInputStream *coded_input,
+  static bool ReadDelimitedFrom(google::protobuf::io::CodedInputStream *coded_input,
                          google::protobuf::MessageLite *message);
+  
+  static std::unordered_map<std::string, google::protobuf::MessageLite (*)(google::protobuf::io::CodedInputStream *coded_input)> rpc_parse_function_map;
+
+  google::protobuf::MessageLite sendHeartbeatRequest(google::protobuf::io::CodedInputStream *coded_input);
 };
