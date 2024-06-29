@@ -1,3 +1,9 @@
+## Dev Docker
+
+```sh
+docker build -f Dockerfile --build-arg NUM_JOBS=`nproc --all` --tag=lite-sys .
+```
+
 ## Usage
 
 ### Internal Library
