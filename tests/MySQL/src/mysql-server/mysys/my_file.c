@@ -54,6 +54,7 @@
   and also wrong on many 32bit platforms.
   It is better to get a compile error, than to use a wrong value.
 #ifndef RLIM_INFINITY
+#error Unknown RLIM_INFINITY value
 #define RLIM_INFINITY ((uint) 0xffffffff)
 #endif
 */
@@ -113,6 +114,7 @@ static uint set_max_open_files(uint max_file_limit)
 
 uint my_set_max_open_files(uint files)
 {
+  size_t mem_size;
   struct st_my_file_info *tmp;
   DBUG_ENTER("my_set_max_open_files");
   DBUG_PRINT("enter",("files: %u  my_file_limit: %u", files, my_file_limit));
@@ -122,16 +124,16 @@ uint my_set_max_open_files(uint files)
   if (files <= MY_NFILE)
     DBUG_RETURN(files);
 
+  mem_size = 1ll * sizeof(*tmp) * files;
   if (!(tmp= (struct st_my_file_info*) my_malloc(key_memory_my_file_info,
-                                                 sizeof(*tmp) * files,
-						 MYF(MY_WME))))
+                                                 mem_size, MYF(MY_WME | MY_ZEROFILL))))
     DBUG_RETURN(MY_NFILE);
 
   /* Copy any initialized files */
-  memcpy((char*) tmp, (char*) my_file_info,
-         sizeof(*tmp) * MY_MIN(my_file_limit, files));
-  memset((tmp + my_file_limit), 0, 
-        MY_MAX((int) (files - my_file_limit), 0) * sizeof(*tmp));
+  mem_size = 1ll * sizeof(*tmp) * MY_MIN(my_file_limit, files);
+  memcpy((char*) tmp, (char*) my_file_info, mem_size);
+  // mem_size = 1ll * sizeof(*tmp) * MY_MAX((int) (files - my_file_limit), 0);
+  // memset((tmp + my_file_limit), 0, mem_size);
   my_free_open_file_info();			/* Free if already allocated */
   my_file_info= tmp;
   my_file_limit= files;
