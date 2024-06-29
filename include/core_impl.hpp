@@ -162,6 +162,8 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     delete conn;
   }
 
+  app_.NormalToEmergencyHook();
+
   barrier_.arrive_and_wait();  // unblock worker threads
   if (!crash_recover_) {
     // add all cache nodes to the log
@@ -291,6 +293,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   emergency_mode_ = false;
   LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
                << std::endl;
+
+  app_.EmergencyToNormalHook();
 
   barrier_.arrive_and_wait();  // unblock worker threads
 

@@ -29,3 +29,9 @@ cmake --build . --target install
 find_package(Lite CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE lite::Lite)
 ```
+
+## GLOG
+
+```sh
+GLOG_stderrthreshold=0 GLOG_logtostderr=1 ./lite
+```
