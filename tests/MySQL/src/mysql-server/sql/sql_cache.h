@@ -328,6 +328,8 @@ protected:
   */
   mysql_mutex_t structure_guard_mutex;
   uchar *cache;					// cache memory
+  int shm_fd;					// shared memory file descriptor
+  ulong shm_size;				// shared memory size
   Query_cache_block *first_block;		// physical location block list
   Query_cache_block *queries_blocks;		// query list (LIFO)
   Query_cache_block *tables_blocks;

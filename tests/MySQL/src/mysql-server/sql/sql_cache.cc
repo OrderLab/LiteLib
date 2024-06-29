@@ -350,6 +350,7 @@ TODO list:
 #include "../storage/myisammrg/myrg_def.h"
 #include "probes_mysql.h"
 #include "transaction.h"
+#include <log.h>
 
 #ifdef EMBEDDED_LIBRARY
 #include "emb_qcache.h"
@@ -2264,7 +2265,14 @@ void Query_cache::destroy()
   {
     /* Underlying code expects the lock. */
     lock_and_suspend();
-    free_cache();
+    // free_cache(); // NOTE: LiteMySQL needs to use it
+    // sql_print_information("DEBUG: first ulong of query cache: %ld\n", *reinterpret_cast<ulong *>(cache));
+    if (munmap(cache, shm_size) == -1) {
+      perror("munmap query cache");
+    }
+    if (close(shm_fd) == -1) {
+      perror("close query cache");
+    }
     unlock();
 
     mysql_cond_destroy(&COND_cache_status_changed);
@@ -2300,6 +2308,7 @@ void Query_cache::init()
   DBUG_VOID_RETURN;
 }
 
+const char query_cache_shm_name[] = "mysql_query_cache";
 
 ulong Query_cache::init_cache()
 {
@@ -2367,10 +2376,29 @@ ulong Query_cache::init_cache()
     goto err;
   query_cache_size -= additional_data_size;
 
-  if (!(cache= (uchar *)
-        my_malloc(key_memory_Query_cache,
-                  query_cache_size+additional_data_size, MYF(0))))
+//   if (!(cache= (uchar *)
+//         my_malloc(key_memory_Query_cache,
+//                   query_cache_size+additional_data_size, MYF(0))))
+//     goto err;
+
+  // Create shared memory object
+  shm_size = query_cache_size + additional_data_size;
+  shm_fd = shm_open(query_cache_shm_name, O_TRUNC | O_CREAT | O_RDWR, 0666);
+  sql_print_information("Query Cache: shm name %s, size %lu", query_cache_shm_name, shm_size);
+  if (shm_fd == -1) {
+    perror("shm_open query cache");
     goto err;
+  }
+  if (ftruncate(shm_fd, shm_size) == -1) {
+    perror("ftruncate query cache");
+    goto err;
+  }
+  cache = (uchar *)mmap(0, shm_size, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+  if (cache == MAP_FAILED) {
+    perror("mmap query cache");
+    goto err;
+  }
+  memset(cache, 0, shm_size);
 
   DBUG_PRINT("qcache", ("cache length %lu, min unit %lu, %u bins",
 		      query_cache_size, min_allocation_unit, mem_bin_num));
@@ -2513,7 +2541,17 @@ void Query_cache::free_cache()
 {
   DBUG_ENTER("Query_cache::free_cache");
 
-  my_free(cache);
+//   my_free(cache);
+  if (munmap(cache, shm_size) == -1) {
+    perror("munmap query cache");
+  }
+  if (close(shm_fd) == -1) {
+    perror("close query cache");
+  }
+  if (shm_unlink(query_cache_shm_name) == -1) {
+    perror("shm_unlink query cache");
+  }
+
   make_disabled();
   my_hash_free(&queries);
   my_hash_free(&tables);

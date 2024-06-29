@@ -63,6 +63,12 @@ concept IsApplication = requires(
   } -> std::convertible_to<std::pair<Response, bool>>;  // true: close the
                                                         // connection after
                                                         // sending the response
+
+  // Hook function for switching from normal to emergency mode
+  { app.NormalToEmergencyHook() };
+
+  // Hook function for switching from emergency to normal mode
+  { app.EmergencyToNormalHook() };
 };
 
 template <typename ProtocolMessage>
