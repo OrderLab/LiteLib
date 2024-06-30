@@ -24,6 +24,7 @@ if args.mode == 'replica':
     ax3.set_xlabel('Timestamp')
     ax3.set_ylabel('Throughput')
 else:
+    lite_dat = pd.read_csv('lite_tp.csv')
     ax1.plot(data['Timestamp'], data['Full CPU Usage'], label='Full CPU Usage')
     ax1.plot(data['Timestamp'], data['Lite CPU Usage'], label='Lite CPU Usage')
     
@@ -32,7 +33,7 @@ else:
     ax2.set_ylabel('Memory Usage')
 
     ax3.plot(data['Timestamp'], data['Full Throughput'], label='Full Throughput')
-    ax3.plot(data['Timestamp'], data['Lite Throughput'], label='Lite Throughput')
+    ax3.plot(lite_dat['Timestamp'], lite_dat['Lite Throughput'], label='Lite Throughput')
     ax3.set_xlabel('Timestamp')
     ax3.set_ylabel('Throughput')
 

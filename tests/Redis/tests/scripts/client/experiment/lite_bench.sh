@@ -16,15 +16,15 @@ run_benchmark() {
         fi
 
         # Run redis-benchmark
-        redis-benchmark -p 6479 -t set,hset,zadd,lpush -l
+        redis-benchmark -h 172.16.0.2 -p 6479 -t set -d 100 -l
+        # set,get,hset,hget,sadd,spop,zadd,zpopmin,lpush,rpush,lpop,rpop
 
         # Check exit status
         if [[ $? -ne 0 ]]; then
-            echo "redis-benchmark terminated, restarting..."
+            echo "spin" > /dev/null
         fi
 
         # Sleep for a short duration before restarting
-        sleep 2
     done
 }
 

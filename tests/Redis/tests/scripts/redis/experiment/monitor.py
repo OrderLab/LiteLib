@@ -60,7 +60,7 @@ def monitor_lite(full_addr: str="172.16.0.2", full_port: int=6379, lite_addr: st
             
             full_cpu, full_memory = utils.get_usage(full)
             lite_cpu, lite_memory = utils.get_usage(lite)
-            writer.writerow([time.time()-start_time, full_cpu, full_memory, full_throughput, lite_cpu, lite_memory, lite_throughput])
+            writer.writerow([time.time(), full_cpu, full_memory, full_throughput, lite_cpu, lite_memory, lite_throughput])
             time.sleep(0.5)
 
 
