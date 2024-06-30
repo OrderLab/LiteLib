@@ -544,8 +544,7 @@ std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
     if (flow_control) {
       return {new RESPError(
                   std::make_shared<std::string>("ERR flow control enabled")),
-              false};  // no need to close connection here, so that the client
-                       // can reuse it in the future
+              false};
     }
     entry.value = value->value;
     entry.type = CacheEntryType::STRING;
@@ -634,6 +633,11 @@ std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
                   std::make_shared<std::string>("ERR wrong type of arguments")),
               false};
     }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
+              false};
+    }
     if (cache->Get(*(key->value), entry, in_transaction)) {
       auto map = std::make_shared<std::map<std::string, std::string>>();
       if (entry.map_value == nullptr) {
@@ -693,6 +697,11 @@ std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
                   std::make_shared<std::string>("ERR wrong type of arguments")),
               false};
     }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
+              false};
+    }
     auto list = std::make_shared<std::list<std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
       if (entry.list_value != nullptr) {
@@ -735,6 +744,11 @@ std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
     if (key == nullptr) {
       return {new RESPError(
                   std::make_shared<std::string>("ERR wrong type of arguments")),
+              false};
+    }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
               false};
     }
     auto list = std::make_shared<std::list<std::string>>();
@@ -781,6 +795,11 @@ std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
                   std::make_shared<std::string>("ERR wrong type of arguments")),
               false};
     }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
+              false};
+    }
     auto list = std::make_shared<std::list<std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
       if (entry.list_value != nullptr) {
@@ -813,6 +832,11 @@ std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
                   std::make_shared<std::string>("ERR wrong type of arguments")),
               false};
     }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
+              false};
+    }
     auto list = std::make_shared<std::list<std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
       if (entry.list_value != nullptr) {
@@ -843,6 +867,11 @@ std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
     if (key == nullptr) {
       return {new RESPError(
                   std::make_shared<std::string>("ERR wrong type of arguments")),
+              false};
+    }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
               false};
     }
     auto set = std::make_shared<std::set<std::string>>();
@@ -893,6 +922,11 @@ std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
                   std::make_shared<std::string>("ERR wrong type of arguments")),
               false};
     }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
+              false};
+    }
     auto set = std::make_shared<std::set<std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
       if (entry.set_value != nullptr) {
@@ -925,6 +959,11 @@ std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
     if (key == nullptr) {
       return {new RESPError(
                   std::make_shared<std::string>("ERR wrong type of arguments")),
+              false};
+    }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
               false};
     }
     if (cache->Get(*(key->value), entry, in_transaction)) {
@@ -979,6 +1018,11 @@ std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
     if (key == nullptr) {
       return {new RESPError(
                   std::make_shared<std::string>("ERR wrong type of arguments")),
+              false};
+    }
+    if (flow_control) {
+      return {new RESPError(
+                  std::make_shared<std::string>("ERR flow control enabled")),
               false};
     }
     auto zset = std::make_shared<std::map<double, std::string>>();
