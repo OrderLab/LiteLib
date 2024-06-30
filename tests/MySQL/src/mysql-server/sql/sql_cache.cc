@@ -1187,6 +1187,8 @@ Query_cache::Query_cache(ulong query_cache_limit_arg,
    min_result_data_size(ALIGN_SIZE(min_result_data_size_arg)),
    def_query_hash_size(ALIGN_SIZE(def_query_hash_size_arg)),
    def_table_hash_size(ALIGN_SIZE(def_table_hash_size_arg)),
+   uninitialized_queries_blocks(0),
+   queries_blocks_ptr(&uninitialized_queries_blocks),
    initialized(0)
 {
   ulong min_needed= (ALIGN_SIZE(sizeof(Query_cache_block)) +
@@ -1212,7 +1214,7 @@ ulong Query_cache::resize(ulong query_cache_size_arg)
     Wait for all readers and writers to exit. When the list of all queries
     is iterated over with a block level lock, we are done.
   */
-  Query_cache_block *block= queries_blocks;
+  Query_cache_block *block= (*queries_blocks_ptr);
   if (block)
   {
     do
@@ -1231,7 +1233,7 @@ ulong Query_cache::resize(ulong query_cache_size_arg)
       }
       query->unlock_n_destroy();
       block= block->next;
-    } while (block != queries_blocks);
+    } while (block != (*queries_blocks_ptr));
   }
   free_cache();
 
@@ -1443,7 +1445,7 @@ def_week_frmt: %lu, in_trans: %d, autocommit: %d",
           unlock();
 	  goto end;
 	}
-	double_linked_list_simple_include(query_block, &queries_blocks);
+	double_linked_list_simple_include(query_block, &(*queries_blocks_ptr));
 	inserts++;
 	queries_in_cache++;
 	thd->query_cache_tls.first_query_block= query_block;
@@ -2266,7 +2268,13 @@ void Query_cache::destroy()
     /* Underlying code expects the lock. */
     lock_and_suspend();
     // free_cache(); // NOTE: LiteMySQL needs to use it
-    // sql_print_information("DEBUG: first ulong of query cache: %ld\n", *reinterpret_cast<ulong *>(cache));
+    sql_print_information("Query Cache Closed: size %lu, vadddr %p, queries_blocks %p",
+                          shm_size, cache, *queries_blocks_ptr);
+    sql_print_information("Query Cache First Query Block: %p, n_tables: %ld, query_block_addr: %p, query_string_addr: %p, query: %s\n",
+                          *queries_blocks_ptr, (*queries_blocks_ptr)->n_tables,
+                          (*queries_blocks_ptr)->query(),
+                          (*queries_blocks_ptr)->query()->query(),
+                          (*queries_blocks_ptr)->query()->query());
     if (munmap(cache, shm_size) == -1) {
       perror("munmap query cache");
     }
@@ -2278,6 +2286,7 @@ void Query_cache::destroy()
     mysql_cond_destroy(&COND_cache_status_changed);
     mysql_mutex_destroy(&structure_guard_mutex);
     initialized = 0;
+    queries_blocks_ptr = &uninitialized_queries_blocks;
   }
   DBUG_VOID_RETURN;
 }
@@ -2376,15 +2385,15 @@ ulong Query_cache::init_cache()
     goto err;
   query_cache_size -= additional_data_size;
 
-//   if (!(cache= (uchar *)
-//         my_malloc(key_memory_Query_cache,
-//                   query_cache_size+additional_data_size, MYF(0))))
-//     goto err;
+  // if (!(cache= (uchar *)
+  //       my_malloc(key_memory_Query_cache,
+  //                 query_cache_size+additional_data_size, MYF(0))))
+  //   goto err;
 
   // Create shared memory object
-  shm_size = query_cache_size + additional_data_size;
+  // shm_size = query_cache_size + additional_data_size;
+  shm_size = query_cache_size + additional_data_size + sizeof(AlignedShmInfo);
   shm_fd = shm_open(query_cache_shm_name, O_TRUNC | O_CREAT | O_RDWR, 0666);
-  sql_print_information("Query Cache: shm name %s, size %lu", query_cache_shm_name, shm_size);
   if (shm_fd == -1) {
     perror("shm_open query cache");
     goto err;
@@ -2398,17 +2407,22 @@ ulong Query_cache::init_cache()
     perror("mmap query cache");
     goto err;
   }
+  sql_print_information("Query Cache Created: shm name %s, size %lu, vadddr %p",
+                        query_cache_shm_name, shm_size, cache);
   memset(cache, 0, shm_size);
+  aligned_shm_info = reinterpret_cast<AlignedShmInfo *>(cache);
+  aligned_shm_info->shm_info.vaddr = cache;
+  queries_blocks_ptr = &(aligned_shm_info->shm_info.queries_blocks);
 
   DBUG_PRINT("qcache", ("cache length %lu, min unit %lu, %u bins",
 		      query_cache_size, min_allocation_unit, mem_bin_num));
 
-  steps = (Query_cache_memory_bin_step *) cache;
+  steps = (Query_cache_memory_bin_step *) cache + sizeof(AlignedShmInfo);
   bins = ((Query_cache_memory_bin *)
-	  (cache + mem_bin_steps *
+	  (cache + sizeof(AlignedShmInfo) + mem_bin_steps *
 	   ALIGN_SIZE(sizeof(Query_cache_memory_bin_step))));
 
-  first_block = (Query_cache_block *) (cache + additional_data_size);
+  first_block = (Query_cache_block *) (cache + additional_data_size + sizeof(AlignedShmInfo));
   first_block->init(query_cache_size);
   total_blocks++;
   first_block->pnext=first_block->pprev=first_block;
@@ -2497,7 +2511,7 @@ ulong Query_cache::init_cache()
 #endif
 
   queries_in_cache = 0;
-  queries_blocks = 0;
+  (*queries_blocks_ptr) = 0;
   DBUG_RETURN(query_cache_size +
 	      additional_data_size + approx_additional_data_size);
 
@@ -2513,7 +2527,7 @@ void Query_cache::make_disabled()
 {
   DBUG_ENTER("Query_cache::make_disabled");
   query_cache_size= 0;
-  queries_blocks= 0;
+  (*queries_blocks_ptr)= 0;
   free_memory= 0;
   free_memory_blocks= 0;
   bins= 0;
@@ -2581,10 +2595,10 @@ void Query_cache::flush_cache()
   QC_DEBUG_SYNC("wait_in_query_cache_flush2");
 
   my_hash_reset(&queries);
-  while (queries_blocks != 0)
+  while ((*queries_blocks_ptr) != 0)
   {
-    BLOCK_LOCK_WR(queries_blocks);
-    free_query_internal(queries_blocks);
+    BLOCK_LOCK_WR((*queries_blocks_ptr));
+    free_query_internal((*queries_blocks_ptr));
   }
 }
 
@@ -2596,7 +2610,7 @@ void Query_cache::flush_cache()
 my_bool Query_cache::free_old_query()
 {
   DBUG_ENTER("Query_cache::free_old_query");
-  if (queries_blocks)
+  if ((*queries_blocks_ptr))
   {
     /*
       try_lock_writing used to prevent client because here lock
@@ -2604,9 +2618,9 @@ my_bool Query_cache::free_old_query()
       Also we don't need remove locked queries at this point.
     */
     Query_cache_block *query_block= 0;
-    if (queries_blocks != 0)
+    if ((*queries_blocks_ptr) != 0)
     {
-      Query_cache_block *block = queries_blocks;
+      Query_cache_block *block = (*queries_blocks_ptr);
       /* Search until we find first query that we can remove */
       do
       {
@@ -2618,7 +2632,7 @@ my_bool Query_cache::free_old_query()
 	  query_block = block;
 	  break;
 	}
-      } while ((block=block->next) != queries_blocks );
+      } while ((block=block->next) != (*queries_blocks_ptr) );
     }
 
     if (query_block != 0)
@@ -2667,7 +2681,7 @@ void Query_cache::free_query_internal(Query_cache_block *query_block)
     query->writer()->first_query_block= NULL;
     query->writer(0);
   }
-  double_linked_list_exclude(query_block, &queries_blocks);
+  double_linked_list_exclude(query_block, &(*queries_blocks_ptr));
   Query_cache_block_table *table= query_block->table(0);
 
   for (TABLE_COUNTER_TYPE i= 0; i < query_block->n_tables; i++)
@@ -3647,8 +3661,8 @@ uint Query_cache::find_bin(size_t size)
 void Query_cache::move_to_query_list_end(Query_cache_block *query_block)
 {
   DBUG_ENTER("Query_cache::move_to_query_list_end");
-  double_linked_list_exclude(query_block, &queries_blocks);
-  double_linked_list_simple_include(query_block, &queries_blocks);
+  double_linked_list_exclude(query_block, &(*queries_blocks_ptr));
+  double_linked_list_simple_include(query_block, &(*queries_blocks_ptr));
   DBUG_VOID_RETURN;
 }
 
@@ -4148,8 +4162,8 @@ my_bool Query_cache::move_by_type(uchar **border,
     new_block->n_tables=n_tables;
     memmove((char*) new_block->data(), data, len - new_block->headers_len());
     relink(block, new_block, next, prev, pnext, pprev);
-    if (queries_blocks == block)
-      queries_blocks = new_block;
+    if ((*queries_blocks_ptr) == block)
+      (*queries_blocks_ptr) = new_block;
     Query_cache_block_table *beg_of_table_table= block->table(0),
       *end_of_table_table= block->table(n_tables);
     uchar *beg_of_new_table_table= (uchar*) new_block->table(0);
@@ -4299,10 +4313,10 @@ my_bool Query_cache::join_results(ulong join_limit)
   my_bool has_moving = 0;
   DBUG_ENTER("Query_cache::join_results");
 
-  if (queries_blocks != 0)
+  if ((*queries_blocks_ptr) != 0)
   {
     assert(query_cache_size > 0);
-    Query_cache_block *block = queries_blocks;
+    Query_cache_block *block = (*queries_blocks_ptr);
     do
     {
       Query_cache_query *header = block->query();
@@ -4360,7 +4374,7 @@ my_bool Query_cache::join_results(ulong join_limit)
 	}
       }
       block = block->next;
-    } while ( block != queries_blocks );
+    } while ( block != (*queries_blocks_ptr) );
   }
   DBUG_RETURN(has_moving);
 }
@@ -4517,9 +4531,9 @@ void Query_cache::queries_dump()
   DBUG_PRINT("qcache", ("------------------"));
   DBUG_PRINT("qcache", (" QUERIES"));
   DBUG_PRINT("qcache", ("------------------"));
-  if (queries_blocks != 0)
+  if ((*queries_blocks_ptr) != 0)
   {
-    Query_cache_block *block = queries_blocks;
+    Query_cache_block *block = (*queries_blocks_ptr);
     do
     {
       size_t len;
@@ -4561,7 +4575,7 @@ void Query_cache::queries_dump()
 	  result_block = result_block->next;
 	} while ( result_block != result_beg );
       }
-    } while ((block=block->next) != queries_blocks);
+    } while ((block=block->next) != (*queries_blocks_ptr));
   }
   else
   {
@@ -4715,7 +4729,7 @@ bool Query_cache::check_integrity(enum_qcci_lock_mode locking)
       break;
     case Query_cache_block::QUERY:
     {
-      if (in_list(queries_blocks, block, "query"))
+      if (in_list((*queries_blocks_ptr), block, "query"))
         result = true;
       for (TABLE_COUNTER_TYPE j=0; j < block->n_tables; j++)
       {
@@ -4752,7 +4766,7 @@ bool Query_cache::check_integrity(enum_qcci_lock_mode locking)
       else
       {
 	BLOCK_LOCK_RD(query_block);
-	if (in_list(queries_blocks, query_block, "query from results"))
+	if (in_list((*queries_blocks_ptr), query_block, "query from results"))
 	  result= true;
 	if (in_list(query_block->query()->result(), block,
 		    "results"))
@@ -4787,7 +4801,7 @@ bool Query_cache::check_integrity(enum_qcci_lock_mode locking)
   }
 
   DBUG_PRINT("qcache", ("check queries ..."));
-  if ((block = queries_blocks))
+  if ((block = (*queries_blocks_ptr)))
   {
     do
     {
@@ -4818,7 +4832,7 @@ bool Query_cache::check_integrity(enum_qcci_lock_mode locking)
 	} while (result_block != results);
       }
       block = block->next;
-    } while (block != queries_blocks);
+    } while (block != (*queries_blocks_ptr));
   }
 
   DBUG_PRINT("qcache", ("check tables ..."));

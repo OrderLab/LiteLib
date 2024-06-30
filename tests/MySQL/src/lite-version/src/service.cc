@@ -6,7 +6,7 @@
 
 #include <lite.hpp>
 
-const char query_cache_shm_name[] = "mysql_query_cache";
+#include "mysql-def.hpp"
 
 void MySQL::NormalToEmergencyHook() {
   const int SIZE = 4096;
@@ -23,15 +23,52 @@ void MySQL::NormalToEmergencyHook() {
     exit(EXIT_FAILURE);
   }
   size_t shm_size = sb.st_size;
-  PLOG(INFO) << "Size of query cache shared memory: " << shm_size << " bytes"
-             << std::endl;
+  LOG(INFO) << "Size of query cache shared memory: " << shm_size << " bytes"
+            << std::endl;
 
-  void *ptr = mmap(0, shm_size, PROT_READ, MAP_SHARED, shm_fd, 0);
+  uchar *ptr =
+      static_cast<uchar *>(mmap(0, shm_size, PROT_READ, MAP_SHARED, shm_fd, 0));
   if (ptr == MAP_FAILED) {
     PLOG(FATAL) << "Unable to map query cache shared memory";
   }
+  LOG(INFO) << "Query cache shared memory mapped at address "
+            << static_cast<void *>(ptr) << std::endl;
 
-  // Read the shared memory
-  LOG(INFO) << "First byte read from query cache shared memory: "
-            << *static_cast<ulong *>(ptr) << std::endl;
+  AlignedShmInfo *info = reinterpret_cast<AlignedShmInfo *>(ptr);
+  LOG(INFO) << info->shm_info << std::endl;
+
+  if (info->shm_info.queries_blocks == 0) {
+    LOG(WARNING) << "No query cache block in shared memory" << std::endl;
+    return;
+  }
+
+  ptrdiff_t v_offset = ptr - info->shm_info.vaddr;
+
+  LOG(INFO) << "Offset of query cache shared memory: 0x" << std::hex << v_offset
+            << std::endl;
+
+  auto query_block_ptr =
+      info->shm_info.queries_blocks_with_vaddr_offset(v_offset);
+  const auto query_block_linked_list_head = query_block_ptr;
+
+  do {
+    const auto query_ptr = query_block_ptr->query_with_vaddr_offset(v_offset);
+    LOG(INFO) << "Query: " << query_ptr->query_with_vaddr_offset(v_offset)
+              << std::endl;
+    auto result_block_ptr = query_ptr->result_with_vaddr_offset(v_offset);
+    const auto result_block_linked_list_head = result_block_ptr;
+    do {
+      const auto result_ptr =
+          result_block_ptr->result_with_vaddr_offset(v_offset);
+      LOG(INFO) << "  Result len: " << result_block_ptr->result_data_len()
+                << std::endl;
+      LOG(INFO) << "  Result content: ";
+      for (size_t i = 0; i < result_block_ptr->result_data_len(); ++i) {
+        std::cerr << result_ptr->data_with_vaddr_offset(v_offset)[i];
+      }
+      LOG(INFO) << std::endl;
+    } while ((result_block_ptr = result_block_ptr->next_with_vaddr_offset(
+                  v_offset)) != result_block_linked_list_head);
+  } while ((query_block_ptr = query_block_ptr->next_with_vaddr_offset(
+                v_offset)) != query_block_linked_list_head);
 }

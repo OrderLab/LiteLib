@@ -328,10 +328,20 @@ protected:
   */
   mysql_mutex_t structure_guard_mutex;
   uchar *cache;					// cache memory
+
   int shm_fd;					// shared memory file descriptor
   ulong shm_size;				// shared memory size
+  union AlignedShmInfo {
+    struct ShmInfo {
+      uchar *vaddr;
+      Query_cache_block *queries_blocks;
+    } shm_info;
+    char padding[32];
+  } *aligned_shm_info;
+  Query_cache_block *uninitialized_queries_blocks;	// always 0
+
   Query_cache_block *first_block;		// physical location block list
-  Query_cache_block *queries_blocks;		// query list (LIFO)
+  Query_cache_block **queries_blocks_ptr;		// query list (LIFO)
   Query_cache_block *tables_blocks;
 
   Query_cache_memory_bin *bins;			// free block lists
