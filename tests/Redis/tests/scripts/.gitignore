@@ -1,0 +1,5 @@
+*.rdb
+*.png
+*.csv
+*.pyc
+*running.conf
