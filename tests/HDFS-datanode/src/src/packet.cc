@@ -1,7 +1,16 @@
 #include "packet.hpp"
 
+void WriteFixedInt32ToVector(uint32_t value,
+                             std::shared_ptr<std::vector<uint8_t>> &buffer) {
+  buffer->push_back(static_cast<uint8_t>(value & 0xFF));
+  buffer->push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
+  buffer->push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
+  buffer->push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
+}
+
 lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
                                             InputIterator end) {
+  // TODO: store the information in the cache
   buffer = std::make_shared<std::vector<uint8_t>>(begin, end);
   size_t left_size = end - begin;
   std::string four_bytes(begin, begin + 4);
@@ -18,16 +27,16 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
     left_size = left_size - 7;
   }
 
-  bool request = 1;
   hadoop::common::RpcRequestHeaderProto rpc_request_header;
   hadoop::common::RpcResponseHeaderProto rpc_response_header;
-  uint32_t len = *reinterpret_cast<uint32_t *>(begin);
+  uint32_t len = ntohl(*reinterpret_cast<uint32_t *>(begin));
   begin = begin + 4;
   left_size = left_size - 4;
   google::protobuf::io::ArrayInputStream array_input(
       begin, static_cast<int>(left_size));
   google::protobuf::io::CodedInputStream coded_input(&array_input);
-  std::cout << len << std::endl;
+  std::cout << "received buffer size: " << left_size << std::endl;
+  std::cout << "len: " << len << std::endl;
   if (!ReadDelimitedFrom(&coded_input, &rpc_request_header)) {
     // reconstruct the coded input stream
     google::protobuf::io::ArrayInputStream array_input(
@@ -55,15 +64,26 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
       ReadDelimitedFrom(&coded_input, &requestHeaderProto);
       std::cout << requestHeaderProto.declaringclassprotocolname() << std::endl;
       std::cout << requestHeaderProto.methodname() << std::endl;
-      std::cout << "callId: " <<rpc_request_header.callid() << std::endl;
+      std::cout << "callId: " << rpc_request_header.callid() << std::endl;
       if (requestHeaderProto.methodname() == "versionRequest") {
       } else if (requestHeaderProto.methodname() == "sendHeartbeat") {
         hadoop::hdfs::datanode::HeartbeatRequestProto heartbeatRequestProto;
         ReadDelimitedFrom(&coded_input, &heartbeatRequestProto);
         std::cout << heartbeatRequestProto.registration().softwareversion()
                   << std::endl;
+        // test generate a rpc call and send it
+        buffer = std::make_shared<std::vector<uint8_t>>();
+        uint32_t total_size = rpc_request_header.ByteSizeLong() + google::protobuf::io::CodedOutputStream::VarintSize32(rpc_request_header.ByteSizeLong()) +
+                              requestHeaderProto.ByteSizeLong() + google::protobuf::io::CodedOutputStream::VarintSize32(requestHeaderProto.ByteSizeLong()) +
+                              heartbeatRequestProto.ByteSizeLong() + google::protobuf::io::CodedOutputStream::VarintSize32(heartbeatRequestProto.ByteSizeLong());
+        WriteFixedInt32ToVector(htonl(total_size), buffer);
+        WriteDelimitedTo(buffer, &rpc_request_header);
+        WriteDelimitedTo(buffer, &requestHeaderProto);
+        WriteDelimitedTo(buffer, &heartbeatRequestProto);
+        std::cout << "send out the heartbeat, callid: "
+                  << rpc_request_header.callid() << std::endl;
       } else {
-        LOG(ERROR) << "Unknown method name" << requestHeaderProto.methodname()
+        LOG(ERROR) << "Unknown method name: " << requestHeaderProto.methodname()
                    << std::endl;
       }
     }
@@ -101,4 +121,31 @@ bool Packet::ReadDelimitedFrom(
   coded_input->PopLimit(limit);
 
   return true;
+}
+
+bool Packet::WriteDelimitedTo(std::shared_ptr<std::vector<uint8_t>> &buffer,
+                              const google::protobuf::MessageLite *message) {
+  // Calculate the size of the message
+  size_t message_size = message->ByteSizeLong();
+
+  // Resize the vector to hold the additional data (message size + varint size)
+  size_t old_size = buffer->size();
+  size_t varint_size = google::protobuf::io::CodedOutputStream::VarintSize32(
+      static_cast<uint32_t>(message_size));
+  std::cout << "message size: " << message_size << " varint size: " << varint_size << std::endl;
+  buffer->resize(old_size + message_size + varint_size);
+
+  // Use ArrayOutputStream with the new part of the buffer
+  google::protobuf::io::ArrayOutputStream array_output_stream(
+      buffer->data() + old_size, message_size + varint_size);
+  google::protobuf::io::CodedOutputStream coded_output_stream(
+      &array_output_stream);
+
+  // Write the size of the message as a varint
+  coded_output_stream.WriteVarint32(static_cast<uint32_t>(message_size));
+
+  // Serialize the message
+  message->SerializeWithCachedSizes(&coded_output_stream);
+
+  return true;  // The message was written successfully.
 }
