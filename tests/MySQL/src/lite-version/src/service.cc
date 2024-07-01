@@ -1,74 +1,77 @@
 #include "service.hpp"
 
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
+#include "mysql-server/protocol_classic.hpp"
 
-#include <lite.hpp>
-
-#include "mysql-def.hpp"
-
-void MySQL::NormalToEmergencyHook() {
-  const int SIZE = 4096;
-
-  int shm_fd = shm_open(query_cache_shm_name, O_RDONLY, 0666);
-  if (shm_fd == -1) {
-    PLOG(FATAL) << "Unable to open query cache shared memory";
+std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
+    const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
+    lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
+        &pending_requests) {
+  // TODO: Find out the EOF packet of the response
+  std::vector<std::shared_ptr<Packet>> related_reqs;
+  bool forward_response = true;
+  if (pending_requests.empty()) {
+    return {related_reqs, forward_response};
   }
+  do {
+    auto [req, tmp_forward_response] = pending_requests.pop_front();
+    forward_response = tmp_forward_response;
+    related_reqs.emplace_back(std::move(req));
+  } while (!pending_requests.empty() &&
+           pending_requests.front().first->payload_length_ == 0xffffff);
+  return {related_reqs, forward_response};
+}
 
-  // Get the size of the shared memory object
-  struct stat sb;
-  if (fstat(shm_fd, &sb) == -1) {
-    perror("fstat");
-    exit(EXIT_FAILURE);
-  }
-  size_t shm_size = sb.st_size;
-  LOG(INFO) << "Size of query cache shared memory: " << shm_size << " bytes"
-            << std::endl;
-
-  uchar *ptr =
-      static_cast<uchar *>(mmap(0, shm_size, PROT_READ, MAP_SHARED, shm_fd, 0));
-  if (ptr == MAP_FAILED) {
-    PLOG(FATAL) << "Unable to map query cache shared memory";
-  }
-  LOG(INFO) << "Query cache shared memory mapped at address "
-            << static_cast<void *>(ptr) << std::endl;
-
-  AlignedShmInfo *info = reinterpret_cast<AlignedShmInfo *>(ptr);
-  LOG(INFO) << info->shm_info << std::endl;
-
-  if (info->shm_info.queries_blocks == 0) {
-    LOG(WARNING) << "No query cache block in shared memory" << std::endl;
+void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
+                         std::vector<std::shared_ptr<Packet>> requests,
+                         ConnectionInfo &conn, Cache *cache) {
+  if (requests.empty()) {  // TODO: delete this
     return;
   }
+  for (size_t i = 1; i < requests.size(); i++) {
+    requests[0]->payload_length_ += requests[i]->payload_length_;
+    requests[0]->buffer->insert(requests[0]->buffer->end(),
+                                requests[i]->buffer->begin() + 4,
+                                requests[i]->buffer->end());
+    // TODO: use https://en.cppreference.com/w/cpp/ranges/join_with_view
+  }
+  requests[0]->buffer->push_back(0);
 
-  ptrdiff_t v_offset = ptr - info->shm_info.vaddr;
+  COM_DATA req_com_data;
+  enum_server_command req_cmd;
+  if (!get_command_and_parse_packet(&req_com_data, &req_cmd,
+                                    requests[0]->buffer->data() + 4,
+                                    requests[0]->buffer->size() - 4)) {
+    LOG(WARNING) << "Unable to parse the request packet, type: " << (int)requests[0]->buffer->data()[4] << std::endl;
+  }
 
-  LOG(INFO) << "Offset of query cache shared memory: 0x" << std::hex << v_offset
-            << std::endl;
-
-  auto query_block_ptr =
-      info->shm_info.queries_blocks_with_vaddr_offset(v_offset);
-  const auto query_block_linked_list_head = query_block_ptr;
-
-  do {
-    const auto query_ptr = query_block_ptr->query_with_vaddr_offset(v_offset);
-    LOG(INFO) << "Query: " << query_ptr->query_with_vaddr_offset(v_offset)
-              << std::endl;
-    auto result_block_ptr = query_ptr->result_with_vaddr_offset(v_offset);
-    const auto result_block_linked_list_head = result_block_ptr;
-    do {
-      const auto result_ptr =
-          result_block_ptr->result_with_vaddr_offset(v_offset);
-      LOG(INFO) << "  Result len: " << result_block_ptr->result_data_len()
+  switch (req_cmd) {
+    case COM_STMT_PREPARE: {
+      LOG(INFO) << "COM_STMT_PREPARE: " << req_com_data.com_stmt_prepare.query
                 << std::endl;
-      LOG(INFO) << "  Result content: ";
-      for (size_t i = 0; i < result_block_ptr->result_data_len(); ++i) {
-        std::cerr << result_ptr->data_with_vaddr_offset(v_offset)[i];
-      }
-      LOG(INFO) << std::endl;
-    } while ((result_block_ptr = result_block_ptr->next_with_vaddr_offset(
-                  v_offset)) != result_block_linked_list_head);
-  } while ((query_block_ptr = query_block_ptr->next_with_vaddr_offset(
-                v_offset)) != query_block_linked_list_head);
+      break;
+    }
+    default:
+      break;
+  }
+
+  return;
+}
+
+void MySQL::HandleReplayResponse(const std::shared_ptr<Packet> &resp,
+                                 std::vector<std::shared_ptr<Packet>> requests,
+                                 ConnectionInfo &conn, Cache *cache) {
+  return;
+}
+
+std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
+                                              ConnectionInfo &conn,
+                                              Cache *cache, Logger *logger,
+                                              bool flow_control) {
+  return {Packet{}, true};  // close the connection directly
+}
+
+void MySQL::NormalToEmergencyHook() {
+  if (!ParseQueryCache()) {
+    LOG(ERROR) << "Unable to parse query cache";
+  }
 }
