@@ -22,11 +22,13 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              std::vector<std::unique_ptr<WorkerInstance>> &workers,
              const std::chrono::milliseconds sliding_window_size,
              const size_t replay_expected_rps, const double flow_control_ratio,
-             const size_t n_replay_threads, bool crash_recover)
+             const size_t n_replay_threads, bool crash_recover,
+             bool frontend_flag)
     : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
              pipe_path),
       app_(app),
       crash_recover_(crash_recover),
+      frontend_flag_(frontend_flag),
       cache_inner_(max_item_count, emergency_mode_),
       logger_inner_(sliding_window_size),
       backend_addr_(backend_addr),
@@ -56,7 +58,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                   const evutil_socket_t client_fd,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
                   LoggerInstance *logger) {
-  if (!emergency_mode_ && backend_fd <= 0) {
+  if (!emergency_mode_ && (backend_fd <= 0 || (frontend_flag_ && client_fd <= 0))) {
     LOG(WARNING) << "Core: Fall back and entering emergency mode "
                  << GetUNIXTimeStamp() << std::endl;
     TakeOver();
@@ -131,7 +133,8 @@ template <typename Application, typename Request, typename Response,
 void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::TakeOver() {
   emergency_mode_ = true;
-  LOG(INFO) << "Disconnect all from backend" << std::endl;
+  if (!frontend_flag_)
+    LOG(INFO) << "Disconnect all from backend" << std::endl;
   LOG(INFO) << "Emergency barrier initialized" << std::endl;
   for (auto &worker : workers_) {
     worker->notify_queue_.push_back(
@@ -146,9 +149,17 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   std::set<ConnectionInstance *> connections_to_be_closed;
   LOG(INFO) << "live connections: " << live_connections_.size() << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
-    if (c->backend_fd_ > 0) {
-      close(c->backend_fd_);
-      c->backend_fd_ = -1;
+    if (!frontend_flag_){
+      if (c->backend_fd_ > 0) {
+        close(c->backend_fd_);
+        c->backend_fd_ = -1;
+      }
+    }
+    else{
+      if (c->client_fd_ > 0) {
+        close(c->client_fd_);
+        c->client_fd_ = -1;
+      }
     }
     if (!c->pending_requests_.empty()) {
       // TODO: serve them using EmergencyServe

@@ -34,7 +34,7 @@ class LiteServer {
                       const double flow_control_ratio = 0.9,
                       const size_t n_replay_threads = 1,
                       const char pipe_path[] = "/tmp/lite",
-                      bool crash_recover = true);
+                      bool crash_recover = true, bool frontend_flag = false);
 
   /// Listen on the specified TCP port.
   bool Run(const char* port);

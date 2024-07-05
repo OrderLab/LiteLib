@@ -48,7 +48,8 @@ class LiteCore : public Daemon {
            std::vector<std::unique_ptr<WorkerInstance>> &workers,
            const std::chrono::milliseconds sliding_window_size,
            const size_t replay_expected_rps, const double flow_control_ratio,
-           const size_t n_replay_threads, bool crash_recover = true);
+           const size_t n_replay_threads, bool crash_recover = true,
+           bool frontend_flag = false);
 
   bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
                      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
@@ -78,6 +79,8 @@ class LiteCore : public Daemon {
 
  private:
   bool crash_recover_;
+
+  bool frontend_flag_;
 
   Application &app_;
 
