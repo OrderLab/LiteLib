@@ -2,9 +2,14 @@
 
 #include <lite.hpp>
 
+#include "dissect.hpp"
 #include "packet.hpp"
 
-struct ConnectionInfo {};
+struct ConnectionInfo {
+  ResponseDissector response_dissector;
+  std::vector<std::shared_ptr<Packet>> responses;
+  std::unordered_map<uint32_t, std::string> prepared_statements;
+};
 
 struct CacheEntry {
   std::shared_ptr<Packet> ToRequest(const std::string &key) const {

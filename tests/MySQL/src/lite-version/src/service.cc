@@ -9,24 +9,37 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
   // TODO: Find out the EOF packet of the response
   std::vector<std::shared_ptr<Packet>> related_reqs;
   bool forward_response = true;
-  if (pending_requests.empty()) {
+  if (!conn.response_dissector.Digest(resp, conn.responses)) {
     return {related_reqs, forward_response};
   }
-  do {
-    auto [req, tmp_forward_response] = pending_requests.pop_front();
-    forward_response = tmp_forward_response;
-    related_reqs.emplace_back(std::move(req));
-  } while (!pending_requests.empty() &&
-           pending_requests.front().first->payload_length_ == 0xffffff);
+  if (!pending_requests.empty()) {
+    do {
+      auto [req, tmp_forward_response] = pending_requests.pop_front();
+      forward_response = tmp_forward_response;
+      related_reqs.emplace_back(std::move(req));
+    } while (!pending_requests.empty() &&
+             pending_requests.front().first->payload_length_ == 0xffffff);
+  }
+  if (related_reqs.empty()) {
+    LOG(INFO) << "No related requests found" << std::endl;
+  }
   return {related_reqs, forward_response};
 }
 
 void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
                          std::vector<std::shared_ptr<Packet>> requests,
                          ConnectionInfo &conn, Cache *cache) {
-  if (requests.empty()) {  // TODO: delete this
+  if (requests.empty()) {
     return;
   }
+  // LOG(INFO) << "req: " << requests.size() << std::endl;
+  // for (auto &req : requests) {
+  //   LOG(INFO) << "  req len: " << req->buffer->size() - 4 << std::endl;
+  // }
+  // LOG(INFO) << "resp: " << conn.responses.size() << std::endl;
+  // for (auto &resp : conn.responses) {
+  //   LOG(INFO) << "  resp len: " << resp->buffer->size() - 4 << std::endl;
+  // }
   for (size_t i = 1; i < requests.size(); i++) {
     requests[0]->payload_length_ += requests[i]->payload_length_;
     requests[0]->buffer->insert(requests[0]->buffer->end(),
@@ -41,13 +54,19 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
   if (!get_command_and_parse_packet(&req_com_data, &req_cmd,
                                     requests[0]->buffer->data() + 4,
                                     requests[0]->buffer->size() - 4)) {
-    LOG(WARNING) << "Unable to parse the request packet, type: " << (int)requests[0]->buffer->data()[4] << std::endl;
+    LOG(WARNING) << "Unable to parse the request packet, type: "
+                 << (int)requests[0]->buffer->data()[4] << std::endl;
   }
 
   switch (req_cmd) {
     case COM_STMT_PREPARE: {
-      LOG(INFO) << "COM_STMT_PREPARE: " << req_com_data.com_stmt_prepare.query
-                << std::endl;
+      if (!(*conn.responses[0]->buffer)[4]) {
+        auto statement_id = uint4korr(&((*conn.responses[0]->buffer)[5]));
+        LOG(INFO) << "COM_STMT_PREPARE: " << req_com_data.com_stmt_prepare.query
+                  << " -> " << statement_id << std::endl;
+        conn.prepared_statements[statement_id] =
+            std::string{req_com_data.com_stmt_prepare.query};
+      }
       break;
     }
     default:
