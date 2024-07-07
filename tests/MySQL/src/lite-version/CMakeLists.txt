@@ -18,6 +18,8 @@ add_subdirectory(Lite)
 
 add_executable(${PROJECT_NAME})
 
+include_directories(libpg_query)
+
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined")
 
 file(GLOB ALL_CC_FILES
@@ -31,6 +33,8 @@ target_sources(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
-target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog)
+target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog pg_query)
+
+link_directories(libpg_query)
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

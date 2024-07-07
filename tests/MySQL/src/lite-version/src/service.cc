@@ -1,5 +1,7 @@
 #include "service.hpp"
 
+#include <pg_query.h>
+
 #include "mysql-server/protocol_classic.hpp"
 
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
@@ -66,6 +68,13 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
                   << " -> " << statement_id << std::endl;
         conn.prepared_statements[statement_id] =
             std::string{req_com_data.com_stmt_prepare.query};
+
+        PgQueryParseResult result;
+        std::string s(req_com_data.com_stmt_prepare.query);
+        std::replace(s.begin(), s.end(), '?', '1');
+        result = pg_query_parse(s.c_str());
+        printf("%s\n", result.parse_tree);
+        pg_query_free_parse_result(result);
       }
       break;
     }
