@@ -5,12 +5,6 @@
 #include "dissect.hpp"
 #include "packet.hpp"
 
-struct ConnectionInfo {
-  ResponseDissector response_dissector;
-  std::vector<std::shared_ptr<Packet>> responses;
-  std::unordered_map<uint32_t, std::string> prepared_statements;
-};
-
 struct CacheEntry {
   std::shared_ptr<Packet> ToRequest(const std::string &key) const {
     return std::make_shared<Packet>();
@@ -46,5 +40,8 @@ class MySQL {
   void EmergencyToNormalHook() {}
 
  private:
+  std::unordered_map<std::string, std::shared_ptr<std::vector<uint8_t>>>
+      query_cache_;
+
   bool ParseQueryCache();
 };

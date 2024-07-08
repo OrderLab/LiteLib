@@ -61,7 +61,8 @@ class Packet {
     return lite::DeserializeResult::kIndeterminate;
   }
 
-  std::shared_ptr<std::vector<uint8_t>> Serialize() const {
+  std::shared_ptr<std::vector<uint8_t>> Serialize() {
+    if (!buffer) buffer = std::make_shared<std::vector<uint8_t>>();
     return buffer;
   }
 };

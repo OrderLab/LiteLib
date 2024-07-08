@@ -34,7 +34,7 @@ bool MySQL::ParseQueryCache() {
             << static_cast<void *>(ptr) << std::endl;
 
   AlignedShmInfo *info = reinterpret_cast<AlignedShmInfo *>(ptr);
-  LOG(INFO) << info->shm_info << std::endl;
+  // LOG(INFO) << info->shm_info << std::endl;
 
   if (info->shm_info.queries_blocks == 0) {
     LOG(WARNING) << "No query cache block in shared memory" << std::endl;
@@ -51,24 +51,42 @@ bool MySQL::ParseQueryCache() {
   const auto query_block_linked_list_head = query_block_ptr;
 
   do {
+    std::shared_ptr<std::vector<uint8_t>> result =
+        std::make_shared<std::vector<uint8_t>>();
     const auto query_ptr = query_block_ptr->query_with_vaddr_offset(v_offset);
-    LOG(INFO) << "Query: " << query_ptr->query_with_vaddr_offset(v_offset)
-              << std::endl;
+    // LOG(INFO) << "Query: " << query_ptr->query_with_vaddr_offset(v_offset)
+    //           << std::endl;
     auto result_block_ptr = query_ptr->result_with_vaddr_offset(v_offset);
     const auto result_block_linked_list_head = result_block_ptr;
     do {
       const auto result_ptr =
           result_block_ptr->result_with_vaddr_offset(v_offset);
-      LOG(INFO) << "  Result len: " << result_block_ptr->result_data_len()
-                << std::endl;
-      LOG(INFO) << "  Result content: ";
+      // LOG(INFO) << "  Result len: " << result_block_ptr->result_data_len()
+      //           << std::endl;
+      // LOG(INFO) << "  Result content: ";
+      auto result_data = result_ptr->data_with_vaddr_offset(v_offset);
       for (size_t i = 0; i < result_block_ptr->result_data_len(); ++i) {
-        std::cerr << result_ptr->data_with_vaddr_offset(v_offset)[i];
+        result->push_back(result_data[i]);
+        // std::cerr << result_ptr->data_with_vaddr_offset(v_offset)[i];
       }
-      LOG(INFO) << std::endl;
+      // LOG(INFO) << std::endl;
     } while ((result_block_ptr = result_block_ptr->next_with_vaddr_offset(
                   v_offset)) != result_block_linked_list_head);
+    query_cache_[std::string{
+        (char *)query_ptr->query_with_vaddr_offset(v_offset)}] = result;
   } while ((query_block_ptr = query_block_ptr->next_with_vaddr_offset(
                 v_offset)) != query_block_linked_list_head);
+
+
+  if (munmap(ptr, shm_size) == -1) {
+    PLOG(ERROR) << "Unable to unmap query cache shared memory";
+    return false;
+  }
+
+  if (close(shm_fd) == -1) {
+    PLOG(ERROR) << "Unable to close query cache shared memory";
+    return false;
+  }
+  
   return true;
 }
