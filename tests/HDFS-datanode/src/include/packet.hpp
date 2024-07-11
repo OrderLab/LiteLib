@@ -24,14 +24,7 @@ class Packet {
   static bool ReadDelimitedFrom(
       google::protobuf::io::CodedInputStream *coded_input,
       google::protobuf::MessageLite *message);
-  static bool WriteDelimitedTo(std::shared_ptr<std::vector<uint8_t>> &buffer,
-                               const google::protobuf::MessageLite *message);
-
-  static std::unordered_map<
-      std::string, google::protobuf::MessageLite (*)(
-                       google::protobuf::io::CodedInputStream *coded_input)>
-      rpc_parse_function_map;
-
-  google::protobuf::MessageLite sendHeartbeatRequest(
-      google::protobuf::io::CodedInputStream *coded_input);
+  static bool WriteDelimitedTo(
+      std::shared_ptr<std::vector<uint8_t>> &buffer,
+      const std::vector<google::protobuf::MessageLite *> &ymessages);
 };

@@ -2,10 +2,84 @@
 
 void WriteFixedInt32ToVector(uint32_t value,
                              std::shared_ptr<std::vector<uint8_t>> &buffer) {
-  buffer->push_back(static_cast<uint8_t>(value & 0xFF));
-  buffer->push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
-  buffer->push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
-  buffer->push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
+  uint32_t nvalue = htonl(value);
+  buffer->push_back(static_cast<uint8_t>(nvalue & 0xFF));
+  buffer->push_back(static_cast<uint8_t>((nvalue >> 8) & 0xFF));
+  buffer->push_back(static_cast<uint8_t>((nvalue >> 16) & 0xFF));
+  buffer->push_back(static_cast<uint8_t>((nvalue >> 24) & 0xFF));
+}
+
+bool Packet::ReadDelimitedFrom(
+    google::protobuf::io::CodedInputStream *coded_input,
+    google::protobuf::MessageLite *message) {
+  // Read the size.
+  uint32_t size;
+  if (!coded_input->ReadVarint32(&size)) {
+    return false;  // Failed to read size.
+  }
+
+  // Tell the stream not to read beyond that size.
+  google::protobuf::io::CodedInputStream::Limit limit =
+      coded_input->PushLimit(size);
+
+  // Parse the message.
+  if (!message->MergeFromCodedStream(coded_input)) {
+    return false;  // Failed to parse message.
+  }
+  if (!coded_input->ConsumedEntireMessage()) {
+    return false;  // Input is ill-formed.
+  }
+
+  // Release the limit.
+  coded_input->PopLimit(limit);
+
+  return true;
+}
+
+bool Packet::WriteDelimitedTo(
+    std::shared_ptr<std::vector<uint8_t>> &buffer,
+    const std::vector<google::protobuf::MessageLite *> &messages) {
+  // write in the total size
+  uint32_t total_size = 0;
+  for (google::protobuf::MessageLite *message : messages) {
+    uint32_t message_size = message->ByteSizeLong();
+    total_size +=
+        message_size +
+        google::protobuf::io::CodedOutputStream::VarintSize32(message_size);
+  }
+  WriteFixedInt32ToVector(total_size, buffer);
+  // write in each message
+  for (google::protobuf::MessageLite *message : messages) {
+    // Calculate the size of the message
+    size_t message_size = message->ByteSizeLong();
+
+    // Resize the vector to hold the additional data (message size + varint
+    // size)
+    size_t old_size = buffer->size();
+    size_t varint_size = google::protobuf::io::CodedOutputStream::VarintSize32(
+        static_cast<uint32_t>(message_size));
+    buffer->resize(old_size + message_size + varint_size);
+
+    // Use ArrayOutputStream with the new part of the buffer
+    google::protobuf::io::ArrayOutputStream array_output_stream(
+        buffer->data() + old_size, message_size + varint_size);
+    google::protobuf::io::CodedOutputStream coded_output_stream(
+        &array_output_stream);
+
+    // Write the size of the message as a varint
+    coded_output_stream.WriteVarint32(static_cast<uint32_t>(message_size));
+
+    // Serialize the message
+    message->SerializeWithCachedSizes(&coded_output_stream);
+  }
+
+  return true;  // The message was written successfully.
+}
+
+void set_datanodeID(hadoop::hdfs::DatanodeIDProto *datanodeID,
+                    const std::string &hostname, const uint32_t xferport) {
+  datanodeID->set_hostname(hostname);
+  datanodeID->set_xferport(xferport);
 }
 
 lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
@@ -73,17 +147,50 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
                   << std::endl;
         // test generate a rpc call and send it
         buffer = std::make_shared<std::vector<uint8_t>>();
-        uint32_t total_size = rpc_request_header.ByteSizeLong() + google::protobuf::io::CodedOutputStream::VarintSize32(rpc_request_header.ByteSizeLong()) +
-                              requestHeaderProto.ByteSizeLong() + google::protobuf::io::CodedOutputStream::VarintSize32(requestHeaderProto.ByteSizeLong()) +
-                              heartbeatRequestProto.ByteSizeLong() + google::protobuf::io::CodedOutputStream::VarintSize32(heartbeatRequestProto.ByteSizeLong());
-        WriteFixedInt32ToVector(htonl(total_size), buffer);
-        WriteDelimitedTo(buffer, &rpc_request_header);
-        WriteDelimitedTo(buffer, &requestHeaderProto);
-        WriteDelimitedTo(buffer, &heartbeatRequestProto);
-        std::cout << "send out the heartbeat, callid: "
-                  << rpc_request_header.callid() << std::endl;
+        auto *registration = heartbeatRequestProto.release_registration();
+        auto *datanodeID = registration->release_datanodeid();
+        set_datanodeID(datanodeID, "lite", 11212);
+        registration->set_allocated_datanodeid(datanodeID);
+        heartbeatRequestProto.set_allocated_registration(registration);
+        std::vector<google::protobuf::MessageLite *> messages;
+        messages.push_back(&rpc_request_header);
+        messages.push_back(&requestHeaderProto);
+        messages.push_back(&heartbeatRequestProto);
+        WriteDelimitedTo(buffer, messages);
+      } else if (requestHeaderProto.methodname() == "registerDatanode") {
+        hadoop::hdfs::datanode::RegisterDatanodeRequestProto
+            registerDatanodeRequestProto;
+        ReadDelimitedFrom(&coded_input, &registerDatanodeRequestProto);
+        // change the port information
+        auto *registration =
+            registerDatanodeRequestProto.release_registration();
+        auto *datanodeID = registration->release_datanodeid();
+        set_datanodeID(datanodeID, "lite", 11212);
+        registration->set_allocated_datanodeid(datanodeID);
+        registerDatanodeRequestProto.set_allocated_registration(registration);
+        buffer = std::make_shared<std::vector<uint8_t>>();
+        std::vector<google::protobuf::MessageLite *> messages;
+        messages.push_back(&rpc_request_header);
+        messages.push_back(&requestHeaderProto);
+        messages.push_back(&registerDatanodeRequestProto);
+        WriteDelimitedTo(buffer, messages);
+      } else if (requestHeaderProto.methodname() == "blockReport") {
+        hadoop::hdfs::datanode::BlockReportRequestProto blockReportRequestProto;
+        ReadDelimitedFrom(&coded_input, &blockReportRequestProto);
+        // change the port information
+        auto *registration = blockReportRequestProto.release_registration();
+        auto *datanodeID = registration->release_datanodeid();
+        set_datanodeID(datanodeID, "lite", 11212);
+        registration->set_allocated_datanodeid(datanodeID);
+        blockReportRequestProto.set_allocated_registration(registration);
+        buffer = std::make_shared<std::vector<uint8_t>>();
+        std::vector<google::protobuf::MessageLite *> messages;
+        messages.push_back(&rpc_request_header);
+        messages.push_back(&requestHeaderProto);
+        messages.push_back(&blockReportRequestProto);
+        WriteDelimitedTo(buffer, messages);
       } else {
-        LOG(ERROR) << "Unknown method name: " << requestHeaderProto.methodname()
+        LOG(FATAL) << "Unknown method name: " << requestHeaderProto.methodname()
                    << std::endl;
       }
     }
@@ -94,58 +201,4 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
   }
   begin = end;
   return lite::DeserializeResult::kGood;
-}
-
-bool Packet::ReadDelimitedFrom(
-    google::protobuf::io::CodedInputStream *coded_input,
-    google::protobuf::MessageLite *message) {
-  // Read the size.
-  uint32_t size;
-  if (!coded_input->ReadVarint32(&size)) {
-    return false;  // Failed to read size.
-  }
-
-  // Tell the stream not to read beyond that size.
-  google::protobuf::io::CodedInputStream::Limit limit =
-      coded_input->PushLimit(size);
-
-  // Parse the message.
-  if (!message->MergeFromCodedStream(coded_input)) {
-    return false;  // Failed to parse message.
-  }
-  if (!coded_input->ConsumedEntireMessage()) {
-    return false;  // Input is ill-formed.
-  }
-
-  // Release the limit.
-  coded_input->PopLimit(limit);
-
-  return true;
-}
-
-bool Packet::WriteDelimitedTo(std::shared_ptr<std::vector<uint8_t>> &buffer,
-                              const google::protobuf::MessageLite *message) {
-  // Calculate the size of the message
-  size_t message_size = message->ByteSizeLong();
-
-  // Resize the vector to hold the additional data (message size + varint size)
-  size_t old_size = buffer->size();
-  size_t varint_size = google::protobuf::io::CodedOutputStream::VarintSize32(
-      static_cast<uint32_t>(message_size));
-  std::cout << "message size: " << message_size << " varint size: " << varint_size << std::endl;
-  buffer->resize(old_size + message_size + varint_size);
-
-  // Use ArrayOutputStream with the new part of the buffer
-  google::protobuf::io::ArrayOutputStream array_output_stream(
-      buffer->data() + old_size, message_size + varint_size);
-  google::protobuf::io::CodedOutputStream coded_output_stream(
-      &array_output_stream);
-
-  // Write the size of the message as a varint
-  coded_output_stream.WriteVarint32(static_cast<uint32_t>(message_size));
-
-  // Serialize the message
-  message->SerializeWithCachedSizes(&coded_output_stream);
-
-  return true;  // The message was written successfully.
 }
