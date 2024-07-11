@@ -1,7 +1,5 @@
 #include "service.hpp"
 
-#include <pg_query.h>
-
 #include "mysql-server/protocol_classic.hpp"
 
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
