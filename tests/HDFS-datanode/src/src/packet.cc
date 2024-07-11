@@ -106,18 +106,18 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
   uint32_t len = ntohl(*reinterpret_cast<uint32_t *>(begin));
   begin = begin + 4;
   left_size = left_size - 4;
-  google::protobuf::io::ArrayInputStream array_input(
+  google::protobuf::io::ArrayInputStream array_input_1(
       begin, static_cast<int>(left_size));
-  google::protobuf::io::CodedInputStream coded_input(&array_input);
+  google::protobuf::io::ArrayInputStream array_input_2(
+      begin, static_cast<int>(left_size));
+  google::protobuf::io::CodedInputStream request_input(&array_input_1);
+  google::protobuf::io::CodedInputStream response_input(&array_input_2);
   std::cout << "received buffer size: " << left_size << std::endl;
   std::cout << "len: " << len << std::endl;
-  if (!ReadDelimitedFrom(&coded_input, &rpc_request_header)) {
+  if (!ReadDelimitedFrom(&request_input, &rpc_request_header)) {
     // reconstruct the coded input stream
-    google::protobuf::io::ArrayInputStream array_input(
-        begin, static_cast<int>(left_size));
-    google::protobuf::io::CodedInputStream coded_input(&array_input);
     request = 0;
-    if (!ReadDelimitedFrom(&coded_input, &rpc_response_header)) {
+    if (!ReadDelimitedFrom(&response_input, &rpc_response_header)) {
       LOG(ERROR) << "not either a request or a response" << std::endl;
     }
   }
@@ -130,21 +130,19 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
     std::cout << "request" << std::endl;
     if (rpc_request_header.callid() == -3) {
       hadoop::common::IpcConnectionContextProto ipcConnectionContextProto;
-      ReadDelimitedFrom(&coded_input, &ipcConnectionContextProto);
+      ReadDelimitedFrom(&request_input, &ipcConnectionContextProto);
     }
     if (rpc_request_header.callid() > 0 && rpc_request_header.rpckind() == 2) {
       // proto_buf rpc calls
       hadoop::common::RequestHeaderProto requestHeaderProto;
-      ReadDelimitedFrom(&coded_input, &requestHeaderProto);
+      ReadDelimitedFrom(&request_input, &requestHeaderProto);
       std::cout << requestHeaderProto.declaringclassprotocolname() << std::endl;
       std::cout << requestHeaderProto.methodname() << std::endl;
       std::cout << "callId: " << rpc_request_header.callid() << std::endl;
       if (requestHeaderProto.methodname() == "versionRequest") {
       } else if (requestHeaderProto.methodname() == "sendHeartbeat") {
         hadoop::hdfs::datanode::HeartbeatRequestProto heartbeatRequestProto;
-        ReadDelimitedFrom(&coded_input, &heartbeatRequestProto);
-        std::cout << heartbeatRequestProto.registration().softwareversion()
-                  << std::endl;
+        ReadDelimitedFrom(&request_input, &heartbeatRequestProto);
         // test generate a rpc call and send it
         buffer = std::make_shared<std::vector<uint8_t>>();
         auto *registration = heartbeatRequestProto.release_registration();
@@ -160,7 +158,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
       } else if (requestHeaderProto.methodname() == "registerDatanode") {
         hadoop::hdfs::datanode::RegisterDatanodeRequestProto
             registerDatanodeRequestProto;
-        ReadDelimitedFrom(&coded_input, &registerDatanodeRequestProto);
+        ReadDelimitedFrom(&request_input, &registerDatanodeRequestProto);
         // change the port information
         auto *registration =
             registerDatanodeRequestProto.release_registration();
@@ -176,7 +174,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
         WriteDelimitedTo(buffer, messages);
       } else if (requestHeaderProto.methodname() == "blockReport") {
         hadoop::hdfs::datanode::BlockReportRequestProto blockReportRequestProto;
-        ReadDelimitedFrom(&coded_input, &blockReportRequestProto);
+        ReadDelimitedFrom(&request_input, &blockReportRequestProto);
         // change the port information
         auto *registration = blockReportRequestProto.release_registration();
         auto *datanodeID = registration->release_datanodeid();
@@ -198,6 +196,15 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
     std::cout << "response" << std::endl;
     std::cout << "callId: " << rpc_response_header.callid() << std::endl;
     std::cout << "status: " << rpc_response_header.status() << std::endl;
+    hadoop::hdfs::datanode::RegisterDatanodeResponseProto
+        RegisterDatanodeResponse;
+    if (ReadDelimitedFrom(&response_input, &RegisterDatanodeResponse)) {
+      std::cout
+          << "hostname: "
+          << RegisterDatanodeResponse.registration().datanodeid().hostname()
+          << " xferport: "
+          << RegisterDatanodeResponse.registration().datanodeid().xferport();
+    }
   }
   begin = end;
   return lite::DeserializeResult::kGood;
