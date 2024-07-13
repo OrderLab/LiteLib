@@ -49,6 +49,12 @@ struct PreparedStatement {
 };
 
 struct ConnectionInfo {
+  enum State {
+    Init,
+    ServerGreeted,
+    LoggedIn,
+  } state = Init;
+
   // Normal
   ResponseDissector response_dissector;
   std::vector<std::shared_ptr<Packet>> responses;

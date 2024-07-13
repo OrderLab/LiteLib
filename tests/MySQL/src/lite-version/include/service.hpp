@@ -18,6 +18,8 @@ class MySQL {
                               std::string, CacheEntry>;
 
  public:
+  MySQL();
+
   std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
       const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
       lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
@@ -39,7 +41,11 @@ class MySQL {
 
   void EmergencyToNormalHook() {}
 
+  Packet EmergencyConnectionEstablishHook(ConnectionInfo &conn);
+
  private:
+  Packet server_greeting_;
+
   std::unordered_map<std::string, std::shared_ptr<std::vector<uint8_t>>>
       query_cache_;
 

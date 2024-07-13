@@ -2,6 +2,19 @@
 
 #include "mysql-server/protocol_classic.hpp"
 
+MySQL::MySQL() {
+  server_greeting_.buffer =
+      std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+          0x4a, 0x0,  0x0,  0x0,  0xa,  0x35, 0x2e, 0x37, 0x2e, 0x34,
+          0x34, 0x0,  0x2,  0x0,  0x0,  0x0,  0x3d, 0x7d, 0x30, 0x52,
+          0x19, 0x28, 0x47, 0x6c, 0x0,  0xff, 0xff, 0x8,  0x2,  0x0,
+          0xff, 0xc1, 0x15, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
+          0x0,  0x0,  0x0,  0x17, 0x8,  0x56, 0x44, 0x76, 0x19, 0x55,
+          0x14, 0x30, 0x69, 0x7c, 0x5b, 0x0,  0x6d, 0x79, 0x73, 0x71,
+          0x6c, 0x5f, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x70,
+          0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x0});
+}
+
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
     lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
@@ -30,6 +43,11 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
                          std::vector<std::shared_ptr<Packet>> requests,
                          ConnectionInfo &conn, Cache *cache) {
   if (requests.empty()) {
+    if (conn.state == ConnectionInfo::State::Init) {
+      // server greeting
+      server_greeting_.buffer = resp->buffer;
+      conn.state = ConnectionInfo::State::ServerGreeted;
+    }
     return;
   }
   // LOG(INFO) << "req: " << requests.size() << std::endl;
@@ -48,6 +66,11 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
     // TODO: use https://en.cppreference.com/w/cpp/ranges/join_with_view
   }
   requests[0]->buffer->push_back(0);
+
+  if (conn.state == ConnectionInfo::State::ServerGreeted) {
+    conn.state = ConnectionInfo::State::LoggedIn;
+    return;
+  }
 
   COM_DATA req_com_data;
   enum_server_command req_cmd;
@@ -106,6 +129,15 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
   }
   conn.request_payload.push_back(0);
 
+  if (conn.state == ConnectionInfo::State::ServerGreeted) {
+    resp.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+        0x7, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0});
+    conn.state = ConnectionInfo::State::LoggedIn;
+    // TODO: handle login request
+    conn.request_payload.clear();
+    return {resp, false};
+  }
+
   COM_DATA req_com_data;
   enum_server_command req_cmd;
   if (!get_command_and_parse_packet(&req_com_data, &req_cmd,
@@ -132,6 +164,7 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
     }
     default: {
       LOG(WARNING) << "Unsupported command: " << req_cmd << std::endl;
+      exit(1);
       return {resp, true};
     }
   }
@@ -144,6 +177,11 @@ void MySQL::NormalToEmergencyHook() {
   if (!ParseQueryCache()) {
     LOG(ERROR) << "Unable to parse query cache";
   }
+}
+
+Packet MySQL::EmergencyConnectionEstablishHook(ConnectionInfo &conn) {
+  conn.state = ConnectionInfo::ServerGreeted;
+  return server_greeting_;
 }
 
 std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
