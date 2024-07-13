@@ -47,6 +47,16 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   if (is_client_connection &&
       (!lite_core_.emergency_mode_ && !lite_core_.is_replaying_))
     ConnectBackend();
+
+  if (lite_core_.emergency_mode_) {
+    auto greeting_msg =
+        lite_core_.app_.EmergencyConnectionEstablishHook(extra_app_info_);
+    const auto buffer = greeting_msg.Serialize();
+    if (!network::Write(client_fd_, buffer)) {
+      LOG(ERROR) << "Failed to write greeting message to client" << std::endl;
+      delete this;
+    }
+  }
 }
 
 template <typename Application, typename Request, typename Response,

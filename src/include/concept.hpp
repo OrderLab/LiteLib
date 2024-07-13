@@ -69,6 +69,11 @@ concept IsApplication = requires(
 
   // Hook function for switching from emergency to normal mode
   { app.EmergencyToNormalHook() };
+
+  // Hook function for establishing emergency connection
+  {
+    app.EmergencyConnectionEstablishHook(conn_info)
+  } -> std::convertible_to<Response>;
 };
 
 template <typename ProtocolMessage>
