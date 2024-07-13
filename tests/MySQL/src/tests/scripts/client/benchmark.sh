@@ -24,6 +24,7 @@ sysbench \
 --mysql-port=60000 \
 --mysql-user=sbtest \
 --mysql-password=password \
+--db-ps-mode=disable \
 --mysql-ignore-errors=2013 \
 run
 
@@ -39,6 +40,7 @@ sysbench \
 --mysql-port=60000 \
 --mysql-user=sbtest \
 --mysql-password=password \
+--db-ps-mode=disable \
 --mysql-ignore-errors=2013 \
 run
 
@@ -51,6 +53,7 @@ run
 # --mysql-port=3306 \
 # --mysql-user=sbtest \
 # --mysql-password=password \
+# --db-ps-mode=disable \
 # --mysql-ignore-errors=2013 \
 # /usr/share/sysbench/tests/include/oltp_legacy/parallel_prepare.lua \
 # run
@@ -67,6 +70,7 @@ run
 # --mysql-port=3306 \
 # --mysql-user=sbtest \
 # --mysql-password=password \
+# --db-ps-mode=disable \
 # --mysql-ignore-errors=2013 \
 # /usr/share/sysbench/tests/include/oltp_legacy/oltp.lua \
 # run

@@ -44,4 +44,9 @@ class MySQL {
       query_cache_;
 
   bool ParseQueryCache();
+
+  std::pair<Packet, bool> EmergencyServeQuery(std::string &query,
+                                              ConnectionInfo &conn,
+                                              Cache *cache, Logger *logger,
+                                              bool flow_control);
 };

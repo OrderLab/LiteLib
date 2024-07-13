@@ -118,15 +118,7 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
   switch (req_cmd) {
     case COM_QUERY: {
       std::string query{req_com_data.com_query.query};
-      if (query == "BEGIN") {
-        resp.buffer =
-            std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
-                0x7, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x3, 0x0, 0x0, 0x0});
-        break;  // TODO: handle it
-      } else {
-        LOG(WARNING) << "Unsupported query: " << query << std::endl;
-        return {resp, true};
-      }
+      return EmergencyServeQuery(query, conn, cache, logger, flow_control);
     }
     case COM_STMT_EXECUTE: {
       auto [stmt_it, values] =
@@ -136,24 +128,7 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
         query.replace(query.find("?"), 1,
                       SerializeValue(values[i], stmt_it->second.types[i]));
       }
-
-      if (query == "COMMIT") {
-        resp.buffer =
-            std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
-                0x7, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0});
-        break;  // TODO: handle it
-      } else {
-        auto cache_it = query_cache_.find(query);
-        if (cache_it != query_cache_.end()) {
-          resp.buffer = cache_it->second;
-        } else {
-          LOG(WARNING) << "Query not found in the cache: " << query
-                       << std::endl;
-          return {resp, true};
-        }
-      }
-
-      break;
+      return EmergencyServeQuery(query, conn, cache, logger, flow_control);
     }
     default: {
       LOG(WARNING) << "Unsupported command: " << req_cmd << std::endl;
@@ -169,4 +144,31 @@ void MySQL::NormalToEmergencyHook() {
   if (!ParseQueryCache()) {
     LOG(ERROR) << "Unable to parse query cache";
   }
+}
+
+std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
+                                                   ConnectionInfo &conn,
+                                                   Cache *cache, Logger *logger,
+                                                   bool flow_control) {
+  Packet resp;
+  if (query == "BEGIN") {
+    resp.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+        0x7, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x3, 0x0, 0x0, 0x0});
+    // TODO: handle it
+  } else if (query == "COMMIT") {
+    resp.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+        0x7, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0});
+    // TODO: handle it
+  } else {
+    auto cache_it = query_cache_.find(query);
+    if (cache_it != query_cache_.end()) {
+      resp.buffer = cache_it->second;
+    } else {
+      LOG(WARNING) << "Query not found in the cache: " << query << std::endl;
+      return {resp, true};
+    }
+  }
+
+  conn.request_payload.clear();
+  return {resp, false};
 }
