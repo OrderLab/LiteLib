@@ -4,21 +4,21 @@ services:
       image: apache/hadoop:3
       hostname: namenode
       command: ["hdfs", "namenode"]
-      ports:
-        - 8020:8020
-        - 8022:8022
+      user: root
       env_file:
         - ./namenode_config
       tty: true
       environment:
           ENSURE_NAMENODE_DIR: "/tmp/hadoop-root/dfs/name"
+      volumes:
+        - type: bind
+          source: ./namenode
+          target: /workspace 
    datanode:
       image: apache/hadoop:3
       hostname: datanode
       command: ["hdfs", "datanode"]
-      ports:
-        - 11211:11211
-        - 9867:9867
+      user: root
       env_file:
         - ./datanode_config  
       tty: true    
@@ -30,7 +30,7 @@ services:
       hostname: lite
       build:
         context: .
-        dockerfile: ./dev/Dockerfile
+        dockerfile: ./lite/Dockerfile
       volumes:
         - type: bind
           source: /home/maizhezh/cascade

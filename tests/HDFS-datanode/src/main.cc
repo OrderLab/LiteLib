@@ -22,6 +22,15 @@ void PrintHelp() {
   LOG(INFO) << "  LiteProxy --thread_num=4\n";
 }
 
+void server_thread_body(
+    lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
+                     CacheEntry>* server,
+    const char* port) {
+  if (!server->Run(port)) {
+    LOG(FATAL) << "Failed to start server" << std::endl;
+  }
+}
+
 int main(int argc, char* argv[]) {
   FLAGS_logtostderr = 1;
   FLAGS_logbufsecs = 0;
@@ -81,12 +90,10 @@ int main(int argc, char* argv[]) {
             backend_port_2, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode_tcp",
             true);
     // Run the server until stopped.
-    if (!s_1.Run(port_1)) {
-      LOG(FATAL) << "Failed to start server 1" << std::endl;
-    }
-    if (!s_2.Run(port_2)) {
-      LOG(FATAL) << "Failed to start server 2" << std::endl;
-    }
+    boost::thread thread1(server_thread_body, &s_1, port_1);
+    boost::thread thread2(server_thread_body, &s_2, port_2);
+    thread1.join();
+    thread2.join();
   } catch (std::exception& e) {
     LOG(FATAL) << "exception: " << e.what() << "\n";
   }

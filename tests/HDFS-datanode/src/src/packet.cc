@@ -188,7 +188,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
         messages.push_back(&blockReportRequestProto);
         WriteDelimitedTo(buffer, messages);
       } else {
-        LOG(FATAL) << "Unknown method name: " << requestHeaderProto.methodname()
+        LOG(ERROR) << "Unknown method name: " << requestHeaderProto.methodname()
                    << std::endl;
       }
     }
@@ -196,15 +196,6 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
     std::cout << "response" << std::endl;
     std::cout << "callId: " << rpc_response_header.callid() << std::endl;
     std::cout << "status: " << rpc_response_header.status() << std::endl;
-    hadoop::hdfs::datanode::RegisterDatanodeResponseProto
-        RegisterDatanodeResponse;
-    if (ReadDelimitedFrom(&response_input, &RegisterDatanodeResponse)) {
-      std::cout
-          << "hostname: "
-          << RegisterDatanodeResponse.registration().datanodeid().hostname()
-          << " xferport: "
-          << RegisterDatanodeResponse.registration().datanodeid().xferport();
-    }
   }
   begin = end;
   return lite::DeserializeResult::kGood;

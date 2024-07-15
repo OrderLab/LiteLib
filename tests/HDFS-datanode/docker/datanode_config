@@ -1,8 +1,9 @@
 CORE-SITE.XML_fs.default.name=hdfs://namenode
 CORE-SITE.XML_fs.defaultFS=hdfs://namenode
-HDFS-SITE.XML_dfs.namenode.rpc-address=namenode:8020
-HDFS-SITE.XML_dfs.namenode.servicerpc-address=lite:11211
+HDFS-SITE.XML_dfs.namenode.rpc-address=lite:11211
 HDFS-SITE.XML_dfs.replication=2
+HDFS-SITE.XML_dfs.datanode.data.dir=file://hdfs
+HDFS-SITE.XML_dfs.datanode.address=datanode:9866
 MAPRED-SITE.XML_mapreduce.framework.name=yarn
 MAPRED-SITE.XML_yarn.app.mapreduce.am.env=HADOOP_MAPRED_HOME=$HADOOP_HOME
 MAPRED-SITE.XML_mapreduce.map.env=HADOOP_MAPRED_HOME=$HADOOP_HOME
