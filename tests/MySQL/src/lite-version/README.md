@@ -13,9 +13,7 @@ make install
 ## sql_parser
 
 ```
-wget https://github.com/hyrise/sql-parser/archive/1969a3c131e0618b6406d6ab46530a92ec4eb05e.zip
-unzip 1969a3c131e0618b6406d6ab46530a92ec4eb05e.zip
-cd sql-parser-1969a3c131e0618b6406d6ab46530a92ec4eb05e
+cd lib/sql-parser
 make
 make install
 ```
