@@ -1,6 +1,6 @@
 CORE-SITE.XML_fs.default.name=hdfs://namenode
 CORE-SITE.XML_fs.defaultFS=hdfs://namenode
-HDFS-SITE.XML_dfs.namenode.rpc-address=lite:11211
+HDFS-SITE.XML_dfs.namenode.rpc-address=lite:11111
 HDFS-SITE.XML_dfs.replication=2
 HDFS-SITE.XML_dfs.datanode.data.dir=file://hdfs
 HDFS-SITE.XML_dfs.datanode.address=datanode:9866

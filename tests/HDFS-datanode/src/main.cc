@@ -9,6 +9,13 @@
 #include "packet.hpp"
 #include "service.hpp"
 
+void SuppressProtobufLogging() {
+    google::protobuf::LogSilencer* log_silencer = new google::protobuf::LogSilencer();
+    google::protobuf::SetLogHandler([](google::protobuf::LogLevel level, const char* filename, int line, const std::string& message) {
+        // Silencing logs
+    });
+}
+
 void PrintHelp() {
   LOG(INFO) << "Usage: LiteProxy [-t thread_num] [-s size] \n"
                "       [-p port] [-h help]\n";
@@ -32,14 +39,16 @@ void server_thread_body(
 }
 
 int main(int argc, char* argv[]) {
+  SuppressProtobufLogging();
   FLAGS_logtostderr = 1;
   FLAGS_logbufsecs = 0;
   google::InitGoogleLogging(argv[0]);
   try {
     size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t cache_size(1024);
-    const char* port_1 = "11211";
-    const char* port_2 = "11212";
+    const char* port_1 = "11111";
+    const char* port_2 = "22222";
+    const char* port_3 = "33333";
     const char* const short_opts = "t:p:a:h";
     const option long_opts[] = {{"thread_num", required_argument, nullptr, 't'},
                                 {"port", required_argument, nullptr, 'p'},
@@ -78,6 +87,8 @@ int main(int argc, char* argv[]) {
     std::string backend_port_1 = "8020";
     std::string backend_addr_2 = "datanode";
     std::string backend_port_2 = "9866";
+    std::string backend_addr_3 = "datanode";
+    std::string backend_port_3 = "9867";
     Datanode datanode;
     lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
@@ -89,11 +100,18 @@ int main(int argc, char* argv[]) {
         s_2(thread_pool_size, cache_size, datanode, backend_addr_2,
             backend_port_2, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode_tcp",
             true);
+    lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
+                     CacheEntry>
+        s_3(thread_pool_size, cache_size, datanode, backend_addr_3,
+            backend_port_3, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode_rpc",
+            true, true);
     // Run the server until stopped.
     boost::thread thread1(server_thread_body, &s_1, port_1);
     boost::thread thread2(server_thread_body, &s_2, port_2);
+    boost::thread thread3(server_thread_body, &s_3, port_3);
     thread1.join();
     thread2.join();
+    thread3.join();
   } catch (std::exception& e) {
     LOG(FATAL) << "exception: " << e.what() << "\n";
   }
