@@ -76,10 +76,10 @@ class LiteCore : public Daemon {
 
   LogEntryInstance *crash_conn_head_ = nullptr;
 
+  Application &app_;
+
  private:
   bool crash_recover_;
-
-  Application &app_;
 
   std::barrier<std::function<void()>> &barrier_;
 
