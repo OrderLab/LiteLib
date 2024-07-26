@@ -77,6 +77,8 @@ class LiteCore : public Daemon {
 
   LogEntryInstance *crash_conn_head_ = nullptr;
 
+  Application &app_;
+
  private:
   bool crash_recover_;
 

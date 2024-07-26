@@ -1,0 +1,38 @@
+services:
+  mysql-server:
+    container_name: mysql-server
+    image: lite-sys
+    # image: mysql:8.0-bookworm
+    # build:
+    #   context: .
+    #   dockerfile: ./scripts/server/Dockerfile
+    # environment:
+    #   MYSQL_ROOT_PASSWORD: password
+    #   MYSQL_DATABASE: sbtest
+    #   MYSQL_USER: sbtest
+    #   MYSQL_PASSWORD: password
+    #   MYSQL_TCP_PORT: 60000
+    tty: true
+    privileged: true
+    volumes:
+      - type: bind
+        source: ../../../..
+        target: /workspace
+    cpuset: "0-3"
+    # ports:
+    #   - "3306:3306"
+    # command: --authentication_policy=mysql_native_password
+    entrypoint: /workspace/tests/MySQL/src/tests/scripts/server/entrypoint.sh
+    # network_mode: "host"
+  mysql-client:
+    container_name: mysql-client
+    image: severalnines/sysbench
+    tty: true
+    privileged: true
+    cpuset: "4-31"
+    volumes:
+      - type: bind
+        source: ../../../../
+        target: /workspace
+    entrypoint: /workspace/tests/MySQL/src/tests/scripts/client/entrypoint.sh
+    # network_mode: "host"

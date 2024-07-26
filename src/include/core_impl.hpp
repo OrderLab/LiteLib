@@ -173,6 +173,8 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     delete conn;
   }
 
+  app_.NormalToEmergencyHook();
+
   barrier_.arrive_and_wait();  // unblock worker threads
   if (!crash_recover_) {
     // add all cache nodes to the log
@@ -263,8 +265,9 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
           if (!i) {
             (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
           } else {
-            // TODO: transfer the backend connection from its worker to a
-            // non-blocking thread, process the response, and transfer it back
+            // TODO: how to disable the reading from client event, instead of
+            // blocking the worker. So that we can wait for the server's
+            // responses
           }
           SendReplayReq(*entry->backend_conn_ptr, entry->req, buffer);
         }
@@ -301,6 +304,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   emergency_mode_ = false;
   LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
                << std::endl;
+
+  app_.EmergencyToNormalHook();
 
   barrier_.arrive_and_wait();  // unblock worker threads
 
