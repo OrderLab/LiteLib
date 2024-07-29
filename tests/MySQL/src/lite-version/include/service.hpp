@@ -1,21 +1,18 @@
 #pragma once
 
 #include <lite.hpp>
+#include <optional>
 
 #include "dissect.hpp"
 #include "packet.hpp"
-
-struct CacheEntry {
-  std::shared_ptr<Packet> ToRequest(const std::string &key) const {
-    return std::make_shared<Packet>();
-  }
-};
+#include "query_cache.hpp"
+#include "table_cache.hpp"
 
 class MySQL {
-  using Cache = lite::Cache<MySQL, Packet, Packet, ConnectionInfo, std::string,
-                            CacheEntry>;
-  using Logger = lite::Logger<MySQL, Packet, Packet, ConnectionInfo,
-                              std::string, CacheEntry>;
+  using Cache =
+      lite::Cache<MySQL, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>;
+  using Logger =
+      lite::Logger<MySQL, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
   MySQL();
@@ -46,10 +43,12 @@ class MySQL {
  private:
   Packet server_greeting_;
 
-  std::unordered_map<std::string, std::shared_ptr<std::vector<uint8_t>>>
-      query_cache_;
+  TableCache table_cache_;
 
-  bool ParseQueryCache();
+  QueryCache query_cache_;
+
+  void NormalUpdateQuery(std::string &query, ConnectionInfo &conn,
+                         Cache *cache);
 
   std::pair<Packet, bool> EmergencyServeQuery(std::string &query,
                                               ConnectionInfo &conn,

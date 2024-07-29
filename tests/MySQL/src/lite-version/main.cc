@@ -1,6 +1,4 @@
 #include <getopt.h>
-#include <hsql/SQLParser.h>
-#include <hsql/util/sqlhelper.h>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/thread/thread.hpp>
@@ -28,26 +26,6 @@ void PrintHelp() {
 }
 
 int main(int argc, char* argv[]) {
-  hsql::SQLParserResult result;
-  hsql::SQLParser::parse("SELECT * FROM test WHERE id between 2 and 10;", &result);
-
-  // check whether the parsing was successful
-
-  if (result.isValid()) {
-    printf("Parsed successfully!\n");
-    printf("Number of statements: %lu\n", result.size());
-
-    for (auto i = 0u; i < result.size(); ++i) {
-      // Print a statement summary.
-      hsql::printStatementInfo(result.getStatement(i));
-    }
-  } else {
-    fprintf(stderr, "Given string is not a valid SQL query.\n");
-    fprintf(stderr, "%s (L%d:%d)\n", result.errorMsg(), result.errorLine(),
-            result.errorColumn());
-    return -1;
-  }
-
   google::InitGoogleLogging(argv[0]);
   try {
     size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
@@ -93,7 +71,7 @@ int main(int argc, char* argv[]) {
     std::string backend_addr = "localhost";
     std::string backend_port = "60000";
     MySQL mysql;
-    lite::LiteServer<MySQL, Packet, Packet, ConnectionInfo, std::string,
+    lite::LiteServer<MySQL, Packet, Packet, ConnectionInfo, CacheKey,
                      CacheEntry>
         s(thread_pool_size, cache_size, mysql, backend_addr, backend_port,
           1000ms, 20000, 0.9, 1, "/tmp/lite_mysql");
