@@ -60,13 +60,17 @@ class Connection {
   /// Try to connect to the backend and set event
   bool ConnectBackend();
 
-  ConnectionInfo extra_app_info_;
+  bool SendCustomizedPackets(std::shared_ptr<Request>,
+                             std::vector<uint8_t>& buffer);
+
+  ConnectionInfo extra_app_info_;f
 
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;
 
   /// The pending requests
-  ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> pending_requests_;
+  ThreadSafeQueue<std::pair<std::shared_ptr<Request>, RequestType>>
+      pending_requests_;
 
   void* lite_server_;
 

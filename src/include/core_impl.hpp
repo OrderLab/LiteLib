@@ -52,13 +52,14 @@ template <typename Application, typename Request, typename Response,
            IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
-    HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
-                  ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
-                      &pending_requests,
-                  const evutil_socket_t client_fd,
-                  const evutil_socket_t backend_fd, CacheInstance *cache,
-                  LoggerInstance *logger) {
-  if (!emergency_mode_ && (backend_fd <= 0 || (frontend_flag_ && client_fd <= 0))) {
+    HandleRequest(
+        std::shared_ptr<Request> req, ConnectionInfo &conn_info,
+        ThreadSafeQueue<std::pair<std::shared_ptr<Request>, RequestType>>
+            &pending_requests,
+        const evutil_socket_t client_fd, const evutil_socket_t backend_fd,
+        CacheInstance *cache, LoggerInstance *logger) {
+  if (!emergency_mode_ &&
+      (backend_fd <= 0 || (frontend_flag_ && client_fd <= 0))) {
     LOG(WARNING) << "Core: Fall back and entering emergency mode "
                  << GetUNIXTimeStamp() << std::endl;
     TakeOver();
@@ -90,7 +91,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       return false;
     }
     // TODO: enable application to filter/modify requests before pushing back
-    pending_requests.push_back(std::make_pair(req, true));
+    pending_requests.push_back(std::make_pair(req, forward));
   }
   return true;
 }
@@ -102,13 +103,14 @@ template <typename Application, typename Request, typename Response,
            IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
-    HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
-                   ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
-                       &pending_requests,
-                   const evutil_socket_t client_fd, CacheInstance *cache) {
-  const auto [related_stateful_request, forward_resp] =
+    HandleResponse(
+        std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
+        ThreadSafeQueue<std::pair<std::shared_ptr<Request>, RequestType>>
+            &pending_requests,
+        const evutil_socket_t client_fd, CacheInstance *cache) {
+  const auto [related_stateful_request, repuest_type] =
       app_.Match(resp, conn_info, pending_requests);
-  if (forward_resp) {
+  if (repuest_type == forward) {
     const auto buffer = resp->Serialize();
     if (!network::Write(client_fd, buffer)) {
       LOG(ERROR) << "Failed to write response to client" << std::endl;
@@ -117,9 +119,12 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
     app_.NormalUpdate(resp, std::move(related_stateful_request), conn_info,
                       cache);
-  } else {
+  } else if (repuest_type == replay) {
     app_.HandleReplayResponse(resp, std::move(related_stateful_request),
                               conn_info, cache);
+  } else {
+    app_.HandleCustomizedResponse(resp, std::move(related_stateful_request),
+                                  conn_info, cache);
   }
 
   return true;
@@ -133,8 +138,7 @@ template <typename Application, typename Request, typename Response,
 void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::TakeOver() {
   emergency_mode_ = true;
-  if (!frontend_flag_)
-    LOG(INFO) << "Disconnect all from backend" << std::endl;
+  if (!frontend_flag_) LOG(INFO) << "Disconnect all from backend" << std::endl;
   LOG(INFO) << "Emergency barrier initialized" << std::endl;
   for (auto &worker : workers_) {
     worker->notify_queue_.push_back(
@@ -149,13 +153,12 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   std::set<ConnectionInstance *> connections_to_be_closed;
   LOG(INFO) << "live connections: " << live_connections_.size() << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
-    if (!frontend_flag_){
+    if (!frontend_flag_) {
       if (c->backend_fd_ > 0) {
         close(c->backend_fd_);
         c->backend_fd_ = -1;
       }
-    }
-    else{
+    } else {
       if (c->client_fd_ > 0) {
         close(c->client_fd_);
         c->client_fd_ = -1;
@@ -194,15 +197,15 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
 
-#define SendReplayReq(conn, req, buffer)                               \
-  do {                                                                 \
-    assert((conn)->pending_requests_.empty());                         \
-    (conn)->pending_requests_.push_back(std::make_pair((req), false)); \
-    if (!network::Write((conn)->backend_fd_, (buffer))) {              \
-      LOG(ERROR) << "line#" << __LINE__                                \
-                 << " Replay failed to write to backend\n";            \
-      return false;                                                    \
-    }                                                                  \
+#define SendReplayReq(conn, req, buffer)                                \
+  do {                                                                  \
+    assert((conn)->pending_requests_.empty());                          \
+    (conn)->pending_requests_.push_back(std::make_pair((req), replay)); \
+    if (!network::Write((conn)->backend_fd_, (buffer))) {               \
+      LOG(ERROR) << "line#" << __LINE__                                 \
+                 << " Replay failed to write to backend\n";             \
+      return false;                                                     \
+    }                                                                   \
   } while (0)
 
 template <typename Application, typename Request, typename Response,

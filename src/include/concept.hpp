@@ -10,7 +10,7 @@
 #include "thread_safe_queue.hpp"
 
 namespace lite {
-
+enum RequestType { forward = 0, replay = 1, customized = 2 };
 enum DeserializeResult { kGood, kBad, kIndeterminate };
 
 template <typename Request, typename CacheKey, typename CacheEntry>
@@ -31,7 +31,7 @@ template <typename Application, typename Request, typename Response,
 concept IsApplication = requires(
     Application app, std::shared_ptr<Request> req,
     std::shared_ptr<Response> resp, ConnectionInfo conn_info,
-    ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+    ThreadSafeQueue<std::pair<std::shared_ptr<Request>, RequestType>>
         pending_requests,  // true: request forward from client, false:
                            // request generated during replay
     std::vector<std::shared_ptr<Request>> related_requests,
@@ -47,15 +47,18 @@ concept IsApplication = requires(
   {
     app.Match(resp, conn_info, pending_requests)
   } -> std::convertible_to<std::pair<std::vector<std::shared_ptr<Request>>,
-                                     bool>>;  // pair<related_requests,
-                                              // forward response>
+                                     RequestType>>;  // pair<related_requests,
+                                                     // forward response>
 
   // Update the states during normal time
   { app.NormalUpdate(resp, related_requests, conn_info, cache) };
 
-  // Handle response of requests sent by Replay (those Match() = (_, false))
+  // Handle response of requests sent by Replay (those Match() = (_, replay))
   // TODO: let the application to be able to retry the request
   { app.HandleReplayResponse(resp, related_requests, conn_info, cache) };
+
+  // Handle response of customized requests (those Match() = (_, customized))
+  { app.HandleCustomizedResponse(resp, related_requests, conn_info, cache) };
 
   // Perform any operation during emergency time
   {

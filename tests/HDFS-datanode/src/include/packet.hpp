@@ -10,7 +10,19 @@
 #include "datatransfer.pb.h"
 
 class Packet {
+  using InputIterator = uint8_t *;
+
+ public:
   enum Type { rpc = 0, tcp = 1 };
+
+  enum TcpType {          // related field (comment)
+    Op = 0,               // opcode
+    BlockOpResponse = 1,  // status, block_op_response
+    ReplyStatus = 2,      // status
+    PacketHeader = 3,     // packet_header
+    Block = 4,            // (including checksum and data)
+    Other = 5             // (Maybe unfinished packet or data)
+  };
   enum Opcode : unsigned {
     WRITE_BLOCK = 80,
     READ_BLOCK = 81,
@@ -25,23 +37,53 @@ class Packet {
     BLOCK_GROUP_CHECKSUM = 90,
     CUSTOM = 127
   };
-  using InputIterator = uint8_t *;
 
   std::shared_ptr<std::vector<uint8_t>> buffer;
 
-  Type type;
-  Opcode opcode;
   bool request = 1;
- public:
+
+  Type type;
+  // tcp type
+  TcpType tcp_type = Other;
+
+  Opcode opcode;
+
+  // Status
+  //   SUCCESS = 0,
+  //   ERROR = 1,
+  //   ERROR_CHECKSUM = 2,
+  //   ERROR_INVALID = 3,
+  //   ERROR_EXISTS = 4,
+  //   ERROR_ACCESS_TOKEN = 5,
+  //   CHECKSUM_OK = 6,
+  //   ERROR_UNSUPPORTED = 7,
+  //   OOB_RESTART = 8,     // Quick restart
+  //   OOB_RESERVED1 = 9,   // Reserved
+  //   OOB_RESERVED2 = 10,  // Reserved
+  //   OOB_RESERVED3 = 11,  // Reserved
+  //   IN_PROGRESS = 12,
+  //   ERROR_BLOCK_PINNED = 13
+  hadoop::hdfs::Status status;
+
+  hadoop::hdfs::BlockOpResponseProto block_op_response;
+
+  hadoop::hdfs::PacketHeaderProto packet_header;
+  // rpc type
+  hadoop::common::RpcRequestHeaderProto RpcRequestHeader;
+
+  hadoop::common::RequestHeaderProto RequestHeader;
+
+  hadoop::common::RpcResponseHeaderProto RpcResponseHeader;
+
+  Packet() {}
+  
+  Packet(std::shared_ptr<std::vector<uint8_t>> buffer_) {
+    auto begin = buffer_->data();
+    auto end = begin + buffer_->size();
+    uint8_t *&reftobegin = begin;
+    Deserialize(reftobegin, end);
+  }
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
 
   std::shared_ptr<std::vector<uint8_t>> Serialize() const { return buffer; }
-
- private:
-  static bool ReadDelimitedFrom(
-      google::protobuf::io::CodedInputStream *coded_input,
-      google::protobuf::MessageLite *message);
-  static bool WriteDelimitedTo(
-      std::shared_ptr<std::vector<uint8_t>> &buffer,
-      const std::vector<google::protobuf::MessageLite *> &ymessages);
 };

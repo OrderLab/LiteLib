@@ -200,5 +200,18 @@ bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 
   return true;
 }
-
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bool Connection<
+    Application, Request, Response, ConnectionInfo, CacheKey,
+    CacheEntry>::SendCustomizedPackets(std::shared_ptr<Request> request,
+                                       std::vector<uint8_t>& buffer) {
+  if (!network::Write(backend_fd_, buffer, buffer.size())) {
+    LOG(ERROR) << "Unable to send customized packets" << std::endl;
+    return false;
+  } else {
+    pending_requests_.push_back(std::make_pair(request, customized));
+  }
+  return true;
+}
 }  // namespace lite

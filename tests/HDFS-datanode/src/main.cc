@@ -92,20 +92,21 @@ int main(int argc, char* argv[]) {
     Datanode datanode;
     lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
-        s_1(thread_pool_size, cache_size, datanode, backend_addr_1,
-            backend_port_1, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode_rpc",
+        s_1(1, cache_size, datanode, backend_addr_1,
+            backend_port_1, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode",
             true, true);
     lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s_2(thread_pool_size, cache_size, datanode, backend_addr_2,
-            backend_port_2, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode_tcp",
+            backend_port_2, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode",
             true);
     lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s_3(thread_pool_size, cache_size, datanode, backend_addr_3,
-            backend_port_3, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode_rpc",
+            backend_port_3, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode",
             true, true);
     // Run the server until stopped.
+    datanode.RegisterServer(&s_1);
     boost::thread thread1(server_thread_body, &s_1, port_1);
     boost::thread thread2(server_thread_body, &s_2, port_2);
     boost::thread thread3(server_thread_body, &s_3, port_3);

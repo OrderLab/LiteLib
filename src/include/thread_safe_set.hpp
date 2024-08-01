@@ -40,6 +40,11 @@ class ThreadSafeSet {
     set_.clear();
   }
 
+  auto begin() {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    return set_.begin();
+  }
+
  private:
   std::set<T> set_;
   std::shared_mutex mutex_;

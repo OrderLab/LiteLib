@@ -7,7 +7,6 @@
 #include "daemon.hpp"
 #include "logger.hpp"
 #include "thread_safe_set.hpp"
-
 namespace lite {
 
 template <typename Application, typename Request, typename Response,
@@ -51,17 +50,18 @@ class LiteCore : public Daemon {
            const size_t n_replay_threads, bool crash_recover = true,
            bool frontend_flag = false);
 
-  bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
-                     ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
-                         &pending_requests,
-                     const evutil_socket_t client_fd,
-                     const evutil_socket_t backend_fd, CacheInstance *cache,
-                     LoggerInstance *logger);
+  bool HandleRequest(
+      std::shared_ptr<Request> req, ConnectionInfo &conn_info,
+      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, RequestType>>
+          &pending_requests,
+      const evutil_socket_t client_fd, const evutil_socket_t backend_fd,
+      CacheInstance *cache, LoggerInstance *logger);
 
-  bool HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
-                      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
-                          &pending_requests,
-                      const evutil_socket_t client_fd, CacheInstance *cache);
+  bool HandleResponse(
+      std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
+      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, RequestType>>
+          &pending_requests,
+      const evutil_socket_t client_fd, CacheInstance *cache);
 
   std::string &backend_addr_, &backend_port_;
 
@@ -83,8 +83,6 @@ class LiteCore : public Daemon {
   bool crash_recover_;
 
   bool frontend_flag_;
-
-  Application &app_;
 
   std::barrier<std::function<void()>> &barrier_;
 

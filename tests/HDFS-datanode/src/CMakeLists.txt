@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost 1.83 REQUIRED COMPONENTS
-             system thread)
+             system thread chrono)
 find_package(Libevent REQUIRED)
 find_package (glog 0.6.0 REQUIRED)
 find_package(Protobuf REQUIRED)
@@ -30,6 +30,6 @@ target_sources(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
-target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog ${PROTOBUF_LIBRARY})
+target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread Boost::chrono glog::glog ${PROTOBUF_LIBRARY})
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_include_directories(${PROJECT_NAME} PRIVATE protocpp)

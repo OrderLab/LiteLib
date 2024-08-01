@@ -192,4 +192,12 @@ void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
       ->DispatchNewConnection(new_conn_fd);
 }
 
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
+Worker<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry> *
+LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::GetFirstWorker() {
+  return workers_.front().get();
+}
 }  // namespace lite
