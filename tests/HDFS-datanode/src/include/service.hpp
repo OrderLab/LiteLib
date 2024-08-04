@@ -23,6 +23,7 @@ struct Block {
   long blockId;
   long numBytes;
   long generationStamp;
+  std::string poolId;
 };
 
 class Datanode {
@@ -35,7 +36,7 @@ class Datanode {
   boost::thread *HeartbeatThread;
 
   // used to identify the Other type.
-  Packet::TcpType last_packet;
+  std::shared_ptr<Packet> LastResponse;
   // TODO: the cache is temporary
   hadoop::hdfs::datanode::HeartbeatRequestProto HeartbeatRequest;
   hadoop::common::RpcRequestHeaderProto rpc_request_header;
@@ -48,7 +49,7 @@ class Datanode {
 
  public:
   std::pair<std::vector<std::shared_ptr<Packet>>, lite::RequestType> Match(
-      const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
+      std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
       lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>,
                                       lite::RequestType>> &pending_requests);
 

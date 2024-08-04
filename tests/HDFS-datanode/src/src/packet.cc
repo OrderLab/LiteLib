@@ -139,18 +139,17 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
         RpcResponseHeader = rpc_response_header;
       }
     } else if (type == tcp) {
-      std::cout << "tcp" << std::endl;
       while (1) {
         // the op packet
         uint16_t data_transfer_version =
             ntohs(*(reinterpret_cast<uint16_t *>(begin)));
         if (data_transfer_version == 28) {
           tcp_type = Op;
+          opcode =
+              static_cast<Opcode>(*(reinterpret_cast<uint8_t *>(begin + 2)));
           std::cout << "data transfer version: " << data_transfer_version;
           std::cout << "opcode: " << opcode;
           std::cout << std::endl;
-          opcode =
-              static_cast<Opcode>(*(reinterpret_cast<uint8_t *>(begin + 2)));
           break;
         }
         // block op response or status reponse

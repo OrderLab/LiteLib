@@ -39,7 +39,8 @@ class Connection {
   explicit Connection(const evutil_socket_t sfd, const int event_flags,
                       struct event_base* base, EventHandler event_handler,
                       void* lite_server, LiteCoreInstance& lite_core,
-                      bool is_client_connection, WorkerInstance* worker_ptr);
+                      bool is_client_connection, WorkerInstance* worker_ptr,
+                      bool frontend_flag = false);
 
   ~Connection();
 
@@ -61,9 +62,9 @@ class Connection {
   bool ConnectBackend();
 
   bool SendCustomizedPackets(std::shared_ptr<Request>,
-                             std::vector<uint8_t>& buffer);
+                             std::shared_ptr<std::vector<uint8_t>> buffer);
 
-  ConnectionInfo extra_app_info_;f
+  ConnectionInfo extra_app_info_;
 
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;
@@ -86,6 +87,9 @@ class Connection {
   CacheInstance cache_;
 
   LoggerInstance logger_;
+
+  // Mark the lite to be frontend or not
+  bool frontend_flag_;
 
  private:
   /// Corresponding worker's event_base

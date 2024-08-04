@@ -49,6 +49,8 @@ class LiteServer {
   /// The internal lite server
   LiteCoreInstance lite_core_;
 
+  bool frontend_flag_;
+  
   /// The worker threads.
   std::vector<std::unique_ptr<WorkerInstance>> workers_;
 

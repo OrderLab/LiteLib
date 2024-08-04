@@ -125,7 +125,7 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
         auto new_connection =
             new ConnectionInstance(msg.fd, EV_READ | EV_PERSIST, self->base_,
                                    ConnectionInstance::ClientHandler, nullptr,
-                                   self->lite_core_, true, self);
+                                   self->lite_core_, true, self, msg.frontend_flag);
         if (!new_connection) {
           LOG(ERROR) << "failed to create listening connection\n";
           return;

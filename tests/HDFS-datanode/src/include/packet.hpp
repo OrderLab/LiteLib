@@ -20,8 +20,7 @@ class Packet {
     BlockOpResponse = 1,  // status, block_op_response
     ReplyStatus = 2,      // status
     PacketHeader = 3,     // packet_header
-    Block = 4,            // (including checksum and data)
-    Other = 5             // (Maybe unfinished packet or data)
+    Other = 4             // (Maybe unfinished packet or data)
   };
   enum Opcode : unsigned {
     WRITE_BLOCK = 80,
@@ -77,11 +76,13 @@ class Packet {
 
   Packet() {}
   
-  Packet(std::shared_ptr<std::vector<uint8_t>> buffer_) {
+  Packet(std::shared_ptr<std::vector<uint8_t>> buffer_, Type type_) {
+    type = type_;
     auto begin = buffer_->data();
     auto end = begin + buffer_->size();
     uint8_t *&reftobegin = begin;
     Deserialize(reftobegin, end);
+    std::cout<< "buffer size:" << buffer->size()<<std::endl;
   }
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
 

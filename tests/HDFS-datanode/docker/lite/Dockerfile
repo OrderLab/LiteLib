@@ -27,7 +27,8 @@ RUN apt-get update && \
         gdb \
         libgoogle-glog-dev \
         valgrind \
-        protobuf-compiler && \
+        protobuf-compiler \
+        libboost-all-dev && \
     apt-get clean
 
 # System locale

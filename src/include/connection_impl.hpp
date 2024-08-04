@@ -17,7 +17,8 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
                                    void* lite_server,
                                    LiteCoreInstance& lite_core,
                                    bool is_client_connection,
-                                   WorkerInstance* worker_ptr)
+                                   WorkerInstance* worker_ptr,
+                                   bool frontend_flag)
     : base_(base),
       client_fd_(sfd),
       backend_fd_(-1),
@@ -29,7 +30,8 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       log_head_(new LogEntryInstance(nullptr, nullptr, self_)),
       cache_(lite_core.cache_inner_, lite_core.logger_inner_, log_head_),
       logger_(lite_core.logger_inner_, log_head_),
-      worker_ptr_(worker_ptr) {
+      worker_ptr_(worker_ptr),
+      frontend_flag_(frontend_flag) {
   if (sfd) {
     event_set(&client_event_, sfd, event_flags, event_handler,
               static_cast<void*>(this));
@@ -202,16 +204,22 @@ bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 }
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-bool Connection<
-    Application, Request, Response, ConnectionInfo, CacheKey,
-    CacheEntry>::SendCustomizedPackets(std::shared_ptr<Request> request,
-                                       std::vector<uint8_t>& buffer) {
-  if (!network::Write(backend_fd_, buffer, buffer.size())) {
+bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::
+    SendCustomizedPackets(std::shared_ptr<Request> request,
+                          std::shared_ptr<std::vector<uint8_t>> buffer) {
+  std::cout << "into send" << std::endl;
+  std::cout << "buffer address: " << buffer << std::endl;
+  std::cout << "connection memory address: " << this << std::endl;
+  std::cout << "backend fd: " << backend_fd_ << std::endl;
+  if (!network::Write(backend_fd_, buffer)) {
     LOG(ERROR) << "Unable to send customized packets" << std::endl;
     return false;
   } else {
+    std::cout << "write successfully" << std::endl;
     pending_requests_.push_back(std::make_pair(request, customized));
   }
+  std::cout << "out send" << std::endl;
   return true;
 }
 }  // namespace lite

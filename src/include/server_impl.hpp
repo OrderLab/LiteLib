@@ -30,7 +30,8 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                  flow_control_ratio, n_replay_threads, crash_recover,
                  frontend_flag),
       barrier_(nthreads + 1,
-               []() { LOG(INFO) << "Barrier completed" << std::endl; }) {
+               []() { LOG(INFO) << "Barrier completed" << std::endl; }),
+      frontend_flag_(frontend_flag) {
   struct event_config* ev_config;
   ev_config = event_config_new();
   event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
@@ -195,7 +196,7 @@ void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
-Worker<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry> *
+Worker<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>*
 LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::GetFirstWorker() {
   return workers_.front().get();

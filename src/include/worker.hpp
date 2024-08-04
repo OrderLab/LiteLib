@@ -19,6 +19,7 @@ struct WorkerMessage {
 
   Type type;
   evutil_socket_t fd;
+  bool frontend_flag = false;
 };
 
 template <typename Application, typename Request, typename Response,

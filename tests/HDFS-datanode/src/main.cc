@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
                      CacheEntry>
         s_3(thread_pool_size, cache_size, datanode, backend_addr_3,
             backend_port_3, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode",
-            true, true);
+            true);
     // Run the server until stopped.
     datanode.RegisterServer(&s_1);
     boost::thread thread1(server_thread_body, &s_1, port_1);
