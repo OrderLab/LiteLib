@@ -1197,6 +1197,44 @@ Query_cache::Query_cache(ulong query_cache_limit_arg,
   set_if_bigger(min_allocation_unit,min_needed);
   this->min_allocation_unit= ALIGN_SIZE(min_allocation_unit);
   set_if_bigger(this->min_result_data_size,min_allocation_unit);
+
+  mkfifo(FULL_TO_LITE_FIFO, 0666);
+  full_to_lite_fd = open(FULL_TO_LITE_FIFO, O_RDWR, 0);
+  if (full_to_lite_fd == -1)
+    perror("open full_to_lite_pipe");
+
+  mkfifo(LITE_TO_FULL_FIFO, 0666);
+  lite_to_full_fd = open(LITE_TO_FULL_FIFO, O_RDONLY | O_NONBLOCK, 0);
+  if (lite_to_full_fd == -1)
+    perror("open lite_to_full_pipe");
+  struct event_config *ev_config;
+  ev_config = event_config_new();
+  event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
+  lite_listener_base = event_base_new_with_config(ev_config);
+  event_config_free(ev_config);
+  event_set(&lite_listener_event, lite_to_full_fd, EV_READ | EV_PERSIST,
+            LiteListenerHandler, this);
+  event_base_set(lite_listener_base, &lite_listener_event);
+  if (event_add(&lite_listener_event, 0) == -1)
+    perror("event_add lite_listener_event");
+
+
+  my_thread_attr_t attr;
+  my_thread_attr_init(&attr);
+  my_thread_create(&lite_listener_thread, &attr, LiteListenerThreadBody, this);
+#if defined(HAVE_PTHREAD_SETNAME_NP)
+  pthread_setname_np(lite_listener_thread.thread, "lite_listener");
+#endif
+  my_thread_attr_destroy(&attr);
+}
+
+Query_cache::~Query_cache()
+{
+  event_del(&lite_listener_event);
+  event_base_free(lite_listener_base);
+  close(full_to_lite_fd);
+  close(lite_to_full_fd);
+  my_thread_cancel(&lite_listener_thread);
 }
 
 
@@ -1861,7 +1899,7 @@ def_week_frmt: %lu, in_trans: %d, autocommit: %d",
                       table_list.db, table_list.alias,
                       (ulong) engine_data, (ulong) table->engine_data()));
           invalidate_table_internal(thd, (uchar *) table->db(),
-                                    table->key_length());
+                                    table->key_length(), true);
         }
         else
           thd->lex->safe_to_cache_query= 0;       // Don't try to cache this
@@ -2133,7 +2171,7 @@ void Query_cache::invalidate(const char *db)
           if (strcmp(table->db(),db) == 0)
           {
             Query_cache_block_table *list_root= table_block->table(0);
-            invalidate_query_block_list(thd,list_root);
+            invalidate_query_block_list(thd,list_root,true);
           }
 
           table_block= next;
@@ -2270,11 +2308,11 @@ void Query_cache::destroy()
     // free_cache(); // NOTE: LiteMySQL needs to use it
     sql_print_information("Query Cache Closed: size %lu, vadddr %p, queries_blocks %p",
                           shm_size, cache, *queries_blocks_ptr);
-    sql_print_information("Query Cache First Query Block: %p, n_tables: %ld, query_block_addr: %p, query_string_addr: %p, query: %s\n",
-                          *queries_blocks_ptr, (*queries_blocks_ptr)->n_tables,
-                          (*queries_blocks_ptr)->query(),
-                          (*queries_blocks_ptr)->query()->query(),
-                          (*queries_blocks_ptr)->query()->query());
+    // sql_print_information("Query Cache First Query Block: %p, n_tables: %ld, query_block_addr: %p, query_string_addr: %p, query: %s\n",
+    //                       *queries_blocks_ptr, (*queries_blocks_ptr)->n_tables,
+    //                       (*queries_blocks_ptr)->query(),
+    //                       (*queries_blocks_ptr)->query()->query(),
+    //                       (*queries_blocks_ptr)->query()->query());
     if (munmap(cache, shm_size) == -1) {
       perror("munmap query cache");
     }
@@ -2511,12 +2549,12 @@ ulong Query_cache::init_cache()
 #endif
 
   queries_in_cache = 0;
-  (*queries_blocks_ptr) = 0;
   DBUG_RETURN(query_cache_size +
 	      additional_data_size + approx_additional_data_size);
 
 err:
   make_disabled();
+  (*queries_blocks_ptr) = 0;
   DBUG_RETURN(0);
 }
 
@@ -2598,7 +2636,7 @@ void Query_cache::flush_cache()
   while ((*queries_blocks_ptr) != 0)
   {
     BLOCK_LOCK_WR((*queries_blocks_ptr));
-    free_query_internal((*queries_blocks_ptr));
+    free_query_internal((*queries_blocks_ptr), true);
   }
 }
 
@@ -2637,7 +2675,7 @@ my_bool Query_cache::free_old_query()
 
     if (query_block != 0)
     {
-      free_query(query_block);
+      free_query(query_block); // NOTE: we don't move it to the LiteMySQL is because this is in the critical path
       lowmem_prunes++;
       DBUG_RETURN(0);
     }
@@ -2664,7 +2702,7 @@ my_bool Query_cache::free_old_query()
     calling this method, as the lock will be destroyed here.
 */
 
-void Query_cache::free_query_internal(Query_cache_block *query_block)
+void Query_cache::free_query_internal(Query_cache_block *query_block, my_bool sync_free_memory)
 {
   DBUG_ENTER("Query_cache::free_query_internal");
   DBUG_PRINT("qcache", ("free query 0x%lx %lu bytes result",
@@ -2687,6 +2725,9 @@ void Query_cache::free_query_internal(Query_cache_block *query_block)
   for (TABLE_COUNTER_TYPE i= 0; i < query_block->n_tables; i++)
     unlink_table(table++);
   Query_cache_block *result_block= query->result();
+
+  if (!sync_free_memory && result_block && result_block->type == Query_cache_block::RESULT && SendQueryToLite(query_block))
+    DBUG_VOID_RETURN;
 
   /*
     The following is true when query destruction was called and no results
@@ -2721,6 +2762,34 @@ void Query_cache::free_query_internal(Query_cache_block *query_block)
   DBUG_VOID_RETURN;
 }
 
+void Query_cache::free_query_internal_async_free_callback(Query_cache_block *query_block) {
+  DBUG_ENTER("Query_cache::free_query_internal_async_free_callback");
+  DBUG_PRINT("qcache", ("async free query 0x%lx %lu bytes result",
+          (ulong) query_block,
+          query_block->query()->length() ));
+
+  lock();
+
+  Query_cache_query *query= query_block->query();
+  Query_cache_block *result_block= query->result();
+
+  Query_cache_block *block= result_block;
+  do
+  {
+    Query_cache_block *current= block;
+    block= block->next;
+    free_memory_block(current);
+  } while (block != result_block);
+
+  query->unlock_n_destroy();
+  free_memory_block(query_block);
+
+  unlock();
+  fprintf(stderr, "freed query 0x%lx\n", query_block);
+
+  DBUG_VOID_RETURN;
+}
+
 
 /*
   free_query() - free query from query cache.
@@ -2734,7 +2803,7 @@ void Query_cache::free_query_internal(Query_cache_block *query_block)
     then call free_query_internal(), which see.
 */
 
-void Query_cache::free_query(Query_cache_block *query_block)
+void Query_cache::free_query(Query_cache_block *query_block, my_bool sync_free_memory)
 {
   DBUG_ENTER("Query_cache::free_query");
   DBUG_PRINT("qcache", ("free query 0x%lx %lu bytes result",
@@ -2742,7 +2811,43 @@ void Query_cache::free_query(Query_cache_block *query_block)
 		      query_block->query()->length() ));
 
   my_hash_delete(&queries,(uchar *) query_block);
-  free_query_internal(query_block);
+  free_query_internal(query_block, sync_free_memory);
+
+  DBUG_VOID_RETURN;
+}
+
+my_bool Query_cache::SendQueryToLite(Query_cache_block *point) {
+  DBUG_ENTER("Query_cache::SendQueryToLite");
+  DBUG_PRINT("qcache", ("send query 0x%lx to LiteMySQL", (ulong) point));
+
+  if (write(full_to_lite_fd, &point, sizeof(Query_cache_block *)) == -1) {
+    perror("write full_to_lite_fd");
+    DBUG_RETURN(false);
+  }
+  fprintf(stderr, "SendQueryToLite: send query 0x%lx\n", (ulong) point);
+
+  DBUG_RETURN(true);
+}
+
+void *Query_cache::LiteListenerThreadBody(void *arg_self) {
+  Query_cache *self = static_cast<Query_cache *>(arg_self);
+
+  event_base_loop(self->lite_listener_base, 0);
+
+  DBUG_RETURN(NULL);
+}
+
+void Query_cache::LiteListenerHandler(int fd, short which, void *arg_self) {
+  Query_cache *self = static_cast<Query_cache *>(arg_self);
+
+  Query_cache_block *point;
+  if (read(fd, &point, sizeof(Query_cache_block *)) == -1) {
+    perror("read full_to_lite_fd");
+    return;
+  }
+
+  fprintf(stderr, "LiteListenerHandler: free query 0x%lx\n", (ulong) point);
+  self->free_query_internal_async_free_callback(point);
 
   DBUG_VOID_RETURN;
 }
@@ -3047,7 +3152,7 @@ void Query_cache::invalidate_table(THD *thd, uchar * key, size_t key_length)
   DEBUG_SYNC(thd, "wait_in_query_cache_invalidate2");
 
   if (query_cache_size > 0)
-    invalidate_table_internal(thd, key, key_length);
+    invalidate_table_internal(thd, key, key_length, false);
 
   unlock();
 }
@@ -3062,14 +3167,14 @@ void Query_cache::invalidate_table(THD *thd, uchar * key, size_t key_length)
 */
 
 void
-Query_cache::invalidate_table_internal(THD *thd, uchar *key, size_t key_length)
+Query_cache::invalidate_table_internal(THD *thd, uchar *key, size_t key_length, my_bool sync_free_memory)
 {
   Query_cache_block *table_block=
     (Query_cache_block*)my_hash_search(&tables, key, key_length);
   if (table_block)
   {
     Query_cache_block_table *list_root= table_block->table(0);
-    invalidate_query_block_list(thd, list_root);
+    invalidate_query_block_list(thd, list_root, sync_free_memory);
   }
 }
 
@@ -3087,13 +3192,14 @@ Query_cache::invalidate_table_internal(THD *thd, uchar *key, size_t key_length)
 
 void
 Query_cache::invalidate_query_block_list(THD *thd,
-                                         Query_cache_block_table *list_root)
+                                         Query_cache_block_table *list_root,
+                                         my_bool sync_free_memory)
 {
   while (list_root->next != list_root)
   {
     Query_cache_block *query_block= list_root->next->block();
     BLOCK_LOCK_WR(query_block);
-    free_query(query_block);
+    free_query(query_block, sync_free_memory);
   }
 }
 
@@ -3276,7 +3382,7 @@ Query_cache::insert_table(size_t key_len, const char *key,
     */
     {
       Query_cache_block_table *list_root= table_block->table(0);
-      invalidate_query_block_list(thd, list_root);
+      invalidate_query_block_list(thd, list_root, true);
     }
 
     table_block= 0;

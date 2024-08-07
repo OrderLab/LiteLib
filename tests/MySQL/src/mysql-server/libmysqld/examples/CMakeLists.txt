@@ -33,7 +33,7 @@ ADD_DEFINITIONS(-DEMBEDDED_LIBRARY -UMYSQL_CLIENT)
 
 MYSQL_ADD_EXECUTABLE(mysql_embedded ../../client/completion_hash.cc
                ../../client/mysql.cc ../../client/readline.cc)
-TARGET_LINK_LIBRARIES(mysql_embedded mysqlserver)
+TARGET_LINK_LIBRARIES(mysql_embedded mysqlserver ${LIBEVENT_LIBRARIES})
 IF(UNIX)
   TARGET_LINK_LIBRARIES(mysql_embedded ${EDITLINE_LIBRARY})
   SET_TARGET_PROPERTIES(mysql_embedded PROPERTIES ENABLE_EXPORTS TRUE)
@@ -51,7 +51,7 @@ ENDIF()
 
 
 MYSQL_ADD_EXECUTABLE(mysqltest_embedded ../../client/mysqltest.cc)
-TARGET_LINK_LIBRARIES(mysqltest_embedded mysqlserver)
+TARGET_LINK_LIBRARIES(mysqltest_embedded mysqlserver ${LIBEVENT_LIBRARIES})
 
 
 IF(CMAKE_GENERATOR MATCHES "Xcode")
@@ -77,7 +77,7 @@ ELSE()
   ENDIF()
 ENDIF()
 IF(NOT INSTALL_LAYOUT MATCHES "SVR4")
-  TARGET_LINK_LIBRARIES(mysql_client_test_embedded mysqlserver)
+  TARGET_LINK_LIBRARIES(mysql_client_test_embedded mysqlserver ${LIBEVENT_LIBRARIES})
 ENDIF()
 
 IF(UNIX)

@@ -5,7 +5,7 @@
 
 #include "mysql-server/protocol_classic.hpp"
 
-MySQL::MySQL() {
+MySQL::MySQL() : query_cache_(*this) {
   server_greeting_.buffer =
       std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
           0x4a, 0x0,  0x0,  0x0,  0xa,  0x35, 0x2e, 0x37, 0x2e, 0x34,
@@ -16,6 +16,39 @@ MySQL::MySQL() {
           0x14, 0x30, 0x69, 0x7c, 0x5b, 0x0,  0x6d, 0x79, 0x73, 0x71,
           0x6c, 0x5f, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x70,
           0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x0});
+
+  PCHECK(notify_event_fd_ = eventfd(0, EFD_NONBLOCK))
+      << "failed creating eventfd for mysql thread";
+
+  struct event_config *ev_config;
+  ev_config = event_config_new();
+  event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
+  base_ = event_base_new_with_config(ev_config);
+  event_config_free(ev_config);
+
+  event_set(&notify_event_, notify_event_fd_, EV_READ | EV_PERSIST,
+            NotifyHandler, this);
+
+  event_base_set(base_, &notify_event_);
+
+  LOG_IF(FATAL, event_add(&notify_event_, 0) == -1)
+      << "Can't monitor libevent notify pipe\n";
+
+  pthread_attr_t attr;
+
+  pthread_attr_init(&attr);
+
+  PCHECK(!pthread_create(&thread_id_, &attr, ThreadBody, this))
+      << "Can't create thread: mysql_task_queue_worker" << std::endl;
+
+  pthread_setname_np(thread_id_, "MySQL-worker");
+  pthread_attr_destroy(&attr);
+}
+
+MySQL::~MySQL() {
+  event_del(&notify_event_);
+  event_base_free(base_);
+  close(notify_event_fd_);
 }
 
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
@@ -85,6 +118,7 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
   }
 
   // TODO: multiple queries in one request
+  std::string query;
   switch (req_cmd) {
     case COM_STMT_PREPARE: {
       if (!(*conn.responses[0]->buffer)[4]) {  // response code == Ok
@@ -101,18 +135,27 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
     case COM_STMT_EXECUTE: {
       auto [stmt_it, values] =
           DissectExecuteStatement(requests[0]->buffer->data() + 5, conn);
-      std::string query = stmt_it->second.query;
+      query = stmt_it->second.query;
       for (size_t i = 0; i < values.size(); i++)
         query.replace(query.find("?"), 1, ValueToString(values[i]));
-      NormalUpdateQuery(query, conn, cache);
+      break;
     }
     case COM_QUERY: {
-      std::string query{req_com_data.com_query.query};
-      return NormalUpdateQuery(query, conn, cache);
+      query = req_com_data.com_query.query;
+      break;
     }
     default:
       break;
   }
+
+  notify_queue_.push_back({.type = MySQL::NormalTask::Type::kUpdateQuery,
+                           .query = query,
+                           .conn = &conn,
+                           .cache = cache});
+  uint64_t buf = 1;
+  PLOG_IF(ERROR,
+          write(notify_event_fd_, &buf, sizeof(uint64_t)) != sizeof(uint64_t))
+      << "failed writing to mysql eventfd";
 
   return;
 }
@@ -184,17 +227,19 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
 }
 
 void MySQL::NormalToEmergencyHook() {
-  if (!query_cache_.Init()) {
+  if (!query_cache_.NormalToEmergencyHook()) {
     LOG(ERROR) << "Unable to parse query cache";
   }
 }
+
+void MySQL::EmergencyToNormalHook() { query_cache_.EmergencyToNormalHook(); }
 
 Packet MySQL::EmergencyConnectionEstablishHook(ConnectionInfo &conn) {
   conn.state = ConnectionInfo::ServerGreeted;
   return server_greeting_;
 }
 
-void MySQL::NormalUpdateQuery(std::string &query, ConnectionInfo &conn,
+void MySQL::NormalUpdateQuery(std::string &query, ConnectionInfo *conn,
                               Cache *cache) {
   hsql::SQLParserResult result;
   hsql::SQLParser::parse(query, &result);
@@ -215,12 +260,12 @@ void MySQL::NormalUpdateQuery(std::string &query, ConnectionInfo &conn,
       }
       case hsql::StatementType::kStmtInsert: {
         auto insert_stmt = dynamic_cast<const hsql::InsertStatement *>(stmt);
-        table_cache_.HandleInsert(*insert_stmt, cache, nullptr);
+        table_cache_.HandleInsert(*insert_stmt, cache, &query_cache_, false);
         break;
       }
       case hsql::StatementType::kStmtUpdate: {
         auto update_stmt = dynamic_cast<const hsql::UpdateStatement *>(stmt);
-        table_cache_.HandleUpdate(*update_stmt, cache, nullptr);
+        table_cache_.HandleUpdate(*update_stmt, cache, &query_cache_, false);
         break;
       }
       case hsql::StatementType::kStmtDelete: {
@@ -239,6 +284,39 @@ void MySQL::NormalUpdateQuery(std::string &query, ConnectionInfo &conn,
                      << "\t" << query << std::endl;
       }
     }
+  }
+}
+
+void *MySQL::ThreadBody(void *arg_self) {
+  MySQL *self = static_cast<MySQL *>(arg_self);
+
+  event_base_loop(self->base_, 0);
+  event_base_free(self->base_);
+
+  return NULL;
+}
+
+void MySQL::NotifyHandler(evutil_socket_t fd, short which, void *arg_self) {
+  MySQL *self = static_cast<MySQL *>(arg_self);
+
+  if (fd == self->notify_event_fd_) {
+    uint64_t counter = 0;
+    if (read(fd, &counter, sizeof(uint64_t)) != sizeof(uint64_t)) {
+      LOG(ERROR) << "MySQL can't read from libevent pipe\n";
+      return;
+    }
+    while (counter--) {
+      NormalTask tsk = self->notify_queue_.pop_front();
+      if (tsk.type == NormalTask::Type::kInsertCache) {
+        LOG(INFO) << "Invalidating query block from full" << std::endl;
+        self->query_cache_.HandleInvalidatedQueryBlockFromFull(
+            tsk.query_cache_block_full_ptr);
+        LOG(INFO) << "Invalidated query block from full" << std::endl;
+      } else if (tsk.type == NormalTask::Type::kUpdateQuery) {
+        self->NormalUpdateQuery(tsk.query, tsk.conn, tsk.cache);
+      }
+    }
+  } else {
   }
 }
 

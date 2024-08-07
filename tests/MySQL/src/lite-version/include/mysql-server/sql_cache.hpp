@@ -124,7 +124,8 @@ struct Query_cache_block {
   }
   inline Query_cache_query *query() {
 #ifndef NDEBUG
-    if (type != QUERY) LOG(ERROR) << "incorrect block type" << std::endl;
+    if (type != QUERY)
+      LOG(ERROR) << "incorrect block type: " << type << std::endl;
 #endif
     return (Query_cache_query *)data();
   }
@@ -133,7 +134,7 @@ struct Query_cache_block {
 #ifndef NDEBUG
     if (type != RESULT && type != RES_CONT && type != RES_BEG &&
         type != RES_INCOMPLETE)
-      LOG(ERROR) << "incorrect block type" << std::endl;
+      LOG(ERROR) << "incorrect block type: " << type << std::endl;
 #endif
     return (Query_cache_result *)data();
   }

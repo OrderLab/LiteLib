@@ -25,7 +25,8 @@ sysbench \
 --mysql-user=sbtest \
 --mysql-password=password \
 --db-ps-mode=disable \
---mysql-ignore-errors=2013 \
+--mysql-ignore-errors=2013,1062 \
+--skip_trx=on \
 run
 
 sysbench \
@@ -41,7 +42,8 @@ sysbench \
 --mysql-user=sbtest \
 --mysql-password=password \
 --db-ps-mode=disable \
---mysql-ignore-errors=2013 \
+--mysql-ignore-errors=2013,1062 \
+--skip_trx=on \
 run
 
 # sysbench \

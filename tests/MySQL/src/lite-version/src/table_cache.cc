@@ -21,7 +21,8 @@ TableCache::TableCache() {
 }
 
 bool TableCache::HandleInsert(const hsql::InsertStatement &stmt, Cache *cache,
-                              QueryCache *query_cache) {
+                              QueryCache *query_cache,
+                              bool update_query_cache) {
   if (stmt.type != hsql::kInsertValues) {
     // TODO
     std::stringstream ss;
@@ -83,12 +84,13 @@ bool TableCache::HandleInsert(const hsql::InsertStatement &stmt, Cache *cache,
   }
 
   cache->Add(key, entry);
-  UpdateQueryCache(key, nullptr, &entry, query_cache);
+  UpdateQueryCache(key, nullptr, &entry, query_cache, update_query_cache);
   return true;
 }
 
 bool TableCache::HandleUpdate(const hsql::UpdateStatement &stmt, Cache *cache,
-                              QueryCache *query_cache) {
+                              QueryCache *query_cache,
+                              bool update_query_cache) {
   // TODO: support other where clauses
   if (stmt.where->type == hsql::kExprOperator &&
       stmt.where->opType == hsql::kOpEquals &&
@@ -193,7 +195,8 @@ bool TableCache::HandleUpdate(const hsql::UpdateStatement &stmt, Cache *cache,
       }
     }
     cache->Replace(key, new_entry);
-    UpdateQueryCache(key, &old_entry, &new_entry, query_cache);
+    UpdateQueryCache(key, &old_entry, &new_entry, query_cache,
+                     update_query_cache);
     return true;
   }
 
@@ -295,31 +298,44 @@ std::optional<bool> TableCache::WhereMatch(const CacheKey &key,
 void TableCache::UpdateQueryCache(const CacheKey &key,
                                   const CacheEntry *old_entry,
                                   const CacheEntry *new_entry,
-                                  QueryCache *query_cache) {
-  if (!query_cache) return;  // normal mode
-
+                                  QueryCache *query_cache,
+                                  bool update_query_cache) {
   auto query_cache_table_it = query_cache->query_cache_.find(key.table);
   if (query_cache_table_it == query_cache->query_cache_.end()) return;
 
-  for (auto &table_query_cache_entry : query_cache_table_it->second) {
+  // for (auto &table_query_cache_entry : query_cache_table_it->second) {
+  LOG(INFO) << "query_cache_table->size():" << query_cache_table_it->second.size()
+            << std::endl;
+  for (auto table_query_cache_entry = query_cache_table_it->second.begin();
+       table_query_cache_entry != query_cache_table_it->second.end();) {
     std::optional<bool> old_entry_match =
-        old_entry
-            ? WhereMatch(key, *old_entry, table_query_cache_entry.second.where)
-            : false;
+        old_entry ? WhereMatch(key, *old_entry,
+                               table_query_cache_entry->second.begin()
+                                   ->second.GetSelectStatement()
+                                   ->whereClause)
+                  : false;
     std::optional<bool> new_entry_match =
-        new_entry
-            ? WhereMatch(key, *new_entry, table_query_cache_entry.second.where)
-            : false;
+        new_entry ? WhereMatch(key, *new_entry,
+                               table_query_cache_entry->second.begin()
+                                   ->second.GetSelectStatement()
+                                   ->whereClause)
+                  : false;
 
     if (!old_entry_match.has_value() || !new_entry_match.has_value()) {
       // TODO: invalidate
     }
 
-    for (auto &result_table_entry :
-         *table_query_cache_entry.second.result_table) {
+    if (!update_query_cache) {
+      if (old_entry_match.value() || new_entry_match.value())
+        query_cache_table_it->second.erase(table_query_cache_entry->first);
+      continue;  // don't increment the iterator
+    }
+
+    for (auto &result_table_entry : table_query_cache_entry->second) {
       // TODO: support expr other than plain select
-      auto column_name =
-          result_table_entry.second.select->selectList->at(0)->name;
+      auto column_name = result_table_entry.second.GetSelectStatement()
+                             ->selectList->at(0)
+                             ->name;
       auto column_it =
           tables_[key.table].columns_name_to_index.find(column_name);
       if (column_it == tables_[key.table].columns_name_to_index.end()) {
@@ -359,15 +375,16 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                                         std::vector<Value>{old_value.value()}),
                             result.rows.end());
           // add new value
-          if (result_table_entry.second.select->order) {
-            if (result_table_entry.second.select->order->size() == 1 &&
-                (*result_table_entry.second.select->order)[0]->expr->type ==
-                    hsql::kExprColumnRef &&
-                (*result_table_entry.second.select->order)[0]->expr->name ==
-                    column_name) {
+          if (result_table_entry.second.GetSelectStatement()->order) {
+            if (result_table_entry.second.GetSelectStatement()->order->size() ==
+                    1 &&
+                (*result_table_entry.second.GetSelectStatement()->order)[0]
+                        ->expr->type == hsql::kExprColumnRef &&
+                (*result_table_entry.second.GetSelectStatement()->order)[0]
+                        ->expr->name == column_name) {
               size_t i = 0;
-              if ((*result_table_entry.second.select->order)[0]->type ==
-                  hsql::kOrderAsc) {
+              if ((*result_table_entry.second.GetSelectStatement()->order)[0]
+                      ->type == hsql::kOrderAsc) {
                 for (; i < result.rows.size(); i++) {
                   if (result.rows[i][0] > new_value.value()) break;
                 }
@@ -395,5 +412,6 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
         // TODO
       }
     }
+    table_query_cache_entry++;
   }
 }

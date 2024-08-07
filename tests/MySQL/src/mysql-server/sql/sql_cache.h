@@ -23,6 +23,9 @@
 #ifndef _SQL_CACHE_H
 #define _SQL_CACHE_H
 
+#include "event.h"
+#include "my_thread.h"
+
 #include "hash.h"
 #include "my_base.h"                            /* ha_rows */
 
@@ -287,6 +290,9 @@ struct Query_cache_memory_bin_step
   }
 };
 
+#define FULL_TO_LITE_FIFO "/tmp/mysql_full_to_lite"
+#define LITE_TO_FULL_FIFO "/tmp/mysql_lite_to_full"
+
 class Query_cache
 {
 public:
@@ -307,9 +313,18 @@ private:
 
   bool m_query_cache_is_disabled;
 
-  void free_query_internal(Query_cache_block *point);
-  void invalidate_table_internal(THD *thd, uchar *key, size_t key_length);
+  void free_query_internal(Query_cache_block *point, my_bool sync_free_memory);
+  void free_query_internal_async_free_callback(Query_cache_block *point);
+  void invalidate_table_internal(THD *thd, uchar *key, size_t key_length, my_bool sync_free_memory);
   void disable_query_cache(void) { m_query_cache_is_disabled= TRUE; }
+
+  int full_to_lite_fd, lite_to_full_fd;
+  my_thread_handle lite_listener_thread;
+  struct event_base *lite_listener_base;
+  struct event lite_listener_event;
+  my_bool SendQueryToLite(Query_cache_block *point);
+  static void *LiteListenerThreadBody(void *arg_self);
+  static void LiteListenerHandler(int fd, short which, void *arg_self);
 
 protected:
   /*
@@ -371,7 +386,7 @@ protected:
   /* The following functions require that structure_guard_mutex is locked */
   void flush_cache();
   my_bool free_old_query();
-  void free_query(Query_cache_block *point);
+  void free_query(Query_cache_block *point, my_bool sync_free_memory = true);
   my_bool allocate_data_chain(Query_cache_block **result_block,
 			      ulong data_len,
 			      Query_cache_block *query_block,
@@ -381,7 +396,8 @@ protected:
   void invalidate_table(THD *thd, uchar *key, size_t key_length);
   void invalidate_table(THD *thd, Query_cache_block *table_block);
   void invalidate_query_block_list(THD *thd, 
-                                   Query_cache_block_table *list_root);
+                                   Query_cache_block_table *list_root,
+                                   my_bool sync_free_memory);
 
   TABLE_COUNTER_TYPE
     register_tables_from_list(TABLE_LIST *tables_used,
@@ -462,6 +478,8 @@ protected:
 	      ulong min_result_data_size = QUERY_CACHE_MIN_RESULT_DATA_SIZE,
 	      uint def_query_hash_size = QUERY_CACHE_DEF_QUERY_HASH_SIZE,
 	      uint def_table_hash_size = QUERY_CACHE_DEF_TABLE_HASH_SIZE);
+
+  ~Query_cache();
 
   bool is_disabled(void) { return m_query_cache_is_disabled; }
 

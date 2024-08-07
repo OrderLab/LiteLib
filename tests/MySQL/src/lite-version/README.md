@@ -17,3 +17,11 @@ cd lib/sql-parser
 make
 make install
 ```
+
+# Build
+
+```
+cmake -B ./build -DCMAKE_BUILD_TYPE=RelWithDebInfo .
+cd build
+make
+```

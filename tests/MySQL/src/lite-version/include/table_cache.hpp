@@ -63,11 +63,12 @@ class TableCache {
  public:
   TableCache();
 
+  // if update_query_cache is false, only invalidate related entries
   bool HandleInsert(const hsql::InsertStatement &stmt, Cache *cache,
-                    QueryCache *query_cache);
+                    QueryCache *query_cache, bool update_query_cache = true);
 
   bool HandleUpdate(const hsql::UpdateStatement &stmt, Cache *cache,
-                    QueryCache *query_cache);
+                    QueryCache *query_cache, bool update_query_cache = true);
 
  private:
   std::unordered_map<std::string, TableSchema> tables_;
@@ -76,5 +77,6 @@ class TableCache {
                                  hsql::Expr *where);
 
   void UpdateQueryCache(const CacheKey &key, const CacheEntry *old_entry,
-                        const CacheEntry *new_entry, QueryCache *query_cache);
+                        const CacheEntry *new_entry, QueryCache *query_cache,
+                        bool update_query_cache);
 };

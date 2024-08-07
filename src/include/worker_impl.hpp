@@ -59,7 +59,7 @@ void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
   pthread_attr_init(&attr);
 
   PCHECK(!pthread_create(&thread_id_, &attr, ThreadBody, this))
-      << "Can't create thread: %s\n";
+      << "Can't create thread: " << name << std::endl;
 
   pthread_setname_np(thread_id_, name);
   pthread_attr_destroy(&attr);

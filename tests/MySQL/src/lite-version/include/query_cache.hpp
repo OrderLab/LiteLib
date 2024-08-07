@@ -6,7 +6,10 @@
 #include <unordered_map>
 
 #include "dissect.hpp"
+#include "mysql-server/sql_cache.hpp"
 #include "packet.hpp"
+
+class MySQL;
 
 class QueryCache {
  private:
@@ -29,38 +32,98 @@ class QueryCache {
   };
 
   // TODO: separate different columns
-  struct ResultTableEntry {
-    const hsql::SelectStatement *select;
+  class ResultTableEntry {
+   public:
     Result result;
+
+    ResultTableEntry() {}
+    ResultTableEntry(Result &&result, hsql::SQLParserResult &&query_ast)
+        : result(std::move(result)), query_ast(std::move(query_ast)) {}
+    ResultTableEntry &operator=(ResultTableEntry &&rhs) {
+      if (this != &rhs) {
+        query_ast = std::move(rhs.query_ast);
+        result = std::move(rhs.result);
+      }
+      return *this;
+    }
+
+    const hsql::SelectStatement *GetSelectStatement() {
+      if (select_statement) {
+        return select_statement;
+      }
+      return select_statement = dynamic_cast<const hsql::SelectStatement *>(
+                 query_ast.getStatement(0));
+    }
+
+   private:
+    hsql::SQLParserResult query_ast;
+    const hsql::SelectStatement *select_statement = nullptr;
   };
 
   using ResultTable =
       std::unordered_map<std::string,
                          ResultTableEntry>;  // key: query string
 
-  struct TableQueryCacheEntry {
-    hsql::Expr *where;  // TODO: garbage collection
-    std::shared_ptr<ResultTable> result_table;
-  };
-
   // TODO: use structural where clause as key
-  using TableQueryCache =
-      std::unordered_map<std::string,
-                         TableQueryCacheEntry>;  // key: serialized
-                                                 // where expr
+  using TableQueryCache = std::unordered_map<std::string,
+                                             ResultTable>;  // key: serialized
+                                                            // where expr
 
  public:
-  bool Init();
+  QueryCache(MySQL &mysql);
+
+  ~QueryCache();
+
+  void EmergencyToNormalHook();
+
+  bool NormalToEmergencyHook();
 
   std::optional<Packet> ServeSelect(const std::string &query);
 
  private:
+  MySQL &mysql_;
+
+  int shm_fd_;
+
+  size_t shm_size_;
+
+  uchar *shm_ptr_;
+
+  AlignedShmInfo *shm_info_;
+
+  ptrdiff_t shm_v_offset_;
+
   std::unordered_map<std::string, TableQueryCache>
       query_cache_;  // key: table name
+
+  void ConnectToFull();
+
+  void DisconnectFromFull();
+
+  void AddQueryCacheBlock(Query_cache_block *query_cache_block_lite_ptr);
 
   void AddQueryAndResult(std::string query, std::vector<uint8_t> &result);
 
   void BuildRelationsBetweenQueryAndCachedRows();
 
   friend class TableCache;
+
+ public:  // listener
+  void HandleInvalidatedQueryBlockFromFull(
+      Query_cache_block *query_cache_block_full_ptr);
+
+ private:
+  int full_to_lite_fd_, lite_to_full_fd_;
+
+  pthread_t full_listener_thread_;
+
+  struct event_base *full_listener_base_;
+
+  struct event full_listener_event_;
+
+  bool SendQueryToFull(Query_cache_block *query_cache_block_full_ptr);
+
+  static void *FullListenerThreadBody(void *arg_self);
+
+  static void FullListenerHandler(int fd, short which, void *arg_self);
 };
