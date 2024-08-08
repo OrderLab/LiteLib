@@ -305,18 +305,13 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
 
   for (auto table_query_cache_entry = query_cache_table_it->second.begin();
        table_query_cache_entry != query_cache_table_it->second.end();) {
+    const auto where = table_query_cache_entry->second.begin()
+                           ->second.GetSelectStatement()
+                           ->whereClause;
     std::optional<bool> old_entry_match =
-        old_entry ? WhereMatch(key, *old_entry,
-                               table_query_cache_entry->second.begin()
-                                   ->second.GetSelectStatement()
-                                   ->whereClause)
-                  : false;
+        old_entry ? WhereMatch(key, *old_entry, where) : false;
     std::optional<bool> new_entry_match =
-        new_entry ? WhereMatch(key, *new_entry,
-                               table_query_cache_entry->second.begin()
-                                   ->second.GetSelectStatement()
-                                   ->whereClause)
-                  : false;
+        new_entry ? WhereMatch(key, *new_entry, where) : false;
 
     if (!old_entry_match.has_value() || !new_entry_match.has_value()) {
       // TODO: invalidate
@@ -324,10 +319,12 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
 
     if (!update_query_cache) {
       if (old_entry_match.value() || new_entry_match.value()) {
-        query_cache_table_it->second.erase(table_query_cache_entry->first);
-        continue;  // don't increment the iterator
+        // invalidate
+        table_query_cache_entry =
+            query_cache_table_it->second.erase(table_query_cache_entry);
+      } else {
+        ++table_query_cache_entry;
       }
-      ++table_query_cache_entry;
       continue;
     }
 
