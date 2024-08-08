@@ -308,10 +308,8 @@ void MySQL::NotifyHandler(evutil_socket_t fd, short which, void *arg_self) {
     while (counter--) {
       NormalTask tsk = self->notify_queue_.pop_front();
       if (tsk.type == NormalTask::Type::kInsertCache) {
-        LOG(INFO) << "Invalidating query block from full" << std::endl;
         self->query_cache_.HandleInvalidatedQueryBlockFromFull(
             tsk.query_cache_block_full_ptr);
-        LOG(INFO) << "Invalidated query block from full" << std::endl;
       } else if (tsk.type == NormalTask::Type::kUpdateQuery) {
         self->NormalUpdateQuery(tsk.query, tsk.conn, tsk.cache);
       }

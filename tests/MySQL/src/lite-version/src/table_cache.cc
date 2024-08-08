@@ -303,9 +303,6 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
   auto query_cache_table_it = query_cache->query_cache_.find(key.table);
   if (query_cache_table_it == query_cache->query_cache_.end()) return;
 
-  // for (auto &table_query_cache_entry : query_cache_table_it->second) {
-  LOG(INFO) << "query_cache_table->size():" << query_cache_table_it->second.size()
-            << std::endl;
   for (auto table_query_cache_entry = query_cache_table_it->second.begin();
        table_query_cache_entry != query_cache_table_it->second.end();) {
     std::optional<bool> old_entry_match =
@@ -326,9 +323,12 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
     }
 
     if (!update_query_cache) {
-      if (old_entry_match.value() || new_entry_match.value())
+      if (old_entry_match.value() || new_entry_match.value()) {
         query_cache_table_it->second.erase(table_query_cache_entry->first);
-      continue;  // don't increment the iterator
+        continue;  // don't increment the iterator
+      }
+      ++table_query_cache_entry;
+      continue;
     }
 
     for (auto &result_table_entry : table_query_cache_entry->second) {
@@ -412,6 +412,6 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
         // TODO
       }
     }
-    table_query_cache_entry++;
+    ++table_query_cache_entry;
   }
 }
