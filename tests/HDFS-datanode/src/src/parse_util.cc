@@ -37,9 +37,8 @@ bool ReadDelimitedFrom(google::protobuf::io::CodedInputStream *coded_input,
   return true;
 }
 
-bool WriteDelimitedTo(
-    std::shared_ptr<std::vector<uint8_t>> &buffer,
-    const std::vector<google::protobuf::MessageLite *> &messages) {
+bool WriteRpc(std::shared_ptr<std::vector<uint8_t>> &buffer,
+              const std::vector<google::protobuf::MessageLite *> &messages) {
   // write in the total size
   uint32_t total_size = 0;
   for (google::protobuf::MessageLite *message : messages) {
@@ -51,28 +50,35 @@ bool WriteDelimitedTo(
   WriteFixedInt32ToVector(total_size, buffer);
   // write in each message
   for (google::protobuf::MessageLite *message : messages) {
-    // Calculate the size of the message
-    size_t message_size = message->ByteSizeLong();
-
-    // Resize the vector to hold the additional data (message size + varint
-    // size)
-    size_t old_size = buffer->size();
-    size_t varint_size = google::protobuf::io::CodedOutputStream::VarintSize32(
-        static_cast<uint32_t>(message_size));
-    buffer->resize(old_size + message_size + varint_size);
-
-    // Use ArrayOutputStream with the new part of the buffer
-    google::protobuf::io::ArrayOutputStream array_output_stream(
-        buffer->data() + old_size, message_size + varint_size);
-    google::protobuf::io::CodedOutputStream coded_output_stream(
-        &array_output_stream);
-
-    // Write the size of the message as a varint
-    coded_output_stream.WriteVarint32(static_cast<uint32_t>(message_size));
-
-    // Serialize the message
-    message->SerializeWithCachedSizes(&coded_output_stream);
+    WriteDelimitedTo(buffer, message);
   }
 
   return true;  // The message was written successfully.
 }
+
+bool WriteDelimitedTo(std::shared_ptr<std::vector<uint8_t>> &buffer,
+                      const google::protobuf::MessageLite *message) {
+  // Calculate the size of the message
+  size_t message_size = message->ByteSizeLong();
+
+  // Resize the vector to hold the additional data (message size + varint
+  // size)
+  size_t old_size = buffer->size();
+  size_t varint_size = google::protobuf::io::CodedOutputStream::VarintSize32(
+      static_cast<uint32_t>(message_size));
+  buffer->resize(old_size + message_size + varint_size);
+
+  // Use ArrayOutputStream with the new part of the buffer
+  google::protobuf::io::ArrayOutputStream array_output_stream(
+      buffer->data() + old_size, message_size + varint_size);
+  google::protobuf::io::CodedOutputStream coded_output_stream(
+      &array_output_stream);
+
+  // Write the size of the message as a varint
+  coded_output_stream.WriteVarint32(static_cast<uint32_t>(message_size));
+
+  // Serialize the message
+  message->SerializeWithCachedSizes(&coded_output_stream);
+  return true;
+}
+

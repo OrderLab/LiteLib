@@ -92,7 +92,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
             messages.push_back(&rpc_request_header);
             messages.push_back(&requestHeaderProto);
             messages.push_back(&heartbeatRequestProto);
-            WriteDelimitedTo(buffer, messages);
+            WriteRpc(buffer, messages);
           } else if (requestHeaderProto.methodname() == "registerDatanode") {
             hadoop::hdfs::datanode::RegisterDatanodeRequestProto
                 registerDatanodeRequestProto;
@@ -110,11 +110,12 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
             messages.push_back(&rpc_request_header);
             messages.push_back(&requestHeaderProto);
             messages.push_back(&registerDatanodeRequestProto);
-            WriteDelimitedTo(buffer, messages);
+            WriteRpc(buffer, messages);
           } else if (requestHeaderProto.methodname() == "blockReport") {
             hadoop::hdfs::datanode::BlockReportRequestProto
                 blockReportRequestProto;
             ReadDelimitedFrom(&request_input, &blockReportRequestProto);
+            // std::cout << "block report: " << blockReportRequestProto.reports().front().blocksbuffers() << std::endl;
             // change the port information
             auto *registration = blockReportRequestProto.release_registration();
             auto *datanodeID = registration->release_datanodeid();
@@ -126,7 +127,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
             messages.push_back(&rpc_request_header);
             messages.push_back(&requestHeaderProto);
             messages.push_back(&blockReportRequestProto);
-            WriteDelimitedTo(buffer, messages);
+            WriteRpc(buffer, messages);
           } else {
             LOG(ERROR) << "Unknown method name: "
                        << requestHeaderProto.methodname() << std::endl;
@@ -139,6 +140,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
         RpcResponseHeader = rpc_response_header;
       }
     } else if (type == tcp) {
+      std::cout << "tcp" << std::endl;
       while (1) {
         // the op packet
         uint16_t data_transfer_version =
@@ -164,6 +166,10 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
             tcp_type = BlockOpResponse;
             std::cout << "block op response status: "
                       << block_op_response.status() << std::endl;
+            std::cout << "has firstbadlink: " << block_op_response.has_firstbadlink() << std::endl;
+            std::cout << "has checksumresponse: " << block_op_response.has_checksumresponse() << std::endl;
+            std::cout << "has readopchecksuminfo: " << block_op_response.has_readopchecksuminfo() << std::endl;
+            std::cout << "has shortcircuitaccessversion: " << block_op_response.has_shortcircuitaccessversion() << std::endl;
           } else {
             tcp_type = ReplyStatus;
             status = block_op_response.status();
@@ -183,6 +189,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
               coded_input.ConsumedEntireMessage()) {
             tcp_type = Packet::PacketHeader;
           }
+          break;
         }
 
         // switch (opcode) {

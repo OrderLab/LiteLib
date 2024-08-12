@@ -29,9 +29,6 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>  // IWYU pragma: export
 #include <google/protobuf/extension_set.h>  // IWYU pragma: export
-#include <google/protobuf/map.h>  // IWYU pragma: export
-#include <google/protobuf/map_entry.h>
-#include <google/protobuf/map_field_inl.h>
 #include <google/protobuf/generated_enum_reflection.h>
 #include <google/protobuf/unknown_field_set.h>
 #include "Security.pb.h"
@@ -157,12 +154,6 @@ extern RemoteExceptionProtoDefaultTypeInternal _RemoteExceptionProto_default_ins
 class RollingUpgradeStatusProto;
 struct RollingUpgradeStatusProtoDefaultTypeInternal;
 extern RollingUpgradeStatusProtoDefaultTypeInternal _RollingUpgradeStatusProto_default_instance_;
-class RouterFederatedStateProto;
-struct RouterFederatedStateProtoDefaultTypeInternal;
-extern RouterFederatedStateProtoDefaultTypeInternal _RouterFederatedStateProto_default_instance_;
-class RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse;
-struct RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUseDefaultTypeInternal;
-extern RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUseDefaultTypeInternal _RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse_default_instance_;
 class SnapshotDiffReportCursorProto;
 struct SnapshotDiffReportCursorProtoDefaultTypeInternal;
 extern SnapshotDiffReportCursorProtoDefaultTypeInternal _SnapshotDiffReportCursorProto_default_instance_;
@@ -249,8 +240,6 @@ template<> ::hadoop::hdfs::QuotaUsageProto* Arena::CreateMaybeMessage<::hadoop::
 template<> ::hadoop::hdfs::ReencryptionInfoProto* Arena::CreateMaybeMessage<::hadoop::hdfs::ReencryptionInfoProto>(Arena*);
 template<> ::hadoop::hdfs::RemoteExceptionProto* Arena::CreateMaybeMessage<::hadoop::hdfs::RemoteExceptionProto>(Arena*);
 template<> ::hadoop::hdfs::RollingUpgradeStatusProto* Arena::CreateMaybeMessage<::hadoop::hdfs::RollingUpgradeStatusProto>(Arena*);
-template<> ::hadoop::hdfs::RouterFederatedStateProto* Arena::CreateMaybeMessage<::hadoop::hdfs::RouterFederatedStateProto>(Arena*);
-template<> ::hadoop::hdfs::RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse* Arena::CreateMaybeMessage<::hadoop::hdfs::RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse>(Arena*);
 template<> ::hadoop::hdfs::SnapshotDiffReportCursorProto* Arena::CreateMaybeMessage<::hadoop::hdfs::SnapshotDiffReportCursorProto>(Arena*);
 template<> ::hadoop::hdfs::SnapshotDiffReportEntryProto* Arena::CreateMaybeMessage<::hadoop::hdfs::SnapshotDiffReportEntryProto>(Arena*);
 template<> ::hadoop::hdfs::SnapshotDiffReportListingEntryProto* Arena::CreateMaybeMessage<::hadoop::hdfs::SnapshotDiffReportListingEntryProto>(Arena*);
@@ -12465,208 +12454,6 @@ class BlockTokenSecretProto final :
   union { Impl_ _impl_; };
   friend struct ::TableStruct_hdfs_2eproto;
 };
-// -------------------------------------------------------------------
-
-class RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse : public ::PROTOBUF_NAMESPACE_ID::internal::MapEntry<RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse, 
-    std::string, int64_t,
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::TYPE_STRING,
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::TYPE_INT64> {
-public:
-  typedef ::PROTOBUF_NAMESPACE_ID::internal::MapEntry<RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse, 
-    std::string, int64_t,
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::TYPE_STRING,
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::TYPE_INT64> SuperType;
-  RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse();
-  explicit PROTOBUF_CONSTEXPR RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse(
-      ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-  explicit RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse(::PROTOBUF_NAMESPACE_ID::Arena* arena);
-  void MergeFrom(const RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse& other);
-  static const RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse* internal_default_instance() { return reinterpret_cast<const RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse*>(&_RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse_default_instance_); }
-  static bool ValidateKey(std::string* s) {
-#ifndef NDEBUG
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-       s->data(), static_cast<int>(s->size()), ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::PARSE, "hadoop.hdfs.RouterFederatedStateProto.NamespaceStateIdsEntry.key");
-#else
-    (void) s;
-#endif
-    return true;
- }
-  static bool ValidateValue(void*) { return true; }
-  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-  friend struct ::TableStruct_hdfs_2eproto;
-};
-
-// -------------------------------------------------------------------
-
-class RouterFederatedStateProto final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:hadoop.hdfs.RouterFederatedStateProto) */ {
- public:
-  inline RouterFederatedStateProto() : RouterFederatedStateProto(nullptr) {}
-  ~RouterFederatedStateProto() override;
-  explicit PROTOBUF_CONSTEXPR RouterFederatedStateProto(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-
-  RouterFederatedStateProto(const RouterFederatedStateProto& from);
-  RouterFederatedStateProto(RouterFederatedStateProto&& from) noexcept
-    : RouterFederatedStateProto() {
-    *this = ::std::move(from);
-  }
-
-  inline RouterFederatedStateProto& operator=(const RouterFederatedStateProto& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  inline RouterFederatedStateProto& operator=(RouterFederatedStateProto&& from) noexcept {
-    if (this == &from) return *this;
-    if (GetOwningArena() == from.GetOwningArena()
-  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
-        && GetOwningArena() != nullptr
-  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
-    ) {
-      InternalSwap(&from);
-    } else {
-      CopyFrom(from);
-    }
-    return *this;
-  }
-
-  inline const ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet& unknown_fields() const {
-    return _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance);
-  }
-  inline ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet* mutable_unknown_fields() {
-    return _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
-  }
-
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
-    return GetDescriptor();
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
-    return default_instance().GetMetadata().descriptor;
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
-    return default_instance().GetMetadata().reflection;
-  }
-  static const RouterFederatedStateProto& default_instance() {
-    return *internal_default_instance();
-  }
-  static inline const RouterFederatedStateProto* internal_default_instance() {
-    return reinterpret_cast<const RouterFederatedStateProto*>(
-               &_RouterFederatedStateProto_default_instance_);
-  }
-  static constexpr int kIndexInFileMessages =
-    52;
-
-  friend void swap(RouterFederatedStateProto& a, RouterFederatedStateProto& b) {
-    a.Swap(&b);
-  }
-  inline void Swap(RouterFederatedStateProto* other) {
-    if (other == this) return;
-  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() != nullptr &&
-        GetOwningArena() == other->GetOwningArena()) {
-   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() == other->GetOwningArena()) {
-  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
-      InternalSwap(other);
-    } else {
-      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
-    }
-  }
-  void UnsafeArenaSwap(RouterFederatedStateProto* other) {
-    if (other == this) return;
-    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
-    InternalSwap(other);
-  }
-
-  // implements Message ----------------------------------------------
-
-  RouterFederatedStateProto* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<RouterFederatedStateProto>(arena);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const RouterFederatedStateProto& from);
-  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const RouterFederatedStateProto& from) {
-    RouterFederatedStateProto::MergeImpl(*this, from);
-  }
-  private:
-  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
-  public:
-  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
-  bool IsInitialized() const final;
-
-  size_t ByteSizeLong() const final;
-  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
-  uint8_t* _InternalSerialize(
-      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
-  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
-
-  private:
-  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
-  void SharedDtor();
-  void SetCachedSize(int size) const final;
-  void InternalSwap(RouterFederatedStateProto* other);
-
-  private:
-  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
-  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "hadoop.hdfs.RouterFederatedStateProto";
-  }
-  protected:
-  explicit RouterFederatedStateProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                       bool is_message_owned = false);
-  private:
-  static void ArenaDtor(void* object);
-  public:
-
-  static const ClassData _class_data_;
-  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
-
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-
-  // nested types ----------------------------------------------------
-
-
-  // accessors -------------------------------------------------------
-
-  enum : int {
-    kNamespaceStateIdsFieldNumber = 1,
-  };
-  // map<string, int64> namespaceStateIds = 1;
-  int namespacestateids_size() const;
-  private:
-  int _internal_namespacestateids_size() const;
-  public:
-  void clear_namespacestateids();
-  private:
-  const ::PROTOBUF_NAMESPACE_ID::Map< std::string, int64_t >&
-      _internal_namespacestateids() const;
-  ::PROTOBUF_NAMESPACE_ID::Map< std::string, int64_t >*
-      _internal_mutable_namespacestateids();
-  public:
-  const ::PROTOBUF_NAMESPACE_ID::Map< std::string, int64_t >&
-      namespacestateids() const;
-  ::PROTOBUF_NAMESPACE_ID::Map< std::string, int64_t >*
-      mutable_namespacestateids();
-
-  // @@protoc_insertion_point(class_scope:hadoop.hdfs.RouterFederatedStateProto)
- private:
-  class _Internal;
-
-  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
-  typedef void InternalArenaConstructable_;
-  typedef void DestructorSkippable_;
-  struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::MapField<
-        RouterFederatedStateProto_NamespaceStateIdsEntry_DoNotUse,
-        std::string, int64_t,
-        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::TYPE_STRING,
-        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::TYPE_INT64> namespacestateids_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-  };
-  union { Impl_ _impl_; };
-  friend struct ::TableStruct_hdfs_2eproto;
-};
 // ===================================================================
 
 
@@ -24603,48 +24390,9 @@ inline void BlockTokenSecretProto::set_allocated_handshakesecret(std::string* ha
   // @@protoc_insertion_point(field_set_allocated:hadoop.hdfs.BlockTokenSecretProto.handshakeSecret)
 }
 
-// -------------------------------------------------------------------
-
-// -------------------------------------------------------------------
-
-// RouterFederatedStateProto
-
-// map<string, int64> namespaceStateIds = 1;
-inline int RouterFederatedStateProto::_internal_namespacestateids_size() const {
-  return _impl_.namespacestateids_.size();
-}
-inline int RouterFederatedStateProto::namespacestateids_size() const {
-  return _internal_namespacestateids_size();
-}
-inline void RouterFederatedStateProto::clear_namespacestateids() {
-  _impl_.namespacestateids_.Clear();
-}
-inline const ::PROTOBUF_NAMESPACE_ID::Map< std::string, int64_t >&
-RouterFederatedStateProto::_internal_namespacestateids() const {
-  return _impl_.namespacestateids_.GetMap();
-}
-inline const ::PROTOBUF_NAMESPACE_ID::Map< std::string, int64_t >&
-RouterFederatedStateProto::namespacestateids() const {
-  // @@protoc_insertion_point(field_map:hadoop.hdfs.RouterFederatedStateProto.namespaceStateIds)
-  return _internal_namespacestateids();
-}
-inline ::PROTOBUF_NAMESPACE_ID::Map< std::string, int64_t >*
-RouterFederatedStateProto::_internal_mutable_namespacestateids() {
-  return _impl_.namespacestateids_.MutableMap();
-}
-inline ::PROTOBUF_NAMESPACE_ID::Map< std::string, int64_t >*
-RouterFederatedStateProto::mutable_namespacestateids() {
-  // @@protoc_insertion_point(field_mutable_map:hadoop.hdfs.RouterFederatedStateProto.namespaceStateIds)
-  return _internal_mutable_namespacestateids();
-}
-
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
-// -------------------------------------------------------------------
-
-// -------------------------------------------------------------------
-
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

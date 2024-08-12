@@ -12,18 +12,22 @@
 #include "datatransfer.pb.h"
 #include "packet.hpp"
 
+namespace std {
+    template <>
+    struct hash<std::pair<std::string, long>> {
+        std::size_t operator()(const std::pair<std::string, long>& k) const {
+            // Combine the hash values of the two members
+            return std::hash<std::string>()(k.first) ^ std::hash<long>()(k.second);
+        }
+    };
+}
+
 struct ConnectionInfo {};
 
 struct CacheEntry {
   std::shared_ptr<Packet> ToRequest(const std::string &key) const {
     return std::make_shared<Packet>();
   }
-};
-struct Block {
-  long blockId;
-  long numBytes;
-  long generationStamp;
-  std::string poolId;
 };
 
 class Datanode {
@@ -36,17 +40,17 @@ class Datanode {
   boost::thread *HeartbeatThread;
 
   // used to identify the Other type.
-  std::shared_ptr<Packet> LastResponse;
+  std::shared_ptr<Packet> LastResponse = std::make_shared<Packet>();
   // TODO: the cache is temporary
   hadoop::hdfs::datanode::HeartbeatRequestProto HeartbeatRequest;
   hadoop::common::RpcRequestHeaderProto rpc_request_header;
   hadoop::common::RequestHeaderProto requestHeaderProto;
 
-  std::unordered_map<long, Block> BlockMap;
+  std::unordered_map<std::pair<std::string, long>, hadoop::hdfs::ExtendedBlockProto> BlockMap;
 
   lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                    CacheEntry> *server;
-
+  bool initialized = false;
  public:
   std::pair<std::vector<std::shared_ptr<Packet>>, lite::RequestType> Match(
       std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
@@ -67,9 +71,7 @@ class Datanode {
                                 ConnectionInfo &conn, Cache *cache) {}
   std::pair<Packet, bool> EmergencyServe(std::shared_ptr<Packet> req,
                                          ConnectionInfo &conn, Cache *cache,
-                                         Logger *logger, bool flow_control) {
-    return {Packet{}, true};  // close the connection directly
-  }
+                                         Logger *logger, bool flow_control);
   void NormalToEmergencyHook();
   void EmergencyToNormalHook();
   Packet EmergencyConnectionEstablishHook(ConnectionInfo conn_info) {
