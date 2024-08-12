@@ -19,8 +19,6 @@ class QueryCache {
     std::vector<uint8_t> suffix_packets;  // EOF packet except packet length and
                                           // number, and response code
 
-    uint8_t null_bitmap_length;
-
    public:
     using Row = std::vector<Value>;
 

@@ -141,6 +141,7 @@ Value FetchValue(const uint8_t *&payload, const Type &type) {
       uint8_t len = *(payload++);
       ret = std::string(reinterpret_cast<const char *>(payload), len);
       payload += len;
+      break;
     }
     default:
       LOG(WARNING) << "Unsupported Type type: " << type << std::endl;

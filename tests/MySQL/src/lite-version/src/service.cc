@@ -148,14 +148,16 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
       break;
   }
 
-  notify_queue_.push_back({.type = MySQL::NormalTask::Type::kUpdateQuery,
-                           .query = query,
-                           .conn = &conn,
-                           .cache = cache});
-  uint64_t buf = 1;
-  PLOG_IF(ERROR,
-          write(notify_event_fd_, &buf, sizeof(uint64_t)) != sizeof(uint64_t))
-      << "failed writing to mysql eventfd";
+  if (query.size()) {
+    notify_queue_.push_back({.type = MySQL::NormalTask::Type::kUpdateQuery,
+                             .query = query,
+                             .conn = &conn,
+                             .cache = cache});
+    uint64_t buf = 1;
+    PLOG_IF(ERROR,
+            write(notify_event_fd_, &buf, sizeof(uint64_t)) != sizeof(uint64_t))
+        << "failed writing to mysql eventfd";
+  }
 
   return;
 }
@@ -214,6 +216,9 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
       resp.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
           0x7, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0});
       break;
+    }
+    case COM_QUIT: {
+      return {resp, false};
     }
     default: {
       LOG(WARNING) << "Unsupported command: " << req_cmd << std::endl;

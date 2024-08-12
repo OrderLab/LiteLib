@@ -1,5 +1,4 @@
 use async_mutex::Mutex;
-use hashbag::HashBag;
 use indicatif::{ProgressBar, ProgressStyle};
 use mysql::prelude::*;
 use mysql::*;
@@ -320,14 +319,17 @@ async fn main() {
                             }
                         }
                     };
-                    let expected: HashBag<String> = HashBag::from_iter(
-                        tables[db_id as usize]
-                            .iter()
-                            .filter(|(k, _)| *k >= &lower_bound && *k <= &upper_bound)
-                            .map(|(_, v)| v.c.clone().unwrap()),
-                    );
-                    let actual: HashBag<String> =
-                        HashBag::from_iter(result.iter().map(|v| v.c.clone().unwrap()));
+                    let mut expected: Vec<String> = tables[db_id as usize]
+                        .iter()
+                        .filter(|(k, _)| *k >= &lower_bound && *k <= &upper_bound)
+                        .map(|(_, v)| v.c.clone().unwrap())
+                        .collect();
+                    expected.sort();
+
+                    let mut actual: Vec<String> =
+                        result.iter().map(|v| v.c.clone().unwrap()).collect();
+                    actual.sort();
+
                     assert_eq!(
                         expected, actual,
                         "simple_ranges db_id: {}, lower_bound: {}, upper_bound: {}",

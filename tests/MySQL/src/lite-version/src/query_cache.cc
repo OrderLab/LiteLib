@@ -15,7 +15,8 @@ QueryCache::Result QueryCache::Result::Deserialize(
   Result result;
 
   const uint8_t *begin = buffer.data();
-  for (uint8_t i = 0; i < 3; i++) {
+  uint8_t column_count = begin[4];
+  for (uint8_t i = 0; i < 2 + column_count; i++) {
     uint32_t payload_length = begin[0] | begin[1] << 8 | begin[2] << 16;
     result.prefix_packets.insert(result.prefix_packets.end(), begin,
                                  begin + 4 + payload_length);
@@ -23,15 +24,15 @@ QueryCache::Result QueryCache::Result::Deserialize(
   }
 
   // TODO: actually parsing the field packets
-  result.null_bitmap_length = 1;
-
   while (true) {
-    if (begin[4]) break;  // EOF packet
+    if (begin[4] == 0xfe) break;  // EOF packet
 
     Row row;
-    begin += 5 + result.null_bitmap_length;
+    begin += 4;
     // TODO: actually parsing the field packets to get the format
-    row.push_back(FetchValue(begin, kVARCHAR));
+    for (uint8_t i = 0; i < column_count; i++) {
+      row.push_back(FetchValue(begin, kVARCHAR));
+    }
 
     result.rows.push_back(row);
   }
@@ -57,18 +58,12 @@ std::shared_ptr<std::vector<uint8_t>> QueryCache::Result::Serialize() {
                            value_buffer.end());
     }
 
-    uint32_t row_packet_length = 1 + null_bitmap_length + values_buffer.size();
+    uint32_t row_packet_length = values_buffer.size();
     // packet length
     buffer->insert(buffer->end(), int2pointer(row_packet_length),
                    int2pointer(row_packet_length) + 3);
     // packet number
     buffer->push_back(packet_number++);
-    // response code
-    buffer->push_back(0x0);
-    // row null buffer
-    for (size_t i = 0; i < null_bitmap_length; ++i) {
-      buffer->push_back(0x0);
-    }
     // values
     buffer->insert(buffer->end(), values_buffer.begin(), values_buffer.end());
   }
@@ -178,21 +173,28 @@ void QueryCache::EmergencyToNormalHook() { ConnectToFull(); }
 bool QueryCache::NormalToEmergencyHook() {
   if (shm_info_->shm_info.queries_blocks == 0) {
     LOG(WARNING) << "No query cache block in shared memory" << std::endl;
-    return true;
+  } else {
+    auto query_block_ptr =
+        shm_info_->shm_info.queries_blocks_with_vaddr_offset(shm_v_offset_);
+    const auto query_block_linked_list_head = query_block_ptr;
+
+    do {
+      AddQueryCacheBlock(query_block_ptr);
+    } while ((query_block_ptr = query_block_ptr->next_with_vaddr_offset(
+                  shm_v_offset_)) != query_block_linked_list_head);
   }
-
-  auto query_block_ptr =
-      shm_info_->shm_info.queries_blocks_with_vaddr_offset(shm_v_offset_);
-  const auto query_block_linked_list_head = query_block_ptr;
-
-  do {
-    AddQueryCacheBlock(query_block_ptr);
-  } while ((query_block_ptr = query_block_ptr->next_with_vaddr_offset(
-                shm_v_offset_)) != query_block_linked_list_head);
 
   DisconnectFromFull();
 
   BuildRelationsBetweenQueryAndCachedRows();
+
+  size_t cnt = 0;
+  for (const auto &table_query_cache_ : query_cache_) {
+    for (const auto &where_query_cache : table_query_cache_.second) {
+      cnt += where_query_cache.second.size();
+    }
+  }
+  LOG(INFO) << "Query cache size: " << cnt << std::endl;
 
   return true;
 }

@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 async-mutex = "1.4.0"
-hashbag = "0.1.12"
 indicatif = "0.17.8"
 mysql = "25.0.1"
 rand = "0.8.5"
