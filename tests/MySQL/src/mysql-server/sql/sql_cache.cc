@@ -2455,7 +2455,7 @@ ulong Query_cache::init_cache()
   DBUG_PRINT("qcache", ("cache length %lu, min unit %lu, %u bins",
 		      query_cache_size, min_allocation_unit, mem_bin_num));
 
-  steps = (Query_cache_memory_bin_step *) cache + sizeof(AlignedShmInfo);
+  steps = (Query_cache_memory_bin_step *)(cache + sizeof(AlignedShmInfo));
   bins = ((Query_cache_memory_bin *)
 	  (cache + sizeof(AlignedShmInfo) + mem_bin_steps *
 	   ALIGN_SIZE(sizeof(Query_cache_memory_bin_step))));
@@ -2726,8 +2726,10 @@ void Query_cache::free_query_internal(Query_cache_block *query_block, my_bool sy
     unlink_table(table++);
   Query_cache_block *result_block= query->result();
 
-  if (!sync_free_memory && result_block && result_block->type == Query_cache_block::RESULT && SendQueryToLite(query_block))
+  if (!sync_free_memory && result_block && result_block->type == Query_cache_block::RESULT && SendQueryToLite(query_block)) {
+    query->unlock_n_destroy();
     DBUG_VOID_RETURN;
+  }
 
   /*
     The following is true when query destruction was called and no results
@@ -2781,11 +2783,10 @@ void Query_cache::free_query_internal_async_free_callback(Query_cache_block *que
     free_memory_block(current);
   } while (block != result_block);
 
-  query->unlock_n_destroy();
   free_memory_block(query_block);
 
   unlock();
-  fprintf(stderr, "freed query 0x%lx\n", query_block);
+  // fprintf(stderr, "freed query 0x%lx\n", query_block);
 
   DBUG_VOID_RETURN;
 }
@@ -2824,7 +2825,7 @@ my_bool Query_cache::SendQueryToLite(Query_cache_block *point) {
     perror("write full_to_lite_fd");
     DBUG_RETURN(false);
   }
-  fprintf(stderr, "SendQueryToLite: send query 0x%lx\n", (ulong) point);
+  // fprintf(stderr, "SendQueryToLite: send query 0x%lx\n", (ulong) point);
 
   DBUG_RETURN(true);
 }
@@ -2846,7 +2847,7 @@ void Query_cache::LiteListenerHandler(int fd, short which, void *arg_self) {
     return;
   }
 
-  fprintf(stderr, "LiteListenerHandler: free query 0x%lx\n", (ulong) point);
+  // fprintf(stderr, "LiteListenerHandler: free query 0x%lx\n", (ulong) point);
   self->free_query_internal_async_free_callback(point);
 
   DBUG_VOID_RETURN;

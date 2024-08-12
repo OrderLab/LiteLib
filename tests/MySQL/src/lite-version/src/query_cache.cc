@@ -306,8 +306,8 @@ std::optional<Packet> QueryCache::ServeSelect(const std::string &query) {
 
 bool QueryCache::SendQueryToFull(
     Query_cache_block *query_cache_block_full_ptr) {
-  LOG(INFO) << "Sending query to full: " << query_cache_block_full_ptr
-            << std::endl;
+  // LOG(INFO) << "Sending query to full: " << query_cache_block_full_ptr
+  //           << std::endl;
   if (write(lite_to_full_fd_, &query_cache_block_full_ptr,
             sizeof(Query_cache_block *)) == -1) {
     PLOG(ERROR) << "write lite_to_full_fd_" << std::endl;
@@ -350,8 +350,9 @@ void QueryCache::FullListenerHandler(int fd, short which, void *arg_self) {
                      sizeof(uint64_t))
       << "failed writing to mysql eventfd";
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-  LOG(INFO) << "QueryCache::FullListenerHandler: " << query_cache_block_full_ptr
-            << std::endl;
+  // LOG(INFO) << "QueryCache::FullListenerHandler: " <<
+  // query_cache_block_full_ptr
+  //           << std::endl;
 }
 
 void QueryCache::HandleInvalidatedQueryBlockFromFull(
