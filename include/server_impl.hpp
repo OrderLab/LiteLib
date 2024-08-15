@@ -154,6 +154,17 @@ void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
+LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::CacheInstance*
+LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
+           CacheEntry>::GetCacheDecoupledFromAnyConnection() {
+  return new CacheInstance(lite_core_.cache_inner_, lite_core_.logger_inner_,
+                           nullptr);
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 int LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                CacheEntry>::NewSocket(struct addrinfo* addr_info) {
   evutil_socket_t sfd;

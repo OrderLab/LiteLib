@@ -21,6 +21,8 @@ class LiteServer {
                                     ConnectionInfo, CacheKey, CacheEntry>;
   using WorkerInstance = Worker<Application, Request, Response, ConnectionInfo,
                                 CacheKey, CacheEntry>;
+  using CacheInstance = Cache<Application, Request, Response, ConnectionInfo,
+                              CacheKey, CacheEntry>;
 
  public:
   LiteServer& operator=(const LiteServer&) = delete;
@@ -41,6 +43,8 @@ class LiteServer {
 
   /// Dispatch a new connection to the next thread in round-robin order.
   void DispatchNewConnection(const evutil_socket_t sfd);
+
+  CacheInstance *GetCacheDecoupledFromAnyConnection();
 
  private:
   static int NewSocket(struct addrinfo* addr_info);
