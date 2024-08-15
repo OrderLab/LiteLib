@@ -67,8 +67,13 @@ class TableCache {
   bool HandleInsert(const hsql::InsertStatement &stmt, Cache *cache,
                     QueryCache *query_cache, bool update_query_cache = true);
 
+  bool HandleDelete(const hsql::DeleteStatement &stmt, Cache *cache,
+                    QueryCache *query_cache, bool update_query_cache = true);
+
   bool HandleUpdate(const hsql::UpdateStatement &stmt, Cache *cache,
                     QueryCache *query_cache, bool update_query_cache = true);
+
+  friend class QueryCache;
 
  private:
   std::unordered_map<std::string, TableSchema> tables_;

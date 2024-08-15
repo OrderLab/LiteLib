@@ -88,6 +88,60 @@ bool TableCache::HandleInsert(const hsql::InsertStatement &stmt, Cache *cache,
   return true;
 }
 
+bool TableCache::HandleDelete(const hsql::DeleteStatement &stmt, Cache *cache,
+                              QueryCache *query_cache,
+                              bool update_query_cache) {
+  auto table_it = tables_.find(stmt.tableName);
+  if (table_it == tables_.end()) {
+    LOG(WARNING) << "Table not found: " << stmt.tableName << std::endl;
+    return false;
+  }
+  auto &table = table_it->second;
+
+  // TODO: support other queries
+  if (table.primary_keys_size == 1 && stmt.expr->type == hsql::kExprOperator &&
+      stmt.expr->opType == hsql::kOpEquals &&
+      stmt.expr->expr->type == hsql::kExprColumnRef &&
+      stmt.expr->expr2->type == hsql::kExprLiteralInt) {
+    auto column_it = table.columns_name_to_index.find(stmt.expr->expr->name);
+    if (column_it == table.columns_name_to_index.end()) {
+      LOG(WARNING) << "Column not found: " << stmt.expr->expr->name
+                   << std::endl;
+      return false;
+    }
+    if (column_it->second >= table.primary_keys_size) {
+      // TODO: iterate through all entries
+      return false;
+    }
+    auto column = table.columns[column_it->second];
+
+    CacheKey key;
+    key.table = stmt.tableName;
+    key.primary_keys.resize(table.primary_keys_size);
+    Value value;
+    if (!ExprToValue(stmt.expr->expr2, value)) {
+      return false;
+    }
+    if (!ValueCast(value, column.type)) {
+      return false;
+    }
+    key.primary_keys[column_it->second] = value;
+
+    CacheEntry entry;
+    if (!cache->Get(key, entry)) {
+      // std::stringstream ss;
+      // hsql::printStatementInfo(ss, &stmt);
+      // LOG(WARNING) << "Key not found: " << ss.str() << std::endl;
+      return false;
+    }
+    cache->Delete(key);
+    UpdateQueryCache(key, &entry, nullptr, query_cache, update_query_cache);
+    return true;
+  }
+
+  return false;
+}
+
 bool TableCache::HandleUpdate(const hsql::UpdateStatement &stmt, Cache *cache,
                               QueryCache *query_cache,
                               bool update_query_cache) {
@@ -359,53 +413,48 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
           new_value = new_entry->values[column_it->second -
                                         tables_[key.table].primary_keys_size];
         }
+      } else {
+        // TODO
       }
 
       // TODO: support limit
       auto &result = result_table_entry.second.result;
-      if (old_entry_match.value()) {
-        if (new_entry_match.value()) {
-          // both match
 
-          // remove old value
-          result.rows.erase(std::remove(result.rows.begin(), result.rows.end(),
-                                        std::vector<Value>{old_value.value()}),
-                            result.rows.end());
-          // add new value
-          if (result_table_entry.second.GetSelectStatement()->order) {
-            if (result_table_entry.second.GetSelectStatement()->order->size() ==
-                    1 &&
-                (*result_table_entry.second.GetSelectStatement()->order)[0]
-                        ->expr->type == hsql::kExprColumnRef &&
-                (*result_table_entry.second.GetSelectStatement()->order)[0]
-                        ->expr->name == column_name) {
-              size_t i = 0;
-              if ((*result_table_entry.second.GetSelectStatement()->order)[0]
-                      ->type == hsql::kOrderAsc) {
-                for (; i < result.rows.size(); i++) {
-                  if (result.rows[i][0] > new_value.value()) break;
-                }
-              } else {
-                for (; i < result.rows.size(); i++) {
-                  if (result.rows[i][0] < new_value.value()) break;
-                }
+      // remove old value
+      if (old_entry_match.value()) {
+        result.rows.erase(std::remove(result.rows.begin(), result.rows.end(),
+                                      std::vector<Value>{old_value.value()}),
+                          result.rows.end());
+      }
+
+      // add new value
+      if (new_entry_match.value()) {
+        if (result_table_entry.second.GetSelectStatement()->order) {
+          if (result_table_entry.second.GetSelectStatement()->order->size() ==
+                  1 &&
+              (*result_table_entry.second.GetSelectStatement()->order)[0]
+                      ->expr->type == hsql::kExprColumnRef &&
+              (*result_table_entry.second.GetSelectStatement()->order)[0]
+                      ->expr->name == column_name) {
+            size_t i = 0;
+            if ((*result_table_entry.second.GetSelectStatement()->order)[0]
+                    ->type == hsql::kOrderAsc) {
+              for (; i < result.rows.size(); i++) {
+                if (result.rows[i][0] > new_value.value()) break;
               }
-              result.rows.insert(result.rows.begin() + i, {new_value.value()});
             } else {
-              // TODO
+              for (; i < result.rows.size(); i++) {
+                if (result.rows[i][0] < new_value.value()) break;
+              }
             }
+            result.rows.insert(result.rows.begin() + i, {new_value.value()});
           } else {
-            result.rows.push_back({new_value.value()});
+            // TODO
           }
         } else {
-          // old match, new not match
-          // TODO
+          result.rows.push_back({new_value.value()});
         }
-      } else if (new_entry_match.value()) {
-        // old not match, new match
-        // TODO
       } else {
-        // both not match, do nothing
         // TODO
       }
     }

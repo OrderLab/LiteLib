@@ -29,7 +29,8 @@ QueryCache::Result QueryCache::Result::Deserialize(
 
     Row row;
     begin += 4;
-    // TODO: actually parsing the field packets to get the format
+    // TODO: actually parsing the field packets or use the query AST to get the
+    // format
     for (uint8_t i = 0; i < column_count; i++) {
       row.push_back(FetchValue(begin, kVARCHAR));
     }
@@ -170,7 +171,7 @@ void QueryCache::DisconnectFromFull() {
 
 void QueryCache::EmergencyToNormalHook() { ConnectToFull(); }
 
-bool QueryCache::NormalToEmergencyHook() {
+bool QueryCache::NormalToEmergencyHook(TableCache &table_cache, Cache *cache) {
   if (shm_info_->shm_info.queries_blocks == 0) {
     LOG(WARNING) << "No query cache block in shared memory" << std::endl;
   } else {
@@ -179,7 +180,7 @@ bool QueryCache::NormalToEmergencyHook() {
     const auto query_block_linked_list_head = query_block_ptr;
 
     do {
-      AddQueryCacheBlock(query_block_ptr);
+      AddQueryCacheBlock(query_block_ptr, table_cache, cache);
     } while ((query_block_ptr = query_block_ptr->next_with_vaddr_offset(
                   shm_v_offset_)) != query_block_linked_list_head);
   }
@@ -200,7 +201,8 @@ bool QueryCache::NormalToEmergencyHook() {
 }
 
 void QueryCache::AddQueryCacheBlock(
-    Query_cache_block *query_cache_block_lite_ptr) {
+    Query_cache_block *query_cache_block_lite_ptr, TableCache &table_cache,
+    Cache *cache) {
   std::vector<uint8_t> result;
   const auto query_ptr =
       query_cache_block_lite_ptr->query_with_vaddr_offset(shm_v_offset_);
@@ -225,11 +227,12 @@ void QueryCache::AddQueryCacheBlock(
   } while ((result_block_ptr = result_block_ptr->next_with_vaddr_offset(
                 shm_v_offset_)) != result_block_linked_list_head);
   AddQueryAndResult((char *)query_ptr->query_with_vaddr_offset(shm_v_offset_),
-                    result);
+                    result, table_cache, cache);
 }
 
 void QueryCache::AddQueryAndResult(std::string query,
-                                   std::vector<uint8_t> &result) {
+                                   std::vector<uint8_t> &result,
+                                   TableCache &table_cache, Cache *cache) {
   hsql::SQLParserResult parse_result;
   hsql::SQLParser::parse(query, &parse_result);
   if (!parse_result.isValid()) {
@@ -258,8 +261,86 @@ void QueryCache::AddQueryAndResult(std::string query,
   std::stringstream where_stream;
   if (select_stmt->whereClause != nullptr)
     printExpression(where_stream, select_stmt->whereClause, 0);
+  auto parsed_result = Result::Deserialize(result);
+
+  // def here to enable goto
+  size_t number_of_primary_keys_in_select_stmt = 0;
+  std::vector<size_t> index;
+  decltype(table_cache.tables_)::iterator table_it;
+  TableSchema *table;
+  CacheKey where_key;
+  CacheEntry where_entry;
+
+  // insert to table cache
+  if (select_stmt->fromTable->type != hsql::kTableName)
+    goto insert_to_query_cache;
+  table_it = table_cache.tables_.find(select_stmt->fromTable->getName());
+  if (table_it == table_cache.tables_.end()) {
+    LOG(WARNING) << "Table not found: " << select_stmt->fromTable->getName()
+                 << std::endl;
+    goto insert_to_query_cache;
+  }
+  table = &table_it->second;
+  for (const auto &select : *(select_stmt->selectList)) {
+    if (select->type == hsql::kExprColumnRef) {
+      auto column_it = table->columns_name_to_index.find(select->name);
+      if (column_it == table->columns_name_to_index.end()) {
+        LOG(WARNING) << "Column not found: " << select->name << std::endl;
+        goto insert_to_query_cache;
+      }
+      index.push_back(column_it->second);
+      number_of_primary_keys_in_select_stmt +=
+          column_it->second < table->primary_keys_size;
+    } else {
+      LOG(WARNING) << "Unsupported select type: " << select->type << std::endl;
+      goto insert_to_query_cache;
+    }
+  }
+  where_key.table = select_stmt->fromTable->getName();
+  where_key.primary_keys.resize(table->primary_keys_size);
+  where_entry.values.resize(table->values_size);
+  // TODO: support multiple keys point selection
+  if (select_stmt->whereClause->type == hsql::kExprOperator &&
+      select_stmt->whereClause->opType == hsql::kOpEquals &&
+      select_stmt->whereClause->expr->type == hsql::kExprColumnRef) {
+    auto column_it =
+        table->columns_name_to_index.find(select_stmt->whereClause->expr->name);
+    if (column_it == table->columns_name_to_index.end()) {
+      LOG(WARNING) << "Column not found: "
+                   << select_stmt->whereClause->expr->name << std::endl;
+      goto insert_to_query_cache;
+    }
+    if (column_it->second < table->primary_keys_size) {
+      ExprToValue(select_stmt->whereClause->expr2,
+                  where_key.primary_keys[column_it->second]);
+      number_of_primary_keys_in_select_stmt++;
+    } else {
+      Value value;
+      ExprToValue(select_stmt->whereClause->expr2, value);
+      where_entry.values[column_it->second - table->primary_keys_size] = value;
+    }
+  }
+  if (number_of_primary_keys_in_select_stmt != table->primary_keys_size) {
+    goto insert_to_query_cache;
+  }
+
+  for (const auto &row : parsed_result.rows) {
+    CacheKey key = where_key;
+    CacheEntry entry = where_entry;
+    for (size_t i = 0; i < row.size(); ++i) {
+      if (index[i] < table->primary_keys_size) {
+        key.primary_keys[index[i]] = row[i];
+      } else {
+        entry.values[index[i] - table->primary_keys_size] = row[i];
+      }
+    }
+    LOG(INFO) << "Inserting to table cache" << std::endl;
+    cache->Add(key, entry, false, false);
+  }
+
+insert_to_query_cache:
   query_cache_[select_stmt->fromTable->getName()][where_stream.str()][query] =
-      ResultTableEntry(Result::Deserialize(result), std::move(parse_result));
+      ResultTableEntry(std::move(parsed_result), std::move(parse_result));
 };
 
 void QueryCache::BuildRelationsBetweenQueryAndCachedRows() {
@@ -358,10 +439,13 @@ void QueryCache::FullListenerHandler(int fd, short which, void *arg_self) {
 }
 
 void QueryCache::HandleInvalidatedQueryBlockFromFull(
-    Query_cache_block *query_cache_block_full_ptr) {
+    Query_cache_block *query_cache_block_full_ptr, TableCache &table_cache,
+    Cache *cache) {
   // LOG(INFO) << "QueryCache::HandleInvalidatedQueryBlockFromFull: "
   //           << query_cache_block_full_ptr << std::endl;
   AddQueryCacheBlock(reinterpret_cast<Query_cache_block *>(
-      reinterpret_cast<uchar *>(query_cache_block_full_ptr) + shm_v_offset_));
+                         reinterpret_cast<uchar *>(query_cache_block_full_ptr) +
+                         shm_v_offset_),
+                     table_cache, cache);
   SendQueryToFull(query_cache_block_full_ptr);
 }

@@ -232,7 +232,7 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
 }
 
 void MySQL::NormalToEmergencyHook() {
-  if (!query_cache_.NormalToEmergencyHook()) {
+  if (!query_cache_.NormalToEmergencyHook(table_cache_, dangling_cache_)) {
     LOG(ERROR) << "Unable to parse query cache";
   }
 }
@@ -274,7 +274,8 @@ void MySQL::NormalUpdateQuery(std::string &query, ConnectionInfo *conn,
         break;
       }
       case hsql::StatementType::kStmtDelete: {
-        // TODO
+        auto delete_stmt = dynamic_cast<const hsql::DeleteStatement *>(stmt);
+        table_cache_.HandleDelete(*delete_stmt, cache, &query_cache_, false);
         break;
       }
       case hsql::StatementType::kStmtTransaction: {
@@ -314,7 +315,8 @@ void MySQL::NotifyHandler(evutil_socket_t fd, short which, void *arg_self) {
       NormalTask tsk = self->notify_queue_.pop_front();
       if (tsk.type == NormalTask::Type::kInsertCache) {
         self->query_cache_.HandleInvalidatedQueryBlockFromFull(
-            tsk.query_cache_block_full_ptr);
+            tsk.query_cache_block_full_ptr, self->table_cache_,
+            self->dangling_cache_);
       } else if (tsk.type == NormalTask::Type::kUpdateQuery) {
         self->NormalUpdateQuery(tsk.query, tsk.conn, tsk.cache);
       }
@@ -423,6 +425,17 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
     }
     case hsql::kStmtDelete: {
       // TODO
+      auto delete_stmt = dynamic_cast<const hsql::DeleteStatement *>(stmt);
+      if (table_cache_.HandleDelete(*delete_stmt, cache, &query_cache_)) {
+        resp.buffer =
+            std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+                0x7, 0x0, 0x0, 0x1, 0x0, 0x1, 0x0, 0x3, 0x0, 0x0, 0x0});
+        // TODO: handle it
+      } else {
+        LOG(WARNING) << "Unable to handle delete statement: " << query
+                     << std::endl;
+        return {resp, true};
+      }
       break;
     }
   }

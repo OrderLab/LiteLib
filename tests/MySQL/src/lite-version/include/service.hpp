@@ -76,6 +76,8 @@ class MySQL {
 
   lite::ThreadSafeQueue<NormalTask> notify_queue_;
 
+  Cache *dangling_cache_;
+
  private:
   pthread_t thread_id_;
 

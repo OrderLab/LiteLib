@@ -75,6 +75,7 @@ int main(int argc, char* argv[]) {
                      CacheEntry>
         s(thread_pool_size, cache_size, mysql, backend_addr, backend_port,
           1000ms, 20000, 0.9, 1, "/tmp/lite_mysql");
+    mysql.dangling_cache_ = s.GetCacheDecoupledFromAnyConnection();
 
     // Run the server until stopped.
     if (!s.Run(port)) {

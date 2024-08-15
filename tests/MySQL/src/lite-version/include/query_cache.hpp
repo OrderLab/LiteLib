@@ -10,8 +10,14 @@
 #include "packet.hpp"
 
 class MySQL;
+class TableCache;
+class CacheKey;
+class CacheEntry;
 
 class QueryCache {
+  using Cache =
+      lite::Cache<MySQL, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>;
+
  private:
   class Result {
     std::vector<uint8_t>
@@ -74,7 +80,7 @@ class QueryCache {
 
   void EmergencyToNormalHook();
 
-  bool NormalToEmergencyHook();
+  bool NormalToEmergencyHook(TableCache &table_cache, Cache *cache);
 
   std::optional<Packet> ServeSelect(const std::string &query);
 
@@ -98,9 +104,11 @@ class QueryCache {
 
   void DisconnectFromFull();
 
-  void AddQueryCacheBlock(Query_cache_block *query_cache_block_lite_ptr);
+  void AddQueryCacheBlock(Query_cache_block *query_cache_block_lite_ptr,
+                          TableCache &table_cache, Cache *cache);
 
-  void AddQueryAndResult(std::string query, std::vector<uint8_t> &result);
+  void AddQueryAndResult(std::string query, std::vector<uint8_t> &result,
+                         TableCache &table_cache, Cache *cache);
 
   void BuildRelationsBetweenQueryAndCachedRows();
 
@@ -108,7 +116,8 @@ class QueryCache {
 
  public:  // listener
   void HandleInvalidatedQueryBlockFromFull(
-      Query_cache_block *query_cache_block_full_ptr);
+      Query_cache_block *query_cache_block_full_ptr, TableCache &table_cache,
+      Cache *cache);
 
  private:
   int full_to_lite_fd_, lite_to_full_fd_;
