@@ -342,10 +342,13 @@ std::optional<bool> TableCache::WhereMatch(const CacheKey &key,
     if (!ValueCast(upper_bound, column.type)) {
       LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
     }
-    return value.value() >= upper_bound;
+    return value.value() <= upper_bound;
   }
 
-  LOG(WARNING) << "Unsupported where clause:" << std::endl;
+  std::stringstream ss;
+  hsql::printExpression(ss, where, 0);
+  LOG(WARNING) << "Unsupported where clause:" << std::endl
+               << ss.str() << std::endl;
   return std::nullopt;
 }
 
@@ -422,9 +425,12 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
 
       // remove old value
       if (old_entry_match.value()) {
+        LOG(INFO) << "old value: " << ValueToString(old_value.value());
+        LOG(INFO) << "number of rows: " << result.rows.size();
         result.rows.erase(std::remove(result.rows.begin(), result.rows.end(),
                                       std::vector<Value>{old_value.value()}),
                           result.rows.end());
+        LOG(INFO) << "number of rows: " << result.rows.size();
       }
 
       // add new value
