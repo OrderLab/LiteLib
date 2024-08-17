@@ -73,6 +73,9 @@ class TableCache {
   bool HandleUpdate(const hsql::UpdateStatement &stmt, Cache *cache,
                     QueryCache *query_cache, bool update_query_cache = true);
 
+  std::optional<Packet> ServePointSelect(const hsql::SelectStatement &stmt,
+                                         Cache *cache);
+
   friend class QueryCache;
 
  private:

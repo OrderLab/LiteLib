@@ -425,12 +425,9 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
 
       // remove old value
       if (old_entry_match.value()) {
-        LOG(INFO) << "old value: " << ValueToString(old_value.value());
-        LOG(INFO) << "number of rows: " << result.rows.size();
         result.rows.erase(std::remove(result.rows.begin(), result.rows.end(),
                                       std::vector<Value>{old_value.value()}),
                           result.rows.end());
-        LOG(INFO) << "number of rows: " << result.rows.size();
       }
 
       // add new value
@@ -466,4 +463,85 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
     }
     ++table_query_cache_entry;
   }
+}
+
+std::optional<Packet> TableCache::ServePointSelect(
+    const hsql::SelectStatement &stmt, Cache *cache) {
+  auto table_it = tables_.find(stmt.fromTable->name);
+  if (table_it == tables_.end()) {
+    LOG(WARNING) << "Table not found: " << stmt.fromTable->name << std::endl;
+    return std::nullopt;
+  }
+  auto &table = table_it->second;
+
+  // TDDO: support multiple primary keys
+  if (stmt.whereClause->type != hsql::kExprOperator ||
+      stmt.whereClause->opType != hsql::kOpEquals ||
+      stmt.whereClause->expr->type != hsql::kExprColumnRef ||
+      stmt.whereClause->expr2->type != hsql::kExprLiteralInt) {
+    return std::nullopt;
+  }
+
+  CacheKey key;
+  key.table = stmt.fromTable->name;
+  key.primary_keys.resize(table.primary_keys_size);
+  auto column_it =
+      table.columns_name_to_index.find(stmt.whereClause->expr->name);
+  if (column_it == table.columns_name_to_index.end()) {
+    LOG(WARNING) << "Column not found: " << stmt.whereClause->expr->name
+                 << std::endl;
+    return std::nullopt;
+  }
+  auto column = table.columns[column_it->second];
+  Value value;
+  if (!ExprToValue(stmt.whereClause->expr2, value)) {
+    return std::nullopt;
+  }
+  if (!ValueCast(value, column.type)) {
+    return std::nullopt;
+  }
+  key.primary_keys[column_it->second] = value;
+
+  CacheEntry entry;
+  if (!cache->Get(key, entry)) {
+    return std::nullopt;
+  }
+
+  if (stmt.selectList->size() != 1) {
+    LOG(WARNING) << "Unsupported select list size: " << stmt.selectList->size()
+                 << std::endl;
+    return std::nullopt;
+  }
+  auto selected_value =
+      entry.values[table.columns_name_to_index[stmt.selectList->at(0)->name] -
+                   table.primary_keys_size];
+  if (!selected_value.has_value()) {
+    return std::nullopt;
+  }
+  std::string value_string = ValueToString(selected_value.value());
+
+  // TODO: parse table schema
+  Packet packet;
+  packet.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+      0x01, 0x00, 0x00, 0x01, 0x01, 0x2c, 0x00, 0x00, 0x02, 0x03, 0x64,
+      0x65, 0x66, 0x06, 0x73, 0x62, 0x74, 0x65, 0x73, 0x74, 0x07, 0x73,
+      0x62, 0x74, 0x65, 0x73, 0x74, 0x32, 0x07, 0x73, 0x62, 0x74, 0x65,
+      0x73, 0x74, 0x32, 0x01, 0x63, 0x01, 0x63, 0x0c, 0x08, 0x00, 0x78,
+      0x00, 0x00, 0x00, 0xfe, 0x01, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00,
+      0x00, 0x03, 0xfe, 0x00, 0x00, 0x03, 0x00,
+  });
+  uint32_t packet_length = value_string.size() + 1;
+  packet.buffer->insert(packet.buffer->end(), (uint8_t *)&packet_length,
+                        (uint8_t *)&packet_length + 3);
+  packet.buffer->push_back(0x4);
+  packet_length--;
+  packet.buffer->insert(packet.buffer->end(), (uint8_t *)&packet_length,
+                        (uint8_t *)&packet_length + 1);
+  packet.buffer->insert(packet.buffer->end(), value_string.begin(),
+                        value_string.end());
+  static const uint8_t kSuffix[] = {0x05, 0x00, 0x00, 0x05, 0xfe,
+                                    0x00, 0x00, 0x03, 0x00};
+  packet.buffer->insert(packet.buffer->end(), kSuffix,
+                        kSuffix + sizeof(kSuffix));
+  return packet;
 }

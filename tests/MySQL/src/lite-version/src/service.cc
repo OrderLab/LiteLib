@@ -86,14 +86,7 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
     }
     return;
   }
-  // LOG(INFO) << "req: " << requests.size() << std::endl;
-  // for (auto &req : requests) {
-  //   LOG(INFO) << "  req len: " << req->buffer->size() - 4 << std::endl;
-  // }
-  // LOG(INFO) << "resp: " << conn.responses.size() << std::endl;
-  // for (auto &resp : conn.responses) {
-  //   LOG(INFO) << "  resp len: " << resp->buffer->size() - 4 << std::endl;
-  // }
+
   for (size_t i = 1; i < requests.size(); i++) {
     requests[0]->payload_length_ += requests[i]->payload_length_;
     requests[0]->buffer->insert(requests[0]->buffer->end(),
@@ -107,6 +100,15 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
     conn.state = ConnectionInfo::State::LoggedIn;
     return;
   }
+
+  LOG(INFO) << "req: " << requests.size() << std::endl;
+  // for (auto &req : requests) {
+  //   LOG(INFO) << "  req len: " << req->buffer->size() - 4 << std::endl;
+  // }
+  LOG(INFO) << "resp: " << conn.responses.size() << std::endl;
+  // for (auto &resp : conn.responses) {
+  //   LOG(INFO) << "  resp len: " << resp->buffer->size() - 4 << std::endl;
+  // }
 
   COM_DATA req_com_data;
   enum_server_command req_cmd;
@@ -148,6 +150,7 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
       break;
   }
 
+  LOG(INFO) << "Query: " << query << std::endl;
   if (query.size()) {
     notify_queue_.push_back({.type = MySQL::NormalTask::Type::kUpdateQuery,
                              .query = query,
@@ -270,12 +273,20 @@ void MySQL::NormalUpdateQuery(std::string &query, ConnectionInfo *conn,
       }
       case hsql::StatementType::kStmtUpdate: {
         auto update_stmt = dynamic_cast<const hsql::UpdateStatement *>(stmt);
-        table_cache_.HandleUpdate(*update_stmt, cache, &query_cache_, false);
+        if (!table_cache_.HandleUpdate(*update_stmt, cache, &query_cache_,
+                                       false)) {
+          query_cache_.InvalidateUnprocessableUpdateDuringNormal(update_stmt,
+                                                                 table_cache_);
+        }
         break;
       }
       case hsql::StatementType::kStmtDelete: {
         auto delete_stmt = dynamic_cast<const hsql::DeleteStatement *>(stmt);
-        table_cache_.HandleDelete(*delete_stmt, cache, &query_cache_, false);
+        if (!table_cache_.HandleDelete(*delete_stmt, cache, &query_cache_,
+                                       false)) {
+          query_cache_.InvalidateUnprocessableDeleteDuringNormal(delete_stmt,
+                                                                 table_cache_);
+        }
         break;
       }
       case hsql::StatementType::kStmtTransaction: {
@@ -384,11 +395,16 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
       auto result = query_cache_.ServeSelect(query);
       if (result.has_value()) {
         resp = std::move(result.value());
-      } else {
-        LOG(WARNING) << "Query not found in the cache: " << query << std::endl;
-        return {resp, true};
+        break;
       }
-      break;
+      result = table_cache_.ServePointSelect(
+          dynamic_cast<const hsql::SelectStatement &>(*stmt), cache);
+      if (result.has_value()) {
+        resp = std::move(result.value());
+        break;
+      }
+      LOG(WARNING) << "Query not found in the cache: " << query << std::endl;
+      return {resp, true};
     }
     case hsql::kStmtInsert: {
       auto insert_stmt = dynamic_cast<const hsql::InsertStatement *>(stmt);

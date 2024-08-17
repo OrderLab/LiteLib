@@ -30,7 +30,8 @@ class QueryCache {
 
     std::vector<Row> rows;
 
-    static Result Deserialize(std::vector<uint8_t> &buffer);
+    static Result Deserialize(std::vector<uint8_t> &buffer,
+                              const hsql::SelectStatement *stmt);
 
     std::shared_ptr<std::vector<uint8_t>> Serialize();
   };
@@ -118,6 +119,12 @@ class QueryCache {
   void HandleInvalidatedQueryBlockFromFull(
       Query_cache_block *query_cache_block_full_ptr, TableCache &table_cache,
       Cache *cache);
+
+  void InvalidateUnprocessableDeleteDuringNormal(
+      const hsql::DeleteStatement *stmt, TableCache &table_cache);
+
+  void InvalidateUnprocessableUpdateDuringNormal(
+      const hsql::UpdateStatement *stmt, TableCache &table_cache);
 
  private:
   int full_to_lite_fd_, lite_to_full_fd_;

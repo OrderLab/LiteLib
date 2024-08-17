@@ -11,7 +11,7 @@
 #include "service.hpp"
 
 QueryCache::Result QueryCache::Result::Deserialize(
-    std::vector<uint8_t> &buffer) {
+    std::vector<uint8_t> &buffer, const hsql::SelectStatement *stmt) {
   Result result;
 
   const uint8_t *begin = buffer.data();
@@ -23,16 +23,18 @@ QueryCache::Result QueryCache::Result::Deserialize(
     begin += 4 + payload_length;
   }
 
-  // TODO: actually parsing the field packets
+  // TODO: actually use the query AST to get the format
+  auto type =
+      (*stmt->selectList)[0]->type == hsql::kExprColumnRef ? kVARCHAR : kLL;
   while (true) {
     if (begin[4] == 0xfe) break;  // EOF packet
 
     Row row;
     begin += 4;
-    // TODO: actually parsing the field packets or use the query AST to get the
-    // format
     for (uint8_t i = 0; i < column_count; i++) {
-      row.push_back(FetchValue(begin, kVARCHAR));
+      Value value = FetchValue(begin, kVARCHAR);
+      ValueCast(value, type);
+      row.push_back(value);
     }
 
     result.rows.push_back(row);
@@ -261,7 +263,7 @@ void QueryCache::AddQueryAndResult(std::string query,
   std::stringstream where_stream;
   if (select_stmt->whereClause != nullptr)
     printExpression(where_stream, select_stmt->whereClause, 0);
-  auto parsed_result = Result::Deserialize(result);
+  auto parsed_result = Result::Deserialize(result, select_stmt);
 
   // def here to enable goto
   size_t number_of_primary_keys_in_select_stmt = 0;
@@ -292,7 +294,6 @@ void QueryCache::AddQueryAndResult(std::string query,
       number_of_primary_keys_in_select_stmt +=
           column_it->second < table->primary_keys_size;
     } else {
-      LOG(WARNING) << "Unsupported select type: " << select->type << std::endl;
       goto insert_to_query_cache;
     }
   }
@@ -334,7 +335,6 @@ void QueryCache::AddQueryAndResult(std::string query,
         entry.values[index[i] - table->primary_keys_size] = row[i];
       }
     }
-    LOG(INFO) << "Inserting to table cache" << std::endl;
     cache->Add(key, entry, false, false);
   }
 
@@ -449,3 +449,64 @@ void QueryCache::HandleInvalidatedQueryBlockFromFull(
                      table_cache, cache);
   SendQueryToFull(query_cache_block_full_ptr);
 }
+
+void QueryCache::InvalidateUnprocessableUpdateDuringNormal(
+    const hsql::UpdateStatement *stmt, TableCache &table_cache) {
+  if (stmt->table->type != hsql::kTableName) return;
+  auto table_it = table_cache.tables_.find(stmt->table->name);
+  if (table_it == table_cache.tables_.end()) {
+    LOG(WARNING) << "Table not found: " << stmt->table->name << std::endl;
+    return;
+  }
+  auto &table = table_it->second;
+
+  bool unprocessable = stmt->where->type != hsql::kExprOperator ||
+                       stmt->where->opType != hsql::kOpEquals ||
+                       stmt->where->expr->type != hsql::kExprColumnRef;
+
+  auto column_it = table.columns_name_to_index.find(stmt->where->expr->name);
+  if (column_it == table.columns_name_to_index.end()) {
+    LOG(WARNING) << "Column not found: " << stmt->where->expr->name
+                 << std::endl;
+    return;
+  }
+  unprocessable |= column_it->second >= table.primary_keys_size;
+  unprocessable |= table.primary_keys_size != 1;
+
+  if (unprocessable) {
+    std::stringstream ss;
+    printStatementInfo(ss, stmt);
+    query_cache_.erase(stmt->table->name);
+    LOG(INFO) << "Invalidated query cache for table: " << stmt->table->name
+              << std::endl
+              << " with query:" << ss.str() << std::endl;
+    return;
+  }
+
+  CacheKey key;
+  CacheEntry old_entry;
+  // CacheEntry new_entry; // NOTE: don't need it right now, but is usable if
+  // more queries are unprocessable
+  key.table = stmt->table->name;
+  key.primary_keys.resize(table.primary_keys_size);
+  old_entry.values.resize(table.values_size);
+  ExprToValue(stmt->where->expr2, key.primary_keys[column_it->second]);
+
+  auto &table_query_cache = query_cache_[stmt->table->name];
+  auto result_table_it = table_query_cache.begin();
+  while (result_table_it != table_query_cache.end()) {
+    auto old_match = table_cache.WhereMatch(key, old_entry,
+                                            result_table_it->second.begin()
+                                                ->second.GetSelectStatement()
+                                                ->whereClause);
+    if (!old_match.has_value() || old_match.value()) {
+      result_table_it = table_query_cache.erase(result_table_it);
+      continue;
+    }
+
+    ++result_table_it;
+  }
+}
+
+void QueryCache::InvalidateUnprocessableDeleteDuringNormal(
+    const hsql::DeleteStatement *stmt, TableCache &table_cache) {}

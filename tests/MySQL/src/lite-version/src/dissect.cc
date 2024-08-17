@@ -93,11 +93,18 @@ bool ValueCast(Value &value, const Type &type) {
       if (auto v = std::get_if<int64_t>(&value)) {
         value = static_cast<uint64_t>(*v);
         return true;
+      } else if (auto v = std::get_if<std::string>(&value)) {
+        value = std::stoull(*v);
+        return true;
       }
+      return true;
       break;
     case kLL:
       if (auto v = std::get_if<uint64_t>(&value)) {
         value = static_cast<int64_t>(*v);
+        return true;
+      } else if (auto v = std::get_if<std::string>(&value)) {
+        value = std::stoll(*v);
         return true;
       }
       break;
