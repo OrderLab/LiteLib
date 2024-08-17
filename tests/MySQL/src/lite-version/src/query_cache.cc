@@ -509,4 +509,57 @@ void QueryCache::InvalidateUnprocessableUpdateDuringNormal(
 }
 
 void QueryCache::InvalidateUnprocessableDeleteDuringNormal(
-    const hsql::DeleteStatement *stmt, TableCache &table_cache) {}
+    const hsql::DeleteStatement *stmt, TableCache &table_cache) {
+  auto table_it = table_cache.tables_.find(stmt->tableName);
+  if (table_it == table_cache.tables_.end()) {
+    LOG(WARNING) << "Table not found: " << stmt->tableName << std::endl;
+    return;
+  }
+  auto &table = table_it->second;
+
+  bool unprocessable = stmt->expr->type != hsql::kExprOperator ||
+                       stmt->expr->opType != hsql::kOpEquals ||
+                       stmt->expr->expr->type != hsql::kExprColumnRef;
+
+  auto column_it = table.columns_name_to_index.find(stmt->expr->expr->name);
+  if (column_it == table.columns_name_to_index.end()) {
+    LOG(WARNING) << "Column not found: " << stmt->expr->expr->name << std::endl;
+    return;
+  }
+  unprocessable |= column_it->second >= table.primary_keys_size;
+  unprocessable |= table.primary_keys_size != 1;
+
+  if (unprocessable) {
+    std::stringstream ss;
+    printStatementInfo(ss, stmt);
+    query_cache_.erase(stmt->tableName);
+    LOG(INFO) << "Invalidated query cache for table: " << stmt->tableName
+              << std::endl
+              << " with query:" << ss.str() << std::endl;
+    return;
+  }
+
+  CacheKey key;
+  CacheEntry old_entry;
+  // CacheEntry new_entry; // NOTE: don't need it right now, but is usable if
+  // more queries are unprocessable
+  key.table = stmt->tableName;
+  key.primary_keys.resize(table.primary_keys_size);
+  old_entry.values.resize(table.values_size);
+  ExprToValue(stmt->expr->expr2, key.primary_keys[column_it->second]);
+
+  auto &table_query_cache = query_cache_[stmt->tableName];
+  auto result_table_it = table_query_cache.begin();
+  while (result_table_it != table_query_cache.end()) {
+    auto old_match = table_cache.WhereMatch(key, old_entry,
+                                            result_table_it->second.begin()
+                                                ->second.GetSelectStatement()
+                                                ->whereClause);
+    if (!old_match.has_value() || old_match.value()) {
+      result_table_it = table_query_cache.erase(result_table_it);
+      continue;
+    }
+
+    ++result_table_it;
+  }
+}
