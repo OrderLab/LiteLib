@@ -329,10 +329,17 @@ void QueryCache::AddQueryAndResult(std::string query,
     CacheKey key = where_key;
     CacheEntry entry = where_entry;
     for (size_t i = 0; i < row.size(); ++i) {
+      Value value = row[i];
+      if (!ValueCast(value, table->columns[index[i]].type)) {
+        LOG(WARNING) << "Failed to cast value: " << ValueToString(value)
+                     << " to type: " << table->columns[index[i]].type
+                     << std::endl;
+        goto insert_to_query_cache;
+      }
       if (index[i] < table->primary_keys_size) {
-        key.primary_keys[index[i]] = row[i];
+        key.primary_keys[index[i]] = value;
       } else {
-        entry.values[index[i] - table->primary_keys_size] = row[i];
+        entry.values[index[i] - table->primary_keys_size] = value;
       }
     }
     cache->Add(key, entry, false, false);

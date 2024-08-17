@@ -78,9 +78,9 @@ Value operator+(const Value &lhs, const Value &rhs) {
         if constexpr (std::is_same_v<T1, T2>) {
           return lhs_value + rhs_value;
         } else {
-          LOG(WARNING) << "operator+: Unsupported Value type: "
-                       << typeid(T1).name() << " + " << typeid(T2).name()
-                       << std::endl;
+          LOG(FATAL) << "operator+: Unsupported Value type: "
+                     << typeid(T1).name() << " + " << typeid(T2).name()
+                     << std::endl;
           return Value{};
         }
       },
