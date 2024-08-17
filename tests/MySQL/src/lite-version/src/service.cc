@@ -101,11 +101,11 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
     return;
   }
 
-  LOG(INFO) << "req: " << requests.size() << std::endl;
+  // LOG(INFO) << "req: " << requests.size() << std::endl;
   // for (auto &req : requests) {
   //   LOG(INFO) << "  req len: " << req->buffer->size() - 4 << std::endl;
   // }
-  LOG(INFO) << "resp: " << conn.responses.size() << std::endl;
+  // LOG(INFO) << "resp: " << conn.responses.size() << std::endl;
   // for (auto &resp : conn.responses) {
   //   LOG(INFO) << "  resp len: " << resp->buffer->size() - 4 << std::endl;
   // }
@@ -150,7 +150,6 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
       break;
   }
 
-  LOG(INFO) << "Query: " << query << std::endl;
   if (query.size()) {
     notify_queue_.push_back({.type = MySQL::NormalTask::Type::kUpdateQuery,
                              .query = query,

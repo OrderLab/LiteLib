@@ -11,6 +11,7 @@ bool ResponseDissector::Digest(
   if (state_ == END) {
     inter_eof_cnt = 0;
     responses.clear();
+    state_ = NORMAL;
   }
   responses.push_back(resp);
 
@@ -40,6 +41,9 @@ bool ResponseDissector::Digest(
           state_ = END;
           return true;
         }
+      } else if ((*resp->buffer)[3] == 0x01) {  // packet number
+        state_ = END;
+        return true;
       } else {  // has augmented packet
         state_ = NORMAL;
         return false;
