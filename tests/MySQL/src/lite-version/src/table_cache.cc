@@ -371,7 +371,9 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
         new_entry ? WhereMatch(key, *new_entry, where) : false;
 
     if (!old_entry_match.has_value() || !new_entry_match.has_value()) {
-      // TODO: invalidate
+      table_query_cache_entry =
+          query_cache_table_it->second.erase(table_query_cache_entry);
+      continue;
     }
 
     if (!update_query_cache) {
@@ -385,81 +387,165 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
       continue;
     }
 
-    for (auto &result_table_entry : table_query_cache_entry->second) {
-      // TODO: support expr other than plain select
-      auto column_name = result_table_entry.second.GetSelectStatement()
-                             ->selectList->at(0)
-                             ->name;
-      auto column_it =
-          tables_[key.table].columns_name_to_index.find(column_name);
-      if (column_it == tables_[key.table].columns_name_to_index.end()) {
-        LOG(ERROR) << "Column not found: " << column_name << std::endl;
-      }
-      auto column = tables_[key.table].columns[column_it->second];
-
-      std::optional<Value> old_value;
-      if (old_entry_match.value()) {
-        if (column.is_primary_key) {
-          old_value = key.primary_keys[column_it->second];
-        } else {
-          old_value = old_entry->values[column_it->second -
-                                        tables_[key.table].primary_keys_size];
+    for (auto result_table_entry = table_query_cache_entry->second.begin();
+         result_table_entry != table_query_cache_entry->second.end();) {
+      // TODO: diff entry in select list are diff types
+      if (result_table_entry->second.GetSelectStatement()
+              ->selectList->at(0)
+              ->type == hsql::kExprColumnRef) {
+        std::vector<size_t> index;
+        for (auto select_id = 0;
+             select_id < result_table_entry->second.GetSelectStatement()
+                             ->selectList->size();
+             ++select_id) {
+          auto column_name = result_table_entry->second.GetSelectStatement()
+                                 ->selectList->at(select_id)
+                                 ->name;
+          auto column_it =
+              tables_[key.table].columns_name_to_index.find(column_name);
+          if (column_it == tables_[key.table].columns_name_to_index.end()) {
+            LOG(ERROR) << "Column not found: " << column_name << std::endl;
+          }
+          index.push_back(column_it->second);
         }
-      }
-      if (!old_value.has_value()) continue;
 
-      std::optional<Value> new_value;
-      if (new_entry_match.value()) {
-        if (column.is_primary_key) {
-          new_value = key.primary_keys[column_it->second];
-        } else {
-          new_value = new_entry->values[column_it->second -
-                                        tables_[key.table].primary_keys_size];
+        bool invalidate = false;
+        std::vector<Value> old_row;
+        if (old_entry_match.value()) {
+          for (auto i = 0; i < index.size(); i++) {
+            std::optional<Value> old_value;
+            if (index[i] < tables_[key.table].primary_keys_size) {
+              old_value = key.primary_keys[index[i]];
+            } else {
+              old_value =
+                  old_entry
+                      ->values[index[i] - tables_[key.table].primary_keys_size];
+            }
+            if (!old_value.has_value()) {
+              invalidate = true;
+              break;
+            }
+            old_row.push_back(old_value.value());
+          }
         }
-      } else {
-        // TODO
-      }
 
-      // TODO: support limit
-      auto &result = result_table_entry.second.result;
+        std::vector<Value> new_row;
+        if (new_entry_match.value()) {
+          for (auto i = 0; i < index.size(); i++) {
+            std::optional<Value> value;
+            if (index[i] < tables_[key.table].primary_keys_size) {
+              value = key.primary_keys[index[i]];
+            } else {
+              value =
+                  new_entry
+                      ->values[index[i] - tables_[key.table].primary_keys_size];
+            }
+            if (!value.has_value()) {
+              invalidate = true;
+              break;
+            }
+            new_row.push_back(value.value());
+          }
+        }
 
-      // remove old value
-      if (old_entry_match.value()) {
-        result.rows.erase(std::remove(result.rows.begin(), result.rows.end(),
-                                      std::vector<Value>{old_value.value()}),
-                          result.rows.end());
-      }
+        if (invalidate) {
+          // TODO: support unknown values
+          result_table_entry =
+              table_query_cache_entry->second.erase(result_table_entry);
+          continue;
+        }
 
-      // add new value
-      if (new_entry_match.value()) {
-        if (result_table_entry.second.GetSelectStatement()->order) {
-          if (result_table_entry.second.GetSelectStatement()->order->size() ==
-                  1 &&
-              (*result_table_entry.second.GetSelectStatement()->order)[0]
-                      ->expr->type == hsql::kExprColumnRef &&
-              (*result_table_entry.second.GetSelectStatement()->order)[0]
-                      ->expr->name == column_name) {
-            size_t i = 0;
-            if ((*result_table_entry.second.GetSelectStatement()->order)[0]
-                    ->type == hsql::kOrderAsc) {
-              for (; i < result.rows.size(); i++) {
-                if (result.rows[i][0] > new_value.value()) break;
+        // TODO: support limit
+        auto &result = result_table_entry->second.result;
+
+        // remove old value
+        if (old_entry_match.value()) {
+          auto pos = std::find(result.rows.begin(), result.rows.end(), old_row);
+          if (pos != result.rows.end()) {
+            result.rows.erase(pos);
+          } else {
+            LOG(WARNING) << "Old row not found" << std::endl;
+            result_table_entry =
+                table_query_cache_entry->second.erase(result_table_entry);
+            continue;
+          }
+        }
+
+        // add new value
+        if (new_entry_match.value()) {
+          if (result_table_entry->second.GetSelectStatement()->order) {
+            if (result_table_entry->second.GetSelectStatement()
+                        ->order->size() == 1 &&
+                (*result_table_entry->second.GetSelectStatement()->order)[0]
+                        ->expr->type == hsql::kExprColumnRef) {
+              auto column_it = tables_[key.table].columns_name_to_index.find(
+                  (*result_table_entry->second.GetSelectStatement()->order)[0]
+                      ->expr->name);
+              if (column_it == tables_[key.table].columns_name_to_index.end()) {
+                LOG(ERROR) << "Column not found: "
+                           << (*result_table_entry->second.GetSelectStatement()
+                                    ->order)[0]
+                                  ->expr->name
+                           << std::endl;
+                result_table_entry =
+                    table_query_cache_entry->second.erase(result_table_entry);
+                continue;
+              }
+
+              size_t index_in_row =
+                  std::find(index.begin(), index.end(), column_it->second) -
+                  index.begin();
+
+              size_t i = 0;
+              if ((*result_table_entry->second.GetSelectStatement()->order)[0]
+                      ->type == hsql::kOrderAsc) {
+                for (; i < result.rows.size(); i++) {
+                  if (result.rows[i][index_in_row] > new_row[index_in_row])
+                    break;
+                }
+              } else {
+                for (; i < result.rows.size(); i++) {
+                  if (result.rows[i][index_in_row] < new_row[index_in_row])
+                    break;
+                }
+              }
+              result.rows.insert(result.rows.begin() + i, new_row);
+
+              if (result_table_entry->second.GetSelectStatement()
+                      ->selectDistinct) {
+                result.rows.erase(
+                    std::unique(result.rows.begin(), result.rows.end()),
+                    result.rows.end());
               }
             } else {
-              for (; i < result.rows.size(); i++) {
-                if (result.rows[i][0] < new_value.value()) break;
-              }
+              // TODO: support other orders
+              result_table_entry =
+                  table_query_cache_entry->second.erase(result_table_entry);
+              continue;
             }
-            result.rows.insert(result.rows.begin() + i, {new_value.value()});
           } else {
-            // TODO
+            result.rows.push_back(new_row);
           }
-        } else {
-          result.rows.push_back({new_value.value()});
         }
-      } else {
+      } else if (result_table_entry->second.GetSelectStatement()
+                         ->selectList->at(0)
+                         ->type == hsql::kExprColumnRef &&
+                 !strcmp(result_table_entry->second.GetSelectStatement()
+                             ->selectList->at(0)
+                             ->name,
+                         "SUM")) {
         // TODO
+      } else {
+        result_table_entry =
+            table_query_cache_entry->second.erase(result_table_entry);
+        LOG(WARNING) << "Unsupported select type: "
+                     << result_table_entry->second.GetSelectStatement()
+                            ->selectList->at(0)
+                            ->type
+                     << std::endl;
+        continue;
       }
+      ++result_table_entry;
     }
     ++table_query_cache_entry;
   }

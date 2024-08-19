@@ -33,7 +33,9 @@ QueryCache::Result QueryCache::Result::Deserialize(
     begin += 4;
     for (uint8_t i = 0; i < column_count; i++) {
       Value value = FetchValue(begin, kVARCHAR);
-      ValueCast(value, type);
+      ValueCast(value, column_count > 1
+                           ? (i == column_count - 1 ? kVARCHAR : kLL)
+                           : type);
       row.push_back(value);
     }
 
@@ -51,7 +53,7 @@ std::shared_ptr<std::vector<uint8_t>> QueryCache::Result::Serialize() {
   auto buffer = std::make_shared<std::vector<uint8_t>>();
   buffer->insert(buffer->end(), prefix_packets.begin(), prefix_packets.end());
 
-  uint8_t packet_number = 4;
+  uint8_t packet_number = (*buffer)[4] + 3;  // column_count + 3
   for (const auto &row : rows) {
     std::vector<uint8_t> values_buffer;
 
@@ -314,12 +316,15 @@ void QueryCache::AddQueryAndResult(std::string query,
       goto insert_to_query_cache;
     }
     if (column_it->second < table->primary_keys_size) {
-      ExprToValue(select_stmt->whereClause->expr2,
-                  where_key.primary_keys[column_it->second]);
+      Value value;
+      ExprToValue(select_stmt->whereClause->expr2, value);
+      ValueCast(value, table->columns[column_it->second].type);
+      where_key.primary_keys[column_it->second] = value;
       number_of_primary_keys_in_select_stmt++;
     } else {
       Value value;
       ExprToValue(select_stmt->whereClause->expr2, value);
+      ValueCast(value, table->columns[column_it->second].type);
       where_entry.values[column_it->second - table->primary_keys_size] = value;
     }
   }
