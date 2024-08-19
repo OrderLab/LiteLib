@@ -31,7 +31,7 @@ services:
     # network_mode: "host"
   mysql-client:
     container_name: mysql-client
-    image: debian:12-slim
+    image: severalnines/sysbench
     tty: true
     privileged: true
     cpuset: "4-31"
