@@ -112,6 +112,15 @@ bool ValueCast(Value &value, const Type &type) {
         return true;
       }
       break;
+    case kVARCHAR:
+      if (auto v = std::get_if<int64_t>(&value)) {
+        value = std::to_string(*v);
+        return true;
+      } else if (auto v = std::get_if<uint64_t>(&value)) {
+        value = std::to_string(*v);
+        return true;
+      }
+      break;
     default:
       LOG(WARNING) << "Unsupported Type Cast: " << value.index() << " -> "
                    << type << std::endl;

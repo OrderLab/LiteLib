@@ -56,7 +56,9 @@ std::shared_ptr<std::vector<uint8_t>> QueryCache::Result::Serialize() {
     std::vector<uint8_t> values_buffer;
 
     for (size_t i = 0; i < row.size(); ++i) {
-      auto value_buffer = ValueToNetworkBuffer(row[i]);
+      Value value = row[i];
+      ValueCast(value, kVARCHAR);
+      auto value_buffer = ValueToNetworkBuffer(value);
       values_buffer.insert(values_buffer.end(), value_buffer.begin(),
                            value_buffer.end());
     }
