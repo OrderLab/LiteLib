@@ -14,172 +14,205 @@
 #include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
-
-PROTOBUF_PRAGMA_INIT_SEG
-
-namespace _pb = ::PROTOBUF_NAMESPACE_ID;
-namespace _pbi = _pb::internal;
-
+extern PROTOBUF_INTERNAL_EXPORT_Security_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_CredentialsKVProto_Security_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_Security_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_TokenProto_Security_2eproto;
 namespace hadoop {
 namespace common {
-PROTOBUF_CONSTEXPR TokenProto::TokenProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.identifier_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.password_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.kind_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.service_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
-struct TokenProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR TokenProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~TokenProtoDefaultTypeInternal() {}
-  union {
-    TokenProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 TokenProtoDefaultTypeInternal _TokenProto_default_instance_;
-PROTOBUF_CONSTEXPR CredentialsKVProto::CredentialsKVProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.alias_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.secret_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.token_)*/nullptr} {}
-struct CredentialsKVProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR CredentialsKVProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~CredentialsKVProtoDefaultTypeInternal() {}
-  union {
-    CredentialsKVProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CredentialsKVProtoDefaultTypeInternal _CredentialsKVProto_default_instance_;
-PROTOBUF_CONSTEXPR CredentialsProto::CredentialsProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.tokens_)*/{}
-  , /*decltype(_impl_.secrets_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
-struct CredentialsProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR CredentialsProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~CredentialsProtoDefaultTypeInternal() {}
-  union {
-    CredentialsProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CredentialsProtoDefaultTypeInternal _CredentialsProto_default_instance_;
-PROTOBUF_CONSTEXPR GetDelegationTokenRequestProto::GetDelegationTokenRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.renewer_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
-struct GetDelegationTokenRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR GetDelegationTokenRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~GetDelegationTokenRequestProtoDefaultTypeInternal() {}
-  union {
-    GetDelegationTokenRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetDelegationTokenRequestProtoDefaultTypeInternal _GetDelegationTokenRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR GetDelegationTokenResponseProto::GetDelegationTokenResponseProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.token_)*/nullptr} {}
-struct GetDelegationTokenResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR GetDelegationTokenResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~GetDelegationTokenResponseProtoDefaultTypeInternal() {}
-  union {
-    GetDelegationTokenResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetDelegationTokenResponseProtoDefaultTypeInternal _GetDelegationTokenResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR RenewDelegationTokenRequestProto::RenewDelegationTokenRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.token_)*/nullptr} {}
-struct RenewDelegationTokenRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR RenewDelegationTokenRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~RenewDelegationTokenRequestProtoDefaultTypeInternal() {}
-  union {
-    RenewDelegationTokenRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RenewDelegationTokenRequestProtoDefaultTypeInternal _RenewDelegationTokenRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR RenewDelegationTokenResponseProto::RenewDelegationTokenResponseProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.newexpirytime_)*/uint64_t{0u}} {}
-struct RenewDelegationTokenResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR RenewDelegationTokenResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~RenewDelegationTokenResponseProtoDefaultTypeInternal() {}
-  union {
-    RenewDelegationTokenResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RenewDelegationTokenResponseProtoDefaultTypeInternal _RenewDelegationTokenResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR CancelDelegationTokenRequestProto::CancelDelegationTokenRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.token_)*/nullptr} {}
-struct CancelDelegationTokenRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR CancelDelegationTokenRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~CancelDelegationTokenRequestProtoDefaultTypeInternal() {}
-  union {
-    CancelDelegationTokenRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CancelDelegationTokenRequestProtoDefaultTypeInternal _CancelDelegationTokenRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR CancelDelegationTokenResponseProto::CancelDelegationTokenResponseProto(
-    ::_pbi::ConstantInitialized) {}
-struct CancelDelegationTokenResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR CancelDelegationTokenResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~CancelDelegationTokenResponseProtoDefaultTypeInternal() {}
-  union {
-    CancelDelegationTokenResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CancelDelegationTokenResponseProtoDefaultTypeInternal _CancelDelegationTokenResponseProto_default_instance_;
+class TokenProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<TokenProto> _instance;
+} _TokenProto_default_instance_;
+class CredentialsKVProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<CredentialsKVProto> _instance;
+} _CredentialsKVProto_default_instance_;
+class CredentialsProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<CredentialsProto> _instance;
+} _CredentialsProto_default_instance_;
+class GetDelegationTokenRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetDelegationTokenRequestProto> _instance;
+} _GetDelegationTokenRequestProto_default_instance_;
+class GetDelegationTokenResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetDelegationTokenResponseProto> _instance;
+} _GetDelegationTokenResponseProto_default_instance_;
+class RenewDelegationTokenRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<RenewDelegationTokenRequestProto> _instance;
+} _RenewDelegationTokenRequestProto_default_instance_;
+class RenewDelegationTokenResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<RenewDelegationTokenResponseProto> _instance;
+} _RenewDelegationTokenResponseProto_default_instance_;
+class CancelDelegationTokenRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<CancelDelegationTokenRequestProto> _instance;
+} _CancelDelegationTokenRequestProto_default_instance_;
+class CancelDelegationTokenResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<CancelDelegationTokenResponseProto> _instance;
+} _CancelDelegationTokenResponseProto_default_instance_;
 }  // namespace common
 }  // namespace hadoop
-static ::_pb::Metadata file_level_metadata_Security_2eproto[9];
-static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_Security_2eproto = nullptr;
-static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_Security_2eproto = nullptr;
+static void InitDefaultsscc_info_CancelDelegationTokenRequestProto_Security_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-const uint32_t TableStruct_Security_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, _impl_._has_bits_),
+  {
+    void* ptr = &::hadoop::common::_CancelDelegationTokenRequestProto_default_instance_;
+    new (ptr) ::hadoop::common::CancelDelegationTokenRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::CancelDelegationTokenRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_CancelDelegationTokenRequestProto_Security_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_CancelDelegationTokenRequestProto_Security_2eproto}, {
+      &scc_info_TokenProto_Security_2eproto.base,}};
+
+static void InitDefaultsscc_info_CancelDelegationTokenResponseProto_Security_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::common::_CancelDelegationTokenResponseProto_default_instance_;
+    new (ptr) ::hadoop::common::CancelDelegationTokenResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::CancelDelegationTokenResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_CancelDelegationTokenResponseProto_Security_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_CancelDelegationTokenResponseProto_Security_2eproto}, {}};
+
+static void InitDefaultsscc_info_CredentialsKVProto_Security_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::common::_CredentialsKVProto_default_instance_;
+    new (ptr) ::hadoop::common::CredentialsKVProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::CredentialsKVProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_CredentialsKVProto_Security_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_CredentialsKVProto_Security_2eproto}, {
+      &scc_info_TokenProto_Security_2eproto.base,}};
+
+static void InitDefaultsscc_info_CredentialsProto_Security_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::common::_CredentialsProto_default_instance_;
+    new (ptr) ::hadoop::common::CredentialsProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::CredentialsProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_CredentialsProto_Security_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_CredentialsProto_Security_2eproto}, {
+      &scc_info_CredentialsKVProto_Security_2eproto.base,}};
+
+static void InitDefaultsscc_info_GetDelegationTokenRequestProto_Security_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::common::_GetDelegationTokenRequestProto_default_instance_;
+    new (ptr) ::hadoop::common::GetDelegationTokenRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::GetDelegationTokenRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_GetDelegationTokenRequestProto_Security_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_GetDelegationTokenRequestProto_Security_2eproto}, {}};
+
+static void InitDefaultsscc_info_GetDelegationTokenResponseProto_Security_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::common::_GetDelegationTokenResponseProto_default_instance_;
+    new (ptr) ::hadoop::common::GetDelegationTokenResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::GetDelegationTokenResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_GetDelegationTokenResponseProto_Security_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_GetDelegationTokenResponseProto_Security_2eproto}, {
+      &scc_info_TokenProto_Security_2eproto.base,}};
+
+static void InitDefaultsscc_info_RenewDelegationTokenRequestProto_Security_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::common::_RenewDelegationTokenRequestProto_default_instance_;
+    new (ptr) ::hadoop::common::RenewDelegationTokenRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::RenewDelegationTokenRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_RenewDelegationTokenRequestProto_Security_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_RenewDelegationTokenRequestProto_Security_2eproto}, {
+      &scc_info_TokenProto_Security_2eproto.base,}};
+
+static void InitDefaultsscc_info_RenewDelegationTokenResponseProto_Security_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::common::_RenewDelegationTokenResponseProto_default_instance_;
+    new (ptr) ::hadoop::common::RenewDelegationTokenResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::RenewDelegationTokenResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_RenewDelegationTokenResponseProto_Security_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_RenewDelegationTokenResponseProto_Security_2eproto}, {}};
+
+static void InitDefaultsscc_info_TokenProto_Security_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::common::_TokenProto_default_instance_;
+    new (ptr) ::hadoop::common::TokenProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::TokenProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_TokenProto_Security_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_TokenProto_Security_2eproto}, {}};
+
+static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_Security_2eproto[9];
+static constexpr ::PROTOBUF_NAMESPACE_ID::EnumDescriptor const** file_level_enum_descriptors_Security_2eproto = nullptr;
+static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_Security_2eproto = nullptr;
+
+const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_Security_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, _impl_.identifier_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, _impl_.password_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, _impl_.kind_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, _impl_.service_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, identifier_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, password_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, kind_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::TokenProto, service_),
   0,
   1,
   2,
   3,
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsKVProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsKVProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsKVProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsKVProto, _impl_.alias_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsKVProto, _impl_.token_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsKVProto, _impl_.secret_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsKVProto, alias_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsKVProto, token_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsKVProto, secret_),
   0,
   2,
   1,
@@ -188,78 +221,71 @@ const uint32_t TableStruct_Security_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsProto, _impl_.tokens_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsProto, _impl_.secrets_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::GetDelegationTokenRequestProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsProto, tokens_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::CredentialsProto, secrets_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::GetDelegationTokenRequestProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::common::GetDelegationTokenRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::GetDelegationTokenRequestProto, _impl_.renewer_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::GetDelegationTokenRequestProto, renewer_),
   0,
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::GetDelegationTokenResponseProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::GetDelegationTokenResponseProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::common::GetDelegationTokenResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::GetDelegationTokenResponseProto, _impl_.token_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::GetDelegationTokenResponseProto, token_),
   0,
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::RenewDelegationTokenRequestProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::RenewDelegationTokenRequestProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::common::RenewDelegationTokenRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::RenewDelegationTokenRequestProto, _impl_.token_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::RenewDelegationTokenRequestProto, token_),
   0,
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::RenewDelegationTokenResponseProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::RenewDelegationTokenResponseProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::common::RenewDelegationTokenResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::RenewDelegationTokenResponseProto, _impl_.newexpirytime_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::RenewDelegationTokenResponseProto, newexpirytime_),
   0,
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::CancelDelegationTokenRequestProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::CancelDelegationTokenRequestProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::common::CancelDelegationTokenRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::CancelDelegationTokenRequestProto, _impl_.token_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::CancelDelegationTokenRequestProto, token_),
   0,
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::common::CancelDelegationTokenResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
 };
-static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, 10, -1, sizeof(::hadoop::common::TokenProto)},
-  { 14, 23, -1, sizeof(::hadoop::common::CredentialsKVProto)},
-  { 26, -1, -1, sizeof(::hadoop::common::CredentialsProto)},
-  { 34, 41, -1, sizeof(::hadoop::common::GetDelegationTokenRequestProto)},
-  { 42, 49, -1, sizeof(::hadoop::common::GetDelegationTokenResponseProto)},
-  { 50, 57, -1, sizeof(::hadoop::common::RenewDelegationTokenRequestProto)},
-  { 58, 65, -1, sizeof(::hadoop::common::RenewDelegationTokenResponseProto)},
-  { 66, 73, -1, sizeof(::hadoop::common::CancelDelegationTokenRequestProto)},
-  { 74, -1, -1, sizeof(::hadoop::common::CancelDelegationTokenResponseProto)},
+static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  { 0, 9, sizeof(::hadoop::common::TokenProto)},
+  { 13, 21, sizeof(::hadoop::common::CredentialsKVProto)},
+  { 24, -1, sizeof(::hadoop::common::CredentialsProto)},
+  { 31, 37, sizeof(::hadoop::common::GetDelegationTokenRequestProto)},
+  { 38, 44, sizeof(::hadoop::common::GetDelegationTokenResponseProto)},
+  { 45, 51, sizeof(::hadoop::common::RenewDelegationTokenRequestProto)},
+  { 52, 58, sizeof(::hadoop::common::RenewDelegationTokenResponseProto)},
+  { 59, 65, sizeof(::hadoop::common::CancelDelegationTokenRequestProto)},
+  { 66, -1, sizeof(::hadoop::common::CancelDelegationTokenResponseProto)},
 };
 
-static const ::_pb::Message* const file_default_instances[] = {
-  &::hadoop::common::_TokenProto_default_instance_._instance,
-  &::hadoop::common::_CredentialsKVProto_default_instance_._instance,
-  &::hadoop::common::_CredentialsProto_default_instance_._instance,
-  &::hadoop::common::_GetDelegationTokenRequestProto_default_instance_._instance,
-  &::hadoop::common::_GetDelegationTokenResponseProto_default_instance_._instance,
-  &::hadoop::common::_RenewDelegationTokenRequestProto_default_instance_._instance,
-  &::hadoop::common::_RenewDelegationTokenResponseProto_default_instance_._instance,
-  &::hadoop::common::_CancelDelegationTokenRequestProto_default_instance_._instance,
-  &::hadoop::common::_CancelDelegationTokenResponseProto_default_instance_._instance,
+static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_TokenProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_CredentialsKVProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_CredentialsProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_GetDelegationTokenRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_GetDelegationTokenResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_RenewDelegationTokenRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_RenewDelegationTokenResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_CancelDelegationTokenRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_CancelDelegationTokenResponseProto_default_instance_),
 };
 
 const char descriptor_table_protodef_Security_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -284,29 +310,39 @@ const char descriptor_table_protodef_Security_2eproto[] PROTOBUF_SECTION_VARIABL
   "rg.apache.hadoop.security.protoB\016Securit"
   "yProtos\210\001\001\240\001\001"
   ;
-static ::_pbi::once_flag descriptor_table_Security_2eproto_once;
-const ::_pbi::DescriptorTable descriptor_table_Security_2eproto = {
-    false, false, 773, descriptor_table_protodef_Security_2eproto,
-    "Security.proto",
-    &descriptor_table_Security_2eproto_once, nullptr, 0, 9,
-    schemas, file_default_instances, TableStruct_Security_2eproto::offsets,
-    file_level_metadata_Security_2eproto, file_level_enum_descriptors_Security_2eproto,
-    file_level_service_descriptors_Security_2eproto,
+static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_Security_2eproto_deps[1] = {
 };
-PROTOBUF_ATTRIBUTE_WEAK const ::_pbi::DescriptorTable* descriptor_table_Security_2eproto_getter() {
-  return &descriptor_table_Security_2eproto;
-}
+static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_Security_2eproto_sccs[9] = {
+  &scc_info_CancelDelegationTokenRequestProto_Security_2eproto.base,
+  &scc_info_CancelDelegationTokenResponseProto_Security_2eproto.base,
+  &scc_info_CredentialsKVProto_Security_2eproto.base,
+  &scc_info_CredentialsProto_Security_2eproto.base,
+  &scc_info_GetDelegationTokenRequestProto_Security_2eproto.base,
+  &scc_info_GetDelegationTokenResponseProto_Security_2eproto.base,
+  &scc_info_RenewDelegationTokenRequestProto_Security_2eproto.base,
+  &scc_info_RenewDelegationTokenResponseProto_Security_2eproto.base,
+  &scc_info_TokenProto_Security_2eproto.base,
+};
+static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_Security_2eproto_once;
+const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_Security_2eproto = {
+  false, false, descriptor_table_protodef_Security_2eproto, "Security.proto", 773,
+  &descriptor_table_Security_2eproto_once, descriptor_table_Security_2eproto_sccs, descriptor_table_Security_2eproto_deps, 9, 0,
+  schemas, file_default_instances, TableStruct_Security_2eproto::offsets,
+  file_level_metadata_Security_2eproto, 9, file_level_enum_descriptors_Security_2eproto, file_level_service_descriptors_Security_2eproto,
+};
 
 // Force running AddDescriptors() at dynamic initialization time.
-PROTOBUF_ATTRIBUTE_INIT_PRIORITY2 static ::_pbi::AddDescriptorsRunner dynamic_init_dummy_Security_2eproto(&descriptor_table_Security_2eproto);
+static bool dynamic_init_dummy_Security_2eproto = (static_cast<void>(::PROTOBUF_NAMESPACE_ID::internal::AddDescriptors(&descriptor_table_Security_2eproto)), true);
 namespace hadoop {
 namespace common {
 
 // ===================================================================
 
+void TokenProto::InitAsDefaultInstance() {
+}
 class TokenProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<TokenProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<TokenProto>()._has_bits_);
   static void set_has_identifier(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -324,215 +360,178 @@ class TokenProto::_Internal {
   }
 };
 
-TokenProto::TokenProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+TokenProto::TokenProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.TokenProto)
 }
 TokenProto::TokenProto(const TokenProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  TokenProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.identifier_){}
-    , decltype(_impl_.password_){}
-    , decltype(_impl_.kind_){}
-    , decltype(_impl_.service_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.identifier_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.identifier_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  identifier_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_identifier()) {
-    _this->_impl_.identifier_.Set(from._internal_identifier(), 
-      _this->GetArenaForAllocation());
+    identifier_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_identifier(),
+      GetArena());
   }
-  _impl_.password_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.password_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  password_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_password()) {
-    _this->_impl_.password_.Set(from._internal_password(), 
-      _this->GetArenaForAllocation());
+    password_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_password(),
+      GetArena());
   }
-  _impl_.kind_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.kind_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  kind_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_kind()) {
-    _this->_impl_.kind_.Set(from._internal_kind(), 
-      _this->GetArenaForAllocation());
+    kind_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_kind(),
+      GetArena());
   }
-  _impl_.service_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.service_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  service_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_service()) {
-    _this->_impl_.service_.Set(from._internal_service(), 
-      _this->GetArenaForAllocation());
+    service_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_service(),
+      GetArena());
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.common.TokenProto)
 }
 
-inline void TokenProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.identifier_){}
-    , decltype(_impl_.password_){}
-    , decltype(_impl_.kind_){}
-    , decltype(_impl_.service_){}
-  };
-  _impl_.identifier_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.identifier_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.password_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.password_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.kind_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.kind_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.service_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.service_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void TokenProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_TokenProto_Security_2eproto.base);
+  identifier_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  password_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  kind_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  service_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 TokenProto::~TokenProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.TokenProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void TokenProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.identifier_.Destroy();
-  _impl_.password_.Destroy();
-  _impl_.kind_.Destroy();
-  _impl_.service_.Destroy();
+void TokenProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  identifier_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  password_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  kind_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  service_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void TokenProto::ArenaDtor(void* object) {
+  TokenProto* _this = reinterpret_cast< TokenProto* >(object);
+  (void)_this;
+}
+void TokenProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void TokenProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const TokenProto& TokenProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_TokenProto_Security_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void TokenProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.TokenProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x0000000fu) {
     if (cached_has_bits & 0x00000001u) {
-      _impl_.identifier_.ClearNonDefaultToEmpty();
+      identifier_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      _impl_.password_.ClearNonDefaultToEmpty();
+      password_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000004u) {
-      _impl_.kind_.ClearNonDefaultToEmpty();
+      kind_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000008u) {
-      _impl_.service_.ClearNonDefaultToEmpty();
+      service_.ClearNonDefaultToEmpty();
     }
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* TokenProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* TokenProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required bytes identifier = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_identifier();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // required bytes password = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
           auto str = _internal_mutable_password();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // required string kind = 3;
       case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 26)) {
           auto str = _internal_mutable_kind();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.common.TokenProto.kind");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.common.TokenProto.kind");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
       // required string service = 4;
       case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 34)) {
           auto str = _internal_mutable_service();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.common.TokenProto.service");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.common.TokenProto.service");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* TokenProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* TokenProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.TokenProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required bytes identifier = 1;
   if (cached_has_bits & 0x00000001u) {
     target = stream->WriteBytesMaybeAliased(
@@ -566,7 +565,7 @@ uint8_t* TokenProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.TokenProto)
@@ -611,7 +610,7 @@ size_t TokenProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.common.TokenProto)
   size_t total_size = 0;
 
-  if (((_impl_._has_bits_[0] & 0x0000000f) ^ 0x0000000f) == 0) {  // All required fields are present.
+  if (((_has_bits_[0] & 0x0000000f) ^ 0x0000000f) == 0) {  // All required fields are present.
     // required bytes identifier = 1;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::BytesSize(
@@ -635,44 +634,63 @@ size_t TokenProto::ByteSizeLong() const {
   } else {
     total_size += RequiredFieldsByteSizeFallback();
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData TokenProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    TokenProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*TokenProto::GetClassData() const { return &_class_data_; }
+void TokenProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.TokenProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const TokenProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<TokenProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.TokenProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.TokenProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void TokenProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<TokenProto*>(&to_msg);
-  auto& from = static_cast<const TokenProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.TokenProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void TokenProto::MergeFrom(const TokenProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.TokenProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = from._impl_._has_bits_[0];
+  cached_has_bits = from._has_bits_[0];
   if (cached_has_bits & 0x0000000fu) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_identifier(from._internal_identifier());
+      _internal_set_identifier(from._internal_identifier());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_password(from._internal_password());
+      _internal_set_password(from._internal_password());
     }
     if (cached_has_bits & 0x00000004u) {
-      _this->_internal_set_kind(from._internal_kind());
+      _internal_set_kind(from._internal_kind());
     }
     if (cached_has_bits & 0x00000008u) {
-      _this->_internal_set_service(from._internal_service());
+      _internal_set_service(from._internal_service());
     }
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void TokenProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.TokenProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void TokenProto::CopyFrom(const TokenProto& from) {
@@ -683,45 +701,34 @@ void TokenProto::CopyFrom(const TokenProto& from) {
 }
 
 bool TokenProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void TokenProto::InternalSwap(TokenProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.identifier_, lhs_arena,
-      &other->_impl_.identifier_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.password_, lhs_arena,
-      &other->_impl_.password_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.kind_, lhs_arena,
-      &other->_impl_.kind_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.service_, lhs_arena,
-      &other->_impl_.service_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  identifier_.Swap(&other->identifier_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  password_.Swap(&other->password_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  kind_.Swap(&other->kind_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  service_.Swap(&other->service_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata TokenProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_Security_2eproto_getter, &descriptor_table_Security_2eproto_once,
-      file_level_metadata_Security_2eproto[0]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void CredentialsKVProto::InitAsDefaultInstance() {
+  ::hadoop::common::_CredentialsKVProto_default_instance_._instance.get_mutable()->token_ = const_cast< ::hadoop::common::TokenProto*>(
+      ::hadoop::common::TokenProto::internal_default_instance());
+}
 class CredentialsKVProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<CredentialsKVProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<CredentialsKVProto>()._has_bits_);
   static void set_has_alias(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -739,178 +746,159 @@ class CredentialsKVProto::_Internal {
 
 const ::hadoop::common::TokenProto&
 CredentialsKVProto::_Internal::token(const CredentialsKVProto* msg) {
-  return *msg->_impl_.token_;
+  return *msg->token_;
 }
-CredentialsKVProto::CredentialsKVProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+CredentialsKVProto::CredentialsKVProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.CredentialsKVProto)
 }
 CredentialsKVProto::CredentialsKVProto(const CredentialsKVProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  CredentialsKVProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.alias_){}
-    , decltype(_impl_.secret_){}
-    , decltype(_impl_.token_){nullptr}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.alias_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.alias_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  alias_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_alias()) {
-    _this->_impl_.alias_.Set(from._internal_alias(), 
-      _this->GetArenaForAllocation());
+    alias_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_alias(),
+      GetArena());
   }
-  _impl_.secret_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.secret_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  secret_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_secret()) {
-    _this->_impl_.secret_.Set(from._internal_secret(), 
-      _this->GetArenaForAllocation());
+    secret_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_secret(),
+      GetArena());
   }
   if (from._internal_has_token()) {
-    _this->_impl_.token_ = new ::hadoop::common::TokenProto(*from._impl_.token_);
+    token_ = new ::hadoop::common::TokenProto(*from.token_);
+  } else {
+    token_ = nullptr;
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.common.CredentialsKVProto)
 }
 
-inline void CredentialsKVProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.alias_){}
-    , decltype(_impl_.secret_){}
-    , decltype(_impl_.token_){nullptr}
-  };
-  _impl_.alias_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.alias_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.secret_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.secret_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void CredentialsKVProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_CredentialsKVProto_Security_2eproto.base);
+  alias_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  secret_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  token_ = nullptr;
 }
 
 CredentialsKVProto::~CredentialsKVProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.CredentialsKVProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void CredentialsKVProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.alias_.Destroy();
-  _impl_.secret_.Destroy();
-  if (this != internal_default_instance()) delete _impl_.token_;
+void CredentialsKVProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  alias_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  secret_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (this != internal_default_instance()) delete token_;
 }
 
+void CredentialsKVProto::ArenaDtor(void* object) {
+  CredentialsKVProto* _this = reinterpret_cast< CredentialsKVProto* >(object);
+  (void)_this;
+}
+void CredentialsKVProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void CredentialsKVProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const CredentialsKVProto& CredentialsKVProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_CredentialsKVProto_Security_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void CredentialsKVProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.CredentialsKVProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
-      _impl_.alias_.ClearNonDefaultToEmpty();
+      alias_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      _impl_.secret_.ClearNonDefaultToEmpty();
+      secret_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000004u) {
-      GOOGLE_DCHECK(_impl_.token_ != nullptr);
-      _impl_.token_->Clear();
+      GOOGLE_DCHECK(token_ != nullptr);
+      token_->Clear();
     }
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* CredentialsKVProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* CredentialsKVProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required string alias = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_alias();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.common.CredentialsKVProto.alias");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.common.CredentialsKVProto.alias");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
       // optional .hadoop.common.TokenProto token = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
           ptr = ctx->ParseMessage(_internal_mutable_token(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // optional bytes secret = 3;
       case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 26)) {
           auto str = _internal_mutable_secret();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* CredentialsKVProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* CredentialsKVProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.CredentialsKVProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required string alias = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -923,9 +911,10 @@ uint8_t* CredentialsKVProto::_InternalSerialize(
 
   // optional .hadoop.common.TokenProto token = 2;
   if (cached_has_bits & 0x00000004u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(2, _Internal::token(this),
-        _Internal::token(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        2, _Internal::token(this), target, stream);
   }
 
   // optional bytes secret = 3;
@@ -935,7 +924,7 @@ uint8_t* CredentialsKVProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.CredentialsKVProto)
@@ -952,11 +941,11 @@ size_t CredentialsKVProto::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_alias());
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000006u) {
     // optional bytes secret = 3;
     if (cached_has_bits & 0x00000002u) {
@@ -969,42 +958,60 @@ size_t CredentialsKVProto::ByteSizeLong() const {
     if (cached_has_bits & 0x00000004u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-          *_impl_.token_);
+          *token_);
     }
 
   }
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CredentialsKVProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    CredentialsKVProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CredentialsKVProto::GetClassData() const { return &_class_data_; }
+void CredentialsKVProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.CredentialsKVProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CredentialsKVProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CredentialsKVProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.CredentialsKVProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.CredentialsKVProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void CredentialsKVProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<CredentialsKVProto*>(&to_msg);
-  auto& from = static_cast<const CredentialsKVProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.CredentialsKVProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void CredentialsKVProto::MergeFrom(const CredentialsKVProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.CredentialsKVProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = from._impl_._has_bits_[0];
+  cached_has_bits = from._has_bits_[0];
   if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_alias(from._internal_alias());
+      _internal_set_alias(from._internal_alias());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_secret(from._internal_secret());
+      _internal_set_secret(from._internal_secret());
     }
     if (cached_has_bits & 0x00000004u) {
-      _this->_internal_mutable_token()->::hadoop::common::TokenProto::MergeFrom(
-          from._internal_token());
+      _internal_mutable_token()->::hadoop::common::TokenProto::MergeFrom(from._internal_token());
     }
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void CredentialsKVProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.CredentialsKVProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void CredentialsKVProto::CopyFrom(const CredentialsKVProto& from) {
@@ -1015,110 +1022,102 @@ void CredentialsKVProto::CopyFrom(const CredentialsKVProto& from) {
 }
 
 bool CredentialsKVProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   if (_internal_has_token()) {
-    if (!_impl_.token_->IsInitialized()) return false;
+    if (!token_->IsInitialized()) return false;
   }
   return true;
 }
 
 void CredentialsKVProto::InternalSwap(CredentialsKVProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.alias_, lhs_arena,
-      &other->_impl_.alias_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.secret_, lhs_arena,
-      &other->_impl_.secret_, rhs_arena
-  );
-  swap(_impl_.token_, other->_impl_.token_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  alias_.Swap(&other->alias_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  secret_.Swap(&other->secret_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  swap(token_, other->token_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata CredentialsKVProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_Security_2eproto_getter, &descriptor_table_Security_2eproto_once,
-      file_level_metadata_Security_2eproto[1]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void CredentialsProto::InitAsDefaultInstance() {
+}
 class CredentialsProto::_Internal {
  public:
 };
 
-CredentialsProto::CredentialsProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+CredentialsProto::CredentialsProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
+  tokens_(arena),
+  secrets_(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.CredentialsProto)
 }
 CredentialsProto::CredentialsProto(const CredentialsProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  CredentialsProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_.tokens_){from._impl_.tokens_}
-    , decltype(_impl_.secrets_){from._impl_.secrets_}
-    , /*decltype(_impl_._cached_size_)*/{}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      tokens_(from.tokens_),
+      secrets_(from.secrets_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.common.CredentialsProto)
 }
 
-inline void CredentialsProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_.tokens_){arena}
-    , decltype(_impl_.secrets_){arena}
-    , /*decltype(_impl_._cached_size_)*/{}
-  };
+void CredentialsProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_CredentialsProto_Security_2eproto.base);
 }
 
 CredentialsProto::~CredentialsProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.CredentialsProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void CredentialsProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.tokens_.~RepeatedPtrField();
-  _impl_.secrets_.~RepeatedPtrField();
+void CredentialsProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
 }
 
+void CredentialsProto::ArenaDtor(void* object) {
+  CredentialsProto* _this = reinterpret_cast< CredentialsProto* >(object);
+  (void)_this;
+}
+void CredentialsProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void CredentialsProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const CredentialsProto& CredentialsProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_CredentialsProto_Security_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void CredentialsProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.CredentialsProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.tokens_.Clear();
-  _impl_.secrets_.Clear();
+  tokens_.Clear();
+  secrets_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* CredentialsProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* CredentialsProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // repeated .hadoop.common.CredentialsKVProto tokens = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr -= 1;
           do {
             ptr += 1;
@@ -1126,12 +1125,11 @@ const char* CredentialsProto::_InternalParse(const char* ptr, ::_pbi::ParseConte
             CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<10>(ptr));
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // repeated .hadoop.common.CredentialsKVProto secrets = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
           ptr -= 1;
           do {
             ptr += 1;
@@ -1139,56 +1137,54 @@ const char* CredentialsProto::_InternalParse(const char* ptr, ::_pbi::ParseConte
             CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<18>(ptr));
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
+success:
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* CredentialsProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* CredentialsProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.CredentialsProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   // repeated .hadoop.common.CredentialsKVProto tokens = 1;
-  for (unsigned i = 0,
-      n = static_cast<unsigned>(this->_internal_tokens_size()); i < n; i++) {
-    const auto& repfield = this->_internal_tokens(i);
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->_internal_tokens_size()); i < n; i++) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-        InternalWriteMessage(1, repfield, repfield.GetCachedSize(), target, stream);
+      InternalWriteMessage(1, this->_internal_tokens(i), target, stream);
   }
 
   // repeated .hadoop.common.CredentialsKVProto secrets = 2;
-  for (unsigned i = 0,
-      n = static_cast<unsigned>(this->_internal_secrets_size()); i < n; i++) {
-    const auto& repfield = this->_internal_secrets(i);
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->_internal_secrets_size()); i < n; i++) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-        InternalWriteMessage(2, repfield, repfield.GetCachedSize(), target, stream);
+      InternalWriteMessage(2, this->_internal_secrets(i), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.CredentialsProto)
@@ -1199,45 +1195,64 @@ size_t CredentialsProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.common.CredentialsProto)
   size_t total_size = 0;
 
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   // repeated .hadoop.common.CredentialsKVProto tokens = 1;
   total_size += 1UL * this->_internal_tokens_size();
-  for (const auto& msg : this->_impl_.tokens_) {
+  for (const auto& msg : this->tokens_) {
     total_size +=
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
   // repeated .hadoop.common.CredentialsKVProto secrets = 2;
   total_size += 1UL * this->_internal_secrets_size();
-  for (const auto& msg : this->_impl_.secrets_) {
+  for (const auto& msg : this->secrets_) {
     total_size +=
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CredentialsProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    CredentialsProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CredentialsProto::GetClassData() const { return &_class_data_; }
+void CredentialsProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.CredentialsProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CredentialsProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CredentialsProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.CredentialsProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.CredentialsProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void CredentialsProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<CredentialsProto*>(&to_msg);
-  auto& from = static_cast<const CredentialsProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.CredentialsProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void CredentialsProto::MergeFrom(const CredentialsProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.CredentialsProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  _this->_impl_.tokens_.MergeFrom(from._impl_.tokens_);
-  _this->_impl_.secrets_.MergeFrom(from._impl_.secrets_);
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  tokens_.MergeFrom(from.tokens_);
+  secrets_.MergeFrom(from.secrets_);
+}
+
+void CredentialsProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.CredentialsProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void CredentialsProto::CopyFrom(const CredentialsProto& from) {
@@ -1248,31 +1263,30 @@ void CredentialsProto::CopyFrom(const CredentialsProto& from) {
 }
 
 bool CredentialsProto::IsInitialized() const {
-  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(_impl_.tokens_))
-    return false;
-  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(_impl_.secrets_))
-    return false;
+  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(tokens_)) return false;
+  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(secrets_)) return false;
   return true;
 }
 
 void CredentialsProto::InternalSwap(CredentialsProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  _impl_.tokens_.InternalSwap(&other->_impl_.tokens_);
-  _impl_.secrets_.InternalSwap(&other->_impl_.secrets_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  tokens_.InternalSwap(&other->tokens_);
+  secrets_.InternalSwap(&other->secrets_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata CredentialsProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_Security_2eproto_getter, &descriptor_table_Security_2eproto_once,
-      file_level_metadata_Security_2eproto[2]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void GetDelegationTokenRequestProto::InitAsDefaultInstance() {
+}
 class GetDelegationTokenRequestProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<GetDelegationTokenRequestProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<GetDelegationTokenRequestProto>()._has_bits_);
   static void set_has_renewer(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -1281,129 +1295,119 @@ class GetDelegationTokenRequestProto::_Internal {
   }
 };
 
-GetDelegationTokenRequestProto::GetDelegationTokenRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+GetDelegationTokenRequestProto::GetDelegationTokenRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.GetDelegationTokenRequestProto)
 }
 GetDelegationTokenRequestProto::GetDelegationTokenRequestProto(const GetDelegationTokenRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  GetDelegationTokenRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.renewer_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.renewer_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.renewer_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  renewer_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_renewer()) {
-    _this->_impl_.renewer_.Set(from._internal_renewer(), 
-      _this->GetArenaForAllocation());
+    renewer_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_renewer(),
+      GetArena());
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.common.GetDelegationTokenRequestProto)
 }
 
-inline void GetDelegationTokenRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.renewer_){}
-  };
-  _impl_.renewer_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.renewer_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void GetDelegationTokenRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_GetDelegationTokenRequestProto_Security_2eproto.base);
+  renewer_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 GetDelegationTokenRequestProto::~GetDelegationTokenRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.GetDelegationTokenRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void GetDelegationTokenRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.renewer_.Destroy();
+void GetDelegationTokenRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  renewer_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void GetDelegationTokenRequestProto::ArenaDtor(void* object) {
+  GetDelegationTokenRequestProto* _this = reinterpret_cast< GetDelegationTokenRequestProto* >(object);
+  (void)_this;
+}
+void GetDelegationTokenRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void GetDelegationTokenRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const GetDelegationTokenRequestProto& GetDelegationTokenRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetDelegationTokenRequestProto_Security_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void GetDelegationTokenRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.GetDelegationTokenRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    _impl_.renewer_.ClearNonDefaultToEmpty();
+    renewer_.ClearNonDefaultToEmpty();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* GetDelegationTokenRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* GetDelegationTokenRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required string renewer = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_renewer();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.common.GetDelegationTokenRequestProto.renewer");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.common.GetDelegationTokenRequestProto.renewer");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* GetDelegationTokenRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* GetDelegationTokenRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.GetDelegationTokenRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required string renewer = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -1415,7 +1419,7 @@ uint8_t* GetDelegationTokenRequestProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.GetDelegationTokenRequestProto)
@@ -1432,32 +1436,51 @@ size_t GetDelegationTokenRequestProto::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_renewer());
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetDelegationTokenRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    GetDelegationTokenRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetDelegationTokenRequestProto::GetClassData() const { return &_class_data_; }
+void GetDelegationTokenRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.GetDelegationTokenRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetDelegationTokenRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetDelegationTokenRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.GetDelegationTokenRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.GetDelegationTokenRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void GetDelegationTokenRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<GetDelegationTokenRequestProto*>(&to_msg);
-  auto& from = static_cast<const GetDelegationTokenRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.GetDelegationTokenRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void GetDelegationTokenRequestProto::MergeFrom(const GetDelegationTokenRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.GetDelegationTokenRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_renewer()) {
-    _this->_internal_set_renewer(from._internal_renewer());
+    _internal_set_renewer(from._internal_renewer());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void GetDelegationTokenRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.GetDelegationTokenRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void GetDelegationTokenRequestProto::CopyFrom(const GetDelegationTokenRequestProto& from) {
@@ -1468,33 +1491,31 @@ void GetDelegationTokenRequestProto::CopyFrom(const GetDelegationTokenRequestPro
 }
 
 bool GetDelegationTokenRequestProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void GetDelegationTokenRequestProto::InternalSwap(GetDelegationTokenRequestProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.renewer_, lhs_arena,
-      &other->_impl_.renewer_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  renewer_.Swap(&other->renewer_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetDelegationTokenRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_Security_2eproto_getter, &descriptor_table_Security_2eproto_once,
-      file_level_metadata_Security_2eproto[3]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void GetDelegationTokenResponseProto::InitAsDefaultInstance() {
+  ::hadoop::common::_GetDelegationTokenResponseProto_default_instance_._instance.get_mutable()->token_ = const_cast< ::hadoop::common::TokenProto*>(
+      ::hadoop::common::TokenProto::internal_default_instance());
+}
 class GetDelegationTokenResponseProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<GetDelegationTokenResponseProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<GetDelegationTokenResponseProto>()._has_bits_);
   static const ::hadoop::common::TokenProto& token(const GetDelegationTokenResponseProto* msg);
   static void set_has_token(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
@@ -1503,128 +1524,128 @@ class GetDelegationTokenResponseProto::_Internal {
 
 const ::hadoop::common::TokenProto&
 GetDelegationTokenResponseProto::_Internal::token(const GetDelegationTokenResponseProto* msg) {
-  return *msg->_impl_.token_;
+  return *msg->token_;
 }
-GetDelegationTokenResponseProto::GetDelegationTokenResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+GetDelegationTokenResponseProto::GetDelegationTokenResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.GetDelegationTokenResponseProto)
 }
 GetDelegationTokenResponseProto::GetDelegationTokenResponseProto(const GetDelegationTokenResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  GetDelegationTokenResponseProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.token_){nullptr}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   if (from._internal_has_token()) {
-    _this->_impl_.token_ = new ::hadoop::common::TokenProto(*from._impl_.token_);
+    token_ = new ::hadoop::common::TokenProto(*from.token_);
+  } else {
+    token_ = nullptr;
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.common.GetDelegationTokenResponseProto)
 }
 
-inline void GetDelegationTokenResponseProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.token_){nullptr}
-  };
+void GetDelegationTokenResponseProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_GetDelegationTokenResponseProto_Security_2eproto.base);
+  token_ = nullptr;
 }
 
 GetDelegationTokenResponseProto::~GetDelegationTokenResponseProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.GetDelegationTokenResponseProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void GetDelegationTokenResponseProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  if (this != internal_default_instance()) delete _impl_.token_;
+void GetDelegationTokenResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  if (this != internal_default_instance()) delete token_;
 }
 
+void GetDelegationTokenResponseProto::ArenaDtor(void* object) {
+  GetDelegationTokenResponseProto* _this = reinterpret_cast< GetDelegationTokenResponseProto* >(object);
+  (void)_this;
+}
+void GetDelegationTokenResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void GetDelegationTokenResponseProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const GetDelegationTokenResponseProto& GetDelegationTokenResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetDelegationTokenResponseProto_Security_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void GetDelegationTokenResponseProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.GetDelegationTokenResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    GOOGLE_DCHECK(_impl_.token_ != nullptr);
-    _impl_.token_->Clear();
+    GOOGLE_DCHECK(token_ != nullptr);
+    token_->Clear();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* GetDelegationTokenResponseProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* GetDelegationTokenResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // optional .hadoop.common.TokenProto token = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr = ctx->ParseMessage(_internal_mutable_token(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* GetDelegationTokenResponseProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* GetDelegationTokenResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.GetDelegationTokenResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // optional .hadoop.common.TokenProto token = 1;
   if (cached_has_bits & 0x00000001u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(1, _Internal::token(this),
-        _Internal::token(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        1, _Internal::token(this), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.GetDelegationTokenResponseProto)
@@ -1635,41 +1656,59 @@ size_t GetDelegationTokenResponseProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.common.GetDelegationTokenResponseProto)
   size_t total_size = 0;
 
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   // optional .hadoop.common.TokenProto token = 1;
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.token_);
+        *token_);
   }
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetDelegationTokenResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    GetDelegationTokenResponseProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetDelegationTokenResponseProto::GetClassData() const { return &_class_data_; }
+void GetDelegationTokenResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.GetDelegationTokenResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetDelegationTokenResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetDelegationTokenResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.GetDelegationTokenResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.GetDelegationTokenResponseProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void GetDelegationTokenResponseProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<GetDelegationTokenResponseProto*>(&to_msg);
-  auto& from = static_cast<const GetDelegationTokenResponseProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.GetDelegationTokenResponseProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void GetDelegationTokenResponseProto::MergeFrom(const GetDelegationTokenResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.GetDelegationTokenResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_token()) {
-    _this->_internal_mutable_token()->::hadoop::common::TokenProto::MergeFrom(
-        from._internal_token());
+    _internal_mutable_token()->::hadoop::common::TokenProto::MergeFrom(from._internal_token());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void GetDelegationTokenResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.GetDelegationTokenResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void GetDelegationTokenResponseProto::CopyFrom(const GetDelegationTokenResponseProto& from) {
@@ -1681,29 +1720,32 @@ void GetDelegationTokenResponseProto::CopyFrom(const GetDelegationTokenResponseP
 
 bool GetDelegationTokenResponseProto::IsInitialized() const {
   if (_internal_has_token()) {
-    if (!_impl_.token_->IsInitialized()) return false;
+    if (!token_->IsInitialized()) return false;
   }
   return true;
 }
 
 void GetDelegationTokenResponseProto::InternalSwap(GetDelegationTokenResponseProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  swap(_impl_.token_, other->_impl_.token_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  swap(token_, other->token_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetDelegationTokenResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_Security_2eproto_getter, &descriptor_table_Security_2eproto_once,
-      file_level_metadata_Security_2eproto[4]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void RenewDelegationTokenRequestProto::InitAsDefaultInstance() {
+  ::hadoop::common::_RenewDelegationTokenRequestProto_default_instance_._instance.get_mutable()->token_ = const_cast< ::hadoop::common::TokenProto*>(
+      ::hadoop::common::TokenProto::internal_default_instance());
+}
 class RenewDelegationTokenRequestProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<RenewDelegationTokenRequestProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<RenewDelegationTokenRequestProto>()._has_bits_);
   static const ::hadoop::common::TokenProto& token(const RenewDelegationTokenRequestProto* msg);
   static void set_has_token(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
@@ -1715,128 +1757,128 @@ class RenewDelegationTokenRequestProto::_Internal {
 
 const ::hadoop::common::TokenProto&
 RenewDelegationTokenRequestProto::_Internal::token(const RenewDelegationTokenRequestProto* msg) {
-  return *msg->_impl_.token_;
+  return *msg->token_;
 }
-RenewDelegationTokenRequestProto::RenewDelegationTokenRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+RenewDelegationTokenRequestProto::RenewDelegationTokenRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.RenewDelegationTokenRequestProto)
 }
 RenewDelegationTokenRequestProto::RenewDelegationTokenRequestProto(const RenewDelegationTokenRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  RenewDelegationTokenRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.token_){nullptr}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   if (from._internal_has_token()) {
-    _this->_impl_.token_ = new ::hadoop::common::TokenProto(*from._impl_.token_);
+    token_ = new ::hadoop::common::TokenProto(*from.token_);
+  } else {
+    token_ = nullptr;
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.common.RenewDelegationTokenRequestProto)
 }
 
-inline void RenewDelegationTokenRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.token_){nullptr}
-  };
+void RenewDelegationTokenRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_RenewDelegationTokenRequestProto_Security_2eproto.base);
+  token_ = nullptr;
 }
 
 RenewDelegationTokenRequestProto::~RenewDelegationTokenRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.RenewDelegationTokenRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void RenewDelegationTokenRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  if (this != internal_default_instance()) delete _impl_.token_;
+void RenewDelegationTokenRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  if (this != internal_default_instance()) delete token_;
 }
 
+void RenewDelegationTokenRequestProto::ArenaDtor(void* object) {
+  RenewDelegationTokenRequestProto* _this = reinterpret_cast< RenewDelegationTokenRequestProto* >(object);
+  (void)_this;
+}
+void RenewDelegationTokenRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void RenewDelegationTokenRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const RenewDelegationTokenRequestProto& RenewDelegationTokenRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_RenewDelegationTokenRequestProto_Security_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void RenewDelegationTokenRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.RenewDelegationTokenRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    GOOGLE_DCHECK(_impl_.token_ != nullptr);
-    _impl_.token_->Clear();
+    GOOGLE_DCHECK(token_ != nullptr);
+    token_->Clear();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* RenewDelegationTokenRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* RenewDelegationTokenRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required .hadoop.common.TokenProto token = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr = ctx->ParseMessage(_internal_mutable_token(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* RenewDelegationTokenRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* RenewDelegationTokenRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.RenewDelegationTokenRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required .hadoop.common.TokenProto token = 1;
   if (cached_has_bits & 0x00000001u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(1, _Internal::token(this),
-        _Internal::token(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        1, _Internal::token(this), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.RenewDelegationTokenRequestProto)
@@ -1851,35 +1893,53 @@ size_t RenewDelegationTokenRequestProto::ByteSizeLong() const {
   if (_internal_has_token()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.token_);
+        *token_);
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData RenewDelegationTokenRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    RenewDelegationTokenRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*RenewDelegationTokenRequestProto::GetClassData() const { return &_class_data_; }
+void RenewDelegationTokenRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.RenewDelegationTokenRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const RenewDelegationTokenRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<RenewDelegationTokenRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.RenewDelegationTokenRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.RenewDelegationTokenRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void RenewDelegationTokenRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<RenewDelegationTokenRequestProto*>(&to_msg);
-  auto& from = static_cast<const RenewDelegationTokenRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.RenewDelegationTokenRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void RenewDelegationTokenRequestProto::MergeFrom(const RenewDelegationTokenRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.RenewDelegationTokenRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_token()) {
-    _this->_internal_mutable_token()->::hadoop::common::TokenProto::MergeFrom(
-        from._internal_token());
+    _internal_mutable_token()->::hadoop::common::TokenProto::MergeFrom(from._internal_token());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void RenewDelegationTokenRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.RenewDelegationTokenRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void RenewDelegationTokenRequestProto::CopyFrom(const RenewDelegationTokenRequestProto& from) {
@@ -1890,31 +1950,32 @@ void RenewDelegationTokenRequestProto::CopyFrom(const RenewDelegationTokenReques
 }
 
 bool RenewDelegationTokenRequestProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   if (_internal_has_token()) {
-    if (!_impl_.token_->IsInitialized()) return false;
+    if (!token_->IsInitialized()) return false;
   }
   return true;
 }
 
 void RenewDelegationTokenRequestProto::InternalSwap(RenewDelegationTokenRequestProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  swap(_impl_.token_, other->_impl_.token_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  swap(token_, other->token_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata RenewDelegationTokenRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_Security_2eproto_getter, &descriptor_table_Security_2eproto_once,
-      file_level_metadata_Security_2eproto[5]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void RenewDelegationTokenResponseProto::InitAsDefaultInstance() {
+}
 class RenewDelegationTokenResponseProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<RenewDelegationTokenResponseProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<RenewDelegationTokenResponseProto>()._has_bits_);
   static void set_has_newexpirytime(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -1923,119 +1984,115 @@ class RenewDelegationTokenResponseProto::_Internal {
   }
 };
 
-RenewDelegationTokenResponseProto::RenewDelegationTokenResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+RenewDelegationTokenResponseProto::RenewDelegationTokenResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.RenewDelegationTokenResponseProto)
 }
 RenewDelegationTokenResponseProto::RenewDelegationTokenResponseProto(const RenewDelegationTokenResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  RenewDelegationTokenResponseProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.newexpirytime_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _this->_impl_.newexpirytime_ = from._impl_.newexpirytime_;
+  newexpirytime_ = from.newexpirytime_;
   // @@protoc_insertion_point(copy_constructor:hadoop.common.RenewDelegationTokenResponseProto)
 }
 
-inline void RenewDelegationTokenResponseProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.newexpirytime_){uint64_t{0u}}
-  };
+void RenewDelegationTokenResponseProto::SharedCtor() {
+  newexpirytime_ = PROTOBUF_ULONGLONG(0);
 }
 
 RenewDelegationTokenResponseProto::~RenewDelegationTokenResponseProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.RenewDelegationTokenResponseProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void RenewDelegationTokenResponseProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+void RenewDelegationTokenResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
 }
 
+void RenewDelegationTokenResponseProto::ArenaDtor(void* object) {
+  RenewDelegationTokenResponseProto* _this = reinterpret_cast< RenewDelegationTokenResponseProto* >(object);
+  (void)_this;
+}
+void RenewDelegationTokenResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void RenewDelegationTokenResponseProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const RenewDelegationTokenResponseProto& RenewDelegationTokenResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_RenewDelegationTokenResponseProto_Security_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void RenewDelegationTokenResponseProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.RenewDelegationTokenResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.newexpirytime_ = uint64_t{0u};
-  _impl_._has_bits_.Clear();
+  newexpirytime_ = PROTOBUF_ULONGLONG(0);
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* RenewDelegationTokenResponseProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* RenewDelegationTokenResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required uint64 newExpiryTime = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 8)) {
           _Internal::set_has_newexpirytime(&has_bits);
-          _impl_.newexpirytime_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          newexpirytime_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* RenewDelegationTokenResponseProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* RenewDelegationTokenResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.RenewDelegationTokenResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required uint64 newExpiryTime = 1;
   if (cached_has_bits & 0x00000001u) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(1, this->_internal_newexpirytime(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt64ToArray(1, this->_internal_newexpirytime(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.RenewDelegationTokenResponseProto)
@@ -2048,34 +2105,55 @@ size_t RenewDelegationTokenResponseProto::ByteSizeLong() const {
 
   // required uint64 newExpiryTime = 1;
   if (_internal_has_newexpirytime()) {
-    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_newexpirytime());
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt64Size(
+        this->_internal_newexpirytime());
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData RenewDelegationTokenResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    RenewDelegationTokenResponseProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*RenewDelegationTokenResponseProto::GetClassData() const { return &_class_data_; }
+void RenewDelegationTokenResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.RenewDelegationTokenResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const RenewDelegationTokenResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<RenewDelegationTokenResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.RenewDelegationTokenResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.RenewDelegationTokenResponseProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void RenewDelegationTokenResponseProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<RenewDelegationTokenResponseProto*>(&to_msg);
-  auto& from = static_cast<const RenewDelegationTokenResponseProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.RenewDelegationTokenResponseProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void RenewDelegationTokenResponseProto::MergeFrom(const RenewDelegationTokenResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.RenewDelegationTokenResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_newexpirytime()) {
-    _this->_internal_set_newexpirytime(from._internal_newexpirytime());
+    _internal_set_newexpirytime(from._internal_newexpirytime());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void RenewDelegationTokenResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.RenewDelegationTokenResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void RenewDelegationTokenResponseProto::CopyFrom(const RenewDelegationTokenResponseProto& from) {
@@ -2086,28 +2164,31 @@ void RenewDelegationTokenResponseProto::CopyFrom(const RenewDelegationTokenRespo
 }
 
 bool RenewDelegationTokenResponseProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void RenewDelegationTokenResponseProto::InternalSwap(RenewDelegationTokenResponseProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  swap(_impl_.newexpirytime_, other->_impl_.newexpirytime_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  swap(newexpirytime_, other->newexpirytime_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata RenewDelegationTokenResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_Security_2eproto_getter, &descriptor_table_Security_2eproto_once,
-      file_level_metadata_Security_2eproto[6]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void CancelDelegationTokenRequestProto::InitAsDefaultInstance() {
+  ::hadoop::common::_CancelDelegationTokenRequestProto_default_instance_._instance.get_mutable()->token_ = const_cast< ::hadoop::common::TokenProto*>(
+      ::hadoop::common::TokenProto::internal_default_instance());
+}
 class CancelDelegationTokenRequestProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<CancelDelegationTokenRequestProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<CancelDelegationTokenRequestProto>()._has_bits_);
   static const ::hadoop::common::TokenProto& token(const CancelDelegationTokenRequestProto* msg);
   static void set_has_token(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
@@ -2119,128 +2200,128 @@ class CancelDelegationTokenRequestProto::_Internal {
 
 const ::hadoop::common::TokenProto&
 CancelDelegationTokenRequestProto::_Internal::token(const CancelDelegationTokenRequestProto* msg) {
-  return *msg->_impl_.token_;
+  return *msg->token_;
 }
-CancelDelegationTokenRequestProto::CancelDelegationTokenRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+CancelDelegationTokenRequestProto::CancelDelegationTokenRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.CancelDelegationTokenRequestProto)
 }
 CancelDelegationTokenRequestProto::CancelDelegationTokenRequestProto(const CancelDelegationTokenRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  CancelDelegationTokenRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.token_){nullptr}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   if (from._internal_has_token()) {
-    _this->_impl_.token_ = new ::hadoop::common::TokenProto(*from._impl_.token_);
+    token_ = new ::hadoop::common::TokenProto(*from.token_);
+  } else {
+    token_ = nullptr;
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.common.CancelDelegationTokenRequestProto)
 }
 
-inline void CancelDelegationTokenRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.token_){nullptr}
-  };
+void CancelDelegationTokenRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_CancelDelegationTokenRequestProto_Security_2eproto.base);
+  token_ = nullptr;
 }
 
 CancelDelegationTokenRequestProto::~CancelDelegationTokenRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.CancelDelegationTokenRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void CancelDelegationTokenRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  if (this != internal_default_instance()) delete _impl_.token_;
+void CancelDelegationTokenRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  if (this != internal_default_instance()) delete token_;
 }
 
+void CancelDelegationTokenRequestProto::ArenaDtor(void* object) {
+  CancelDelegationTokenRequestProto* _this = reinterpret_cast< CancelDelegationTokenRequestProto* >(object);
+  (void)_this;
+}
+void CancelDelegationTokenRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void CancelDelegationTokenRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const CancelDelegationTokenRequestProto& CancelDelegationTokenRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_CancelDelegationTokenRequestProto_Security_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void CancelDelegationTokenRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.CancelDelegationTokenRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    GOOGLE_DCHECK(_impl_.token_ != nullptr);
-    _impl_.token_->Clear();
+    GOOGLE_DCHECK(token_ != nullptr);
+    token_->Clear();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* CancelDelegationTokenRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* CancelDelegationTokenRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required .hadoop.common.TokenProto token = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr = ctx->ParseMessage(_internal_mutable_token(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* CancelDelegationTokenRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* CancelDelegationTokenRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.CancelDelegationTokenRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required .hadoop.common.TokenProto token = 1;
   if (cached_has_bits & 0x00000001u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(1, _Internal::token(this),
-        _Internal::token(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        1, _Internal::token(this), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.CancelDelegationTokenRequestProto)
@@ -2255,35 +2336,53 @@ size_t CancelDelegationTokenRequestProto::ByteSizeLong() const {
   if (_internal_has_token()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.token_);
+        *token_);
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CancelDelegationTokenRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    CancelDelegationTokenRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CancelDelegationTokenRequestProto::GetClassData() const { return &_class_data_; }
+void CancelDelegationTokenRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.CancelDelegationTokenRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CancelDelegationTokenRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CancelDelegationTokenRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.CancelDelegationTokenRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.CancelDelegationTokenRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void CancelDelegationTokenRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<CancelDelegationTokenRequestProto*>(&to_msg);
-  auto& from = static_cast<const CancelDelegationTokenRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.CancelDelegationTokenRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void CancelDelegationTokenRequestProto::MergeFrom(const CancelDelegationTokenRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.CancelDelegationTokenRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_token()) {
-    _this->_internal_mutable_token()->::hadoop::common::TokenProto::MergeFrom(
-        from._internal_token());
+    _internal_mutable_token()->::hadoop::common::TokenProto::MergeFrom(from._internal_token());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void CancelDelegationTokenRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.CancelDelegationTokenRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void CancelDelegationTokenRequestProto::CopyFrom(const CancelDelegationTokenRequestProto& from) {
@@ -2294,104 +2393,219 @@ void CancelDelegationTokenRequestProto::CopyFrom(const CancelDelegationTokenRequ
 }
 
 bool CancelDelegationTokenRequestProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   if (_internal_has_token()) {
-    if (!_impl_.token_->IsInitialized()) return false;
+    if (!token_->IsInitialized()) return false;
   }
   return true;
 }
 
 void CancelDelegationTokenRequestProto::InternalSwap(CancelDelegationTokenRequestProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  swap(_impl_.token_, other->_impl_.token_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  swap(token_, other->token_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata CancelDelegationTokenRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_Security_2eproto_getter, &descriptor_table_Security_2eproto_once,
-      file_level_metadata_Security_2eproto[7]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void CancelDelegationTokenResponseProto::InitAsDefaultInstance() {
+}
 class CancelDelegationTokenResponseProto::_Internal {
  public:
 };
 
-CancelDelegationTokenResponseProto::CancelDelegationTokenResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+CancelDelegationTokenResponseProto::CancelDelegationTokenResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.CancelDelegationTokenResponseProto)
 }
 CancelDelegationTokenResponseProto::CancelDelegationTokenResponseProto(const CancelDelegationTokenResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  CancelDelegationTokenResponseProto* const _this = this; (void)_this;
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.common.CancelDelegationTokenResponseProto)
 }
 
+void CancelDelegationTokenResponseProto::SharedCtor() {
+}
+
+CancelDelegationTokenResponseProto::~CancelDelegationTokenResponseProto() {
+  // @@protoc_insertion_point(destructor:hadoop.common.CancelDelegationTokenResponseProto)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void CancelDelegationTokenResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void CancelDelegationTokenResponseProto::ArenaDtor(void* object) {
+  CancelDelegationTokenResponseProto* _this = reinterpret_cast< CancelDelegationTokenResponseProto* >(object);
+  (void)_this;
+}
+void CancelDelegationTokenResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void CancelDelegationTokenResponseProto::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const CancelDelegationTokenResponseProto& CancelDelegationTokenResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_CancelDelegationTokenResponseProto_Security_2eproto.base);
+  return *internal_default_instance();
+}
 
 
+void CancelDelegationTokenResponseProto::Clear() {
+// @@protoc_insertion_point(message_clear_start:hadoop.common.CancelDelegationTokenResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CancelDelegationTokenResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CancelDelegationTokenResponseProto::GetClassData() const { return &_class_data_; }
+const char* CancelDelegationTokenResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
 
+::PROTOBUF_NAMESPACE_ID::uint8* CancelDelegationTokenResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.CancelDelegationTokenResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.CancelDelegationTokenResponseProto)
+  return target;
+}
 
+size_t CancelDelegationTokenResponseProto::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:hadoop.common.CancelDelegationTokenResponseProto)
+  size_t total_size = 0;
 
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
 
+void CancelDelegationTokenResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.CancelDelegationTokenResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CancelDelegationTokenResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CancelDelegationTokenResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.CancelDelegationTokenResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.CancelDelegationTokenResponseProto)
+    MergeFrom(*source);
+  }
+}
+
+void CancelDelegationTokenResponseProto::MergeFrom(const CancelDelegationTokenResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.CancelDelegationTokenResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+}
+
+void CancelDelegationTokenResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.CancelDelegationTokenResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void CancelDelegationTokenResponseProto::CopyFrom(const CancelDelegationTokenResponseProto& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:hadoop.common.CancelDelegationTokenResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CancelDelegationTokenResponseProto::IsInitialized() const {
+  return true;
+}
+
+void CancelDelegationTokenResponseProto::InternalSwap(CancelDelegationTokenResponseProto* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+}
 
 ::PROTOBUF_NAMESPACE_ID::Metadata CancelDelegationTokenResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_Security_2eproto_getter, &descriptor_table_Security_2eproto_once,
-      file_level_metadata_Security_2eproto[8]);
+  return GetMetadataStatic();
 }
+
 
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace common
 }  // namespace hadoop
 PROTOBUF_NAMESPACE_OPEN
-template<> PROTOBUF_NOINLINE ::hadoop::common::TokenProto*
-Arena::CreateMaybeMessage< ::hadoop::common::TokenProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::TokenProto* Arena::CreateMaybeMessage< ::hadoop::common::TokenProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::TokenProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::common::CredentialsKVProto*
-Arena::CreateMaybeMessage< ::hadoop::common::CredentialsKVProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::CredentialsKVProto* Arena::CreateMaybeMessage< ::hadoop::common::CredentialsKVProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::CredentialsKVProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::common::CredentialsProto*
-Arena::CreateMaybeMessage< ::hadoop::common::CredentialsProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::CredentialsProto* Arena::CreateMaybeMessage< ::hadoop::common::CredentialsProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::CredentialsProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::common::GetDelegationTokenRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::common::GetDelegationTokenRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::GetDelegationTokenRequestProto* Arena::CreateMaybeMessage< ::hadoop::common::GetDelegationTokenRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::GetDelegationTokenRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::common::GetDelegationTokenResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::common::GetDelegationTokenResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::GetDelegationTokenResponseProto* Arena::CreateMaybeMessage< ::hadoop::common::GetDelegationTokenResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::GetDelegationTokenResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::common::RenewDelegationTokenRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::common::RenewDelegationTokenRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::RenewDelegationTokenRequestProto* Arena::CreateMaybeMessage< ::hadoop::common::RenewDelegationTokenRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::RenewDelegationTokenRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::common::RenewDelegationTokenResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::common::RenewDelegationTokenResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::RenewDelegationTokenResponseProto* Arena::CreateMaybeMessage< ::hadoop::common::RenewDelegationTokenResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::RenewDelegationTokenResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::common::CancelDelegationTokenRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::common::CancelDelegationTokenRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::CancelDelegationTokenRequestProto* Arena::CreateMaybeMessage< ::hadoop::common::CancelDelegationTokenRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::CancelDelegationTokenRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::common::CancelDelegationTokenResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::common::CancelDelegationTokenResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::CancelDelegationTokenResponseProto* Arena::CreateMaybeMessage< ::hadoop::common::CancelDelegationTokenResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::CancelDelegationTokenResponseProto >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE

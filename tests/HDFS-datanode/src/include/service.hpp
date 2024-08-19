@@ -48,6 +48,8 @@ class Datanode {
 
   std::unordered_map<std::pair<std::string, long>, hadoop::hdfs::ExtendedBlockProto> BlockMap;
 
+  hadoop::hdfs::ExtendedBlockProto target;
+
   lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                    CacheEntry> *server;
   bool initialized = false;

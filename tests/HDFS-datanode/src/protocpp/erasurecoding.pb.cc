@@ -14,320 +14,437 @@
 #include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
-
-PROTOBUF_PRAGMA_INIT_SEG
-
-namespace _pb = ::PROTOBUF_NAMESPACE_ID;
-namespace _pbi = _pb::internal;
-
+extern PROTOBUF_INTERNAL_EXPORT_hdfs_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_AddErasureCodingPolicyResponseProto_hdfs_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_erasurecoding_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_CodecProto_erasurecoding_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_hdfs_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_DatanodeInfosProto_hdfs_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_hdfs_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_ECTopologyVerifierResultProto_hdfs_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_hdfs_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_ErasureCodingPolicyProto_hdfs_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_hdfs_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_ExtendedBlockProto_hdfs_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_hdfs_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_StorageTypesProto_hdfs_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_hdfs_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_StorageUuidsProto_hdfs_2eproto;
 namespace hadoop {
 namespace hdfs {
-PROTOBUF_CONSTEXPR SetErasureCodingPolicyRequestProto::SetErasureCodingPolicyRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.src_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.ecpolicyname_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
-struct SetErasureCodingPolicyRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR SetErasureCodingPolicyRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~SetErasureCodingPolicyRequestProtoDefaultTypeInternal() {}
-  union {
-    SetErasureCodingPolicyRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 SetErasureCodingPolicyRequestProtoDefaultTypeInternal _SetErasureCodingPolicyRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR SetErasureCodingPolicyResponseProto::SetErasureCodingPolicyResponseProto(
-    ::_pbi::ConstantInitialized) {}
-struct SetErasureCodingPolicyResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR SetErasureCodingPolicyResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~SetErasureCodingPolicyResponseProtoDefaultTypeInternal() {}
-  union {
-    SetErasureCodingPolicyResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 SetErasureCodingPolicyResponseProtoDefaultTypeInternal _SetErasureCodingPolicyResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR GetErasureCodingPoliciesRequestProto::GetErasureCodingPoliciesRequestProto(
-    ::_pbi::ConstantInitialized) {}
-struct GetErasureCodingPoliciesRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR GetErasureCodingPoliciesRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~GetErasureCodingPoliciesRequestProtoDefaultTypeInternal() {}
-  union {
-    GetErasureCodingPoliciesRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetErasureCodingPoliciesRequestProtoDefaultTypeInternal _GetErasureCodingPoliciesRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR GetErasureCodingPoliciesResponseProto::GetErasureCodingPoliciesResponseProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.ecpolicies_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
-struct GetErasureCodingPoliciesResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR GetErasureCodingPoliciesResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~GetErasureCodingPoliciesResponseProtoDefaultTypeInternal() {}
-  union {
-    GetErasureCodingPoliciesResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetErasureCodingPoliciesResponseProtoDefaultTypeInternal _GetErasureCodingPoliciesResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR GetErasureCodingCodecsRequestProto::GetErasureCodingCodecsRequestProto(
-    ::_pbi::ConstantInitialized) {}
-struct GetErasureCodingCodecsRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR GetErasureCodingCodecsRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~GetErasureCodingCodecsRequestProtoDefaultTypeInternal() {}
-  union {
-    GetErasureCodingCodecsRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetErasureCodingCodecsRequestProtoDefaultTypeInternal _GetErasureCodingCodecsRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR GetErasureCodingCodecsResponseProto::GetErasureCodingCodecsResponseProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.codec_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
-struct GetErasureCodingCodecsResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR GetErasureCodingCodecsResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~GetErasureCodingCodecsResponseProtoDefaultTypeInternal() {}
-  union {
-    GetErasureCodingCodecsResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetErasureCodingCodecsResponseProtoDefaultTypeInternal _GetErasureCodingCodecsResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR GetErasureCodingPolicyRequestProto::GetErasureCodingPolicyRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.src_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
-struct GetErasureCodingPolicyRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR GetErasureCodingPolicyRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~GetErasureCodingPolicyRequestProtoDefaultTypeInternal() {}
-  union {
-    GetErasureCodingPolicyRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetErasureCodingPolicyRequestProtoDefaultTypeInternal _GetErasureCodingPolicyRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR GetErasureCodingPolicyResponseProto::GetErasureCodingPolicyResponseProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.ecpolicy_)*/nullptr} {}
-struct GetErasureCodingPolicyResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR GetErasureCodingPolicyResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~GetErasureCodingPolicyResponseProtoDefaultTypeInternal() {}
-  union {
-    GetErasureCodingPolicyResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetErasureCodingPolicyResponseProtoDefaultTypeInternal _GetErasureCodingPolicyResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR AddErasureCodingPoliciesRequestProto::AddErasureCodingPoliciesRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.ecpolicies_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
-struct AddErasureCodingPoliciesRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR AddErasureCodingPoliciesRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~AddErasureCodingPoliciesRequestProtoDefaultTypeInternal() {}
-  union {
-    AddErasureCodingPoliciesRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AddErasureCodingPoliciesRequestProtoDefaultTypeInternal _AddErasureCodingPoliciesRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR AddErasureCodingPoliciesResponseProto::AddErasureCodingPoliciesResponseProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.responses_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
-struct AddErasureCodingPoliciesResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR AddErasureCodingPoliciesResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~AddErasureCodingPoliciesResponseProtoDefaultTypeInternal() {}
-  union {
-    AddErasureCodingPoliciesResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AddErasureCodingPoliciesResponseProtoDefaultTypeInternal _AddErasureCodingPoliciesResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR RemoveErasureCodingPolicyRequestProto::RemoveErasureCodingPolicyRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.ecpolicyname_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
-struct RemoveErasureCodingPolicyRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR RemoveErasureCodingPolicyRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~RemoveErasureCodingPolicyRequestProtoDefaultTypeInternal() {}
-  union {
-    RemoveErasureCodingPolicyRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RemoveErasureCodingPolicyRequestProtoDefaultTypeInternal _RemoveErasureCodingPolicyRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR RemoveErasureCodingPolicyResponseProto::RemoveErasureCodingPolicyResponseProto(
-    ::_pbi::ConstantInitialized) {}
-struct RemoveErasureCodingPolicyResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR RemoveErasureCodingPolicyResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~RemoveErasureCodingPolicyResponseProtoDefaultTypeInternal() {}
-  union {
-    RemoveErasureCodingPolicyResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RemoveErasureCodingPolicyResponseProtoDefaultTypeInternal _RemoveErasureCodingPolicyResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR EnableErasureCodingPolicyRequestProto::EnableErasureCodingPolicyRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.ecpolicyname_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
-struct EnableErasureCodingPolicyRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR EnableErasureCodingPolicyRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~EnableErasureCodingPolicyRequestProtoDefaultTypeInternal() {}
-  union {
-    EnableErasureCodingPolicyRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EnableErasureCodingPolicyRequestProtoDefaultTypeInternal _EnableErasureCodingPolicyRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR EnableErasureCodingPolicyResponseProto::EnableErasureCodingPolicyResponseProto(
-    ::_pbi::ConstantInitialized) {}
-struct EnableErasureCodingPolicyResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR EnableErasureCodingPolicyResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~EnableErasureCodingPolicyResponseProtoDefaultTypeInternal() {}
-  union {
-    EnableErasureCodingPolicyResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EnableErasureCodingPolicyResponseProtoDefaultTypeInternal _EnableErasureCodingPolicyResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR DisableErasureCodingPolicyRequestProto::DisableErasureCodingPolicyRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.ecpolicyname_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
-struct DisableErasureCodingPolicyRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR DisableErasureCodingPolicyRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~DisableErasureCodingPolicyRequestProtoDefaultTypeInternal() {}
-  union {
-    DisableErasureCodingPolicyRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DisableErasureCodingPolicyRequestProtoDefaultTypeInternal _DisableErasureCodingPolicyRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR DisableErasureCodingPolicyResponseProto::DisableErasureCodingPolicyResponseProto(
-    ::_pbi::ConstantInitialized) {}
-struct DisableErasureCodingPolicyResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR DisableErasureCodingPolicyResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~DisableErasureCodingPolicyResponseProtoDefaultTypeInternal() {}
-  union {
-    DisableErasureCodingPolicyResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DisableErasureCodingPolicyResponseProtoDefaultTypeInternal _DisableErasureCodingPolicyResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR UnsetErasureCodingPolicyRequestProto::UnsetErasureCodingPolicyRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.src_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
-struct UnsetErasureCodingPolicyRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR UnsetErasureCodingPolicyRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~UnsetErasureCodingPolicyRequestProtoDefaultTypeInternal() {}
-  union {
-    UnsetErasureCodingPolicyRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 UnsetErasureCodingPolicyRequestProtoDefaultTypeInternal _UnsetErasureCodingPolicyRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR UnsetErasureCodingPolicyResponseProto::UnsetErasureCodingPolicyResponseProto(
-    ::_pbi::ConstantInitialized) {}
-struct UnsetErasureCodingPolicyResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR UnsetErasureCodingPolicyResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~UnsetErasureCodingPolicyResponseProtoDefaultTypeInternal() {}
-  union {
-    UnsetErasureCodingPolicyResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 UnsetErasureCodingPolicyResponseProtoDefaultTypeInternal _UnsetErasureCodingPolicyResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR GetECTopologyResultForPoliciesRequestProto::GetECTopologyResultForPoliciesRequestProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_.policies_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}} {}
-struct GetECTopologyResultForPoliciesRequestProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR GetECTopologyResultForPoliciesRequestProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~GetECTopologyResultForPoliciesRequestProtoDefaultTypeInternal() {}
-  union {
-    GetECTopologyResultForPoliciesRequestProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetECTopologyResultForPoliciesRequestProtoDefaultTypeInternal _GetECTopologyResultForPoliciesRequestProto_default_instance_;
-PROTOBUF_CONSTEXPR GetECTopologyResultForPoliciesResponseProto::GetECTopologyResultForPoliciesResponseProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.response_)*/nullptr} {}
-struct GetECTopologyResultForPoliciesResponseProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR GetECTopologyResultForPoliciesResponseProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~GetECTopologyResultForPoliciesResponseProtoDefaultTypeInternal() {}
-  union {
-    GetECTopologyResultForPoliciesResponseProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 GetECTopologyResultForPoliciesResponseProtoDefaultTypeInternal _GetECTopologyResultForPoliciesResponseProto_default_instance_;
-PROTOBUF_CONSTEXPR BlockECReconstructionInfoProto::BlockECReconstructionInfoProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.liveblockindices_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.excludereconstructedindices_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.block_)*/nullptr
-  , /*decltype(_impl_.sourcedninfos_)*/nullptr
-  , /*decltype(_impl_.targetdninfos_)*/nullptr
-  , /*decltype(_impl_.targetstorageuuids_)*/nullptr
-  , /*decltype(_impl_.targetstoragetypes_)*/nullptr
-  , /*decltype(_impl_.ecpolicy_)*/nullptr} {}
-struct BlockECReconstructionInfoProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR BlockECReconstructionInfoProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~BlockECReconstructionInfoProtoDefaultTypeInternal() {}
-  union {
-    BlockECReconstructionInfoProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 BlockECReconstructionInfoProtoDefaultTypeInternal _BlockECReconstructionInfoProto_default_instance_;
-PROTOBUF_CONSTEXPR CodecProto::CodecProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.codec_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.coders_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
-struct CodecProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR CodecProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~CodecProtoDefaultTypeInternal() {}
-  union {
-    CodecProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CodecProtoDefaultTypeInternal _CodecProto_default_instance_;
+class SetErasureCodingPolicyRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<SetErasureCodingPolicyRequestProto> _instance;
+} _SetErasureCodingPolicyRequestProto_default_instance_;
+class SetErasureCodingPolicyResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<SetErasureCodingPolicyResponseProto> _instance;
+} _SetErasureCodingPolicyResponseProto_default_instance_;
+class GetErasureCodingPoliciesRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetErasureCodingPoliciesRequestProto> _instance;
+} _GetErasureCodingPoliciesRequestProto_default_instance_;
+class GetErasureCodingPoliciesResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetErasureCodingPoliciesResponseProto> _instance;
+} _GetErasureCodingPoliciesResponseProto_default_instance_;
+class GetErasureCodingCodecsRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetErasureCodingCodecsRequestProto> _instance;
+} _GetErasureCodingCodecsRequestProto_default_instance_;
+class GetErasureCodingCodecsResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetErasureCodingCodecsResponseProto> _instance;
+} _GetErasureCodingCodecsResponseProto_default_instance_;
+class GetErasureCodingPolicyRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetErasureCodingPolicyRequestProto> _instance;
+} _GetErasureCodingPolicyRequestProto_default_instance_;
+class GetErasureCodingPolicyResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetErasureCodingPolicyResponseProto> _instance;
+} _GetErasureCodingPolicyResponseProto_default_instance_;
+class AddErasureCodingPoliciesRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<AddErasureCodingPoliciesRequestProto> _instance;
+} _AddErasureCodingPoliciesRequestProto_default_instance_;
+class AddErasureCodingPoliciesResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<AddErasureCodingPoliciesResponseProto> _instance;
+} _AddErasureCodingPoliciesResponseProto_default_instance_;
+class RemoveErasureCodingPolicyRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<RemoveErasureCodingPolicyRequestProto> _instance;
+} _RemoveErasureCodingPolicyRequestProto_default_instance_;
+class RemoveErasureCodingPolicyResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<RemoveErasureCodingPolicyResponseProto> _instance;
+} _RemoveErasureCodingPolicyResponseProto_default_instance_;
+class EnableErasureCodingPolicyRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<EnableErasureCodingPolicyRequestProto> _instance;
+} _EnableErasureCodingPolicyRequestProto_default_instance_;
+class EnableErasureCodingPolicyResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<EnableErasureCodingPolicyResponseProto> _instance;
+} _EnableErasureCodingPolicyResponseProto_default_instance_;
+class DisableErasureCodingPolicyRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<DisableErasureCodingPolicyRequestProto> _instance;
+} _DisableErasureCodingPolicyRequestProto_default_instance_;
+class DisableErasureCodingPolicyResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<DisableErasureCodingPolicyResponseProto> _instance;
+} _DisableErasureCodingPolicyResponseProto_default_instance_;
+class UnsetErasureCodingPolicyRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<UnsetErasureCodingPolicyRequestProto> _instance;
+} _UnsetErasureCodingPolicyRequestProto_default_instance_;
+class UnsetErasureCodingPolicyResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<UnsetErasureCodingPolicyResponseProto> _instance;
+} _UnsetErasureCodingPolicyResponseProto_default_instance_;
+class GetECTopologyResultForPoliciesRequestProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetECTopologyResultForPoliciesRequestProto> _instance;
+} _GetECTopologyResultForPoliciesRequestProto_default_instance_;
+class GetECTopologyResultForPoliciesResponseProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetECTopologyResultForPoliciesResponseProto> _instance;
+} _GetECTopologyResultForPoliciesResponseProto_default_instance_;
+class BlockECReconstructionInfoProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<BlockECReconstructionInfoProto> _instance;
+} _BlockECReconstructionInfoProto_default_instance_;
+class CodecProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<CodecProto> _instance;
+} _CodecProto_default_instance_;
 }  // namespace hdfs
 }  // namespace hadoop
-static ::_pb::Metadata file_level_metadata_erasurecoding_2eproto[22];
-static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_erasurecoding_2eproto = nullptr;
-static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_erasurecoding_2eproto = nullptr;
+static void InitDefaultsscc_info_AddErasureCodingPoliciesRequestProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-const uint32_t TableStruct_erasurecoding_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::SetErasureCodingPolicyRequestProto, _impl_._has_bits_),
+  {
+    void* ptr = &::hadoop::hdfs::_AddErasureCodingPoliciesRequestProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::AddErasureCodingPoliciesRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::AddErasureCodingPoliciesRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_AddErasureCodingPoliciesRequestProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_AddErasureCodingPoliciesRequestProto_erasurecoding_2eproto}, {
+      &scc_info_ErasureCodingPolicyProto_hdfs_2eproto.base,}};
+
+static void InitDefaultsscc_info_AddErasureCodingPoliciesResponseProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_AddErasureCodingPoliciesResponseProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::AddErasureCodingPoliciesResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::AddErasureCodingPoliciesResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_AddErasureCodingPoliciesResponseProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_AddErasureCodingPoliciesResponseProto_erasurecoding_2eproto}, {
+      &scc_info_AddErasureCodingPolicyResponseProto_hdfs_2eproto.base,}};
+
+static void InitDefaultsscc_info_BlockECReconstructionInfoProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_BlockECReconstructionInfoProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::BlockECReconstructionInfoProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::BlockECReconstructionInfoProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<5> scc_info_BlockECReconstructionInfoProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 5, 0, InitDefaultsscc_info_BlockECReconstructionInfoProto_erasurecoding_2eproto}, {
+      &scc_info_ExtendedBlockProto_hdfs_2eproto.base,
+      &scc_info_DatanodeInfosProto_hdfs_2eproto.base,
+      &scc_info_StorageUuidsProto_hdfs_2eproto.base,
+      &scc_info_StorageTypesProto_hdfs_2eproto.base,
+      &scc_info_ErasureCodingPolicyProto_hdfs_2eproto.base,}};
+
+static void InitDefaultsscc_info_CodecProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_CodecProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::CodecProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::CodecProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_CodecProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_CodecProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_DisableErasureCodingPolicyRequestProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_DisableErasureCodingPolicyRequestProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::DisableErasureCodingPolicyRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::DisableErasureCodingPolicyRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_DisableErasureCodingPolicyRequestProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_DisableErasureCodingPolicyRequestProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_DisableErasureCodingPolicyResponseProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_DisableErasureCodingPolicyResponseProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::DisableErasureCodingPolicyResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::DisableErasureCodingPolicyResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_DisableErasureCodingPolicyResponseProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_DisableErasureCodingPolicyResponseProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_EnableErasureCodingPolicyRequestProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_EnableErasureCodingPolicyRequestProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::EnableErasureCodingPolicyRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::EnableErasureCodingPolicyRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_EnableErasureCodingPolicyRequestProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_EnableErasureCodingPolicyRequestProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_EnableErasureCodingPolicyResponseProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_EnableErasureCodingPolicyResponseProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::EnableErasureCodingPolicyResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::EnableErasureCodingPolicyResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_EnableErasureCodingPolicyResponseProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_EnableErasureCodingPolicyResponseProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_GetECTopologyResultForPoliciesRequestProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_GetECTopologyResultForPoliciesRequestProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_GetECTopologyResultForPoliciesRequestProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_GetECTopologyResultForPoliciesRequestProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_GetECTopologyResultForPoliciesResponseProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_GetECTopologyResultForPoliciesResponseProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_GetECTopologyResultForPoliciesResponseProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_GetECTopologyResultForPoliciesResponseProto_erasurecoding_2eproto}, {
+      &scc_info_ECTopologyVerifierResultProto_hdfs_2eproto.base,}};
+
+static void InitDefaultsscc_info_GetErasureCodingCodecsRequestProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_GetErasureCodingCodecsRequestProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::GetErasureCodingCodecsRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::GetErasureCodingCodecsRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_GetErasureCodingCodecsRequestProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_GetErasureCodingCodecsRequestProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_GetErasureCodingCodecsResponseProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_GetErasureCodingCodecsResponseProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::GetErasureCodingCodecsResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::GetErasureCodingCodecsResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_GetErasureCodingCodecsResponseProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_GetErasureCodingCodecsResponseProto_erasurecoding_2eproto}, {
+      &scc_info_CodecProto_erasurecoding_2eproto.base,}};
+
+static void InitDefaultsscc_info_GetErasureCodingPoliciesRequestProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_GetErasureCodingPoliciesRequestProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::GetErasureCodingPoliciesRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::GetErasureCodingPoliciesRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_GetErasureCodingPoliciesRequestProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_GetErasureCodingPoliciesRequestProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_GetErasureCodingPoliciesResponseProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_GetErasureCodingPoliciesResponseProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::GetErasureCodingPoliciesResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::GetErasureCodingPoliciesResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_GetErasureCodingPoliciesResponseProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_GetErasureCodingPoliciesResponseProto_erasurecoding_2eproto}, {
+      &scc_info_ErasureCodingPolicyProto_hdfs_2eproto.base,}};
+
+static void InitDefaultsscc_info_GetErasureCodingPolicyRequestProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_GetErasureCodingPolicyRequestProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::GetErasureCodingPolicyRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::GetErasureCodingPolicyRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_GetErasureCodingPolicyRequestProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_GetErasureCodingPolicyRequestProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_GetErasureCodingPolicyResponseProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_GetErasureCodingPolicyResponseProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::GetErasureCodingPolicyResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::GetErasureCodingPolicyResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_GetErasureCodingPolicyResponseProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_GetErasureCodingPolicyResponseProto_erasurecoding_2eproto}, {
+      &scc_info_ErasureCodingPolicyProto_hdfs_2eproto.base,}};
+
+static void InitDefaultsscc_info_RemoveErasureCodingPolicyRequestProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_RemoveErasureCodingPolicyRequestProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_RemoveErasureCodingPolicyRequestProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_RemoveErasureCodingPolicyRequestProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_RemoveErasureCodingPolicyResponseProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_RemoveErasureCodingPolicyResponseProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::RemoveErasureCodingPolicyResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::RemoveErasureCodingPolicyResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_RemoveErasureCodingPolicyResponseProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_RemoveErasureCodingPolicyResponseProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_SetErasureCodingPolicyRequestProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_SetErasureCodingPolicyRequestProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::SetErasureCodingPolicyRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::SetErasureCodingPolicyRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_SetErasureCodingPolicyRequestProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_SetErasureCodingPolicyRequestProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_SetErasureCodingPolicyResponseProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_SetErasureCodingPolicyResponseProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::SetErasureCodingPolicyResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::SetErasureCodingPolicyResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_SetErasureCodingPolicyResponseProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_SetErasureCodingPolicyResponseProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_UnsetErasureCodingPolicyRequestProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_UnsetErasureCodingPolicyRequestProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_UnsetErasureCodingPolicyRequestProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_UnsetErasureCodingPolicyRequestProto_erasurecoding_2eproto}, {}};
+
+static void InitDefaultsscc_info_UnsetErasureCodingPolicyResponseProto_erasurecoding_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::hdfs::_UnsetErasureCodingPolicyResponseProto_default_instance_;
+    new (ptr) ::hadoop::hdfs::UnsetErasureCodingPolicyResponseProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::hdfs::UnsetErasureCodingPolicyResponseProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_UnsetErasureCodingPolicyResponseProto_erasurecoding_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_UnsetErasureCodingPolicyResponseProto_erasurecoding_2eproto}, {}};
+
+static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_erasurecoding_2eproto[22];
+static constexpr ::PROTOBUF_NAMESPACE_ID::EnumDescriptor const** file_level_enum_descriptors_erasurecoding_2eproto = nullptr;
+static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_erasurecoding_2eproto = nullptr;
+
+const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_erasurecoding_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::SetErasureCodingPolicyRequestProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::SetErasureCodingPolicyRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::SetErasureCodingPolicyRequestProto, _impl_.src_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::SetErasureCodingPolicyRequestProto, _impl_.ecpolicyname_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::SetErasureCodingPolicyRequestProto, src_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::SetErasureCodingPolicyRequestProto, ecpolicyname_),
   0,
   1,
   ~0u,  // no _has_bits_
@@ -335,148 +452,128 @@ const uint32_t TableStruct_erasurecoding_2eproto::offsets[] PROTOBUF_SECTION_VAR
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPoliciesRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPoliciesResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPoliciesResponseProto, _impl_.ecpolicies_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPoliciesResponseProto, ecpolicies_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingCodecsRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingCodecsResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingCodecsResponseProto, _impl_.codec_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPolicyRequestProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingCodecsResponseProto, codec_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPolicyRequestProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPolicyRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPolicyRequestProto, _impl_.src_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPolicyRequestProto, src_),
   0,
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPolicyResponseProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPolicyResponseProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPolicyResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPolicyResponseProto, _impl_.ecpolicy_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetErasureCodingPolicyResponseProto, ecpolicy_),
   0,
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::AddErasureCodingPoliciesRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::AddErasureCodingPoliciesRequestProto, _impl_.ecpolicies_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::AddErasureCodingPoliciesRequestProto, ecpolicies_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::AddErasureCodingPoliciesResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::AddErasureCodingPoliciesResponseProto, _impl_.responses_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::AddErasureCodingPoliciesResponseProto, responses_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto, _impl_.ecpolicyname_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto, ecpolicyname_),
   0,
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::RemoveErasureCodingPolicyResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::EnableErasureCodingPolicyRequestProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::EnableErasureCodingPolicyRequestProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::EnableErasureCodingPolicyRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::EnableErasureCodingPolicyRequestProto, _impl_.ecpolicyname_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::EnableErasureCodingPolicyRequestProto, ecpolicyname_),
   0,
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::EnableErasureCodingPolicyResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::DisableErasureCodingPolicyRequestProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::DisableErasureCodingPolicyRequestProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::DisableErasureCodingPolicyRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::DisableErasureCodingPolicyRequestProto, _impl_.ecpolicyname_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::DisableErasureCodingPolicyRequestProto, ecpolicyname_),
   0,
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::DisableErasureCodingPolicyResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto, _impl_.src_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto, src_),
   0,
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::UnsetErasureCodingPolicyResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto, _impl_.policies_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto, policies_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto, _impl_.response_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto, response_),
   0,
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _impl_.block_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _impl_.sourcedninfos_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _impl_.targetdninfos_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _impl_.targetstorageuuids_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _impl_.targetstoragetypes_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _impl_.liveblockindices_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _impl_.ecpolicy_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, _impl_.excludereconstructedindices_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, block_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, sourcedninfos_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, targetdninfos_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, targetstorageuuids_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, targetstoragetypes_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, liveblockindices_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, ecpolicy_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::BlockECReconstructionInfoProto, excludereconstructedindices_),
   2,
   3,
   4,
@@ -485,65 +582,64 @@ const uint32_t TableStruct_erasurecoding_2eproto::offsets[] PROTOBUF_SECTION_VAR
   0,
   7,
   1,
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::CodecProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::CodecProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::CodecProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::CodecProto, _impl_.codec_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::CodecProto, _impl_.coders_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::CodecProto, codec_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::hdfs::CodecProto, coders_),
   0,
   1,
 };
-static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, 8, -1, sizeof(::hadoop::hdfs::SetErasureCodingPolicyRequestProto)},
-  { 10, -1, -1, sizeof(::hadoop::hdfs::SetErasureCodingPolicyResponseProto)},
-  { 16, -1, -1, sizeof(::hadoop::hdfs::GetErasureCodingPoliciesRequestProto)},
-  { 22, -1, -1, sizeof(::hadoop::hdfs::GetErasureCodingPoliciesResponseProto)},
-  { 29, -1, -1, sizeof(::hadoop::hdfs::GetErasureCodingCodecsRequestProto)},
-  { 35, -1, -1, sizeof(::hadoop::hdfs::GetErasureCodingCodecsResponseProto)},
-  { 42, 49, -1, sizeof(::hadoop::hdfs::GetErasureCodingPolicyRequestProto)},
-  { 50, 57, -1, sizeof(::hadoop::hdfs::GetErasureCodingPolicyResponseProto)},
-  { 58, -1, -1, sizeof(::hadoop::hdfs::AddErasureCodingPoliciesRequestProto)},
-  { 65, -1, -1, sizeof(::hadoop::hdfs::AddErasureCodingPoliciesResponseProto)},
-  { 72, 79, -1, sizeof(::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto)},
-  { 80, -1, -1, sizeof(::hadoop::hdfs::RemoveErasureCodingPolicyResponseProto)},
-  { 86, 93, -1, sizeof(::hadoop::hdfs::EnableErasureCodingPolicyRequestProto)},
-  { 94, -1, -1, sizeof(::hadoop::hdfs::EnableErasureCodingPolicyResponseProto)},
-  { 100, 107, -1, sizeof(::hadoop::hdfs::DisableErasureCodingPolicyRequestProto)},
-  { 108, -1, -1, sizeof(::hadoop::hdfs::DisableErasureCodingPolicyResponseProto)},
-  { 114, 121, -1, sizeof(::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto)},
-  { 122, -1, -1, sizeof(::hadoop::hdfs::UnsetErasureCodingPolicyResponseProto)},
-  { 128, -1, -1, sizeof(::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto)},
-  { 135, 142, -1, sizeof(::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto)},
-  { 143, 157, -1, sizeof(::hadoop::hdfs::BlockECReconstructionInfoProto)},
-  { 165, 173, -1, sizeof(::hadoop::hdfs::CodecProto)},
+static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  { 0, 7, sizeof(::hadoop::hdfs::SetErasureCodingPolicyRequestProto)},
+  { 9, -1, sizeof(::hadoop::hdfs::SetErasureCodingPolicyResponseProto)},
+  { 14, -1, sizeof(::hadoop::hdfs::GetErasureCodingPoliciesRequestProto)},
+  { 19, -1, sizeof(::hadoop::hdfs::GetErasureCodingPoliciesResponseProto)},
+  { 25, -1, sizeof(::hadoop::hdfs::GetErasureCodingCodecsRequestProto)},
+  { 30, -1, sizeof(::hadoop::hdfs::GetErasureCodingCodecsResponseProto)},
+  { 36, 42, sizeof(::hadoop::hdfs::GetErasureCodingPolicyRequestProto)},
+  { 43, 49, sizeof(::hadoop::hdfs::GetErasureCodingPolicyResponseProto)},
+  { 50, -1, sizeof(::hadoop::hdfs::AddErasureCodingPoliciesRequestProto)},
+  { 56, -1, sizeof(::hadoop::hdfs::AddErasureCodingPoliciesResponseProto)},
+  { 62, 68, sizeof(::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto)},
+  { 69, -1, sizeof(::hadoop::hdfs::RemoveErasureCodingPolicyResponseProto)},
+  { 74, 80, sizeof(::hadoop::hdfs::EnableErasureCodingPolicyRequestProto)},
+  { 81, -1, sizeof(::hadoop::hdfs::EnableErasureCodingPolicyResponseProto)},
+  { 86, 92, sizeof(::hadoop::hdfs::DisableErasureCodingPolicyRequestProto)},
+  { 93, -1, sizeof(::hadoop::hdfs::DisableErasureCodingPolicyResponseProto)},
+  { 98, 104, sizeof(::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto)},
+  { 105, -1, sizeof(::hadoop::hdfs::UnsetErasureCodingPolicyResponseProto)},
+  { 110, -1, sizeof(::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto)},
+  { 116, 122, sizeof(::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto)},
+  { 123, 136, sizeof(::hadoop::hdfs::BlockECReconstructionInfoProto)},
+  { 144, 151, sizeof(::hadoop::hdfs::CodecProto)},
 };
 
-static const ::_pb::Message* const file_default_instances[] = {
-  &::hadoop::hdfs::_SetErasureCodingPolicyRequestProto_default_instance_._instance,
-  &::hadoop::hdfs::_SetErasureCodingPolicyResponseProto_default_instance_._instance,
-  &::hadoop::hdfs::_GetErasureCodingPoliciesRequestProto_default_instance_._instance,
-  &::hadoop::hdfs::_GetErasureCodingPoliciesResponseProto_default_instance_._instance,
-  &::hadoop::hdfs::_GetErasureCodingCodecsRequestProto_default_instance_._instance,
-  &::hadoop::hdfs::_GetErasureCodingCodecsResponseProto_default_instance_._instance,
-  &::hadoop::hdfs::_GetErasureCodingPolicyRequestProto_default_instance_._instance,
-  &::hadoop::hdfs::_GetErasureCodingPolicyResponseProto_default_instance_._instance,
-  &::hadoop::hdfs::_AddErasureCodingPoliciesRequestProto_default_instance_._instance,
-  &::hadoop::hdfs::_AddErasureCodingPoliciesResponseProto_default_instance_._instance,
-  &::hadoop::hdfs::_RemoveErasureCodingPolicyRequestProto_default_instance_._instance,
-  &::hadoop::hdfs::_RemoveErasureCodingPolicyResponseProto_default_instance_._instance,
-  &::hadoop::hdfs::_EnableErasureCodingPolicyRequestProto_default_instance_._instance,
-  &::hadoop::hdfs::_EnableErasureCodingPolicyResponseProto_default_instance_._instance,
-  &::hadoop::hdfs::_DisableErasureCodingPolicyRequestProto_default_instance_._instance,
-  &::hadoop::hdfs::_DisableErasureCodingPolicyResponseProto_default_instance_._instance,
-  &::hadoop::hdfs::_UnsetErasureCodingPolicyRequestProto_default_instance_._instance,
-  &::hadoop::hdfs::_UnsetErasureCodingPolicyResponseProto_default_instance_._instance,
-  &::hadoop::hdfs::_GetECTopologyResultForPoliciesRequestProto_default_instance_._instance,
-  &::hadoop::hdfs::_GetECTopologyResultForPoliciesResponseProto_default_instance_._instance,
-  &::hadoop::hdfs::_BlockECReconstructionInfoProto_default_instance_._instance,
-  &::hadoop::hdfs::_CodecProto_default_instance_._instance,
+static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_SetErasureCodingPolicyRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_SetErasureCodingPolicyResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_GetErasureCodingPoliciesRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_GetErasureCodingPoliciesResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_GetErasureCodingCodecsRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_GetErasureCodingCodecsResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_GetErasureCodingPolicyRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_GetErasureCodingPolicyResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_AddErasureCodingPoliciesRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_AddErasureCodingPoliciesResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_RemoveErasureCodingPolicyRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_RemoveErasureCodingPolicyResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_EnableErasureCodingPolicyRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_EnableErasureCodingPolicyResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_DisableErasureCodingPolicyRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_DisableErasureCodingPolicyResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_UnsetErasureCodingPolicyRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_UnsetErasureCodingPolicyResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_GetECTopologyResultForPoliciesRequestProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_GetECTopologyResultForPoliciesResponseProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_BlockECReconstructionInfoProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::hdfs::_CodecProto_default_instance_),
 };
 
 const char descriptor_table_protodef_erasurecoding_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -596,32 +692,53 @@ const char descriptor_table_protodef_erasurecoding_2eproto[] PROTOBUF_SECTION_VA
   "rg.apache.hadoop.hdfs.protocol.protoB\023Er"
   "asureCodingProtos\240\001\001"
   ;
-static const ::_pbi::DescriptorTable* const descriptor_table_erasurecoding_2eproto_deps[1] = {
+static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_erasurecoding_2eproto_deps[1] = {
   &::descriptor_table_hdfs_2eproto,
 };
-static ::_pbi::once_flag descriptor_table_erasurecoding_2eproto_once;
-const ::_pbi::DescriptorTable descriptor_table_erasurecoding_2eproto = {
-    false, false, 1900, descriptor_table_protodef_erasurecoding_2eproto,
-    "erasurecoding.proto",
-    &descriptor_table_erasurecoding_2eproto_once, descriptor_table_erasurecoding_2eproto_deps, 1, 22,
-    schemas, file_default_instances, TableStruct_erasurecoding_2eproto::offsets,
-    file_level_metadata_erasurecoding_2eproto, file_level_enum_descriptors_erasurecoding_2eproto,
-    file_level_service_descriptors_erasurecoding_2eproto,
+static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_erasurecoding_2eproto_sccs[22] = {
+  &scc_info_AddErasureCodingPoliciesRequestProto_erasurecoding_2eproto.base,
+  &scc_info_AddErasureCodingPoliciesResponseProto_erasurecoding_2eproto.base,
+  &scc_info_BlockECReconstructionInfoProto_erasurecoding_2eproto.base,
+  &scc_info_CodecProto_erasurecoding_2eproto.base,
+  &scc_info_DisableErasureCodingPolicyRequestProto_erasurecoding_2eproto.base,
+  &scc_info_DisableErasureCodingPolicyResponseProto_erasurecoding_2eproto.base,
+  &scc_info_EnableErasureCodingPolicyRequestProto_erasurecoding_2eproto.base,
+  &scc_info_EnableErasureCodingPolicyResponseProto_erasurecoding_2eproto.base,
+  &scc_info_GetECTopologyResultForPoliciesRequestProto_erasurecoding_2eproto.base,
+  &scc_info_GetECTopologyResultForPoliciesResponseProto_erasurecoding_2eproto.base,
+  &scc_info_GetErasureCodingCodecsRequestProto_erasurecoding_2eproto.base,
+  &scc_info_GetErasureCodingCodecsResponseProto_erasurecoding_2eproto.base,
+  &scc_info_GetErasureCodingPoliciesRequestProto_erasurecoding_2eproto.base,
+  &scc_info_GetErasureCodingPoliciesResponseProto_erasurecoding_2eproto.base,
+  &scc_info_GetErasureCodingPolicyRequestProto_erasurecoding_2eproto.base,
+  &scc_info_GetErasureCodingPolicyResponseProto_erasurecoding_2eproto.base,
+  &scc_info_RemoveErasureCodingPolicyRequestProto_erasurecoding_2eproto.base,
+  &scc_info_RemoveErasureCodingPolicyResponseProto_erasurecoding_2eproto.base,
+  &scc_info_SetErasureCodingPolicyRequestProto_erasurecoding_2eproto.base,
+  &scc_info_SetErasureCodingPolicyResponseProto_erasurecoding_2eproto.base,
+  &scc_info_UnsetErasureCodingPolicyRequestProto_erasurecoding_2eproto.base,
+  &scc_info_UnsetErasureCodingPolicyResponseProto_erasurecoding_2eproto.base,
 };
-PROTOBUF_ATTRIBUTE_WEAK const ::_pbi::DescriptorTable* descriptor_table_erasurecoding_2eproto_getter() {
-  return &descriptor_table_erasurecoding_2eproto;
-}
+static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_erasurecoding_2eproto_once;
+const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_erasurecoding_2eproto = {
+  false, false, descriptor_table_protodef_erasurecoding_2eproto, "erasurecoding.proto", 1900,
+  &descriptor_table_erasurecoding_2eproto_once, descriptor_table_erasurecoding_2eproto_sccs, descriptor_table_erasurecoding_2eproto_deps, 22, 1,
+  schemas, file_default_instances, TableStruct_erasurecoding_2eproto::offsets,
+  file_level_metadata_erasurecoding_2eproto, 22, file_level_enum_descriptors_erasurecoding_2eproto, file_level_service_descriptors_erasurecoding_2eproto,
+};
 
 // Force running AddDescriptors() at dynamic initialization time.
-PROTOBUF_ATTRIBUTE_INIT_PRIORITY2 static ::_pbi::AddDescriptorsRunner dynamic_init_dummy_erasurecoding_2eproto(&descriptor_table_erasurecoding_2eproto);
+static bool dynamic_init_dummy_erasurecoding_2eproto = (static_cast<void>(::PROTOBUF_NAMESPACE_ID::internal::AddDescriptors(&descriptor_table_erasurecoding_2eproto)), true);
 namespace hadoop {
 namespace hdfs {
 
 // ===================================================================
 
+void SetErasureCodingPolicyRequestProto::InitAsDefaultInstance() {
+}
 class SetErasureCodingPolicyRequestProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<SetErasureCodingPolicyRequestProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<SetErasureCodingPolicyRequestProto>()._has_bits_);
   static void set_has_src(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -633,161 +750,142 @@ class SetErasureCodingPolicyRequestProto::_Internal {
   }
 };
 
-SetErasureCodingPolicyRequestProto::SetErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+SetErasureCodingPolicyRequestProto::SetErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
 }
 SetErasureCodingPolicyRequestProto::SetErasureCodingPolicyRequestProto(const SetErasureCodingPolicyRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  SetErasureCodingPolicyRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.src_){}
-    , decltype(_impl_.ecpolicyname_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.src_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.src_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  src_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_src()) {
-    _this->_impl_.src_.Set(from._internal_src(), 
-      _this->GetArenaForAllocation());
+    src_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_src(),
+      GetArena());
   }
-  _impl_.ecpolicyname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.ecpolicyname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  ecpolicyname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_ecpolicyname()) {
-    _this->_impl_.ecpolicyname_.Set(from._internal_ecpolicyname(), 
-      _this->GetArenaForAllocation());
+    ecpolicyname_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_ecpolicyname(),
+      GetArena());
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
 }
 
-inline void SetErasureCodingPolicyRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.src_){}
-    , decltype(_impl_.ecpolicyname_){}
-  };
-  _impl_.src_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.src_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.ecpolicyname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.ecpolicyname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void SetErasureCodingPolicyRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_SetErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  src_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  ecpolicyname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 SetErasureCodingPolicyRequestProto::~SetErasureCodingPolicyRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void SetErasureCodingPolicyRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.src_.Destroy();
-  _impl_.ecpolicyname_.Destroy();
+void SetErasureCodingPolicyRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  src_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  ecpolicyname_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void SetErasureCodingPolicyRequestProto::ArenaDtor(void* object) {
+  SetErasureCodingPolicyRequestProto* _this = reinterpret_cast< SetErasureCodingPolicyRequestProto* >(object);
+  (void)_this;
+}
+void SetErasureCodingPolicyRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void SetErasureCodingPolicyRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const SetErasureCodingPolicyRequestProto& SetErasureCodingPolicyRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_SetErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void SetErasureCodingPolicyRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     if (cached_has_bits & 0x00000001u) {
-      _impl_.src_.ClearNonDefaultToEmpty();
+      src_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      _impl_.ecpolicyname_.ClearNonDefaultToEmpty();
+      ecpolicyname_.ClearNonDefaultToEmpty();
     }
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* SetErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* SetErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required string src = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_src();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.hdfs.SetErasureCodingPolicyRequestProto.src");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.hdfs.SetErasureCodingPolicyRequestProto.src");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
       // optional string ecPolicyName = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
           auto str = _internal_mutable_ecpolicyname();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.hdfs.SetErasureCodingPolicyRequestProto.ecPolicyName");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.hdfs.SetErasureCodingPolicyRequestProto.ecPolicyName");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* SetErasureCodingPolicyRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* SetErasureCodingPolicyRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required string src = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -809,7 +907,7 @@ uint8_t* SetErasureCodingPolicyRequestProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
@@ -826,46 +924,65 @@ size_t SetErasureCodingPolicyRequestProto::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_src());
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   // optional string ecPolicyName = 2;
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000002u) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_ecpolicyname());
   }
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData SetErasureCodingPolicyRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    SetErasureCodingPolicyRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*SetErasureCodingPolicyRequestProto::GetClassData() const { return &_class_data_; }
+void SetErasureCodingPolicyRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const SetErasureCodingPolicyRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<SetErasureCodingPolicyRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void SetErasureCodingPolicyRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<SetErasureCodingPolicyRequestProto*>(&to_msg);
-  auto& from = static_cast<const SetErasureCodingPolicyRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void SetErasureCodingPolicyRequestProto::MergeFrom(const SetErasureCodingPolicyRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = from._impl_._has_bits_[0];
+  cached_has_bits = from._has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_src(from._internal_src());
+      _internal_set_src(from._internal_src());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_ecpolicyname(from._internal_ecpolicyname());
+      _internal_set_ecpolicyname(from._internal_ecpolicyname());
     }
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void SetErasureCodingPolicyRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.SetErasureCodingPolicyRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void SetErasureCodingPolicyRequestProto::CopyFrom(const SetErasureCodingPolicyRequestProto& from) {
@@ -876,185 +993,428 @@ void SetErasureCodingPolicyRequestProto::CopyFrom(const SetErasureCodingPolicyRe
 }
 
 bool SetErasureCodingPolicyRequestProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void SetErasureCodingPolicyRequestProto::InternalSwap(SetErasureCodingPolicyRequestProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.src_, lhs_arena,
-      &other->_impl_.src_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.ecpolicyname_, lhs_arena,
-      &other->_impl_.ecpolicyname_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  src_.Swap(&other->src_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  ecpolicyname_.Swap(&other->ecpolicyname_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata SetErasureCodingPolicyRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[0]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void SetErasureCodingPolicyResponseProto::InitAsDefaultInstance() {
+}
 class SetErasureCodingPolicyResponseProto::_Internal {
  public:
 };
 
-SetErasureCodingPolicyResponseProto::SetErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+SetErasureCodingPolicyResponseProto::SetErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
 }
 SetErasureCodingPolicyResponseProto::SetErasureCodingPolicyResponseProto(const SetErasureCodingPolicyResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  SetErasureCodingPolicyResponseProto* const _this = this; (void)_this;
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
 }
 
+void SetErasureCodingPolicyResponseProto::SharedCtor() {
+}
+
+SetErasureCodingPolicyResponseProto::~SetErasureCodingPolicyResponseProto() {
+  // @@protoc_insertion_point(destructor:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void SetErasureCodingPolicyResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void SetErasureCodingPolicyResponseProto::ArenaDtor(void* object) {
+  SetErasureCodingPolicyResponseProto* _this = reinterpret_cast< SetErasureCodingPolicyResponseProto* >(object);
+  (void)_this;
+}
+void SetErasureCodingPolicyResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void SetErasureCodingPolicyResponseProto::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const SetErasureCodingPolicyResponseProto& SetErasureCodingPolicyResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_SetErasureCodingPolicyResponseProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
 
 
+void SetErasureCodingPolicyResponseProto::Clear() {
+// @@protoc_insertion_point(message_clear_start:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData SetErasureCodingPolicyResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*SetErasureCodingPolicyResponseProto::GetClassData() const { return &_class_data_; }
+const char* SetErasureCodingPolicyResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
 
+::PROTOBUF_NAMESPACE_ID::uint8* SetErasureCodingPolicyResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+  return target;
+}
 
+size_t SetErasureCodingPolicyResponseProto::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+  size_t total_size = 0;
 
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
 
+void SetErasureCodingPolicyResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const SetErasureCodingPolicyResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<SetErasureCodingPolicyResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+    MergeFrom(*source);
+  }
+}
+
+void SetErasureCodingPolicyResponseProto::MergeFrom(const SetErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+}
+
+void SetErasureCodingPolicyResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void SetErasureCodingPolicyResponseProto::CopyFrom(const SetErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:hadoop.hdfs.SetErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool SetErasureCodingPolicyResponseProto::IsInitialized() const {
+  return true;
+}
+
+void SetErasureCodingPolicyResponseProto::InternalSwap(SetErasureCodingPolicyResponseProto* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+}
 
 ::PROTOBUF_NAMESPACE_ID::Metadata SetErasureCodingPolicyResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[1]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void GetErasureCodingPoliciesRequestProto::InitAsDefaultInstance() {
+}
 class GetErasureCodingPoliciesRequestProto::_Internal {
  public:
 };
 
-GetErasureCodingPoliciesRequestProto::GetErasureCodingPoliciesRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+GetErasureCodingPoliciesRequestProto::GetErasureCodingPoliciesRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
 }
 GetErasureCodingPoliciesRequestProto::GetErasureCodingPoliciesRequestProto(const GetErasureCodingPoliciesRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  GetErasureCodingPoliciesRequestProto* const _this = this; (void)_this;
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
 }
 
+void GetErasureCodingPoliciesRequestProto::SharedCtor() {
+}
+
+GetErasureCodingPoliciesRequestProto::~GetErasureCodingPoliciesRequestProto() {
+  // @@protoc_insertion_point(destructor:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void GetErasureCodingPoliciesRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void GetErasureCodingPoliciesRequestProto::ArenaDtor(void* object) {
+  GetErasureCodingPoliciesRequestProto* _this = reinterpret_cast< GetErasureCodingPoliciesRequestProto* >(object);
+  (void)_this;
+}
+void GetErasureCodingPoliciesRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void GetErasureCodingPoliciesRequestProto::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const GetErasureCodingPoliciesRequestProto& GetErasureCodingPoliciesRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetErasureCodingPoliciesRequestProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
 
 
+void GetErasureCodingPoliciesRequestProto::Clear() {
+// @@protoc_insertion_point(message_clear_start:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetErasureCodingPoliciesRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetErasureCodingPoliciesRequestProto::GetClassData() const { return &_class_data_; }
+const char* GetErasureCodingPoliciesRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
 
+::PROTOBUF_NAMESPACE_ID::uint8* GetErasureCodingPoliciesRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+  return target;
+}
 
+size_t GetErasureCodingPoliciesRequestProto::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+  size_t total_size = 0;
 
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
 
+void GetErasureCodingPoliciesRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetErasureCodingPoliciesRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetErasureCodingPoliciesRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+    MergeFrom(*source);
+  }
+}
+
+void GetErasureCodingPoliciesRequestProto::MergeFrom(const GetErasureCodingPoliciesRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+}
+
+void GetErasureCodingPoliciesRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void GetErasureCodingPoliciesRequestProto::CopyFrom(const GetErasureCodingPoliciesRequestProto& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:hadoop.hdfs.GetErasureCodingPoliciesRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool GetErasureCodingPoliciesRequestProto::IsInitialized() const {
+  return true;
+}
+
+void GetErasureCodingPoliciesRequestProto::InternalSwap(GetErasureCodingPoliciesRequestProto* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+}
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetErasureCodingPoliciesRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[2]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void GetErasureCodingPoliciesResponseProto::InitAsDefaultInstance() {
+}
 class GetErasureCodingPoliciesResponseProto::_Internal {
  public:
 };
 
 void GetErasureCodingPoliciesResponseProto::clear_ecpolicies() {
-  _impl_.ecpolicies_.Clear();
+  ecpolicies_.Clear();
 }
-GetErasureCodingPoliciesResponseProto::GetErasureCodingPoliciesResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+GetErasureCodingPoliciesResponseProto::GetErasureCodingPoliciesResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
+  ecpolicies_(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
 }
 GetErasureCodingPoliciesResponseProto::GetErasureCodingPoliciesResponseProto(const GetErasureCodingPoliciesResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  GetErasureCodingPoliciesResponseProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_.ecpolicies_){from._impl_.ecpolicies_}
-    , /*decltype(_impl_._cached_size_)*/{}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      ecpolicies_(from.ecpolicies_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
 }
 
-inline void GetErasureCodingPoliciesResponseProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_.ecpolicies_){arena}
-    , /*decltype(_impl_._cached_size_)*/{}
-  };
+void GetErasureCodingPoliciesResponseProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_GetErasureCodingPoliciesResponseProto_erasurecoding_2eproto.base);
 }
 
 GetErasureCodingPoliciesResponseProto::~GetErasureCodingPoliciesResponseProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void GetErasureCodingPoliciesResponseProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.ecpolicies_.~RepeatedPtrField();
+void GetErasureCodingPoliciesResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
 }
 
+void GetErasureCodingPoliciesResponseProto::ArenaDtor(void* object) {
+  GetErasureCodingPoliciesResponseProto* _this = reinterpret_cast< GetErasureCodingPoliciesResponseProto* >(object);
+  (void)_this;
+}
+void GetErasureCodingPoliciesResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void GetErasureCodingPoliciesResponseProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const GetErasureCodingPoliciesResponseProto& GetErasureCodingPoliciesResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetErasureCodingPoliciesResponseProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void GetErasureCodingPoliciesResponseProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.ecpolicies_.Clear();
+  ecpolicies_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* GetErasureCodingPoliciesResponseProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* GetErasureCodingPoliciesResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // repeated .hadoop.hdfs.ErasureCodingPolicyProto ecPolicies = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr -= 1;
           do {
             ptr += 1;
@@ -1062,48 +1422,46 @@ const char* GetErasureCodingPoliciesResponseProto::_InternalParse(const char* pt
             CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<10>(ptr));
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
+success:
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* GetErasureCodingPoliciesResponseProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* GetErasureCodingPoliciesResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   // repeated .hadoop.hdfs.ErasureCodingPolicyProto ecPolicies = 1;
-  for (unsigned i = 0,
-      n = static_cast<unsigned>(this->_internal_ecpolicies_size()); i < n; i++) {
-    const auto& repfield = this->_internal_ecpolicies(i);
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->_internal_ecpolicies_size()); i < n; i++) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-        InternalWriteMessage(1, repfield, repfield.GetCachedSize(), target, stream);
+      InternalWriteMessage(1, this->_internal_ecpolicies(i), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
@@ -1114,37 +1472,56 @@ size_t GetErasureCodingPoliciesResponseProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
   size_t total_size = 0;
 
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   // repeated .hadoop.hdfs.ErasureCodingPolicyProto ecPolicies = 1;
   total_size += 1UL * this->_internal_ecpolicies_size();
-  for (const auto& msg : this->_impl_.ecpolicies_) {
+  for (const auto& msg : this->ecpolicies_) {
     total_size +=
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetErasureCodingPoliciesResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    GetErasureCodingPoliciesResponseProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetErasureCodingPoliciesResponseProto::GetClassData() const { return &_class_data_; }
+void GetErasureCodingPoliciesResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetErasureCodingPoliciesResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetErasureCodingPoliciesResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void GetErasureCodingPoliciesResponseProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<GetErasureCodingPoliciesResponseProto*>(&to_msg);
-  auto& from = static_cast<const GetErasureCodingPoliciesResponseProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void GetErasureCodingPoliciesResponseProto::MergeFrom(const GetErasureCodingPoliciesResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  _this->_impl_.ecpolicies_.MergeFrom(from._impl_.ecpolicies_);
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ecpolicies_.MergeFrom(from.ecpolicies_);
+}
+
+void GetErasureCodingPoliciesResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.GetErasureCodingPoliciesResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void GetErasureCodingPoliciesResponseProto::CopyFrom(const GetErasureCodingPoliciesResponseProto& from) {
@@ -1155,133 +1532,258 @@ void GetErasureCodingPoliciesResponseProto::CopyFrom(const GetErasureCodingPolic
 }
 
 bool GetErasureCodingPoliciesResponseProto::IsInitialized() const {
-  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(_impl_.ecpolicies_))
-    return false;
+  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(ecpolicies_)) return false;
   return true;
 }
 
 void GetErasureCodingPoliciesResponseProto::InternalSwap(GetErasureCodingPoliciesResponseProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  _impl_.ecpolicies_.InternalSwap(&other->_impl_.ecpolicies_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  ecpolicies_.InternalSwap(&other->ecpolicies_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetErasureCodingPoliciesResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[3]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void GetErasureCodingCodecsRequestProto::InitAsDefaultInstance() {
+}
 class GetErasureCodingCodecsRequestProto::_Internal {
  public:
 };
 
-GetErasureCodingCodecsRequestProto::GetErasureCodingCodecsRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+GetErasureCodingCodecsRequestProto::GetErasureCodingCodecsRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
 }
 GetErasureCodingCodecsRequestProto::GetErasureCodingCodecsRequestProto(const GetErasureCodingCodecsRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  GetErasureCodingCodecsRequestProto* const _this = this; (void)_this;
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
 }
 
+void GetErasureCodingCodecsRequestProto::SharedCtor() {
+}
+
+GetErasureCodingCodecsRequestProto::~GetErasureCodingCodecsRequestProto() {
+  // @@protoc_insertion_point(destructor:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void GetErasureCodingCodecsRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void GetErasureCodingCodecsRequestProto::ArenaDtor(void* object) {
+  GetErasureCodingCodecsRequestProto* _this = reinterpret_cast< GetErasureCodingCodecsRequestProto* >(object);
+  (void)_this;
+}
+void GetErasureCodingCodecsRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void GetErasureCodingCodecsRequestProto::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const GetErasureCodingCodecsRequestProto& GetErasureCodingCodecsRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetErasureCodingCodecsRequestProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
 
 
+void GetErasureCodingCodecsRequestProto::Clear() {
+// @@protoc_insertion_point(message_clear_start:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetErasureCodingCodecsRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetErasureCodingCodecsRequestProto::GetClassData() const { return &_class_data_; }
+const char* GetErasureCodingCodecsRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
 
+::PROTOBUF_NAMESPACE_ID::uint8* GetErasureCodingCodecsRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+  return target;
+}
 
+size_t GetErasureCodingCodecsRequestProto::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+  size_t total_size = 0;
 
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
 
+void GetErasureCodingCodecsRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetErasureCodingCodecsRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetErasureCodingCodecsRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+    MergeFrom(*source);
+  }
+}
+
+void GetErasureCodingCodecsRequestProto::MergeFrom(const GetErasureCodingCodecsRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+}
+
+void GetErasureCodingCodecsRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void GetErasureCodingCodecsRequestProto::CopyFrom(const GetErasureCodingCodecsRequestProto& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:hadoop.hdfs.GetErasureCodingCodecsRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool GetErasureCodingCodecsRequestProto::IsInitialized() const {
+  return true;
+}
+
+void GetErasureCodingCodecsRequestProto::InternalSwap(GetErasureCodingCodecsRequestProto* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+}
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetErasureCodingCodecsRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[4]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void GetErasureCodingCodecsResponseProto::InitAsDefaultInstance() {
+}
 class GetErasureCodingCodecsResponseProto::_Internal {
  public:
 };
 
-GetErasureCodingCodecsResponseProto::GetErasureCodingCodecsResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+GetErasureCodingCodecsResponseProto::GetErasureCodingCodecsResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
+  codec_(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
 }
 GetErasureCodingCodecsResponseProto::GetErasureCodingCodecsResponseProto(const GetErasureCodingCodecsResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  GetErasureCodingCodecsResponseProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_.codec_){from._impl_.codec_}
-    , /*decltype(_impl_._cached_size_)*/{}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      codec_(from.codec_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
 }
 
-inline void GetErasureCodingCodecsResponseProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_.codec_){arena}
-    , /*decltype(_impl_._cached_size_)*/{}
-  };
+void GetErasureCodingCodecsResponseProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_GetErasureCodingCodecsResponseProto_erasurecoding_2eproto.base);
 }
 
 GetErasureCodingCodecsResponseProto::~GetErasureCodingCodecsResponseProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void GetErasureCodingCodecsResponseProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.codec_.~RepeatedPtrField();
+void GetErasureCodingCodecsResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
 }
 
+void GetErasureCodingCodecsResponseProto::ArenaDtor(void* object) {
+  GetErasureCodingCodecsResponseProto* _this = reinterpret_cast< GetErasureCodingCodecsResponseProto* >(object);
+  (void)_this;
+}
+void GetErasureCodingCodecsResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void GetErasureCodingCodecsResponseProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const GetErasureCodingCodecsResponseProto& GetErasureCodingCodecsResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetErasureCodingCodecsResponseProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void GetErasureCodingCodecsResponseProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.codec_.Clear();
+  codec_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* GetErasureCodingCodecsResponseProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* GetErasureCodingCodecsResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // repeated .hadoop.hdfs.CodecProto codec = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr -= 1;
           do {
             ptr += 1;
@@ -1289,48 +1791,46 @@ const char* GetErasureCodingCodecsResponseProto::_InternalParse(const char* ptr,
             CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<10>(ptr));
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
+success:
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* GetErasureCodingCodecsResponseProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* GetErasureCodingCodecsResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   // repeated .hadoop.hdfs.CodecProto codec = 1;
-  for (unsigned i = 0,
-      n = static_cast<unsigned>(this->_internal_codec_size()); i < n; i++) {
-    const auto& repfield = this->_internal_codec(i);
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->_internal_codec_size()); i < n; i++) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-        InternalWriteMessage(1, repfield, repfield.GetCachedSize(), target, stream);
+      InternalWriteMessage(1, this->_internal_codec(i), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
@@ -1341,37 +1841,56 @@ size_t GetErasureCodingCodecsResponseProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
   size_t total_size = 0;
 
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   // repeated .hadoop.hdfs.CodecProto codec = 1;
   total_size += 1UL * this->_internal_codec_size();
-  for (const auto& msg : this->_impl_.codec_) {
+  for (const auto& msg : this->codec_) {
     total_size +=
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetErasureCodingCodecsResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    GetErasureCodingCodecsResponseProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetErasureCodingCodecsResponseProto::GetClassData() const { return &_class_data_; }
+void GetErasureCodingCodecsResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetErasureCodingCodecsResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetErasureCodingCodecsResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void GetErasureCodingCodecsResponseProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<GetErasureCodingCodecsResponseProto*>(&to_msg);
-  auto& from = static_cast<const GetErasureCodingCodecsResponseProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void GetErasureCodingCodecsResponseProto::MergeFrom(const GetErasureCodingCodecsResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  _this->_impl_.codec_.MergeFrom(from._impl_.codec_);
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  codec_.MergeFrom(from.codec_);
+}
+
+void GetErasureCodingCodecsResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.GetErasureCodingCodecsResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void GetErasureCodingCodecsResponseProto::CopyFrom(const GetErasureCodingCodecsResponseProto& from) {
@@ -1382,28 +1901,28 @@ void GetErasureCodingCodecsResponseProto::CopyFrom(const GetErasureCodingCodecsR
 }
 
 bool GetErasureCodingCodecsResponseProto::IsInitialized() const {
-  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(_impl_.codec_))
-    return false;
+  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(codec_)) return false;
   return true;
 }
 
 void GetErasureCodingCodecsResponseProto::InternalSwap(GetErasureCodingCodecsResponseProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  _impl_.codec_.InternalSwap(&other->_impl_.codec_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  codec_.InternalSwap(&other->codec_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetErasureCodingCodecsResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[5]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void GetErasureCodingPolicyRequestProto::InitAsDefaultInstance() {
+}
 class GetErasureCodingPolicyRequestProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<GetErasureCodingPolicyRequestProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<GetErasureCodingPolicyRequestProto>()._has_bits_);
   static void set_has_src(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -1412,129 +1931,119 @@ class GetErasureCodingPolicyRequestProto::_Internal {
   }
 };
 
-GetErasureCodingPolicyRequestProto::GetErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+GetErasureCodingPolicyRequestProto::GetErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
 }
 GetErasureCodingPolicyRequestProto::GetErasureCodingPolicyRequestProto(const GetErasureCodingPolicyRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  GetErasureCodingPolicyRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.src_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.src_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.src_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  src_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_src()) {
-    _this->_impl_.src_.Set(from._internal_src(), 
-      _this->GetArenaForAllocation());
+    src_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_src(),
+      GetArena());
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
 }
 
-inline void GetErasureCodingPolicyRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.src_){}
-  };
-  _impl_.src_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.src_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void GetErasureCodingPolicyRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_GetErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  src_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 GetErasureCodingPolicyRequestProto::~GetErasureCodingPolicyRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void GetErasureCodingPolicyRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.src_.Destroy();
+void GetErasureCodingPolicyRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  src_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void GetErasureCodingPolicyRequestProto::ArenaDtor(void* object) {
+  GetErasureCodingPolicyRequestProto* _this = reinterpret_cast< GetErasureCodingPolicyRequestProto* >(object);
+  (void)_this;
+}
+void GetErasureCodingPolicyRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void GetErasureCodingPolicyRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const GetErasureCodingPolicyRequestProto& GetErasureCodingPolicyRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void GetErasureCodingPolicyRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    _impl_.src_.ClearNonDefaultToEmpty();
+    src_.ClearNonDefaultToEmpty();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* GetErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* GetErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required string src = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_src();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.hdfs.GetErasureCodingPolicyRequestProto.src");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.hdfs.GetErasureCodingPolicyRequestProto.src");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* GetErasureCodingPolicyRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* GetErasureCodingPolicyRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required string src = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -1546,7 +2055,7 @@ uint8_t* GetErasureCodingPolicyRequestProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
@@ -1563,32 +2072,51 @@ size_t GetErasureCodingPolicyRequestProto::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_src());
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetErasureCodingPolicyRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    GetErasureCodingPolicyRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetErasureCodingPolicyRequestProto::GetClassData() const { return &_class_data_; }
+void GetErasureCodingPolicyRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetErasureCodingPolicyRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetErasureCodingPolicyRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void GetErasureCodingPolicyRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<GetErasureCodingPolicyRequestProto*>(&to_msg);
-  auto& from = static_cast<const GetErasureCodingPolicyRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void GetErasureCodingPolicyRequestProto::MergeFrom(const GetErasureCodingPolicyRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_src()) {
-    _this->_internal_set_src(from._internal_src());
+    _internal_set_src(from._internal_src());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void GetErasureCodingPolicyRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.GetErasureCodingPolicyRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void GetErasureCodingPolicyRequestProto::CopyFrom(const GetErasureCodingPolicyRequestProto& from) {
@@ -1599,33 +2127,31 @@ void GetErasureCodingPolicyRequestProto::CopyFrom(const GetErasureCodingPolicyRe
 }
 
 bool GetErasureCodingPolicyRequestProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void GetErasureCodingPolicyRequestProto::InternalSwap(GetErasureCodingPolicyRequestProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.src_, lhs_arena,
-      &other->_impl_.src_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  src_.Swap(&other->src_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetErasureCodingPolicyRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[6]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void GetErasureCodingPolicyResponseProto::InitAsDefaultInstance() {
+  ::hadoop::hdfs::_GetErasureCodingPolicyResponseProto_default_instance_._instance.get_mutable()->ecpolicy_ = const_cast< ::hadoop::hdfs::ErasureCodingPolicyProto*>(
+      ::hadoop::hdfs::ErasureCodingPolicyProto::internal_default_instance());
+}
 class GetErasureCodingPolicyResponseProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<GetErasureCodingPolicyResponseProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<GetErasureCodingPolicyResponseProto>()._has_bits_);
   static const ::hadoop::hdfs::ErasureCodingPolicyProto& ecpolicy(const GetErasureCodingPolicyResponseProto* msg);
   static void set_has_ecpolicy(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
@@ -1634,132 +2160,132 @@ class GetErasureCodingPolicyResponseProto::_Internal {
 
 const ::hadoop::hdfs::ErasureCodingPolicyProto&
 GetErasureCodingPolicyResponseProto::_Internal::ecpolicy(const GetErasureCodingPolicyResponseProto* msg) {
-  return *msg->_impl_.ecpolicy_;
+  return *msg->ecpolicy_;
 }
 void GetErasureCodingPolicyResponseProto::clear_ecpolicy() {
-  if (_impl_.ecpolicy_ != nullptr) _impl_.ecpolicy_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000001u;
+  if (ecpolicy_ != nullptr) ecpolicy_->Clear();
+  _has_bits_[0] &= ~0x00000001u;
 }
-GetErasureCodingPolicyResponseProto::GetErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+GetErasureCodingPolicyResponseProto::GetErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
 }
 GetErasureCodingPolicyResponseProto::GetErasureCodingPolicyResponseProto(const GetErasureCodingPolicyResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  GetErasureCodingPolicyResponseProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.ecpolicy_){nullptr}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   if (from._internal_has_ecpolicy()) {
-    _this->_impl_.ecpolicy_ = new ::hadoop::hdfs::ErasureCodingPolicyProto(*from._impl_.ecpolicy_);
+    ecpolicy_ = new ::hadoop::hdfs::ErasureCodingPolicyProto(*from.ecpolicy_);
+  } else {
+    ecpolicy_ = nullptr;
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
 }
 
-inline void GetErasureCodingPolicyResponseProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.ecpolicy_){nullptr}
-  };
+void GetErasureCodingPolicyResponseProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_GetErasureCodingPolicyResponseProto_erasurecoding_2eproto.base);
+  ecpolicy_ = nullptr;
 }
 
 GetErasureCodingPolicyResponseProto::~GetErasureCodingPolicyResponseProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void GetErasureCodingPolicyResponseProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  if (this != internal_default_instance()) delete _impl_.ecpolicy_;
+void GetErasureCodingPolicyResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  if (this != internal_default_instance()) delete ecpolicy_;
 }
 
+void GetErasureCodingPolicyResponseProto::ArenaDtor(void* object) {
+  GetErasureCodingPolicyResponseProto* _this = reinterpret_cast< GetErasureCodingPolicyResponseProto* >(object);
+  (void)_this;
+}
+void GetErasureCodingPolicyResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void GetErasureCodingPolicyResponseProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const GetErasureCodingPolicyResponseProto& GetErasureCodingPolicyResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetErasureCodingPolicyResponseProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void GetErasureCodingPolicyResponseProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    GOOGLE_DCHECK(_impl_.ecpolicy_ != nullptr);
-    _impl_.ecpolicy_->Clear();
+    GOOGLE_DCHECK(ecpolicy_ != nullptr);
+    ecpolicy_->Clear();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* GetErasureCodingPolicyResponseProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* GetErasureCodingPolicyResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // optional .hadoop.hdfs.ErasureCodingPolicyProto ecPolicy = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr = ctx->ParseMessage(_internal_mutable_ecpolicy(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* GetErasureCodingPolicyResponseProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* GetErasureCodingPolicyResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // optional .hadoop.hdfs.ErasureCodingPolicyProto ecPolicy = 1;
   if (cached_has_bits & 0x00000001u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(1, _Internal::ecpolicy(this),
-        _Internal::ecpolicy(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        1, _Internal::ecpolicy(this), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
@@ -1770,41 +2296,59 @@ size_t GetErasureCodingPolicyResponseProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
   size_t total_size = 0;
 
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   // optional .hadoop.hdfs.ErasureCodingPolicyProto ecPolicy = 1;
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.ecpolicy_);
+        *ecpolicy_);
   }
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetErasureCodingPolicyResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    GetErasureCodingPolicyResponseProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetErasureCodingPolicyResponseProto::GetClassData() const { return &_class_data_; }
+void GetErasureCodingPolicyResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetErasureCodingPolicyResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetErasureCodingPolicyResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void GetErasureCodingPolicyResponseProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<GetErasureCodingPolicyResponseProto*>(&to_msg);
-  auto& from = static_cast<const GetErasureCodingPolicyResponseProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void GetErasureCodingPolicyResponseProto::MergeFrom(const GetErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_ecpolicy()) {
-    _this->_internal_mutable_ecpolicy()->::hadoop::hdfs::ErasureCodingPolicyProto::MergeFrom(
-        from._internal_ecpolicy());
+    _internal_mutable_ecpolicy()->::hadoop::hdfs::ErasureCodingPolicyProto::MergeFrom(from._internal_ecpolicy());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void GetErasureCodingPolicyResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.GetErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void GetErasureCodingPolicyResponseProto::CopyFrom(const GetErasureCodingPolicyResponseProto& from) {
@@ -1816,97 +2360,98 @@ void GetErasureCodingPolicyResponseProto::CopyFrom(const GetErasureCodingPolicyR
 
 bool GetErasureCodingPolicyResponseProto::IsInitialized() const {
   if (_internal_has_ecpolicy()) {
-    if (!_impl_.ecpolicy_->IsInitialized()) return false;
+    if (!ecpolicy_->IsInitialized()) return false;
   }
   return true;
 }
 
 void GetErasureCodingPolicyResponseProto::InternalSwap(GetErasureCodingPolicyResponseProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  swap(_impl_.ecpolicy_, other->_impl_.ecpolicy_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  swap(ecpolicy_, other->ecpolicy_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetErasureCodingPolicyResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[7]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void AddErasureCodingPoliciesRequestProto::InitAsDefaultInstance() {
+}
 class AddErasureCodingPoliciesRequestProto::_Internal {
  public:
 };
 
 void AddErasureCodingPoliciesRequestProto::clear_ecpolicies() {
-  _impl_.ecpolicies_.Clear();
+  ecpolicies_.Clear();
 }
-AddErasureCodingPoliciesRequestProto::AddErasureCodingPoliciesRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+AddErasureCodingPoliciesRequestProto::AddErasureCodingPoliciesRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
+  ecpolicies_(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
 }
 AddErasureCodingPoliciesRequestProto::AddErasureCodingPoliciesRequestProto(const AddErasureCodingPoliciesRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  AddErasureCodingPoliciesRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_.ecpolicies_){from._impl_.ecpolicies_}
-    , /*decltype(_impl_._cached_size_)*/{}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      ecpolicies_(from.ecpolicies_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
 }
 
-inline void AddErasureCodingPoliciesRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_.ecpolicies_){arena}
-    , /*decltype(_impl_._cached_size_)*/{}
-  };
+void AddErasureCodingPoliciesRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_AddErasureCodingPoliciesRequestProto_erasurecoding_2eproto.base);
 }
 
 AddErasureCodingPoliciesRequestProto::~AddErasureCodingPoliciesRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void AddErasureCodingPoliciesRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.ecpolicies_.~RepeatedPtrField();
+void AddErasureCodingPoliciesRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
 }
 
+void AddErasureCodingPoliciesRequestProto::ArenaDtor(void* object) {
+  AddErasureCodingPoliciesRequestProto* _this = reinterpret_cast< AddErasureCodingPoliciesRequestProto* >(object);
+  (void)_this;
+}
+void AddErasureCodingPoliciesRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void AddErasureCodingPoliciesRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const AddErasureCodingPoliciesRequestProto& AddErasureCodingPoliciesRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_AddErasureCodingPoliciesRequestProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void AddErasureCodingPoliciesRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.ecpolicies_.Clear();
+  ecpolicies_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* AddErasureCodingPoliciesRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* AddErasureCodingPoliciesRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // repeated .hadoop.hdfs.ErasureCodingPolicyProto ecPolicies = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr -= 1;
           do {
             ptr += 1;
@@ -1914,48 +2459,46 @@ const char* AddErasureCodingPoliciesRequestProto::_InternalParse(const char* ptr
             CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<10>(ptr));
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
+success:
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* AddErasureCodingPoliciesRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* AddErasureCodingPoliciesRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   // repeated .hadoop.hdfs.ErasureCodingPolicyProto ecPolicies = 1;
-  for (unsigned i = 0,
-      n = static_cast<unsigned>(this->_internal_ecpolicies_size()); i < n; i++) {
-    const auto& repfield = this->_internal_ecpolicies(i);
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->_internal_ecpolicies_size()); i < n; i++) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-        InternalWriteMessage(1, repfield, repfield.GetCachedSize(), target, stream);
+      InternalWriteMessage(1, this->_internal_ecpolicies(i), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
@@ -1966,37 +2509,56 @@ size_t AddErasureCodingPoliciesRequestProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
   size_t total_size = 0;
 
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   // repeated .hadoop.hdfs.ErasureCodingPolicyProto ecPolicies = 1;
   total_size += 1UL * this->_internal_ecpolicies_size();
-  for (const auto& msg : this->_impl_.ecpolicies_) {
+  for (const auto& msg : this->ecpolicies_) {
     total_size +=
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData AddErasureCodingPoliciesRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    AddErasureCodingPoliciesRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*AddErasureCodingPoliciesRequestProto::GetClassData() const { return &_class_data_; }
+void AddErasureCodingPoliciesRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const AddErasureCodingPoliciesRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<AddErasureCodingPoliciesRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void AddErasureCodingPoliciesRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<AddErasureCodingPoliciesRequestProto*>(&to_msg);
-  auto& from = static_cast<const AddErasureCodingPoliciesRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void AddErasureCodingPoliciesRequestProto::MergeFrom(const AddErasureCodingPoliciesRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  _this->_impl_.ecpolicies_.MergeFrom(from._impl_.ecpolicies_);
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ecpolicies_.MergeFrom(from.ecpolicies_);
+}
+
+void AddErasureCodingPoliciesRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.AddErasureCodingPoliciesRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void AddErasureCodingPoliciesRequestProto::CopyFrom(const AddErasureCodingPoliciesRequestProto& from) {
@@ -2007,96 +2569,96 @@ void AddErasureCodingPoliciesRequestProto::CopyFrom(const AddErasureCodingPolici
 }
 
 bool AddErasureCodingPoliciesRequestProto::IsInitialized() const {
-  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(_impl_.ecpolicies_))
-    return false;
+  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(ecpolicies_)) return false;
   return true;
 }
 
 void AddErasureCodingPoliciesRequestProto::InternalSwap(AddErasureCodingPoliciesRequestProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  _impl_.ecpolicies_.InternalSwap(&other->_impl_.ecpolicies_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  ecpolicies_.InternalSwap(&other->ecpolicies_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata AddErasureCodingPoliciesRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[8]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void AddErasureCodingPoliciesResponseProto::InitAsDefaultInstance() {
+}
 class AddErasureCodingPoliciesResponseProto::_Internal {
  public:
 };
 
 void AddErasureCodingPoliciesResponseProto::clear_responses() {
-  _impl_.responses_.Clear();
+  responses_.Clear();
 }
-AddErasureCodingPoliciesResponseProto::AddErasureCodingPoliciesResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+AddErasureCodingPoliciesResponseProto::AddErasureCodingPoliciesResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
+  responses_(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
 }
 AddErasureCodingPoliciesResponseProto::AddErasureCodingPoliciesResponseProto(const AddErasureCodingPoliciesResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  AddErasureCodingPoliciesResponseProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_.responses_){from._impl_.responses_}
-    , /*decltype(_impl_._cached_size_)*/{}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      responses_(from.responses_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
 }
 
-inline void AddErasureCodingPoliciesResponseProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_.responses_){arena}
-    , /*decltype(_impl_._cached_size_)*/{}
-  };
+void AddErasureCodingPoliciesResponseProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_AddErasureCodingPoliciesResponseProto_erasurecoding_2eproto.base);
 }
 
 AddErasureCodingPoliciesResponseProto::~AddErasureCodingPoliciesResponseProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void AddErasureCodingPoliciesResponseProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.responses_.~RepeatedPtrField();
+void AddErasureCodingPoliciesResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
 }
 
+void AddErasureCodingPoliciesResponseProto::ArenaDtor(void* object) {
+  AddErasureCodingPoliciesResponseProto* _this = reinterpret_cast< AddErasureCodingPoliciesResponseProto* >(object);
+  (void)_this;
+}
+void AddErasureCodingPoliciesResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void AddErasureCodingPoliciesResponseProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const AddErasureCodingPoliciesResponseProto& AddErasureCodingPoliciesResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_AddErasureCodingPoliciesResponseProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void AddErasureCodingPoliciesResponseProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.responses_.Clear();
+  responses_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* AddErasureCodingPoliciesResponseProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* AddErasureCodingPoliciesResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // repeated .hadoop.hdfs.AddErasureCodingPolicyResponseProto responses = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr -= 1;
           do {
             ptr += 1;
@@ -2104,48 +2666,46 @@ const char* AddErasureCodingPoliciesResponseProto::_InternalParse(const char* pt
             CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<10>(ptr));
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
+success:
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* AddErasureCodingPoliciesResponseProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* AddErasureCodingPoliciesResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   // repeated .hadoop.hdfs.AddErasureCodingPolicyResponseProto responses = 1;
-  for (unsigned i = 0,
-      n = static_cast<unsigned>(this->_internal_responses_size()); i < n; i++) {
-    const auto& repfield = this->_internal_responses(i);
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->_internal_responses_size()); i < n; i++) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-        InternalWriteMessage(1, repfield, repfield.GetCachedSize(), target, stream);
+      InternalWriteMessage(1, this->_internal_responses(i), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
@@ -2156,37 +2716,56 @@ size_t AddErasureCodingPoliciesResponseProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
   size_t total_size = 0;
 
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   // repeated .hadoop.hdfs.AddErasureCodingPolicyResponseProto responses = 1;
   total_size += 1UL * this->_internal_responses_size();
-  for (const auto& msg : this->_impl_.responses_) {
+  for (const auto& msg : this->responses_) {
     total_size +=
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
   }
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData AddErasureCodingPoliciesResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    AddErasureCodingPoliciesResponseProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*AddErasureCodingPoliciesResponseProto::GetClassData() const { return &_class_data_; }
+void AddErasureCodingPoliciesResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const AddErasureCodingPoliciesResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<AddErasureCodingPoliciesResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void AddErasureCodingPoliciesResponseProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<AddErasureCodingPoliciesResponseProto*>(&to_msg);
-  auto& from = static_cast<const AddErasureCodingPoliciesResponseProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void AddErasureCodingPoliciesResponseProto::MergeFrom(const AddErasureCodingPoliciesResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  _this->_impl_.responses_.MergeFrom(from._impl_.responses_);
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  responses_.MergeFrom(from.responses_);
+}
+
+void AddErasureCodingPoliciesResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.AddErasureCodingPoliciesResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void AddErasureCodingPoliciesResponseProto::CopyFrom(const AddErasureCodingPoliciesResponseProto& from) {
@@ -2197,28 +2776,28 @@ void AddErasureCodingPoliciesResponseProto::CopyFrom(const AddErasureCodingPolic
 }
 
 bool AddErasureCodingPoliciesResponseProto::IsInitialized() const {
-  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(_impl_.responses_))
-    return false;
+  if (!::PROTOBUF_NAMESPACE_ID::internal::AllAreInitialized(responses_)) return false;
   return true;
 }
 
 void AddErasureCodingPoliciesResponseProto::InternalSwap(AddErasureCodingPoliciesResponseProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  _impl_.responses_.InternalSwap(&other->_impl_.responses_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  responses_.InternalSwap(&other->responses_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata AddErasureCodingPoliciesResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[9]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void RemoveErasureCodingPolicyRequestProto::InitAsDefaultInstance() {
+}
 class RemoveErasureCodingPolicyRequestProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<RemoveErasureCodingPolicyRequestProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<RemoveErasureCodingPolicyRequestProto>()._has_bits_);
   static void set_has_ecpolicyname(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -2227,129 +2806,119 @@ class RemoveErasureCodingPolicyRequestProto::_Internal {
   }
 };
 
-RemoveErasureCodingPolicyRequestProto::RemoveErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+RemoveErasureCodingPolicyRequestProto::RemoveErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
 }
 RemoveErasureCodingPolicyRequestProto::RemoveErasureCodingPolicyRequestProto(const RemoveErasureCodingPolicyRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  RemoveErasureCodingPolicyRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.ecpolicyname_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.ecpolicyname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.ecpolicyname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  ecpolicyname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_ecpolicyname()) {
-    _this->_impl_.ecpolicyname_.Set(from._internal_ecpolicyname(), 
-      _this->GetArenaForAllocation());
+    ecpolicyname_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_ecpolicyname(),
+      GetArena());
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
 }
 
-inline void RemoveErasureCodingPolicyRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.ecpolicyname_){}
-  };
-  _impl_.ecpolicyname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.ecpolicyname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void RemoveErasureCodingPolicyRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_RemoveErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  ecpolicyname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 RemoveErasureCodingPolicyRequestProto::~RemoveErasureCodingPolicyRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void RemoveErasureCodingPolicyRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.ecpolicyname_.Destroy();
+void RemoveErasureCodingPolicyRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  ecpolicyname_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void RemoveErasureCodingPolicyRequestProto::ArenaDtor(void* object) {
+  RemoveErasureCodingPolicyRequestProto* _this = reinterpret_cast< RemoveErasureCodingPolicyRequestProto* >(object);
+  (void)_this;
+}
+void RemoveErasureCodingPolicyRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void RemoveErasureCodingPolicyRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const RemoveErasureCodingPolicyRequestProto& RemoveErasureCodingPolicyRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_RemoveErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void RemoveErasureCodingPolicyRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    _impl_.ecpolicyname_.ClearNonDefaultToEmpty();
+    ecpolicyname_.ClearNonDefaultToEmpty();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* RemoveErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* RemoveErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required string ecPolicyName = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_ecpolicyname();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.hdfs.RemoveErasureCodingPolicyRequestProto.ecPolicyName");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.hdfs.RemoveErasureCodingPolicyRequestProto.ecPolicyName");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* RemoveErasureCodingPolicyRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* RemoveErasureCodingPolicyRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required string ecPolicyName = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -2361,7 +2930,7 @@ uint8_t* RemoveErasureCodingPolicyRequestProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
@@ -2378,32 +2947,51 @@ size_t RemoveErasureCodingPolicyRequestProto::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_ecpolicyname());
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData RemoveErasureCodingPolicyRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    RemoveErasureCodingPolicyRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*RemoveErasureCodingPolicyRequestProto::GetClassData() const { return &_class_data_; }
+void RemoveErasureCodingPolicyRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const RemoveErasureCodingPolicyRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<RemoveErasureCodingPolicyRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void RemoveErasureCodingPolicyRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<RemoveErasureCodingPolicyRequestProto*>(&to_msg);
-  auto& from = static_cast<const RemoveErasureCodingPolicyRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void RemoveErasureCodingPolicyRequestProto::MergeFrom(const RemoveErasureCodingPolicyRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_ecpolicyname()) {
-    _this->_internal_set_ecpolicyname(from._internal_ecpolicyname());
+    _internal_set_ecpolicyname(from._internal_ecpolicyname());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void RemoveErasureCodingPolicyRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.RemoveErasureCodingPolicyRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void RemoveErasureCodingPolicyRequestProto::CopyFrom(const RemoveErasureCodingPolicyRequestProto& from) {
@@ -2414,73 +3002,194 @@ void RemoveErasureCodingPolicyRequestProto::CopyFrom(const RemoveErasureCodingPo
 }
 
 bool RemoveErasureCodingPolicyRequestProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void RemoveErasureCodingPolicyRequestProto::InternalSwap(RemoveErasureCodingPolicyRequestProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.ecpolicyname_, lhs_arena,
-      &other->_impl_.ecpolicyname_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  ecpolicyname_.Swap(&other->ecpolicyname_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata RemoveErasureCodingPolicyRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[10]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void RemoveErasureCodingPolicyResponseProto::InitAsDefaultInstance() {
+}
 class RemoveErasureCodingPolicyResponseProto::_Internal {
  public:
 };
 
-RemoveErasureCodingPolicyResponseProto::RemoveErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+RemoveErasureCodingPolicyResponseProto::RemoveErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
 }
 RemoveErasureCodingPolicyResponseProto::RemoveErasureCodingPolicyResponseProto(const RemoveErasureCodingPolicyResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  RemoveErasureCodingPolicyResponseProto* const _this = this; (void)_this;
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
 }
 
+void RemoveErasureCodingPolicyResponseProto::SharedCtor() {
+}
+
+RemoveErasureCodingPolicyResponseProto::~RemoveErasureCodingPolicyResponseProto() {
+  // @@protoc_insertion_point(destructor:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void RemoveErasureCodingPolicyResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void RemoveErasureCodingPolicyResponseProto::ArenaDtor(void* object) {
+  RemoveErasureCodingPolicyResponseProto* _this = reinterpret_cast< RemoveErasureCodingPolicyResponseProto* >(object);
+  (void)_this;
+}
+void RemoveErasureCodingPolicyResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void RemoveErasureCodingPolicyResponseProto::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const RemoveErasureCodingPolicyResponseProto& RemoveErasureCodingPolicyResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_RemoveErasureCodingPolicyResponseProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
 
 
+void RemoveErasureCodingPolicyResponseProto::Clear() {
+// @@protoc_insertion_point(message_clear_start:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData RemoveErasureCodingPolicyResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*RemoveErasureCodingPolicyResponseProto::GetClassData() const { return &_class_data_; }
+const char* RemoveErasureCodingPolicyResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
 
+::PROTOBUF_NAMESPACE_ID::uint8* RemoveErasureCodingPolicyResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+  return target;
+}
 
+size_t RemoveErasureCodingPolicyResponseProto::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+  size_t total_size = 0;
 
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
 
+void RemoveErasureCodingPolicyResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const RemoveErasureCodingPolicyResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<RemoveErasureCodingPolicyResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+    MergeFrom(*source);
+  }
+}
+
+void RemoveErasureCodingPolicyResponseProto::MergeFrom(const RemoveErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+}
+
+void RemoveErasureCodingPolicyResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void RemoveErasureCodingPolicyResponseProto::CopyFrom(const RemoveErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:hadoop.hdfs.RemoveErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool RemoveErasureCodingPolicyResponseProto::IsInitialized() const {
+  return true;
+}
+
+void RemoveErasureCodingPolicyResponseProto::InternalSwap(RemoveErasureCodingPolicyResponseProto* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+}
 
 ::PROTOBUF_NAMESPACE_ID::Metadata RemoveErasureCodingPolicyResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[11]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void EnableErasureCodingPolicyRequestProto::InitAsDefaultInstance() {
+}
 class EnableErasureCodingPolicyRequestProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<EnableErasureCodingPolicyRequestProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<EnableErasureCodingPolicyRequestProto>()._has_bits_);
   static void set_has_ecpolicyname(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -2489,129 +3198,119 @@ class EnableErasureCodingPolicyRequestProto::_Internal {
   }
 };
 
-EnableErasureCodingPolicyRequestProto::EnableErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+EnableErasureCodingPolicyRequestProto::EnableErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
 }
 EnableErasureCodingPolicyRequestProto::EnableErasureCodingPolicyRequestProto(const EnableErasureCodingPolicyRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  EnableErasureCodingPolicyRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.ecpolicyname_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.ecpolicyname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.ecpolicyname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  ecpolicyname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_ecpolicyname()) {
-    _this->_impl_.ecpolicyname_.Set(from._internal_ecpolicyname(), 
-      _this->GetArenaForAllocation());
+    ecpolicyname_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_ecpolicyname(),
+      GetArena());
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
 }
 
-inline void EnableErasureCodingPolicyRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.ecpolicyname_){}
-  };
-  _impl_.ecpolicyname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.ecpolicyname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void EnableErasureCodingPolicyRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_EnableErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  ecpolicyname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 EnableErasureCodingPolicyRequestProto::~EnableErasureCodingPolicyRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void EnableErasureCodingPolicyRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.ecpolicyname_.Destroy();
+void EnableErasureCodingPolicyRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  ecpolicyname_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void EnableErasureCodingPolicyRequestProto::ArenaDtor(void* object) {
+  EnableErasureCodingPolicyRequestProto* _this = reinterpret_cast< EnableErasureCodingPolicyRequestProto* >(object);
+  (void)_this;
+}
+void EnableErasureCodingPolicyRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void EnableErasureCodingPolicyRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const EnableErasureCodingPolicyRequestProto& EnableErasureCodingPolicyRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_EnableErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void EnableErasureCodingPolicyRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    _impl_.ecpolicyname_.ClearNonDefaultToEmpty();
+    ecpolicyname_.ClearNonDefaultToEmpty();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* EnableErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* EnableErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required string ecPolicyName = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_ecpolicyname();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.hdfs.EnableErasureCodingPolicyRequestProto.ecPolicyName");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.hdfs.EnableErasureCodingPolicyRequestProto.ecPolicyName");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* EnableErasureCodingPolicyRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* EnableErasureCodingPolicyRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required string ecPolicyName = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -2623,7 +3322,7 @@ uint8_t* EnableErasureCodingPolicyRequestProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
@@ -2640,32 +3339,51 @@ size_t EnableErasureCodingPolicyRequestProto::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_ecpolicyname());
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EnableErasureCodingPolicyRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    EnableErasureCodingPolicyRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EnableErasureCodingPolicyRequestProto::GetClassData() const { return &_class_data_; }
+void EnableErasureCodingPolicyRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const EnableErasureCodingPolicyRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<EnableErasureCodingPolicyRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void EnableErasureCodingPolicyRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<EnableErasureCodingPolicyRequestProto*>(&to_msg);
-  auto& from = static_cast<const EnableErasureCodingPolicyRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void EnableErasureCodingPolicyRequestProto::MergeFrom(const EnableErasureCodingPolicyRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_ecpolicyname()) {
-    _this->_internal_set_ecpolicyname(from._internal_ecpolicyname());
+    _internal_set_ecpolicyname(from._internal_ecpolicyname());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void EnableErasureCodingPolicyRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.EnableErasureCodingPolicyRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void EnableErasureCodingPolicyRequestProto::CopyFrom(const EnableErasureCodingPolicyRequestProto& from) {
@@ -2676,73 +3394,194 @@ void EnableErasureCodingPolicyRequestProto::CopyFrom(const EnableErasureCodingPo
 }
 
 bool EnableErasureCodingPolicyRequestProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void EnableErasureCodingPolicyRequestProto::InternalSwap(EnableErasureCodingPolicyRequestProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.ecpolicyname_, lhs_arena,
-      &other->_impl_.ecpolicyname_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  ecpolicyname_.Swap(&other->ecpolicyname_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata EnableErasureCodingPolicyRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[12]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void EnableErasureCodingPolicyResponseProto::InitAsDefaultInstance() {
+}
 class EnableErasureCodingPolicyResponseProto::_Internal {
  public:
 };
 
-EnableErasureCodingPolicyResponseProto::EnableErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+EnableErasureCodingPolicyResponseProto::EnableErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
 }
 EnableErasureCodingPolicyResponseProto::EnableErasureCodingPolicyResponseProto(const EnableErasureCodingPolicyResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  EnableErasureCodingPolicyResponseProto* const _this = this; (void)_this;
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
 }
 
+void EnableErasureCodingPolicyResponseProto::SharedCtor() {
+}
+
+EnableErasureCodingPolicyResponseProto::~EnableErasureCodingPolicyResponseProto() {
+  // @@protoc_insertion_point(destructor:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void EnableErasureCodingPolicyResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void EnableErasureCodingPolicyResponseProto::ArenaDtor(void* object) {
+  EnableErasureCodingPolicyResponseProto* _this = reinterpret_cast< EnableErasureCodingPolicyResponseProto* >(object);
+  (void)_this;
+}
+void EnableErasureCodingPolicyResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void EnableErasureCodingPolicyResponseProto::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const EnableErasureCodingPolicyResponseProto& EnableErasureCodingPolicyResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_EnableErasureCodingPolicyResponseProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
 
 
+void EnableErasureCodingPolicyResponseProto::Clear() {
+// @@protoc_insertion_point(message_clear_start:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EnableErasureCodingPolicyResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EnableErasureCodingPolicyResponseProto::GetClassData() const { return &_class_data_; }
+const char* EnableErasureCodingPolicyResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
 
+::PROTOBUF_NAMESPACE_ID::uint8* EnableErasureCodingPolicyResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+  return target;
+}
 
+size_t EnableErasureCodingPolicyResponseProto::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+  size_t total_size = 0;
 
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
 
+void EnableErasureCodingPolicyResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const EnableErasureCodingPolicyResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<EnableErasureCodingPolicyResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+    MergeFrom(*source);
+  }
+}
+
+void EnableErasureCodingPolicyResponseProto::MergeFrom(const EnableErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+}
+
+void EnableErasureCodingPolicyResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void EnableErasureCodingPolicyResponseProto::CopyFrom(const EnableErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:hadoop.hdfs.EnableErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool EnableErasureCodingPolicyResponseProto::IsInitialized() const {
+  return true;
+}
+
+void EnableErasureCodingPolicyResponseProto::InternalSwap(EnableErasureCodingPolicyResponseProto* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+}
 
 ::PROTOBUF_NAMESPACE_ID::Metadata EnableErasureCodingPolicyResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[13]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void DisableErasureCodingPolicyRequestProto::InitAsDefaultInstance() {
+}
 class DisableErasureCodingPolicyRequestProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<DisableErasureCodingPolicyRequestProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<DisableErasureCodingPolicyRequestProto>()._has_bits_);
   static void set_has_ecpolicyname(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -2751,129 +3590,119 @@ class DisableErasureCodingPolicyRequestProto::_Internal {
   }
 };
 
-DisableErasureCodingPolicyRequestProto::DisableErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+DisableErasureCodingPolicyRequestProto::DisableErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
 }
 DisableErasureCodingPolicyRequestProto::DisableErasureCodingPolicyRequestProto(const DisableErasureCodingPolicyRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  DisableErasureCodingPolicyRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.ecpolicyname_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.ecpolicyname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.ecpolicyname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  ecpolicyname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_ecpolicyname()) {
-    _this->_impl_.ecpolicyname_.Set(from._internal_ecpolicyname(), 
-      _this->GetArenaForAllocation());
+    ecpolicyname_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_ecpolicyname(),
+      GetArena());
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
 }
 
-inline void DisableErasureCodingPolicyRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.ecpolicyname_){}
-  };
-  _impl_.ecpolicyname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.ecpolicyname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void DisableErasureCodingPolicyRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_DisableErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  ecpolicyname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 DisableErasureCodingPolicyRequestProto::~DisableErasureCodingPolicyRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void DisableErasureCodingPolicyRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.ecpolicyname_.Destroy();
+void DisableErasureCodingPolicyRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  ecpolicyname_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void DisableErasureCodingPolicyRequestProto::ArenaDtor(void* object) {
+  DisableErasureCodingPolicyRequestProto* _this = reinterpret_cast< DisableErasureCodingPolicyRequestProto* >(object);
+  (void)_this;
+}
+void DisableErasureCodingPolicyRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void DisableErasureCodingPolicyRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const DisableErasureCodingPolicyRequestProto& DisableErasureCodingPolicyRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_DisableErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void DisableErasureCodingPolicyRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    _impl_.ecpolicyname_.ClearNonDefaultToEmpty();
+    ecpolicyname_.ClearNonDefaultToEmpty();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* DisableErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* DisableErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required string ecPolicyName = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_ecpolicyname();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.hdfs.DisableErasureCodingPolicyRequestProto.ecPolicyName");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.hdfs.DisableErasureCodingPolicyRequestProto.ecPolicyName");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* DisableErasureCodingPolicyRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* DisableErasureCodingPolicyRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required string ecPolicyName = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -2885,7 +3714,7 @@ uint8_t* DisableErasureCodingPolicyRequestProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
@@ -2902,32 +3731,51 @@ size_t DisableErasureCodingPolicyRequestProto::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_ecpolicyname());
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DisableErasureCodingPolicyRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    DisableErasureCodingPolicyRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DisableErasureCodingPolicyRequestProto::GetClassData() const { return &_class_data_; }
+void DisableErasureCodingPolicyRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const DisableErasureCodingPolicyRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<DisableErasureCodingPolicyRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void DisableErasureCodingPolicyRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<DisableErasureCodingPolicyRequestProto*>(&to_msg);
-  auto& from = static_cast<const DisableErasureCodingPolicyRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void DisableErasureCodingPolicyRequestProto::MergeFrom(const DisableErasureCodingPolicyRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_ecpolicyname()) {
-    _this->_internal_set_ecpolicyname(from._internal_ecpolicyname());
+    _internal_set_ecpolicyname(from._internal_ecpolicyname());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void DisableErasureCodingPolicyRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.DisableErasureCodingPolicyRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void DisableErasureCodingPolicyRequestProto::CopyFrom(const DisableErasureCodingPolicyRequestProto& from) {
@@ -2938,73 +3786,194 @@ void DisableErasureCodingPolicyRequestProto::CopyFrom(const DisableErasureCoding
 }
 
 bool DisableErasureCodingPolicyRequestProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void DisableErasureCodingPolicyRequestProto::InternalSwap(DisableErasureCodingPolicyRequestProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.ecpolicyname_, lhs_arena,
-      &other->_impl_.ecpolicyname_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  ecpolicyname_.Swap(&other->ecpolicyname_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata DisableErasureCodingPolicyRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[14]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void DisableErasureCodingPolicyResponseProto::InitAsDefaultInstance() {
+}
 class DisableErasureCodingPolicyResponseProto::_Internal {
  public:
 };
 
-DisableErasureCodingPolicyResponseProto::DisableErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+DisableErasureCodingPolicyResponseProto::DisableErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
 }
 DisableErasureCodingPolicyResponseProto::DisableErasureCodingPolicyResponseProto(const DisableErasureCodingPolicyResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  DisableErasureCodingPolicyResponseProto* const _this = this; (void)_this;
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
 }
 
+void DisableErasureCodingPolicyResponseProto::SharedCtor() {
+}
+
+DisableErasureCodingPolicyResponseProto::~DisableErasureCodingPolicyResponseProto() {
+  // @@protoc_insertion_point(destructor:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void DisableErasureCodingPolicyResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void DisableErasureCodingPolicyResponseProto::ArenaDtor(void* object) {
+  DisableErasureCodingPolicyResponseProto* _this = reinterpret_cast< DisableErasureCodingPolicyResponseProto* >(object);
+  (void)_this;
+}
+void DisableErasureCodingPolicyResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void DisableErasureCodingPolicyResponseProto::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const DisableErasureCodingPolicyResponseProto& DisableErasureCodingPolicyResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_DisableErasureCodingPolicyResponseProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
 
 
+void DisableErasureCodingPolicyResponseProto::Clear() {
+// @@protoc_insertion_point(message_clear_start:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DisableErasureCodingPolicyResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DisableErasureCodingPolicyResponseProto::GetClassData() const { return &_class_data_; }
+const char* DisableErasureCodingPolicyResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
 
+::PROTOBUF_NAMESPACE_ID::uint8* DisableErasureCodingPolicyResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+  return target;
+}
 
+size_t DisableErasureCodingPolicyResponseProto::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+  size_t total_size = 0;
 
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
 
+void DisableErasureCodingPolicyResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const DisableErasureCodingPolicyResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<DisableErasureCodingPolicyResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+    MergeFrom(*source);
+  }
+}
+
+void DisableErasureCodingPolicyResponseProto::MergeFrom(const DisableErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+}
+
+void DisableErasureCodingPolicyResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void DisableErasureCodingPolicyResponseProto::CopyFrom(const DisableErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:hadoop.hdfs.DisableErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool DisableErasureCodingPolicyResponseProto::IsInitialized() const {
+  return true;
+}
+
+void DisableErasureCodingPolicyResponseProto::InternalSwap(DisableErasureCodingPolicyResponseProto* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+}
 
 ::PROTOBUF_NAMESPACE_ID::Metadata DisableErasureCodingPolicyResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[15]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void UnsetErasureCodingPolicyRequestProto::InitAsDefaultInstance() {
+}
 class UnsetErasureCodingPolicyRequestProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<UnsetErasureCodingPolicyRequestProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<UnsetErasureCodingPolicyRequestProto>()._has_bits_);
   static void set_has_src(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -3013,129 +3982,119 @@ class UnsetErasureCodingPolicyRequestProto::_Internal {
   }
 };
 
-UnsetErasureCodingPolicyRequestProto::UnsetErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+UnsetErasureCodingPolicyRequestProto::UnsetErasureCodingPolicyRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
 }
 UnsetErasureCodingPolicyRequestProto::UnsetErasureCodingPolicyRequestProto(const UnsetErasureCodingPolicyRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  UnsetErasureCodingPolicyRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.src_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.src_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.src_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  src_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_src()) {
-    _this->_impl_.src_.Set(from._internal_src(), 
-      _this->GetArenaForAllocation());
+    src_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_src(),
+      GetArena());
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
 }
 
-inline void UnsetErasureCodingPolicyRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.src_){}
-  };
-  _impl_.src_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.src_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void UnsetErasureCodingPolicyRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_UnsetErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  src_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 UnsetErasureCodingPolicyRequestProto::~UnsetErasureCodingPolicyRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void UnsetErasureCodingPolicyRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.src_.Destroy();
+void UnsetErasureCodingPolicyRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  src_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void UnsetErasureCodingPolicyRequestProto::ArenaDtor(void* object) {
+  UnsetErasureCodingPolicyRequestProto* _this = reinterpret_cast< UnsetErasureCodingPolicyRequestProto* >(object);
+  (void)_this;
+}
+void UnsetErasureCodingPolicyRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void UnsetErasureCodingPolicyRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const UnsetErasureCodingPolicyRequestProto& UnsetErasureCodingPolicyRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_UnsetErasureCodingPolicyRequestProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void UnsetErasureCodingPolicyRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    _impl_.src_.ClearNonDefaultToEmpty();
+    src_.ClearNonDefaultToEmpty();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* UnsetErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* UnsetErasureCodingPolicyRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required string src = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_src();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.hdfs.UnsetErasureCodingPolicyRequestProto.src");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.hdfs.UnsetErasureCodingPolicyRequestProto.src");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* UnsetErasureCodingPolicyRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* UnsetErasureCodingPolicyRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required string src = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -3147,7 +4106,7 @@ uint8_t* UnsetErasureCodingPolicyRequestProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
@@ -3164,32 +4123,51 @@ size_t UnsetErasureCodingPolicyRequestProto::ByteSizeLong() const {
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
         this->_internal_src());
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData UnsetErasureCodingPolicyRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    UnsetErasureCodingPolicyRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*UnsetErasureCodingPolicyRequestProto::GetClassData() const { return &_class_data_; }
+void UnsetErasureCodingPolicyRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const UnsetErasureCodingPolicyRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<UnsetErasureCodingPolicyRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void UnsetErasureCodingPolicyRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<UnsetErasureCodingPolicyRequestProto*>(&to_msg);
-  auto& from = static_cast<const UnsetErasureCodingPolicyRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void UnsetErasureCodingPolicyRequestProto::MergeFrom(const UnsetErasureCodingPolicyRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_src()) {
-    _this->_internal_set_src(from._internal_src());
+    _internal_set_src(from._internal_src());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void UnsetErasureCodingPolicyRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.UnsetErasureCodingPolicyRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void UnsetErasureCodingPolicyRequestProto::CopyFrom(const UnsetErasureCodingPolicyRequestProto& from) {
@@ -3200,179 +4178,298 @@ void UnsetErasureCodingPolicyRequestProto::CopyFrom(const UnsetErasureCodingPoli
 }
 
 bool UnsetErasureCodingPolicyRequestProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void UnsetErasureCodingPolicyRequestProto::InternalSwap(UnsetErasureCodingPolicyRequestProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.src_, lhs_arena,
-      &other->_impl_.src_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  src_.Swap(&other->src_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata UnsetErasureCodingPolicyRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[16]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void UnsetErasureCodingPolicyResponseProto::InitAsDefaultInstance() {
+}
 class UnsetErasureCodingPolicyResponseProto::_Internal {
  public:
 };
 
-UnsetErasureCodingPolicyResponseProto::UnsetErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+UnsetErasureCodingPolicyResponseProto::UnsetErasureCodingPolicyResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
 }
 UnsetErasureCodingPolicyResponseProto::UnsetErasureCodingPolicyResponseProto(const UnsetErasureCodingPolicyResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  UnsetErasureCodingPolicyResponseProto* const _this = this; (void)_this;
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
 }
 
+void UnsetErasureCodingPolicyResponseProto::SharedCtor() {
+}
+
+UnsetErasureCodingPolicyResponseProto::~UnsetErasureCodingPolicyResponseProto() {
+  // @@protoc_insertion_point(destructor:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void UnsetErasureCodingPolicyResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void UnsetErasureCodingPolicyResponseProto::ArenaDtor(void* object) {
+  UnsetErasureCodingPolicyResponseProto* _this = reinterpret_cast< UnsetErasureCodingPolicyResponseProto* >(object);
+  (void)_this;
+}
+void UnsetErasureCodingPolicyResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void UnsetErasureCodingPolicyResponseProto::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const UnsetErasureCodingPolicyResponseProto& UnsetErasureCodingPolicyResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_UnsetErasureCodingPolicyResponseProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
 
 
+void UnsetErasureCodingPolicyResponseProto::Clear() {
+// @@protoc_insertion_point(message_clear_start:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData UnsetErasureCodingPolicyResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*UnsetErasureCodingPolicyResponseProto::GetClassData() const { return &_class_data_; }
+const char* UnsetErasureCodingPolicyResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
 
+::PROTOBUF_NAMESPACE_ID::uint8* UnsetErasureCodingPolicyResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+  return target;
+}
 
+size_t UnsetErasureCodingPolicyResponseProto::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+  size_t total_size = 0;
 
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
 
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
 
+void UnsetErasureCodingPolicyResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const UnsetErasureCodingPolicyResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<UnsetErasureCodingPolicyResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+    MergeFrom(*source);
+  }
+}
+
+void UnsetErasureCodingPolicyResponseProto::MergeFrom(const UnsetErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+}
+
+void UnsetErasureCodingPolicyResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void UnsetErasureCodingPolicyResponseProto::CopyFrom(const UnsetErasureCodingPolicyResponseProto& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:hadoop.hdfs.UnsetErasureCodingPolicyResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool UnsetErasureCodingPolicyResponseProto::IsInitialized() const {
+  return true;
+}
+
+void UnsetErasureCodingPolicyResponseProto::InternalSwap(UnsetErasureCodingPolicyResponseProto* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+}
 
 ::PROTOBUF_NAMESPACE_ID::Metadata UnsetErasureCodingPolicyResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[17]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void GetECTopologyResultForPoliciesRequestProto::InitAsDefaultInstance() {
+}
 class GetECTopologyResultForPoliciesRequestProto::_Internal {
  public:
 };
 
-GetECTopologyResultForPoliciesRequestProto::GetECTopologyResultForPoliciesRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+GetECTopologyResultForPoliciesRequestProto::GetECTopologyResultForPoliciesRequestProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
+  policies_(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
 }
 GetECTopologyResultForPoliciesRequestProto::GetECTopologyResultForPoliciesRequestProto(const GetECTopologyResultForPoliciesRequestProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  GetECTopologyResultForPoliciesRequestProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_.policies_){from._impl_.policies_}
-    , /*decltype(_impl_._cached_size_)*/{}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      policies_(from.policies_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
 }
 
-inline void GetECTopologyResultForPoliciesRequestProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_.policies_){arena}
-    , /*decltype(_impl_._cached_size_)*/{}
-  };
+void GetECTopologyResultForPoliciesRequestProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_GetECTopologyResultForPoliciesRequestProto_erasurecoding_2eproto.base);
 }
 
 GetECTopologyResultForPoliciesRequestProto::~GetECTopologyResultForPoliciesRequestProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void GetECTopologyResultForPoliciesRequestProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.policies_.~RepeatedPtrField();
+void GetECTopologyResultForPoliciesRequestProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
 }
 
+void GetECTopologyResultForPoliciesRequestProto::ArenaDtor(void* object) {
+  GetECTopologyResultForPoliciesRequestProto* _this = reinterpret_cast< GetECTopologyResultForPoliciesRequestProto* >(object);
+  (void)_this;
+}
+void GetECTopologyResultForPoliciesRequestProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void GetECTopologyResultForPoliciesRequestProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const GetECTopologyResultForPoliciesRequestProto& GetECTopologyResultForPoliciesRequestProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetECTopologyResultForPoliciesRequestProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void GetECTopologyResultForPoliciesRequestProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_.policies_.Clear();
+  policies_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* GetECTopologyResultForPoliciesRequestProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* GetECTopologyResultForPoliciesRequestProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // repeated string policies = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr -= 1;
           do {
             ptr += 1;
             auto str = _internal_add_policies();
-            ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-            CHK_(ptr);
+            ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
             #ifndef NDEBUG
-            ::_pbi::VerifyUTF8(str, "hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto.policies");
+            ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto.policies");
             #endif  // !NDEBUG
+            CHK_(ptr);
             if (!ctx->DataAvailable(ptr)) break;
           } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<10>(ptr));
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
+success:
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* GetECTopologyResultForPoliciesRequestProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* GetECTopologyResultForPoliciesRequestProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   // repeated string policies = 1;
@@ -3386,7 +4483,7 @@ uint8_t* GetECTopologyResultForPoliciesRequestProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
@@ -3397,38 +4494,57 @@ size_t GetECTopologyResultForPoliciesRequestProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
   size_t total_size = 0;
 
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   // repeated string policies = 1;
   total_size += 1 *
-      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(_impl_.policies_.size());
-  for (int i = 0, n = _impl_.policies_.size(); i < n; i++) {
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(policies_.size());
+  for (int i = 0, n = policies_.size(); i < n; i++) {
     total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-      _impl_.policies_.Get(i));
+      policies_.Get(i));
   }
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetECTopologyResultForPoliciesRequestProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    GetECTopologyResultForPoliciesRequestProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetECTopologyResultForPoliciesRequestProto::GetClassData() const { return &_class_data_; }
+void GetECTopologyResultForPoliciesRequestProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetECTopologyResultForPoliciesRequestProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetECTopologyResultForPoliciesRequestProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void GetECTopologyResultForPoliciesRequestProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<GetECTopologyResultForPoliciesRequestProto*>(&to_msg);
-  auto& from = static_cast<const GetECTopologyResultForPoliciesRequestProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void GetECTopologyResultForPoliciesRequestProto::MergeFrom(const GetECTopologyResultForPoliciesRequestProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  _this->_impl_.policies_.MergeFrom(from._impl_.policies_);
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  policies_.MergeFrom(from.policies_);
+}
+
+void GetECTopologyResultForPoliciesRequestProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.GetECTopologyResultForPoliciesRequestProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void GetECTopologyResultForPoliciesRequestProto::CopyFrom(const GetECTopologyResultForPoliciesRequestProto& from) {
@@ -3444,21 +4560,24 @@ bool GetECTopologyResultForPoliciesRequestProto::IsInitialized() const {
 
 void GetECTopologyResultForPoliciesRequestProto::InternalSwap(GetECTopologyResultForPoliciesRequestProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  _impl_.policies_.InternalSwap(&other->_impl_.policies_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  policies_.InternalSwap(&other->policies_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetECTopologyResultForPoliciesRequestProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[18]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void GetECTopologyResultForPoliciesResponseProto::InitAsDefaultInstance() {
+  ::hadoop::hdfs::_GetECTopologyResultForPoliciesResponseProto_default_instance_._instance.get_mutable()->response_ = const_cast< ::hadoop::hdfs::ECTopologyVerifierResultProto*>(
+      ::hadoop::hdfs::ECTopologyVerifierResultProto::internal_default_instance());
+}
 class GetECTopologyResultForPoliciesResponseProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<GetECTopologyResultForPoliciesResponseProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<GetECTopologyResultForPoliciesResponseProto>()._has_bits_);
   static const ::hadoop::hdfs::ECTopologyVerifierResultProto& response(const GetECTopologyResultForPoliciesResponseProto* msg);
   static void set_has_response(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
@@ -3470,132 +4589,132 @@ class GetECTopologyResultForPoliciesResponseProto::_Internal {
 
 const ::hadoop::hdfs::ECTopologyVerifierResultProto&
 GetECTopologyResultForPoliciesResponseProto::_Internal::response(const GetECTopologyResultForPoliciesResponseProto* msg) {
-  return *msg->_impl_.response_;
+  return *msg->response_;
 }
 void GetECTopologyResultForPoliciesResponseProto::clear_response() {
-  if (_impl_.response_ != nullptr) _impl_.response_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000001u;
+  if (response_ != nullptr) response_->Clear();
+  _has_bits_[0] &= ~0x00000001u;
 }
-GetECTopologyResultForPoliciesResponseProto::GetECTopologyResultForPoliciesResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+GetECTopologyResultForPoliciesResponseProto::GetECTopologyResultForPoliciesResponseProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
 }
 GetECTopologyResultForPoliciesResponseProto::GetECTopologyResultForPoliciesResponseProto(const GetECTopologyResultForPoliciesResponseProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  GetECTopologyResultForPoliciesResponseProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.response_){nullptr}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   if (from._internal_has_response()) {
-    _this->_impl_.response_ = new ::hadoop::hdfs::ECTopologyVerifierResultProto(*from._impl_.response_);
+    response_ = new ::hadoop::hdfs::ECTopologyVerifierResultProto(*from.response_);
+  } else {
+    response_ = nullptr;
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
 }
 
-inline void GetECTopologyResultForPoliciesResponseProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.response_){nullptr}
-  };
+void GetECTopologyResultForPoliciesResponseProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_GetECTopologyResultForPoliciesResponseProto_erasurecoding_2eproto.base);
+  response_ = nullptr;
 }
 
 GetECTopologyResultForPoliciesResponseProto::~GetECTopologyResultForPoliciesResponseProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void GetECTopologyResultForPoliciesResponseProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  if (this != internal_default_instance()) delete _impl_.response_;
+void GetECTopologyResultForPoliciesResponseProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  if (this != internal_default_instance()) delete response_;
 }
 
+void GetECTopologyResultForPoliciesResponseProto::ArenaDtor(void* object) {
+  GetECTopologyResultForPoliciesResponseProto* _this = reinterpret_cast< GetECTopologyResultForPoliciesResponseProto* >(object);
+  (void)_this;
+}
+void GetECTopologyResultForPoliciesResponseProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void GetECTopologyResultForPoliciesResponseProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const GetECTopologyResultForPoliciesResponseProto& GetECTopologyResultForPoliciesResponseProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_GetECTopologyResultForPoliciesResponseProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void GetECTopologyResultForPoliciesResponseProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    GOOGLE_DCHECK(_impl_.response_ != nullptr);
-    _impl_.response_->Clear();
+    GOOGLE_DCHECK(response_ != nullptr);
+    response_->Clear();
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* GetECTopologyResultForPoliciesResponseProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* GetECTopologyResultForPoliciesResponseProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required .hadoop.hdfs.ECTopologyVerifierResultProto response = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr = ctx->ParseMessage(_internal_mutable_response(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* GetECTopologyResultForPoliciesResponseProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* GetECTopologyResultForPoliciesResponseProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required .hadoop.hdfs.ECTopologyVerifierResultProto response = 1;
   if (cached_has_bits & 0x00000001u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(1, _Internal::response(this),
-        _Internal::response(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        1, _Internal::response(this), target, stream);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
@@ -3610,35 +4729,53 @@ size_t GetECTopologyResultForPoliciesResponseProto::ByteSizeLong() const {
   if (_internal_has_response()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.response_);
+        *response_);
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData GetECTopologyResultForPoliciesResponseProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    GetECTopologyResultForPoliciesResponseProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetECTopologyResultForPoliciesResponseProto::GetClassData() const { return &_class_data_; }
+void GetECTopologyResultForPoliciesResponseProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const GetECTopologyResultForPoliciesResponseProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetECTopologyResultForPoliciesResponseProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void GetECTopologyResultForPoliciesResponseProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<GetECTopologyResultForPoliciesResponseProto*>(&to_msg);
-  auto& from = static_cast<const GetECTopologyResultForPoliciesResponseProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void GetECTopologyResultForPoliciesResponseProto::MergeFrom(const GetECTopologyResultForPoliciesResponseProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   if (from._internal_has_response()) {
-    _this->_internal_mutable_response()->::hadoop::hdfs::ECTopologyVerifierResultProto::MergeFrom(
-        from._internal_response());
+    _internal_mutable_response()->::hadoop::hdfs::ECTopologyVerifierResultProto::MergeFrom(from._internal_response());
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void GetECTopologyResultForPoliciesResponseProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.GetECTopologyResultForPoliciesResponseProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void GetECTopologyResultForPoliciesResponseProto::CopyFrom(const GetECTopologyResultForPoliciesResponseProto& from) {
@@ -3649,31 +4786,44 @@ void GetECTopologyResultForPoliciesResponseProto::CopyFrom(const GetECTopologyRe
 }
 
 bool GetECTopologyResultForPoliciesResponseProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   if (_internal_has_response()) {
-    if (!_impl_.response_->IsInitialized()) return false;
+    if (!response_->IsInitialized()) return false;
   }
   return true;
 }
 
 void GetECTopologyResultForPoliciesResponseProto::InternalSwap(GetECTopologyResultForPoliciesResponseProto* other) {
   using std::swap;
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  swap(_impl_.response_, other->_impl_.response_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  swap(response_, other->response_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata GetECTopologyResultForPoliciesResponseProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[19]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void BlockECReconstructionInfoProto::InitAsDefaultInstance() {
+  ::hadoop::hdfs::_BlockECReconstructionInfoProto_default_instance_._instance.get_mutable()->block_ = const_cast< ::hadoop::hdfs::ExtendedBlockProto*>(
+      ::hadoop::hdfs::ExtendedBlockProto::internal_default_instance());
+  ::hadoop::hdfs::_BlockECReconstructionInfoProto_default_instance_._instance.get_mutable()->sourcedninfos_ = const_cast< ::hadoop::hdfs::DatanodeInfosProto*>(
+      ::hadoop::hdfs::DatanodeInfosProto::internal_default_instance());
+  ::hadoop::hdfs::_BlockECReconstructionInfoProto_default_instance_._instance.get_mutable()->targetdninfos_ = const_cast< ::hadoop::hdfs::DatanodeInfosProto*>(
+      ::hadoop::hdfs::DatanodeInfosProto::internal_default_instance());
+  ::hadoop::hdfs::_BlockECReconstructionInfoProto_default_instance_._instance.get_mutable()->targetstorageuuids_ = const_cast< ::hadoop::hdfs::StorageUuidsProto*>(
+      ::hadoop::hdfs::StorageUuidsProto::internal_default_instance());
+  ::hadoop::hdfs::_BlockECReconstructionInfoProto_default_instance_._instance.get_mutable()->targetstoragetypes_ = const_cast< ::hadoop::hdfs::StorageTypesProto*>(
+      ::hadoop::hdfs::StorageTypesProto::internal_default_instance());
+  ::hadoop::hdfs::_BlockECReconstructionInfoProto_default_instance_._instance.get_mutable()->ecpolicy_ = const_cast< ::hadoop::hdfs::ErasureCodingPolicyProto*>(
+      ::hadoop::hdfs::ErasureCodingPolicyProto::internal_default_instance());
+}
 class BlockECReconstructionInfoProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<BlockECReconstructionInfoProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<BlockECReconstructionInfoProto>()._has_bits_);
   static const ::hadoop::hdfs::ExtendedBlockProto& block(const BlockECReconstructionInfoProto* msg);
   static void set_has_block(HasBits* has_bits) {
     (*has_bits)[0] |= 4u;
@@ -3711,342 +4861,325 @@ class BlockECReconstructionInfoProto::_Internal {
 
 const ::hadoop::hdfs::ExtendedBlockProto&
 BlockECReconstructionInfoProto::_Internal::block(const BlockECReconstructionInfoProto* msg) {
-  return *msg->_impl_.block_;
+  return *msg->block_;
 }
 const ::hadoop::hdfs::DatanodeInfosProto&
 BlockECReconstructionInfoProto::_Internal::sourcedninfos(const BlockECReconstructionInfoProto* msg) {
-  return *msg->_impl_.sourcedninfos_;
+  return *msg->sourcedninfos_;
 }
 const ::hadoop::hdfs::DatanodeInfosProto&
 BlockECReconstructionInfoProto::_Internal::targetdninfos(const BlockECReconstructionInfoProto* msg) {
-  return *msg->_impl_.targetdninfos_;
+  return *msg->targetdninfos_;
 }
 const ::hadoop::hdfs::StorageUuidsProto&
 BlockECReconstructionInfoProto::_Internal::targetstorageuuids(const BlockECReconstructionInfoProto* msg) {
-  return *msg->_impl_.targetstorageuuids_;
+  return *msg->targetstorageuuids_;
 }
 const ::hadoop::hdfs::StorageTypesProto&
 BlockECReconstructionInfoProto::_Internal::targetstoragetypes(const BlockECReconstructionInfoProto* msg) {
-  return *msg->_impl_.targetstoragetypes_;
+  return *msg->targetstoragetypes_;
 }
 const ::hadoop::hdfs::ErasureCodingPolicyProto&
 BlockECReconstructionInfoProto::_Internal::ecpolicy(const BlockECReconstructionInfoProto* msg) {
-  return *msg->_impl_.ecpolicy_;
+  return *msg->ecpolicy_;
 }
 void BlockECReconstructionInfoProto::clear_block() {
-  if (_impl_.block_ != nullptr) _impl_.block_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  if (block_ != nullptr) block_->Clear();
+  _has_bits_[0] &= ~0x00000004u;
 }
 void BlockECReconstructionInfoProto::clear_sourcedninfos() {
-  if (_impl_.sourcedninfos_ != nullptr) _impl_.sourcedninfos_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000008u;
+  if (sourcedninfos_ != nullptr) sourcedninfos_->Clear();
+  _has_bits_[0] &= ~0x00000008u;
 }
 void BlockECReconstructionInfoProto::clear_targetdninfos() {
-  if (_impl_.targetdninfos_ != nullptr) _impl_.targetdninfos_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000010u;
+  if (targetdninfos_ != nullptr) targetdninfos_->Clear();
+  _has_bits_[0] &= ~0x00000010u;
 }
 void BlockECReconstructionInfoProto::clear_targetstorageuuids() {
-  if (_impl_.targetstorageuuids_ != nullptr) _impl_.targetstorageuuids_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000020u;
+  if (targetstorageuuids_ != nullptr) targetstorageuuids_->Clear();
+  _has_bits_[0] &= ~0x00000020u;
 }
 void BlockECReconstructionInfoProto::clear_targetstoragetypes() {
-  if (_impl_.targetstoragetypes_ != nullptr) _impl_.targetstoragetypes_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000040u;
+  if (targetstoragetypes_ != nullptr) targetstoragetypes_->Clear();
+  _has_bits_[0] &= ~0x00000040u;
 }
 void BlockECReconstructionInfoProto::clear_ecpolicy() {
-  if (_impl_.ecpolicy_ != nullptr) _impl_.ecpolicy_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000080u;
+  if (ecpolicy_ != nullptr) ecpolicy_->Clear();
+  _has_bits_[0] &= ~0x00000080u;
 }
-BlockECReconstructionInfoProto::BlockECReconstructionInfoProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+BlockECReconstructionInfoProto::BlockECReconstructionInfoProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.BlockECReconstructionInfoProto)
 }
 BlockECReconstructionInfoProto::BlockECReconstructionInfoProto(const BlockECReconstructionInfoProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  BlockECReconstructionInfoProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.liveblockindices_){}
-    , decltype(_impl_.excludereconstructedindices_){}
-    , decltype(_impl_.block_){nullptr}
-    , decltype(_impl_.sourcedninfos_){nullptr}
-    , decltype(_impl_.targetdninfos_){nullptr}
-    , decltype(_impl_.targetstorageuuids_){nullptr}
-    , decltype(_impl_.targetstoragetypes_){nullptr}
-    , decltype(_impl_.ecpolicy_){nullptr}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.liveblockindices_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.liveblockindices_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  liveblockindices_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_liveblockindices()) {
-    _this->_impl_.liveblockindices_.Set(from._internal_liveblockindices(), 
-      _this->GetArenaForAllocation());
+    liveblockindices_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_liveblockindices(),
+      GetArena());
   }
-  _impl_.excludereconstructedindices_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.excludereconstructedindices_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  excludereconstructedindices_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_excludereconstructedindices()) {
-    _this->_impl_.excludereconstructedindices_.Set(from._internal_excludereconstructedindices(), 
-      _this->GetArenaForAllocation());
+    excludereconstructedindices_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_excludereconstructedindices(),
+      GetArena());
   }
   if (from._internal_has_block()) {
-    _this->_impl_.block_ = new ::hadoop::hdfs::ExtendedBlockProto(*from._impl_.block_);
+    block_ = new ::hadoop::hdfs::ExtendedBlockProto(*from.block_);
+  } else {
+    block_ = nullptr;
   }
   if (from._internal_has_sourcedninfos()) {
-    _this->_impl_.sourcedninfos_ = new ::hadoop::hdfs::DatanodeInfosProto(*from._impl_.sourcedninfos_);
+    sourcedninfos_ = new ::hadoop::hdfs::DatanodeInfosProto(*from.sourcedninfos_);
+  } else {
+    sourcedninfos_ = nullptr;
   }
   if (from._internal_has_targetdninfos()) {
-    _this->_impl_.targetdninfos_ = new ::hadoop::hdfs::DatanodeInfosProto(*from._impl_.targetdninfos_);
+    targetdninfos_ = new ::hadoop::hdfs::DatanodeInfosProto(*from.targetdninfos_);
+  } else {
+    targetdninfos_ = nullptr;
   }
   if (from._internal_has_targetstorageuuids()) {
-    _this->_impl_.targetstorageuuids_ = new ::hadoop::hdfs::StorageUuidsProto(*from._impl_.targetstorageuuids_);
+    targetstorageuuids_ = new ::hadoop::hdfs::StorageUuidsProto(*from.targetstorageuuids_);
+  } else {
+    targetstorageuuids_ = nullptr;
   }
   if (from._internal_has_targetstoragetypes()) {
-    _this->_impl_.targetstoragetypes_ = new ::hadoop::hdfs::StorageTypesProto(*from._impl_.targetstoragetypes_);
+    targetstoragetypes_ = new ::hadoop::hdfs::StorageTypesProto(*from.targetstoragetypes_);
+  } else {
+    targetstoragetypes_ = nullptr;
   }
   if (from._internal_has_ecpolicy()) {
-    _this->_impl_.ecpolicy_ = new ::hadoop::hdfs::ErasureCodingPolicyProto(*from._impl_.ecpolicy_);
+    ecpolicy_ = new ::hadoop::hdfs::ErasureCodingPolicyProto(*from.ecpolicy_);
+  } else {
+    ecpolicy_ = nullptr;
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.BlockECReconstructionInfoProto)
 }
 
-inline void BlockECReconstructionInfoProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.liveblockindices_){}
-    , decltype(_impl_.excludereconstructedindices_){}
-    , decltype(_impl_.block_){nullptr}
-    , decltype(_impl_.sourcedninfos_){nullptr}
-    , decltype(_impl_.targetdninfos_){nullptr}
-    , decltype(_impl_.targetstorageuuids_){nullptr}
-    , decltype(_impl_.targetstoragetypes_){nullptr}
-    , decltype(_impl_.ecpolicy_){nullptr}
-  };
-  _impl_.liveblockindices_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.liveblockindices_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.excludereconstructedindices_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.excludereconstructedindices_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void BlockECReconstructionInfoProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_BlockECReconstructionInfoProto_erasurecoding_2eproto.base);
+  liveblockindices_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  excludereconstructedindices_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  ::memset(&block_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&ecpolicy_) -
+      reinterpret_cast<char*>(&block_)) + sizeof(ecpolicy_));
 }
 
 BlockECReconstructionInfoProto::~BlockECReconstructionInfoProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.BlockECReconstructionInfoProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void BlockECReconstructionInfoProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.liveblockindices_.Destroy();
-  _impl_.excludereconstructedindices_.Destroy();
-  if (this != internal_default_instance()) delete _impl_.block_;
-  if (this != internal_default_instance()) delete _impl_.sourcedninfos_;
-  if (this != internal_default_instance()) delete _impl_.targetdninfos_;
-  if (this != internal_default_instance()) delete _impl_.targetstorageuuids_;
-  if (this != internal_default_instance()) delete _impl_.targetstoragetypes_;
-  if (this != internal_default_instance()) delete _impl_.ecpolicy_;
+void BlockECReconstructionInfoProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  liveblockindices_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  excludereconstructedindices_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (this != internal_default_instance()) delete block_;
+  if (this != internal_default_instance()) delete sourcedninfos_;
+  if (this != internal_default_instance()) delete targetdninfos_;
+  if (this != internal_default_instance()) delete targetstorageuuids_;
+  if (this != internal_default_instance()) delete targetstoragetypes_;
+  if (this != internal_default_instance()) delete ecpolicy_;
 }
 
+void BlockECReconstructionInfoProto::ArenaDtor(void* object) {
+  BlockECReconstructionInfoProto* _this = reinterpret_cast< BlockECReconstructionInfoProto* >(object);
+  (void)_this;
+}
+void BlockECReconstructionInfoProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void BlockECReconstructionInfoProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const BlockECReconstructionInfoProto& BlockECReconstructionInfoProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_BlockECReconstructionInfoProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void BlockECReconstructionInfoProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.BlockECReconstructionInfoProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x000000ffu) {
     if (cached_has_bits & 0x00000001u) {
-      _impl_.liveblockindices_.ClearNonDefaultToEmpty();
+      liveblockindices_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      _impl_.excludereconstructedindices_.ClearNonDefaultToEmpty();
+      excludereconstructedindices_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000004u) {
-      GOOGLE_DCHECK(_impl_.block_ != nullptr);
-      _impl_.block_->Clear();
+      GOOGLE_DCHECK(block_ != nullptr);
+      block_->Clear();
     }
     if (cached_has_bits & 0x00000008u) {
-      GOOGLE_DCHECK(_impl_.sourcedninfos_ != nullptr);
-      _impl_.sourcedninfos_->Clear();
+      GOOGLE_DCHECK(sourcedninfos_ != nullptr);
+      sourcedninfos_->Clear();
     }
     if (cached_has_bits & 0x00000010u) {
-      GOOGLE_DCHECK(_impl_.targetdninfos_ != nullptr);
-      _impl_.targetdninfos_->Clear();
+      GOOGLE_DCHECK(targetdninfos_ != nullptr);
+      targetdninfos_->Clear();
     }
     if (cached_has_bits & 0x00000020u) {
-      GOOGLE_DCHECK(_impl_.targetstorageuuids_ != nullptr);
-      _impl_.targetstorageuuids_->Clear();
+      GOOGLE_DCHECK(targetstorageuuids_ != nullptr);
+      targetstorageuuids_->Clear();
     }
     if (cached_has_bits & 0x00000040u) {
-      GOOGLE_DCHECK(_impl_.targetstoragetypes_ != nullptr);
-      _impl_.targetstoragetypes_->Clear();
+      GOOGLE_DCHECK(targetstoragetypes_ != nullptr);
+      targetstoragetypes_->Clear();
     }
     if (cached_has_bits & 0x00000080u) {
-      GOOGLE_DCHECK(_impl_.ecpolicy_ != nullptr);
-      _impl_.ecpolicy_->Clear();
+      GOOGLE_DCHECK(ecpolicy_ != nullptr);
+      ecpolicy_->Clear();
     }
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* BlockECReconstructionInfoProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* BlockECReconstructionInfoProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required .hadoop.hdfs.ExtendedBlockProto block = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           ptr = ctx->ParseMessage(_internal_mutable_block(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // required .hadoop.hdfs.DatanodeInfosProto sourceDnInfos = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
           ptr = ctx->ParseMessage(_internal_mutable_sourcedninfos(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // required .hadoop.hdfs.DatanodeInfosProto targetDnInfos = 3;
       case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 26)) {
           ptr = ctx->ParseMessage(_internal_mutable_targetdninfos(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // required .hadoop.hdfs.StorageUuidsProto targetStorageUuids = 4;
       case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 34)) {
           ptr = ctx->ParseMessage(_internal_mutable_targetstorageuuids(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // required .hadoop.hdfs.StorageTypesProto targetStorageTypes = 5;
       case 5:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 42)) {
           ptr = ctx->ParseMessage(_internal_mutable_targetstoragetypes(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // required bytes liveBlockIndices = 6;
       case 6:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 50)) {
           auto str = _internal_mutable_liveblockindices();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // required .hadoop.hdfs.ErasureCodingPolicyProto ecPolicy = 7;
       case 7:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 58)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 58)) {
           ptr = ctx->ParseMessage(_internal_mutable_ecpolicy(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // optional bytes excludeReconstructedIndices = 8;
       case 8:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 66)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 66)) {
           auto str = _internal_mutable_excludereconstructedindices();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* BlockECReconstructionInfoProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* BlockECReconstructionInfoProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.BlockECReconstructionInfoProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required .hadoop.hdfs.ExtendedBlockProto block = 1;
   if (cached_has_bits & 0x00000004u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(1, _Internal::block(this),
-        _Internal::block(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        1, _Internal::block(this), target, stream);
   }
 
   // required .hadoop.hdfs.DatanodeInfosProto sourceDnInfos = 2;
   if (cached_has_bits & 0x00000008u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(2, _Internal::sourcedninfos(this),
-        _Internal::sourcedninfos(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        2, _Internal::sourcedninfos(this), target, stream);
   }
 
   // required .hadoop.hdfs.DatanodeInfosProto targetDnInfos = 3;
   if (cached_has_bits & 0x00000010u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(3, _Internal::targetdninfos(this),
-        _Internal::targetdninfos(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        3, _Internal::targetdninfos(this), target, stream);
   }
 
   // required .hadoop.hdfs.StorageUuidsProto targetStorageUuids = 4;
   if (cached_has_bits & 0x00000020u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(4, _Internal::targetstorageuuids(this),
-        _Internal::targetstorageuuids(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        4, _Internal::targetstorageuuids(this), target, stream);
   }
 
   // required .hadoop.hdfs.StorageTypesProto targetStorageTypes = 5;
   if (cached_has_bits & 0x00000040u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(5, _Internal::targetstoragetypes(this),
-        _Internal::targetstoragetypes(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        5, _Internal::targetstoragetypes(this), target, stream);
   }
 
   // required bytes liveBlockIndices = 6;
@@ -4057,9 +5190,10 @@ uint8_t* BlockECReconstructionInfoProto::_InternalSerialize(
 
   // required .hadoop.hdfs.ErasureCodingPolicyProto ecPolicy = 7;
   if (cached_has_bits & 0x00000080u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(7, _Internal::ecpolicy(this),
-        _Internal::ecpolicy(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        7, _Internal::ecpolicy(this), target, stream);
   }
 
   // optional bytes excludeReconstructedIndices = 8;
@@ -4069,7 +5203,7 @@ uint8_t* BlockECReconstructionInfoProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.BlockECReconstructionInfoProto)
@@ -4091,42 +5225,42 @@ size_t BlockECReconstructionInfoProto::RequiredFieldsByteSizeFallback() const {
     // required .hadoop.hdfs.ExtendedBlockProto block = 1;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.block_);
+        *block_);
   }
 
   if (_internal_has_sourcedninfos()) {
     // required .hadoop.hdfs.DatanodeInfosProto sourceDnInfos = 2;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.sourcedninfos_);
+        *sourcedninfos_);
   }
 
   if (_internal_has_targetdninfos()) {
     // required .hadoop.hdfs.DatanodeInfosProto targetDnInfos = 3;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.targetdninfos_);
+        *targetdninfos_);
   }
 
   if (_internal_has_targetstorageuuids()) {
     // required .hadoop.hdfs.StorageUuidsProto targetStorageUuids = 4;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.targetstorageuuids_);
+        *targetstorageuuids_);
   }
 
   if (_internal_has_targetstoragetypes()) {
     // required .hadoop.hdfs.StorageTypesProto targetStorageTypes = 5;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.targetstoragetypes_);
+        *targetstoragetypes_);
   }
 
   if (_internal_has_ecpolicy()) {
     // required .hadoop.hdfs.ErasureCodingPolicyProto ecPolicy = 7;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.ecpolicy_);
+        *ecpolicy_);
   }
 
   return total_size;
@@ -4135,7 +5269,7 @@ size_t BlockECReconstructionInfoProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.BlockECReconstructionInfoProto)
   size_t total_size = 0;
 
-  if (((_impl_._has_bits_[0] & 0x000000fd) ^ 0x000000fd) == 0) {  // All required fields are present.
+  if (((_has_bits_[0] & 0x000000fd) ^ 0x000000fd) == 0) {  // All required fields are present.
     // required bytes liveBlockIndices = 6;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::BytesSize(
@@ -4144,100 +5278,113 @@ size_t BlockECReconstructionInfoProto::ByteSizeLong() const {
     // required .hadoop.hdfs.ExtendedBlockProto block = 1;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.block_);
+        *block_);
 
     // required .hadoop.hdfs.DatanodeInfosProto sourceDnInfos = 2;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.sourcedninfos_);
+        *sourcedninfos_);
 
     // required .hadoop.hdfs.DatanodeInfosProto targetDnInfos = 3;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.targetdninfos_);
+        *targetdninfos_);
 
     // required .hadoop.hdfs.StorageUuidsProto targetStorageUuids = 4;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.targetstorageuuids_);
+        *targetstorageuuids_);
 
     // required .hadoop.hdfs.StorageTypesProto targetStorageTypes = 5;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.targetstoragetypes_);
+        *targetstoragetypes_);
 
     // required .hadoop.hdfs.ErasureCodingPolicyProto ecPolicy = 7;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.ecpolicy_);
+        *ecpolicy_);
 
   } else {
     total_size += RequiredFieldsByteSizeFallback();
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   // optional bytes excludeReconstructedIndices = 8;
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000002u) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::BytesSize(
         this->_internal_excludereconstructedindices());
   }
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData BlockECReconstructionInfoProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    BlockECReconstructionInfoProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*BlockECReconstructionInfoProto::GetClassData() const { return &_class_data_; }
+void BlockECReconstructionInfoProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.BlockECReconstructionInfoProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const BlockECReconstructionInfoProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<BlockECReconstructionInfoProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.BlockECReconstructionInfoProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.BlockECReconstructionInfoProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void BlockECReconstructionInfoProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<BlockECReconstructionInfoProto*>(&to_msg);
-  auto& from = static_cast<const BlockECReconstructionInfoProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.BlockECReconstructionInfoProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void BlockECReconstructionInfoProto::MergeFrom(const BlockECReconstructionInfoProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.BlockECReconstructionInfoProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = from._impl_._has_bits_[0];
+  cached_has_bits = from._has_bits_[0];
   if (cached_has_bits & 0x000000ffu) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_liveblockindices(from._internal_liveblockindices());
+      _internal_set_liveblockindices(from._internal_liveblockindices());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_excludereconstructedindices(from._internal_excludereconstructedindices());
+      _internal_set_excludereconstructedindices(from._internal_excludereconstructedindices());
     }
     if (cached_has_bits & 0x00000004u) {
-      _this->_internal_mutable_block()->::hadoop::hdfs::ExtendedBlockProto::MergeFrom(
-          from._internal_block());
+      _internal_mutable_block()->::hadoop::hdfs::ExtendedBlockProto::MergeFrom(from._internal_block());
     }
     if (cached_has_bits & 0x00000008u) {
-      _this->_internal_mutable_sourcedninfos()->::hadoop::hdfs::DatanodeInfosProto::MergeFrom(
-          from._internal_sourcedninfos());
+      _internal_mutable_sourcedninfos()->::hadoop::hdfs::DatanodeInfosProto::MergeFrom(from._internal_sourcedninfos());
     }
     if (cached_has_bits & 0x00000010u) {
-      _this->_internal_mutable_targetdninfos()->::hadoop::hdfs::DatanodeInfosProto::MergeFrom(
-          from._internal_targetdninfos());
+      _internal_mutable_targetdninfos()->::hadoop::hdfs::DatanodeInfosProto::MergeFrom(from._internal_targetdninfos());
     }
     if (cached_has_bits & 0x00000020u) {
-      _this->_internal_mutable_targetstorageuuids()->::hadoop::hdfs::StorageUuidsProto::MergeFrom(
-          from._internal_targetstorageuuids());
+      _internal_mutable_targetstorageuuids()->::hadoop::hdfs::StorageUuidsProto::MergeFrom(from._internal_targetstorageuuids());
     }
     if (cached_has_bits & 0x00000040u) {
-      _this->_internal_mutable_targetstoragetypes()->::hadoop::hdfs::StorageTypesProto::MergeFrom(
-          from._internal_targetstoragetypes());
+      _internal_mutable_targetstoragetypes()->::hadoop::hdfs::StorageTypesProto::MergeFrom(from._internal_targetstoragetypes());
     }
     if (cached_has_bits & 0x00000080u) {
-      _this->_internal_mutable_ecpolicy()->::hadoop::hdfs::ErasureCodingPolicyProto::MergeFrom(
-          from._internal_ecpolicy());
+      _internal_mutable_ecpolicy()->::hadoop::hdfs::ErasureCodingPolicyProto::MergeFrom(from._internal_ecpolicy());
     }
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void BlockECReconstructionInfoProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.BlockECReconstructionInfoProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void BlockECReconstructionInfoProto::CopyFrom(const BlockECReconstructionInfoProto& from) {
@@ -4248,55 +5395,48 @@ void BlockECReconstructionInfoProto::CopyFrom(const BlockECReconstructionInfoPro
 }
 
 bool BlockECReconstructionInfoProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   if (_internal_has_block()) {
-    if (!_impl_.block_->IsInitialized()) return false;
+    if (!block_->IsInitialized()) return false;
   }
   if (_internal_has_sourcedninfos()) {
-    if (!_impl_.sourcedninfos_->IsInitialized()) return false;
+    if (!sourcedninfos_->IsInitialized()) return false;
   }
   if (_internal_has_targetdninfos()) {
-    if (!_impl_.targetdninfos_->IsInitialized()) return false;
+    if (!targetdninfos_->IsInitialized()) return false;
   }
   if (_internal_has_ecpolicy()) {
-    if (!_impl_.ecpolicy_->IsInitialized()) return false;
+    if (!ecpolicy_->IsInitialized()) return false;
   }
   return true;
 }
 
 void BlockECReconstructionInfoProto::InternalSwap(BlockECReconstructionInfoProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.liveblockindices_, lhs_arena,
-      &other->_impl_.liveblockindices_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.excludereconstructedindices_, lhs_arena,
-      &other->_impl_.excludereconstructedindices_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  liveblockindices_.Swap(&other->liveblockindices_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  excludereconstructedindices_.Swap(&other->excludereconstructedindices_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(BlockECReconstructionInfoProto, _impl_.ecpolicy_)
-      + sizeof(BlockECReconstructionInfoProto::_impl_.ecpolicy_)
-      - PROTOBUF_FIELD_OFFSET(BlockECReconstructionInfoProto, _impl_.block_)>(
-          reinterpret_cast<char*>(&_impl_.block_),
-          reinterpret_cast<char*>(&other->_impl_.block_));
+      PROTOBUF_FIELD_OFFSET(BlockECReconstructionInfoProto, ecpolicy_)
+      + sizeof(BlockECReconstructionInfoProto::ecpolicy_)
+      - PROTOBUF_FIELD_OFFSET(BlockECReconstructionInfoProto, block_)>(
+          reinterpret_cast<char*>(&block_),
+          reinterpret_cast<char*>(&other->block_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata BlockECReconstructionInfoProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[20]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void CodecProto::InitAsDefaultInstance() {
+}
 class CodecProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<CodecProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<CodecProto>()._has_bits_);
   static void set_has_codec(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -4308,161 +5448,142 @@ class CodecProto::_Internal {
   }
 };
 
-CodecProto::CodecProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+CodecProto::CodecProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.hdfs.CodecProto)
 }
 CodecProto::CodecProto(const CodecProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  CodecProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.codec_){}
-    , decltype(_impl_.coders_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.codec_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.codec_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  codec_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_codec()) {
-    _this->_impl_.codec_.Set(from._internal_codec(), 
-      _this->GetArenaForAllocation());
+    codec_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_codec(),
+      GetArena());
   }
-  _impl_.coders_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.coders_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  coders_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_coders()) {
-    _this->_impl_.coders_.Set(from._internal_coders(), 
-      _this->GetArenaForAllocation());
+    coders_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_coders(),
+      GetArena());
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.hdfs.CodecProto)
 }
 
-inline void CodecProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.codec_){}
-    , decltype(_impl_.coders_){}
-  };
-  _impl_.codec_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.codec_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.coders_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.coders_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void CodecProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_CodecProto_erasurecoding_2eproto.base);
+  codec_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  coders_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 CodecProto::~CodecProto() {
   // @@protoc_insertion_point(destructor:hadoop.hdfs.CodecProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void CodecProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.codec_.Destroy();
-  _impl_.coders_.Destroy();
+void CodecProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  codec_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  coders_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void CodecProto::ArenaDtor(void* object) {
+  CodecProto* _this = reinterpret_cast< CodecProto* >(object);
+  (void)_this;
+}
+void CodecProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void CodecProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const CodecProto& CodecProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_CodecProto_erasurecoding_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void CodecProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.hdfs.CodecProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     if (cached_has_bits & 0x00000001u) {
-      _impl_.codec_.ClearNonDefaultToEmpty();
+      codec_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      _impl_.coders_.ClearNonDefaultToEmpty();
+      coders_.ClearNonDefaultToEmpty();
     }
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* CodecProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* CodecProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required string codec = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_codec();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.hdfs.CodecProto.codec");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.hdfs.CodecProto.codec");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
       // required string coders = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
           auto str = _internal_mutable_coders();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.hdfs.CodecProto.coders");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.hdfs.CodecProto.coders");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* CodecProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* CodecProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.hdfs.CodecProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required string codec = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -4484,7 +5605,7 @@ uint8_t* CodecProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.hdfs.CodecProto)
@@ -4515,7 +5636,7 @@ size_t CodecProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.hdfs.CodecProto)
   size_t total_size = 0;
 
-  if (((_impl_._has_bits_[0] & 0x00000003) ^ 0x00000003) == 0) {  // All required fields are present.
+  if (((_has_bits_[0] & 0x00000003) ^ 0x00000003) == 0) {  // All required fields are present.
     // required string codec = 1;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
@@ -4529,38 +5650,57 @@ size_t CodecProto::ByteSizeLong() const {
   } else {
     total_size += RequiredFieldsByteSizeFallback();
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CodecProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    CodecProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CodecProto::GetClassData() const { return &_class_data_; }
+void CodecProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.hdfs.CodecProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const CodecProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<CodecProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.hdfs.CodecProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.hdfs.CodecProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void CodecProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<CodecProto*>(&to_msg);
-  auto& from = static_cast<const CodecProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.CodecProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void CodecProto::MergeFrom(const CodecProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.hdfs.CodecProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = from._impl_._has_bits_[0];
+  cached_has_bits = from._has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_codec(from._internal_codec());
+      _internal_set_codec(from._internal_codec());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_coders(from._internal_coders());
+      _internal_set_coders(from._internal_coders());
     }
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void CodecProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.hdfs.CodecProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void CodecProto::CopyFrom(const CodecProto& from) {
@@ -4571,122 +5711,91 @@ void CodecProto::CopyFrom(const CodecProto& from) {
 }
 
 bool CodecProto::IsInitialized() const {
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void CodecProto::InternalSwap(CodecProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.codec_, lhs_arena,
-      &other->_impl_.codec_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.coders_, lhs_arena,
-      &other->_impl_.coders_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  codec_.Swap(&other->codec_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  coders_.Swap(&other->coders_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata CodecProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_erasurecoding_2eproto_getter, &descriptor_table_erasurecoding_2eproto_once,
-      file_level_metadata_erasurecoding_2eproto[21]);
+  return GetMetadataStatic();
 }
+
 
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace hdfs
 }  // namespace hadoop
 PROTOBUF_NAMESPACE_OPEN
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::SetErasureCodingPolicyRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::SetErasureCodingPolicyRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::SetErasureCodingPolicyRequestProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::SetErasureCodingPolicyRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::SetErasureCodingPolicyRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::SetErasureCodingPolicyResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::SetErasureCodingPolicyResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::SetErasureCodingPolicyResponseProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::SetErasureCodingPolicyResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::SetErasureCodingPolicyResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingPoliciesRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingPoliciesRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingPoliciesRequestProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingPoliciesRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::GetErasureCodingPoliciesRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingPoliciesResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingPoliciesResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingPoliciesResponseProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingPoliciesResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::GetErasureCodingPoliciesResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingCodecsRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingCodecsRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingCodecsRequestProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingCodecsRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::GetErasureCodingCodecsRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingCodecsResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingCodecsResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingCodecsResponseProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingCodecsResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::GetErasureCodingCodecsResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingPolicyRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingPolicyRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingPolicyRequestProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingPolicyRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::GetErasureCodingPolicyRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingPolicyResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingPolicyResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetErasureCodingPolicyResponseProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::GetErasureCodingPolicyResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::GetErasureCodingPolicyResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::AddErasureCodingPoliciesRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::AddErasureCodingPoliciesRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::AddErasureCodingPoliciesRequestProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::AddErasureCodingPoliciesRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::AddErasureCodingPoliciesRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::AddErasureCodingPoliciesResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::AddErasureCodingPoliciesResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::AddErasureCodingPoliciesResponseProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::AddErasureCodingPoliciesResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::AddErasureCodingPoliciesResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::RemoveErasureCodingPolicyRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::RemoveErasureCodingPolicyResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::RemoveErasureCodingPolicyResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::RemoveErasureCodingPolicyResponseProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::RemoveErasureCodingPolicyResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::RemoveErasureCodingPolicyResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::EnableErasureCodingPolicyRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::EnableErasureCodingPolicyRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::EnableErasureCodingPolicyRequestProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::EnableErasureCodingPolicyRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::EnableErasureCodingPolicyRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::EnableErasureCodingPolicyResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::EnableErasureCodingPolicyResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::EnableErasureCodingPolicyResponseProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::EnableErasureCodingPolicyResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::EnableErasureCodingPolicyResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::DisableErasureCodingPolicyRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::DisableErasureCodingPolicyRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::DisableErasureCodingPolicyRequestProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::DisableErasureCodingPolicyRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::DisableErasureCodingPolicyRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::DisableErasureCodingPolicyResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::DisableErasureCodingPolicyResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::DisableErasureCodingPolicyResponseProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::DisableErasureCodingPolicyResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::DisableErasureCodingPolicyResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::UnsetErasureCodingPolicyRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::UnsetErasureCodingPolicyResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::UnsetErasureCodingPolicyResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::UnsetErasureCodingPolicyResponseProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::UnsetErasureCodingPolicyResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::UnsetErasureCodingPolicyResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::GetECTopologyResultForPoliciesRequestProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::GetECTopologyResultForPoliciesResponseProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::BlockECReconstructionInfoProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::BlockECReconstructionInfoProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::BlockECReconstructionInfoProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::BlockECReconstructionInfoProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::BlockECReconstructionInfoProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::hdfs::CodecProto*
-Arena::CreateMaybeMessage< ::hadoop::hdfs::CodecProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::hdfs::CodecProto* Arena::CreateMaybeMessage< ::hadoop::hdfs::CodecProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::hdfs::CodecProto >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE

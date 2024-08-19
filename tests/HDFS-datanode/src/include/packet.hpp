@@ -74,7 +74,7 @@ class Packet {
 
   hadoop::common::RpcResponseHeaderProto RpcResponseHeader;
 
-  Packet() {}
+  Packet() {buffer = std::make_shared<std::vector<uint8_t>>();}
   
   Packet(std::shared_ptr<std::vector<uint8_t>> buffer_, Type type_) {
     type = type_;

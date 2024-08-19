@@ -14,80 +14,80 @@
 #include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
-
-PROTOBUF_PRAGMA_INIT_SEG
-
-namespace _pb = ::PROTOBUF_NAMESPACE_ID;
-namespace _pbi = _pb::internal;
-
+extern PROTOBUF_INTERNAL_EXPORT_IpcConnectionContext_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_UserInformationProto_IpcConnectionContext_2eproto;
 namespace hadoop {
 namespace common {
-PROTOBUF_CONSTEXPR UserInformationProto::UserInformationProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.effectiveuser_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.realuser_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
-struct UserInformationProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR UserInformationProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~UserInformationProtoDefaultTypeInternal() {}
-  union {
-    UserInformationProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 UserInformationProtoDefaultTypeInternal _UserInformationProto_default_instance_;
-PROTOBUF_CONSTEXPR IpcConnectionContextProto::IpcConnectionContextProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.protocol_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.userinfo_)*/nullptr} {}
-struct IpcConnectionContextProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR IpcConnectionContextProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~IpcConnectionContextProtoDefaultTypeInternal() {}
-  union {
-    IpcConnectionContextProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 IpcConnectionContextProtoDefaultTypeInternal _IpcConnectionContextProto_default_instance_;
+class UserInformationProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<UserInformationProto> _instance;
+} _UserInformationProto_default_instance_;
+class IpcConnectionContextProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<IpcConnectionContextProto> _instance;
+} _IpcConnectionContextProto_default_instance_;
 }  // namespace common
 }  // namespace hadoop
-static ::_pb::Metadata file_level_metadata_IpcConnectionContext_2eproto[2];
-static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_IpcConnectionContext_2eproto = nullptr;
-static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_IpcConnectionContext_2eproto = nullptr;
+static void InitDefaultsscc_info_IpcConnectionContextProto_IpcConnectionContext_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-const uint32_t TableStruct_IpcConnectionContext_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::UserInformationProto, _impl_._has_bits_),
+  {
+    void* ptr = &::hadoop::common::_IpcConnectionContextProto_default_instance_;
+    new (ptr) ::hadoop::common::IpcConnectionContextProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::IpcConnectionContextProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_IpcConnectionContextProto_IpcConnectionContext_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_IpcConnectionContextProto_IpcConnectionContext_2eproto}, {
+      &scc_info_UserInformationProto_IpcConnectionContext_2eproto.base,}};
+
+static void InitDefaultsscc_info_UserInformationProto_IpcConnectionContext_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::hadoop::common::_UserInformationProto_default_instance_;
+    new (ptr) ::hadoop::common::UserInformationProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::UserInformationProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_UserInformationProto_IpcConnectionContext_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_UserInformationProto_IpcConnectionContext_2eproto}, {}};
+
+static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_IpcConnectionContext_2eproto[2];
+static constexpr ::PROTOBUF_NAMESPACE_ID::EnumDescriptor const** file_level_enum_descriptors_IpcConnectionContext_2eproto = nullptr;
+static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_IpcConnectionContext_2eproto = nullptr;
+
+const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_IpcConnectionContext_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::UserInformationProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::common::UserInformationProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::UserInformationProto, _impl_.effectiveuser_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::UserInformationProto, _impl_.realuser_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::UserInformationProto, effectiveuser_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::UserInformationProto, realuser_),
   0,
   1,
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::IpcConnectionContextProto, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::IpcConnectionContextProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::common::IpcConnectionContextProto, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::IpcConnectionContextProto, _impl_.userinfo_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::IpcConnectionContextProto, _impl_.protocol_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::IpcConnectionContextProto, userinfo_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::IpcConnectionContextProto, protocol_),
   1,
   0,
 };
-static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, 8, -1, sizeof(::hadoop::common::UserInformationProto)},
-  { 10, 18, -1, sizeof(::hadoop::common::IpcConnectionContextProto)},
+static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  { 0, 7, sizeof(::hadoop::common::UserInformationProto)},
+  { 9, 16, sizeof(::hadoop::common::IpcConnectionContextProto)},
 };
 
-static const ::_pb::Message* const file_default_instances[] = {
-  &::hadoop::common::_UserInformationProto_default_instance_._instance,
-  &::hadoop::common::_IpcConnectionContextProto_default_instance_._instance,
+static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_UserInformationProto_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_IpcConnectionContextProto_default_instance_),
 };
 
 const char descriptor_table_protodef_IpcConnectionContext_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -99,29 +99,32 @@ const char descriptor_table_protodef_IpcConnectionContext_2eproto[] PROTOBUF_SEC
   "ocol\030\003 \001(\tB\?\n\036org.apache.hadoop.ipc.prot"
   "obufB\032IpcConnectionContextProtos\240\001\001"
   ;
-static ::_pbi::once_flag descriptor_table_IpcConnectionContext_2eproto_once;
-const ::_pbi::DescriptorTable descriptor_table_IpcConnectionContext_2eproto = {
-    false, false, 275, descriptor_table_protodef_IpcConnectionContext_2eproto,
-    "IpcConnectionContext.proto",
-    &descriptor_table_IpcConnectionContext_2eproto_once, nullptr, 0, 2,
-    schemas, file_default_instances, TableStruct_IpcConnectionContext_2eproto::offsets,
-    file_level_metadata_IpcConnectionContext_2eproto, file_level_enum_descriptors_IpcConnectionContext_2eproto,
-    file_level_service_descriptors_IpcConnectionContext_2eproto,
+static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_IpcConnectionContext_2eproto_deps[1] = {
 };
-PROTOBUF_ATTRIBUTE_WEAK const ::_pbi::DescriptorTable* descriptor_table_IpcConnectionContext_2eproto_getter() {
-  return &descriptor_table_IpcConnectionContext_2eproto;
-}
+static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_IpcConnectionContext_2eproto_sccs[2] = {
+  &scc_info_IpcConnectionContextProto_IpcConnectionContext_2eproto.base,
+  &scc_info_UserInformationProto_IpcConnectionContext_2eproto.base,
+};
+static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_IpcConnectionContext_2eproto_once;
+const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_IpcConnectionContext_2eproto = {
+  false, false, descriptor_table_protodef_IpcConnectionContext_2eproto, "IpcConnectionContext.proto", 275,
+  &descriptor_table_IpcConnectionContext_2eproto_once, descriptor_table_IpcConnectionContext_2eproto_sccs, descriptor_table_IpcConnectionContext_2eproto_deps, 2, 0,
+  schemas, file_default_instances, TableStruct_IpcConnectionContext_2eproto::offsets,
+  file_level_metadata_IpcConnectionContext_2eproto, 2, file_level_enum_descriptors_IpcConnectionContext_2eproto, file_level_service_descriptors_IpcConnectionContext_2eproto,
+};
 
 // Force running AddDescriptors() at dynamic initialization time.
-PROTOBUF_ATTRIBUTE_INIT_PRIORITY2 static ::_pbi::AddDescriptorsRunner dynamic_init_dummy_IpcConnectionContext_2eproto(&descriptor_table_IpcConnectionContext_2eproto);
+static bool dynamic_init_dummy_IpcConnectionContext_2eproto = (static_cast<void>(::PROTOBUF_NAMESPACE_ID::internal::AddDescriptors(&descriptor_table_IpcConnectionContext_2eproto)), true);
 namespace hadoop {
 namespace common {
 
 // ===================================================================
 
+void UserInformationProto::InitAsDefaultInstance() {
+}
 class UserInformationProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<UserInformationProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<UserInformationProto>()._has_bits_);
   static void set_has_effectiveuser(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -130,161 +133,142 @@ class UserInformationProto::_Internal {
   }
 };
 
-UserInformationProto::UserInformationProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+UserInformationProto::UserInformationProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.UserInformationProto)
 }
 UserInformationProto::UserInformationProto(const UserInformationProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  UserInformationProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.effectiveuser_){}
-    , decltype(_impl_.realuser_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.effectiveuser_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.effectiveuser_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  effectiveuser_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_effectiveuser()) {
-    _this->_impl_.effectiveuser_.Set(from._internal_effectiveuser(), 
-      _this->GetArenaForAllocation());
+    effectiveuser_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_effectiveuser(),
+      GetArena());
   }
-  _impl_.realuser_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.realuser_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  realuser_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_realuser()) {
-    _this->_impl_.realuser_.Set(from._internal_realuser(), 
-      _this->GetArenaForAllocation());
+    realuser_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_realuser(),
+      GetArena());
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.common.UserInformationProto)
 }
 
-inline void UserInformationProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.effectiveuser_){}
-    , decltype(_impl_.realuser_){}
-  };
-  _impl_.effectiveuser_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.effectiveuser_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.realuser_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.realuser_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void UserInformationProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_UserInformationProto_IpcConnectionContext_2eproto.base);
+  effectiveuser_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  realuser_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
 UserInformationProto::~UserInformationProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.UserInformationProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void UserInformationProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.effectiveuser_.Destroy();
-  _impl_.realuser_.Destroy();
+void UserInformationProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  effectiveuser_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  realuser_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void UserInformationProto::ArenaDtor(void* object) {
+  UserInformationProto* _this = reinterpret_cast< UserInformationProto* >(object);
+  (void)_this;
+}
+void UserInformationProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void UserInformationProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const UserInformationProto& UserInformationProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_UserInformationProto_IpcConnectionContext_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void UserInformationProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.UserInformationProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     if (cached_has_bits & 0x00000001u) {
-      _impl_.effectiveuser_.ClearNonDefaultToEmpty();
+      effectiveuser_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      _impl_.realuser_.ClearNonDefaultToEmpty();
+      realuser_.ClearNonDefaultToEmpty();
     }
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* UserInformationProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* UserInformationProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // optional string effectiveUser = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_effectiveuser();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.common.UserInformationProto.effectiveUser");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.common.UserInformationProto.effectiveUser");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
       // optional string realUser = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
           auto str = _internal_mutable_realuser();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.common.UserInformationProto.realUser");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.common.UserInformationProto.realUser");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* UserInformationProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* UserInformationProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.UserInformationProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // optional string effectiveUser = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -306,7 +290,7 @@ uint8_t* UserInformationProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.UserInformationProto)
@@ -317,11 +301,11 @@ size_t UserInformationProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.common.UserInformationProto)
   size_t total_size = 0;
 
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     // optional string effectiveUser = 1;
     if (cached_has_bits & 0x00000001u) {
@@ -338,34 +322,53 @@ size_t UserInformationProto::ByteSizeLong() const {
     }
 
   }
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData UserInformationProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    UserInformationProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*UserInformationProto::GetClassData() const { return &_class_data_; }
+void UserInformationProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.UserInformationProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const UserInformationProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<UserInformationProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.UserInformationProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.UserInformationProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void UserInformationProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<UserInformationProto*>(&to_msg);
-  auto& from = static_cast<const UserInformationProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.UserInformationProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void UserInformationProto::MergeFrom(const UserInformationProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.UserInformationProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = from._impl_._has_bits_[0];
+  cached_has_bits = from._has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_effectiveuser(from._internal_effectiveuser());
+      _internal_set_effectiveuser(from._internal_effectiveuser());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_realuser(from._internal_realuser());
+      _internal_set_realuser(from._internal_realuser());
     }
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void UserInformationProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.UserInformationProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void UserInformationProto::CopyFrom(const UserInformationProto& from) {
@@ -381,31 +384,26 @@ bool UserInformationProto::IsInitialized() const {
 
 void UserInformationProto::InternalSwap(UserInformationProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.effectiveuser_, lhs_arena,
-      &other->_impl_.effectiveuser_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.realuser_, lhs_arena,
-      &other->_impl_.realuser_, rhs_arena
-  );
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  effectiveuser_.Swap(&other->effectiveuser_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  realuser_.Swap(&other->realuser_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata UserInformationProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_IpcConnectionContext_2eproto_getter, &descriptor_table_IpcConnectionContext_2eproto_once,
-      file_level_metadata_IpcConnectionContext_2eproto[0]);
+  return GetMetadataStatic();
 }
+
 
 // ===================================================================
 
+void IpcConnectionContextProto::InitAsDefaultInstance() {
+  ::hadoop::common::_IpcConnectionContextProto_default_instance_._instance.get_mutable()->userinfo_ = const_cast< ::hadoop::common::UserInformationProto*>(
+      ::hadoop::common::UserInformationProto::internal_default_instance());
+}
 class IpcConnectionContextProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<IpcConnectionContextProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<IpcConnectionContextProto>()._has_bits_);
   static const ::hadoop::common::UserInformationProto& userinfo(const IpcConnectionContextProto* msg);
   static void set_has_userinfo(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
@@ -417,156 +415,147 @@ class IpcConnectionContextProto::_Internal {
 
 const ::hadoop::common::UserInformationProto&
 IpcConnectionContextProto::_Internal::userinfo(const IpcConnectionContextProto* msg) {
-  return *msg->_impl_.userinfo_;
+  return *msg->userinfo_;
 }
-IpcConnectionContextProto::IpcConnectionContextProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+IpcConnectionContextProto::IpcConnectionContextProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.IpcConnectionContextProto)
 }
 IpcConnectionContextProto::IpcConnectionContextProto(const IpcConnectionContextProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  IpcConnectionContextProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.protocol_){}
-    , decltype(_impl_.userinfo_){nullptr}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.protocol_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.protocol_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  protocol_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_protocol()) {
-    _this->_impl_.protocol_.Set(from._internal_protocol(), 
-      _this->GetArenaForAllocation());
+    protocol_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_protocol(),
+      GetArena());
   }
   if (from._internal_has_userinfo()) {
-    _this->_impl_.userinfo_ = new ::hadoop::common::UserInformationProto(*from._impl_.userinfo_);
+    userinfo_ = new ::hadoop::common::UserInformationProto(*from.userinfo_);
+  } else {
+    userinfo_ = nullptr;
   }
   // @@protoc_insertion_point(copy_constructor:hadoop.common.IpcConnectionContextProto)
 }
 
-inline void IpcConnectionContextProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.protocol_){}
-    , decltype(_impl_.userinfo_){nullptr}
-  };
-  _impl_.protocol_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.protocol_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void IpcConnectionContextProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_IpcConnectionContextProto_IpcConnectionContext_2eproto.base);
+  protocol_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  userinfo_ = nullptr;
 }
 
 IpcConnectionContextProto::~IpcConnectionContextProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.IpcConnectionContextProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void IpcConnectionContextProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.protocol_.Destroy();
-  if (this != internal_default_instance()) delete _impl_.userinfo_;
+void IpcConnectionContextProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  protocol_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (this != internal_default_instance()) delete userinfo_;
 }
 
+void IpcConnectionContextProto::ArenaDtor(void* object) {
+  IpcConnectionContextProto* _this = reinterpret_cast< IpcConnectionContextProto* >(object);
+  (void)_this;
+}
+void IpcConnectionContextProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void IpcConnectionContextProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const IpcConnectionContextProto& IpcConnectionContextProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_IpcConnectionContextProto_IpcConnectionContext_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void IpcConnectionContextProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.IpcConnectionContextProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     if (cached_has_bits & 0x00000001u) {
-      _impl_.protocol_.ClearNonDefaultToEmpty();
+      protocol_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      GOOGLE_DCHECK(_impl_.userinfo_ != nullptr);
-      _impl_.userinfo_->Clear();
+      GOOGLE_DCHECK(userinfo_ != nullptr);
+      userinfo_->Clear();
     }
   }
-  _impl_._has_bits_.Clear();
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* IpcConnectionContextProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* IpcConnectionContextProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // optional .hadoop.common.UserInformationProto userInfo = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
           ptr = ctx->ParseMessage(_internal_mutable_userinfo(), ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
       // optional string protocol = 3;
       case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 26)) {
           auto str = _internal_mutable_protocol();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.common.IpcConnectionContextProto.protocol");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.common.IpcConnectionContextProto.protocol");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* IpcConnectionContextProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* IpcConnectionContextProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.IpcConnectionContextProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // optional .hadoop.common.UserInformationProto userInfo = 2;
   if (cached_has_bits & 0x00000002u) {
+    target = stream->EnsureSpace(target);
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(2, _Internal::userinfo(this),
-        _Internal::userinfo(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(
+        2, _Internal::userinfo(this), target, stream);
   }
 
   // optional string protocol = 3;
@@ -580,7 +569,7 @@ uint8_t* IpcConnectionContextProto::_InternalSerialize(
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.IpcConnectionContextProto)
@@ -591,11 +580,11 @@ size_t IpcConnectionContextProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.common.IpcConnectionContextProto)
   size_t total_size = 0;
 
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     // optional string protocol = 3;
     if (cached_has_bits & 0x00000001u) {
@@ -608,39 +597,57 @@ size_t IpcConnectionContextProto::ByteSizeLong() const {
     if (cached_has_bits & 0x00000002u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-          *_impl_.userinfo_);
+          *userinfo_);
     }
 
   }
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData IpcConnectionContextProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    IpcConnectionContextProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*IpcConnectionContextProto::GetClassData() const { return &_class_data_; }
+void IpcConnectionContextProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.IpcConnectionContextProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const IpcConnectionContextProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<IpcConnectionContextProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.IpcConnectionContextProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.IpcConnectionContextProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void IpcConnectionContextProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<IpcConnectionContextProto*>(&to_msg);
-  auto& from = static_cast<const IpcConnectionContextProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.IpcConnectionContextProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void IpcConnectionContextProto::MergeFrom(const IpcConnectionContextProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.IpcConnectionContextProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = from._impl_._has_bits_[0];
+  cached_has_bits = from._has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_protocol(from._internal_protocol());
+      _internal_set_protocol(from._internal_protocol());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_mutable_userinfo()->::hadoop::common::UserInformationProto::MergeFrom(
-          from._internal_userinfo());
+      _internal_mutable_userinfo()->::hadoop::common::UserInformationProto::MergeFrom(from._internal_userinfo());
     }
   }
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void IpcConnectionContextProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.IpcConnectionContextProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void IpcConnectionContextProto::CopyFrom(const IpcConnectionContextProto& from) {
@@ -656,33 +663,25 @@ bool IpcConnectionContextProto::IsInitialized() const {
 
 void IpcConnectionContextProto::InternalSwap(IpcConnectionContextProto* other) {
   using std::swap;
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.protocol_, lhs_arena,
-      &other->_impl_.protocol_, rhs_arena
-  );
-  swap(_impl_.userinfo_, other->_impl_.userinfo_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  protocol_.Swap(&other->protocol_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  swap(userinfo_, other->userinfo_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata IpcConnectionContextProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_IpcConnectionContext_2eproto_getter, &descriptor_table_IpcConnectionContext_2eproto_once,
-      file_level_metadata_IpcConnectionContext_2eproto[1]);
+  return GetMetadataStatic();
 }
+
 
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace common
 }  // namespace hadoop
 PROTOBUF_NAMESPACE_OPEN
-template<> PROTOBUF_NOINLINE ::hadoop::common::UserInformationProto*
-Arena::CreateMaybeMessage< ::hadoop::common::UserInformationProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::UserInformationProto* Arena::CreateMaybeMessage< ::hadoop::common::UserInformationProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::UserInformationProto >(arena);
 }
-template<> PROTOBUF_NOINLINE ::hadoop::common::IpcConnectionContextProto*
-Arena::CreateMaybeMessage< ::hadoop::common::IpcConnectionContextProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::IpcConnectionContextProto* Arena::CreateMaybeMessage< ::hadoop::common::IpcConnectionContextProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::IpcConnectionContextProto >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE

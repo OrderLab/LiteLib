@@ -14,57 +14,51 @@
 #include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
-
-PROTOBUF_PRAGMA_INIT_SEG
-
-namespace _pb = ::PROTOBUF_NAMESPACE_ID;
-namespace _pbi = _pb::internal;
-
 namespace hadoop {
 namespace common {
-PROTOBUF_CONSTEXPR RequestHeaderProto::RequestHeaderProto(
-    ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._extensions_)*/{}
-  , /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.methodname_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.declaringclassprotocolname_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.clientprotocolversion_)*/uint64_t{0u}} {}
-struct RequestHeaderProtoDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR RequestHeaderProtoDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~RequestHeaderProtoDefaultTypeInternal() {}
-  union {
-    RequestHeaderProto _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RequestHeaderProtoDefaultTypeInternal _RequestHeaderProto_default_instance_;
+class RequestHeaderProtoDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<RequestHeaderProto> _instance;
+} _RequestHeaderProto_default_instance_;
 }  // namespace common
 }  // namespace hadoop
-static ::_pb::Metadata file_level_metadata_ProtobufRpcEngine_2eproto[1];
-static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_ProtobufRpcEngine_2eproto = nullptr;
-static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_ProtobufRpcEngine_2eproto = nullptr;
+static void InitDefaultsscc_info_RequestHeaderProto_ProtobufRpcEngine_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-const uint32_t TableStruct_ProtobufRpcEngine_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, _impl_._has_bits_),
+  {
+    void* ptr = &::hadoop::common::_RequestHeaderProto_default_instance_;
+    new (ptr) ::hadoop::common::RequestHeaderProto();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::hadoop::common::RequestHeaderProto::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_RequestHeaderProto_ProtobufRpcEngine_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_RequestHeaderProto_ProtobufRpcEngine_2eproto}, {}};
+
+static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_ProtobufRpcEngine_2eproto[1];
+static constexpr ::PROTOBUF_NAMESPACE_ID::EnumDescriptor const** file_level_enum_descriptors_ProtobufRpcEngine_2eproto = nullptr;
+static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_ProtobufRpcEngine_2eproto = nullptr;
+
+const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_ProtobufRpcEngine_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, _has_bits_),
   PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, _internal_metadata_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, _impl_._extensions_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, _extensions_),
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, _impl_.methodname_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, _impl_.declaringclassprotocolname_),
-  PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, _impl_.clientprotocolversion_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, methodname_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, declaringclassprotocolname_),
+  PROTOBUF_FIELD_OFFSET(::hadoop::common::RequestHeaderProto, clientprotocolversion_),
   0,
   1,
   2,
 };
-static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, 9, -1, sizeof(::hadoop::common::RequestHeaderProto)},
+static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  { 0, 8, sizeof(::hadoop::common::RequestHeaderProto)},
 };
 
-static const ::_pb::Message* const file_default_instances[] = {
-  &::hadoop::common::_RequestHeaderProto_default_instance_._instance,
+static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::hadoop::common::_RequestHeaderProto_default_instance_),
 };
 
 const char descriptor_table_protodef_ProtobufRpcEngine_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -75,29 +69,31 @@ const char descriptor_table_protodef_ProtobufRpcEngine_2eproto[] PROTOBUF_SECTIO
   "B<\n\036org.apache.hadoop.ipc.protobufB\027Prot"
   "obufRpcEngineProtos\240\001\001"
   ;
-static ::_pbi::once_flag descriptor_table_ProtobufRpcEngine_2eproto_once;
-const ::_pbi::DescriptorTable descriptor_table_ProtobufRpcEngine_2eproto = {
-    false, false, 222, descriptor_table_protodef_ProtobufRpcEngine_2eproto,
-    "ProtobufRpcEngine.proto",
-    &descriptor_table_ProtobufRpcEngine_2eproto_once, nullptr, 0, 1,
-    schemas, file_default_instances, TableStruct_ProtobufRpcEngine_2eproto::offsets,
-    file_level_metadata_ProtobufRpcEngine_2eproto, file_level_enum_descriptors_ProtobufRpcEngine_2eproto,
-    file_level_service_descriptors_ProtobufRpcEngine_2eproto,
+static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_ProtobufRpcEngine_2eproto_deps[1] = {
 };
-PROTOBUF_ATTRIBUTE_WEAK const ::_pbi::DescriptorTable* descriptor_table_ProtobufRpcEngine_2eproto_getter() {
-  return &descriptor_table_ProtobufRpcEngine_2eproto;
-}
+static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_ProtobufRpcEngine_2eproto_sccs[1] = {
+  &scc_info_RequestHeaderProto_ProtobufRpcEngine_2eproto.base,
+};
+static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_ProtobufRpcEngine_2eproto_once;
+const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_ProtobufRpcEngine_2eproto = {
+  false, false, descriptor_table_protodef_ProtobufRpcEngine_2eproto, "ProtobufRpcEngine.proto", 222,
+  &descriptor_table_ProtobufRpcEngine_2eproto_once, descriptor_table_ProtobufRpcEngine_2eproto_sccs, descriptor_table_ProtobufRpcEngine_2eproto_deps, 1, 0,
+  schemas, file_default_instances, TableStruct_ProtobufRpcEngine_2eproto::offsets,
+  file_level_metadata_ProtobufRpcEngine_2eproto, 1, file_level_enum_descriptors_ProtobufRpcEngine_2eproto, file_level_service_descriptors_ProtobufRpcEngine_2eproto,
+};
 
 // Force running AddDescriptors() at dynamic initialization time.
-PROTOBUF_ATTRIBUTE_INIT_PRIORITY2 static ::_pbi::AddDescriptorsRunner dynamic_init_dummy_ProtobufRpcEngine_2eproto(&descriptor_table_ProtobufRpcEngine_2eproto);
+static bool dynamic_init_dummy_ProtobufRpcEngine_2eproto = (static_cast<void>(::PROTOBUF_NAMESPACE_ID::internal::AddDescriptors(&descriptor_table_ProtobufRpcEngine_2eproto)), true);
 namespace hadoop {
 namespace common {
 
 // ===================================================================
 
+void RequestHeaderProto::InitAsDefaultInstance() {
+}
 class RequestHeaderProto::_Internal {
  public:
-  using HasBits = decltype(std::declval<RequestHeaderProto>()._impl_._has_bits_);
+  using HasBits = decltype(std::declval<RequestHeaderProto>()._has_bits_);
   static void set_has_methodname(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
@@ -112,184 +108,162 @@ class RequestHeaderProto::_Internal {
   }
 };
 
-RequestHeaderProto::RequestHeaderProto(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
-  SharedCtor(arena, is_message_owned);
+RequestHeaderProto::RequestHeaderProto(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
+  _extensions_(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
   // @@protoc_insertion_point(arena_constructor:hadoop.common.RequestHeaderProto)
 }
 RequestHeaderProto::RequestHeaderProto(const RequestHeaderProto& from)
-  : ::PROTOBUF_NAMESPACE_ID::Message() {
-  RequestHeaderProto* const _this = this; (void)_this;
-  new (&_impl_) Impl_{
-      /*decltype(_impl_._extensions_)*/{}
-    , decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.methodname_){}
-    , decltype(_impl_.declaringclassprotocolname_){}
-    , decltype(_impl_.clientprotocolversion_){}};
-
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      _has_bits_(from._has_bits_) {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_._extensions_.MergeFrom(internal_default_instance(), from._impl_._extensions_);
-  _impl_.methodname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.methodname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _extensions_.MergeFrom(from._extensions_);
+  methodname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_methodname()) {
-    _this->_impl_.methodname_.Set(from._internal_methodname(), 
-      _this->GetArenaForAllocation());
+    methodname_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_methodname(),
+      GetArena());
   }
-  _impl_.declaringclassprotocolname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.declaringclassprotocolname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  declaringclassprotocolname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   if (from._internal_has_declaringclassprotocolname()) {
-    _this->_impl_.declaringclassprotocolname_.Set(from._internal_declaringclassprotocolname(), 
-      _this->GetArenaForAllocation());
+    declaringclassprotocolname_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_declaringclassprotocolname(),
+      GetArena());
   }
-  _this->_impl_.clientprotocolversion_ = from._impl_.clientprotocolversion_;
+  clientprotocolversion_ = from.clientprotocolversion_;
   // @@protoc_insertion_point(copy_constructor:hadoop.common.RequestHeaderProto)
 }
 
-inline void RequestHeaderProto::SharedCtor(
-    ::_pb::Arena* arena, bool is_message_owned) {
-  (void)arena;
-  (void)is_message_owned;
-  new (&_impl_) Impl_{
-      /*decltype(_impl_._extensions_)*/{::_pbi::ArenaInitialized(), arena}
-    , decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.methodname_){}
-    , decltype(_impl_.declaringclassprotocolname_){}
-    , decltype(_impl_.clientprotocolversion_){uint64_t{0u}}
-  };
-  _impl_.methodname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.methodname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.declaringclassprotocolname_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.declaringclassprotocolname_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+void RequestHeaderProto::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_RequestHeaderProto_ProtobufRpcEngine_2eproto.base);
+  methodname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  declaringclassprotocolname_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  clientprotocolversion_ = PROTOBUF_ULONGLONG(0);
 }
 
 RequestHeaderProto::~RequestHeaderProto() {
   // @@protoc_insertion_point(destructor:hadoop.common.RequestHeaderProto)
-  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
-  (void)arena;
-    return;
-  }
   SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-inline void RequestHeaderProto::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_._extensions_.~ExtensionSet();
-  _impl_.methodname_.Destroy();
-  _impl_.declaringclassprotocolname_.Destroy();
+void RequestHeaderProto::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  methodname_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  declaringclassprotocolname_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
 
+void RequestHeaderProto::ArenaDtor(void* object) {
+  RequestHeaderProto* _this = reinterpret_cast< RequestHeaderProto* >(object);
+  (void)_this;
+}
+void RequestHeaderProto::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
 void RequestHeaderProto::SetCachedSize(int size) const {
-  _impl_._cached_size_.Set(size);
+  _cached_size_.Set(size);
 }
+const RequestHeaderProto& RequestHeaderProto::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_RequestHeaderProto_ProtobufRpcEngine_2eproto.base);
+  return *internal_default_instance();
+}
+
 
 void RequestHeaderProto::Clear() {
 // @@protoc_insertion_point(message_clear_start:hadoop.common.RequestHeaderProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  _impl_._extensions_.Clear();
-  cached_has_bits = _impl_._has_bits_[0];
+  _extensions_.Clear();
+  cached_has_bits = _has_bits_[0];
   if (cached_has_bits & 0x00000003u) {
     if (cached_has_bits & 0x00000001u) {
-      _impl_.methodname_.ClearNonDefaultToEmpty();
+      methodname_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      _impl_.declaringclassprotocolname_.ClearNonDefaultToEmpty();
+      declaringclassprotocolname_.ClearNonDefaultToEmpty();
     }
   }
-  _impl_.clientprotocolversion_ = uint64_t{0u};
-  _impl_._has_bits_.Clear();
+  clientprotocolversion_ = PROTOBUF_ULONGLONG(0);
+  _has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
-const char* RequestHeaderProto::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+const char* RequestHeaderProto::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
   _Internal::HasBits has_bits{};
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
   while (!ctx->Done(&ptr)) {
-    uint32_t tag;
-    ptr = ::_pbi::ReadTag(ptr, &tag);
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
     switch (tag >> 3) {
       // required string methodName = 1;
       case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
           auto str = _internal_mutable_methodname();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.common.RequestHeaderProto.methodName");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.common.RequestHeaderProto.methodName");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
       // required string declaringClassProtocolName = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
           auto str = _internal_mutable_declaringclassprotocolname();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           #ifndef NDEBUG
-          ::_pbi::VerifyUTF8(str, "hadoop.common.RequestHeaderProto.declaringClassProtocolName");
+          ::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "hadoop.common.RequestHeaderProto.declaringClassProtocolName");
           #endif  // !NDEBUG
-        } else
-          goto handle_unusual;
+          CHK_(ptr);
+        } else goto handle_unusual;
         continue;
       // required uint64 clientProtocolVersion = 3;
       case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 24)) {
           _Internal::set_has_clientprotocolversion(&has_bits);
-          _impl_.clientprotocolversion_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          clientprotocolversion_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
-        } else
-          goto handle_unusual;
+        } else goto handle_unusual;
         continue;
-      default:
-        goto handle_unusual;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+      if ((8000u <= tag)) {
+        ptr = _extensions_.ParseField(tag, ptr,
+            internal_default_instance(), &_internal_metadata_, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
     }  // switch
-  handle_unusual:
-    if ((tag == 0) || ((tag & 7) == 4)) {
-      CHK_(ptr);
-      ctx->SetLastTag(tag);
-      goto message_done;
-    }
-    if ((8000u <= tag)) {
-      ptr = _impl_._extensions_.ParseField(tag, ptr, internal_default_instance(), &_internal_metadata_, ctx);
-      CHK_(ptr != nullptr);
-      continue;
-    }
-    ptr = UnknownFieldParse(
-        tag,
-        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
-        ptr, ctx);
-    CHK_(ptr != nullptr);
   }  // while
-message_done:
-  _impl_._has_bits_.Or(has_bits);
+success:
+  _has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
-  goto message_done;
+  goto success;
 #undef CHK_
 }
 
-uint8_t* RequestHeaderProto::_InternalSerialize(
-    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+::PROTOBUF_NAMESPACE_ID::uint8* RequestHeaderProto::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
   // @@protoc_insertion_point(serialize_to_array_start:hadoop.common.RequestHeaderProto)
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
+  cached_has_bits = _has_bits_[0];
   // required string methodName = 1;
   if (cached_has_bits & 0x00000001u) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::VerifyUTF8StringNamedField(
@@ -313,15 +287,15 @@ uint8_t* RequestHeaderProto::_InternalSerialize(
   // required uint64 clientProtocolVersion = 3;
   if (cached_has_bits & 0x00000004u) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(3, this->_internal_clientprotocolversion(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteUInt64ToArray(3, this->_internal_clientprotocolversion(), target);
   }
 
   // Extension range [1000, 536870912)
-  target = _impl_._extensions_._InternalSerialize(
-  internal_default_instance(), 1000, 536870912, target, stream);
+  target = _extensions_._InternalSerialize(
+      1000, 536870912, target, stream);
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
-    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
   // @@protoc_insertion_point(serialize_to_array_end:hadoop.common.RequestHeaderProto)
@@ -348,7 +322,9 @@ size_t RequestHeaderProto::RequiredFieldsByteSizeFallback() const {
 
   if (_internal_has_clientprotocolversion()) {
     // required uint64 clientProtocolVersion = 3;
-    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_clientprotocolversion());
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt64Size(
+        this->_internal_clientprotocolversion());
   }
 
   return total_size;
@@ -357,9 +333,9 @@ size_t RequestHeaderProto::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:hadoop.common.RequestHeaderProto)
   size_t total_size = 0;
 
-  total_size += _impl_._extensions_.ByteSize();
+  total_size += _extensions_.ByteSize();
 
-  if (((_impl_._has_bits_[0] & 0x00000007) ^ 0x00000007) == 0) {  // All required fields are present.
+  if (((_has_bits_[0] & 0x00000007) ^ 0x00000007) == 0) {  // All required fields are present.
     // required string methodName = 1;
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
@@ -371,48 +347,69 @@ size_t RequestHeaderProto::ByteSizeLong() const {
         this->_internal_declaringclassprotocolname());
 
     // required uint64 clientProtocolVersion = 3;
-    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_clientprotocolversion());
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::UInt64Size(
+        this->_internal_clientprotocolversion());
 
   } else {
     total_size += RequiredFieldsByteSizeFallback();
   }
-  uint32_t cached_has_bits = 0;
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
 }
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData RequestHeaderProto::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
-    RequestHeaderProto::MergeImpl
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*RequestHeaderProto::GetClassData() const { return &_class_data_; }
+void RequestHeaderProto::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:hadoop.common.RequestHeaderProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  const RequestHeaderProto* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<RequestHeaderProto>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:hadoop.common.RequestHeaderProto)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:hadoop.common.RequestHeaderProto)
+    MergeFrom(*source);
+  }
+}
 
-
-void RequestHeaderProto::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
-  auto* const _this = static_cast<RequestHeaderProto*>(&to_msg);
-  auto& from = static_cast<const RequestHeaderProto&>(from_msg);
-  // @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.RequestHeaderProto)
-  GOOGLE_DCHECK_NE(&from, _this);
-  uint32_t cached_has_bits = 0;
+void RequestHeaderProto::MergeFrom(const RequestHeaderProto& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:hadoop.common.RequestHeaderProto)
+  GOOGLE_DCHECK_NE(&from, this);
+  _extensions_.MergeFrom(from._extensions_);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = from._impl_._has_bits_[0];
+  cached_has_bits = from._has_bits_[0];
   if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_methodname(from._internal_methodname());
+      _internal_set_methodname(from._internal_methodname());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_declaringclassprotocolname(from._internal_declaringclassprotocolname());
+      _internal_set_declaringclassprotocolname(from._internal_declaringclassprotocolname());
     }
     if (cached_has_bits & 0x00000004u) {
-      _this->_impl_.clientprotocolversion_ = from._impl_.clientprotocolversion_;
+      clientprotocolversion_ = from.clientprotocolversion_;
     }
-    _this->_impl_._has_bits_[0] |= cached_has_bits;
+    _has_bits_[0] |= cached_has_bits;
   }
-  _this->_impl_._extensions_.MergeFrom(internal_default_instance(), from._impl_._extensions_);
-  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void RequestHeaderProto::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:hadoop.common.RequestHeaderProto)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
 }
 
 void RequestHeaderProto::CopyFrom(const RequestHeaderProto& from) {
@@ -423,44 +420,34 @@ void RequestHeaderProto::CopyFrom(const RequestHeaderProto& from) {
 }
 
 bool RequestHeaderProto::IsInitialized() const {
-  if (!_impl_._extensions_.IsInitialized()) {
+  if (!_extensions_.IsInitialized()) {
     return false;
   }
 
-  if (_Internal::MissingRequiredFields(_impl_._has_bits_)) return false;
+  if (_Internal::MissingRequiredFields(_has_bits_)) return false;
   return true;
 }
 
 void RequestHeaderProto::InternalSwap(RequestHeaderProto* other) {
   using std::swap;
-  _impl_._extensions_.InternalSwap(&other->_impl_._extensions_);
-  auto* lhs_arena = GetArenaForAllocation();
-  auto* rhs_arena = other->GetArenaForAllocation();
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.methodname_, lhs_arena,
-      &other->_impl_.methodname_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.declaringclassprotocolname_, lhs_arena,
-      &other->_impl_.declaringclassprotocolname_, rhs_arena
-  );
-  swap(_impl_.clientprotocolversion_, other->_impl_.clientprotocolversion_);
+  _extensions_.Swap(&other->_extensions_);
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  swap(_has_bits_[0], other->_has_bits_[0]);
+  methodname_.Swap(&other->methodname_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  declaringclassprotocolname_.Swap(&other->declaringclassprotocolname_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  swap(clientprotocolversion_, other->clientprotocolversion_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata RequestHeaderProto::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_ProtobufRpcEngine_2eproto_getter, &descriptor_table_ProtobufRpcEngine_2eproto_once,
-      file_level_metadata_ProtobufRpcEngine_2eproto[0]);
+  return GetMetadataStatic();
 }
+
 
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace common
 }  // namespace hadoop
 PROTOBUF_NAMESPACE_OPEN
-template<> PROTOBUF_NOINLINE ::hadoop::common::RequestHeaderProto*
-Arena::CreateMaybeMessage< ::hadoop::common::RequestHeaderProto >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::hadoop::common::RequestHeaderProto* Arena::CreateMaybeMessage< ::hadoop::common::RequestHeaderProto >(Arena* arena) {
   return Arena::CreateMessageInternal< ::hadoop::common::RequestHeaderProto >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE

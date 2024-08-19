@@ -83,27 +83,27 @@ int main(int argc, char* argv[]) {
 
     // Initialise the server.
     // TODO: make address and port configurable.
-    std::string backend_addr_1 = "namenode";
+    std::string backend_addr_1 = "nna";
     std::string backend_port_1 = "8020";
-    std::string backend_addr_2 = "datanode";
+    std::string backend_addr_2 = "dn1";
     std::string backend_port_2 = "9866";
-    std::string backend_addr_3 = "datanode";
+    std::string backend_addr_3 = "dn1";
     std::string backend_port_3 = "9867";
     Datanode datanode;
     lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s_1(1, cache_size, datanode, backend_addr_1,
-            backend_port_1, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode",
+            backend_port_1, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode_nnrpc",
             true, true);
     lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s_2(thread_pool_size, cache_size, datanode, backend_addr_2,
-            backend_port_2, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode",
+            backend_port_2, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode_data",
             true);
     lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s_3(thread_pool_size, cache_size, datanode, backend_addr_3,
-            backend_port_3, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode",
+            backend_port_3, 1000ms, 20000, 0.9, 1, "/tmp/LiteDatanode_rpc",
             true);
     // Run the server until stopped.
     datanode.RegisterServer(&s_1);
