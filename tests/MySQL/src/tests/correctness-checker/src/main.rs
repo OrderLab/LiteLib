@@ -107,10 +107,10 @@ fn order_ranges(
 ) -> Result<Vec<Data>> {
     conn.query_map(
         format!(
-            "SELECT c FROM sbtest{} WHERE id BETWEEN {} AND {} ORDER BY c",
+            "SELECT id, c FROM sbtest{} WHERE id BETWEEN {} AND {} ORDER BY c",
             db_id, lower_bound, upper_bound
         ),
-        |c| Data {
+        |(_, c): (Option<i32>, Option<String>)| Data {
             k: Some(0),
             c,
             pad: Some("".to_string()),
@@ -189,12 +189,33 @@ fn init() -> Pool {
 }
 
 // #[tokio::main]
-// async fn main() {
+// fn main() {
 //     let pool = init();
 //     let mut conn = pool.get_conn().unwrap();
-//     println!("Result: {:?}", point_selects(&mut conn, 1, 3));
-//     println!("Result: {:?}", non_index_updates(&mut conn, 1, 3, "hello".to_string()));
-//     println!("Result: {:?}", point_selects(&mut conn, 1, 3));
+//     println!("Result: {:?}", sum_ranges(&mut conn, 1, 3, 4));
+//     // println!("Result: {:?}", point_selects(&mut conn, 1, 3));
+//     // println!(
+//     //     "Result: {:?}",
+//     //     inserts(
+//     //         &mut conn,
+//     //         1,
+//     //         3,
+//     //         Data {
+//     //             k: Some(0),
+//     //             c: Some(get_rand_c()),
+//     //             pad: Some(get_rand_pad()),
+//     //         },
+//     //     )
+//     // );
+//     // println!("Result: {:?}", point_selects(&mut conn, 1, 3));
+//     // println!("Result: {:?}", simple_ranges(&mut conn, 1, 3, 4));
+//     // println!(
+//     //     "Result: {:?}",
+//     //     non_index_updates(&mut conn, 1, 3, get_rand_c())
+//     // );
+//     // println!("Result: {:?}", deletes(&mut conn, 1, 3));
+//     // println!("Result: {:?}", point_selects(&mut conn, 1, 3));
+//     // println!("Result: {:?}", simple_ranges(&mut conn, 1, 3, 4));
 // }
 
 #[tokio::main]
@@ -261,7 +282,7 @@ async fn main() {
     let start = std::time::Instant::now();
     for _ in 0..THREAD_COUNT {
         let bar = bar.clone();
-        let pool = pool.clone();
+        let mut pool = pool.clone();
         let tables = tables.clone();
         let handle = tokio::spawn(async move {
             while (std::time::Instant::now() - start) < TEST_DURATION {
@@ -272,15 +293,25 @@ async fn main() {
                     // point selects
                     let db_id = get_rand_db_id();
                     let id = get_rand_id();
-                    let result = match point_selects(&mut conn, db_id, id) {
-                        Ok(result) => result,
+                    match point_selects(&mut conn, db_id, id) {
+                        Ok(result) => {
+                            if let Some(expected) = tables[db_id as usize].get(&id) {
+                                assert_eq!(
+                                    result[0].c, expected.c,
+                                    "point_select db_id: {}, id: {}",
+                                    db_id, id
+                                );
+                            }
+                        }
                         Err(e) => {
                             if let mysql::Error::IoError(_) = e {
-                                println!("IO error: {:?}", e);
-                                continue;
+                                // println!("IO error: {:?}", e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else if let mysql::Error::CodecError(e) = e {
-                                println!("Codec error: {:?}", e);
-                                continue;
+                                // println!("Codec error: {:?}", e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else {
                                 panic!(
                                     "point_selects db_id: {}, id: {}, error: {:?}",
@@ -289,28 +320,40 @@ async fn main() {
                             }
                         }
                     };
-                    if let Some(expected) = tables[db_id as usize].get(&id) {
-                        assert_eq!(
-                            result[0].c, expected.c,
-                            "point_select db_id: {}, id: {}",
-                            db_id, id
-                        );
-                    }
                 }
                 {
                     // simple ranges
                     let db_id = get_rand_db_id();
                     let lower_bound = get_rand_id();
                     let upper_bound = std::cmp::min(lower_bound + RANGE_SIZE, TABLE_SIZE);
-                    let result = match simple_ranges(&mut conn, db_id, lower_bound, upper_bound) {
-                        Ok(result) => result,
+                    match simple_ranges(&mut conn, db_id, lower_bound, upper_bound) {
+                        Ok(result) => {
+                            let mut expected: Vec<String> = tables[db_id as usize]
+                                .iter()
+                                .filter(|(k, _)| *k >= &lower_bound && *k <= &upper_bound)
+                                .map(|(_, v)| v.c.clone().unwrap())
+                                .collect();
+                            expected.sort();
+
+                            let mut actual: Vec<String> =
+                                result.iter().map(|v| v.c.clone().unwrap()).collect();
+                            actual.sort();
+
+                            assert_eq!(
+                                expected, actual,
+                                "simple_ranges db_id: {}, lower_bound: {}, upper_bound: {}",
+                                db_id, lower_bound, upper_bound
+                            );
+                        }
                         Err(e) => {
                             if let mysql::Error::IoError(_) = e {
-                                println!("IO error: {:?}", e);
-                                continue;
+                                // println!("IO error: {:?}", e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else if let mysql::Error::CodecError(e) = e {
-                                println!("Codec error: {:?}", e);
-                                continue;
+                                // println!("Codec error: {:?}", e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else {
                                 panic!(
                                     "simple_ranges db_id: {}, lower_bound: {}, upper_bound: {}, error: {:?}",
@@ -319,37 +362,38 @@ async fn main() {
                             }
                         }
                     };
-                    let mut expected: Vec<String> = tables[db_id as usize]
-                        .iter()
-                        .filter(|(k, _)| *k >= &lower_bound && *k <= &upper_bound)
-                        .map(|(_, v)| v.c.clone().unwrap())
-                        .collect();
-                    expected.sort();
-
-                    let mut actual: Vec<String> =
-                        result.iter().map(|v| v.c.clone().unwrap()).collect();
-                    actual.sort();
-
-                    assert_eq!(
-                        expected, actual,
-                        "simple_ranges db_id: {}, lower_bound: {}, upper_bound: {}",
-                        db_id, lower_bound, upper_bound
-                    );
                 }
                 {
                     // sum ranges
                     let db_id = get_rand_db_id();
                     let lower_bound = get_rand_id();
                     let upper_bound = std::cmp::min(lower_bound + RANGE_SIZE, TABLE_SIZE);
-                    let result = match sum_ranges(&mut conn, db_id, lower_bound, upper_bound) {
-                        Ok(result) => result,
+                    match sum_ranges(&mut conn, db_id, lower_bound, upper_bound) {
+                        Ok(result) => {
+                            let mut sum = 0;
+                            for i in lower_bound..upper_bound + 1 {
+                                if let Some(expected) = tables[db_id as usize].get(&i) {
+                                    sum += expected.k.unwrap();
+                                }
+                            }
+                            assert_eq!(
+                                result[0].k.unwrap(),
+                                sum,
+                                "sum_ranges db_id: {}, upper_bound: {}, upper_bound: {}",
+                                db_id,
+                                lower_bound,
+                                upper_bound
+                            );
+                        }
                         Err(e) => {
                             if let mysql::Error::IoError(_) = e {
-                                println!("IO error: {:?}", e);
-                                continue;
+                                // println!("IO error: {:?}", e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else if let mysql::Error::CodecError(e) = e {
-                                println!("Codec error: {:?}", e);
-                                continue;
+                                // println!("Codec error: {:?}", e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else {
                                 panic!(
                                     "sum_ranges db_id: {}, lower_bound: {}, upper_bound: {}, error: {:?}",
@@ -358,35 +402,37 @@ async fn main() {
                             }
                         }
                     };
-                    let mut sum = 0;
-                    for i in lower_bound..upper_bound + 1 {
-                        if let Some(expected) = tables[db_id as usize].get(&i) {
-                            sum += expected.k.unwrap();
-                        }
-                    }
-                    assert_eq!(
-                        result[0].k.unwrap(),
-                        sum,
-                        "sum_ranges db_id: {}, upper_bound: {}, upper_bound: {}",
-                        db_id,
-                        lower_bound,
-                        upper_bound
-                    );
                 }
                 {
                     // order ranges
                     let db_id = get_rand_db_id();
                     let lower_bound = get_rand_id();
                     let upper_bound = std::cmp::min(lower_bound + RANGE_SIZE, TABLE_SIZE);
-                    let result = match order_ranges(&mut conn, db_id, lower_bound, upper_bound) {
-                        Ok(result) => result,
+                    match order_ranges(&mut conn, db_id, lower_bound, upper_bound) {
+                        Ok(result) => {
+                            let mut expected: Vec<String> = tables[db_id as usize]
+                                .iter()
+                                .filter(|(k, _)| *k >= &lower_bound && *k <= &upper_bound)
+                                .map(|(_, v)| v.c.clone().unwrap())
+                                .collect();
+                            expected.sort();
+                            let actual: Vec<String> =
+                                result.iter().map(|v| v.c.clone().unwrap()).collect();
+                            assert_eq!(
+                                expected, actual,
+                                "order_ranges db_id: {}, lower_bound: {}, upper_bound: {}",
+                                db_id, lower_bound, upper_bound
+                            );
+                        }
                         Err(e) => {
                             if let mysql::Error::IoError(_) = e {
-                                println!("IO error: {:?}", e);
-                                continue;
+                                // println!("IO error: {:?}", e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else if let mysql::Error::CodecError(e) = e {
-                                println!("Codec error: {:?}", e);
-                                continue;
+                                // println!("Codec error: {:?}", e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else {
                                 panic!(
                                     "order_ranges db_id: {}, lower_bound: {}, upper_bound: {}, error: {:?}",
@@ -395,33 +441,39 @@ async fn main() {
                             }
                         }
                     };
-                    let mut expected: Vec<String> = tables[db_id as usize]
-                        .iter()
-                        .filter(|(k, _)| *k >= &lower_bound && *k <= &upper_bound)
-                        .map(|(_, v)| v.c.clone().unwrap())
-                        .collect();
-                    expected.sort();
-                    let actual: Vec<String> = result.iter().map(|v| v.c.clone().unwrap()).collect();
-                    assert_eq!(
-                        expected, actual,
-                        "order_ranges db_id: {}, lower_bound: {}, upper_bound: {}",
-                        db_id, lower_bound, upper_bound
-                    );
                 }
                 {
                     // distinct ranges
                     let db_id = get_rand_db_id();
                     let lower_bound = get_rand_id();
                     let upper_bound = std::cmp::min(lower_bound + RANGE_SIZE, TABLE_SIZE);
-                    let result = match distinct_ranges(&mut conn, db_id, lower_bound, upper_bound) {
-                        Ok(result) => result,
+                    match distinct_ranges(&mut conn, db_id, lower_bound, upper_bound) {
+                        Ok(result) => {
+                            let mut expected: Vec<String> = Vec::from_iter(
+                                tables[db_id as usize]
+                                    .iter()
+                                    .filter(|(k, _)| *k >= &lower_bound && *k <= &upper_bound)
+                                    .map(|(_, v)| v.c.clone().unwrap()),
+                            );
+                            expected.sort();
+                            expected.dedup();
+                            let actual: Vec<String> =
+                                Vec::from_iter(result.iter().map(|v| v.c.clone().unwrap()));
+                            assert_eq!(
+                                expected, actual,
+                                "distinct_ranges db_id: {}, lower_bound: {}, upper_bound: {}",
+                                db_id, lower_bound, upper_bound
+                            );
+                        }
                         Err(e) => {
                             if let mysql::Error::IoError(_) = e {
-                                println!("IO error: {:?}", e);
-                                continue;
+                                // println!("IO error: {:?}", e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else if let mysql::Error::CodecError(e) = e {
-                                println!("Codec error: {:?}", e);
-                                continue;
+                                // println!("Codec error: {:?}", e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else {
                                 panic!(
                                     "distinct_ranges db_id: {}, lower_bound: {}, upper_bound: {}, error: {:?}",
@@ -430,35 +482,32 @@ async fn main() {
                             }
                         }
                     };
-                    let mut expected: Vec<String> = Vec::from_iter(
-                        tables[db_id as usize]
-                            .iter()
-                            .filter(|(k, _)| *k >= &lower_bound && *k <= &upper_bound)
-                            .map(|(_, v)| v.c.clone().unwrap()),
-                    );
-                    expected.sort();
-                    expected.dedup();
-                    let actual: Vec<String> =
-                        Vec::from_iter(result.iter().map(|v| v.c.clone().unwrap()));
-                    assert_eq!(
-                        expected, actual,
-                        "distinct_ranges db_id: {}, lower_bound: {}, upper_bound: {}",
-                        db_id, lower_bound, upper_bound
-                    );
                 }
                 {
                     // index updates
                     let db_id = get_rand_db_id();
                     let id = get_rand_id();
                     match index_updates(&mut conn, db_id, id) {
-                        Ok(_) => {}
+                        Ok(_) => {
+                            if let Some(data) = tables[db_id as usize].get_mut(&id) {
+                                data.k = Some(data.k.unwrap() + 1);
+                            }
+                        }
                         Err(e) => {
                             if let mysql::Error::IoError(_) = e {
-                                println!("IO error: {:?}", e);
-                                continue;
+                                println!(
+                                    "index_update(db_id: {}, id: {}) failed, IO error: {:?}",
+                                    db_id, id, e
+                                );
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else if let mysql::Error::CodecError(e) = e {
-                                println!("Codec error: {:?}", e);
-                                continue;
+                                println!(
+                                    "index_update(db_id: {}, id: {}) failed, Codec error: {:?}",
+                                    db_id, id, e
+                                );
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else {
                                 panic!(
                                     "index_updates db_id: {}, id: {}, error: {:?}",
@@ -467,9 +516,6 @@ async fn main() {
                             }
                         }
                     }
-                    if let Some(data) = tables[db_id as usize].get_mut(&id) {
-                        data.k = Some(data.k.unwrap() + 1);
-                    }
                 }
                 {
                     // non-index updates
@@ -477,14 +523,23 @@ async fn main() {
                     let id = get_rand_id();
                     let new_c = get_rand_c();
                     match non_index_updates(&mut conn, db_id, id, new_c.clone()) {
-                        Ok(_) => {}
+                        Ok(_) => {
+                            if let Some(data) = tables[db_id as usize].get_mut(&id) {
+                                data.c = Some(new_c);
+                            }
+                        }
                         Err(e) => {
                             if let mysql::Error::IoError(_) = e {
-                                println!("IO error: {:?}", e);
-                                continue;
+                                println!(
+                                    "non_index updates(db_id: {}, id: {}) failed, IO error: {:?}",
+                                    db_id, id, e
+                                );
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else if let mysql::Error::CodecError(e) = e {
-                                println!("Codec error: {:?}", e);
-                                continue;
+                                println!("non_index updates(db_id: {}, id: {}) failed, Codec error: {:?}", db_id, id, e);
+                                pool = init();
+                                conn = pool.get_conn().unwrap();
                             } else {
                                 panic!(
                                     "non_index_updates db_id: {}, id: {}, error: {:?}",
@@ -493,49 +548,62 @@ async fn main() {
                             }
                         }
                     }
-                    if let Some(data) = tables[db_id as usize].get_mut(&id) {
-                        data.c = Some(new_c);
-                    }
                 }
                 {
                     // deletes and inserts
                     let db_id = get_rand_db_id();
                     let id = get_rand_id();
                     match deletes(&mut conn, db_id, id) {
-                        Ok(_) => {}
+                        Ok(_) => {
+                            tables[db_id as usize].remove(&id);
+                        }
                         Err(e) => {
                             if let mysql::Error::IoError(_) = e {
-                                println!("IO error: {:?}", e);
+                                println!(
+                                    "delete db_id: {}, id: {} failed, IO error: {:?}",
+                                    db_id, id, e
+                                );
+                                pool = init();
                                 continue;
                             } else if let mysql::Error::CodecError(e) = e {
-                                println!("Codec error: {:?}", e);
+                                println!(
+                                    "delete db_id: {}, id: {} failed, Codec error: {:?}",
+                                    db_id, id, e
+                                );
+                                pool = init();
                                 continue;
                             } else {
                                 panic!("deletes db_id: {}, id: {}, error: {:?}", db_id, id, e);
                             }
                         }
                     }
-                    tables[db_id as usize].remove(&id);
                     let data = Data {
                         k: Some(0),
                         c: Some(get_rand_c()),
                         pad: Some(get_rand_pad()),
                     };
                     match inserts(&mut conn, db_id, id, data.clone()) {
-                        Ok(_) => {}
+                        Ok(_) => {
+                            tables[db_id as usize].insert(id, data);
+                        }
                         Err(e) => {
                             if let mysql::Error::IoError(_) = e {
-                                println!("IO error: {:?}", e);
-                                continue;
+                                println!(
+                                    "inserts db_id: {}, id: {} failed, IO error: {:?}",
+                                    db_id, id, e
+                                );
+                                pool = init();
                             } else if let mysql::Error::CodecError(e) = e {
-                                println!("Codec error: {:?}", e);
-                                continue;
+                                println!(
+                                    "inserts db_id: {}, id: {} failed, Codec error: {:?}",
+                                    db_id, id, e
+                                );
+                                pool = init();
                             } else {
                                 panic!("inserts db_id: {}, id: {}, error: {:?}", db_id, id, e);
                             }
                         }
                     }
-                    tables[db_id as usize].insert(id, data);
                 }
             }
         });
