@@ -107,10 +107,10 @@ fn order_ranges(
 ) -> Result<Vec<Data>> {
     conn.query_map(
         format!(
-            "SELECT id, c FROM sbtest{} WHERE id BETWEEN {} AND {} ORDER BY c",
+            "SELECT id, k, c FROM sbtest{} WHERE id BETWEEN {} AND {} ORDER BY c",
             db_id, lower_bound, upper_bound
         ),
-        |(_, c): (Option<i32>, Option<String>)| Data {
+        |(_, _, c): (Option<i32>, Option<i32>, Option<String>)| Data {
             k: Some(0),
             c,
             pad: Some("".to_string()),
@@ -189,10 +189,10 @@ fn init() -> Pool {
 }
 
 // #[tokio::main]
-// fn main() {
+// async fn main() {
 //     let pool = init();
 //     let mut conn = pool.get_conn().unwrap();
-//     println!("Result: {:?}", sum_ranges(&mut conn, 1, 3, 4));
+//     // println!("Result: {:?}", sum_ranges(&mut conn, 1, 3, 4));
 //     // println!("Result: {:?}", point_selects(&mut conn, 1, 3));
 //     // println!(
 //     //     "Result: {:?}",
@@ -208,14 +208,13 @@ fn init() -> Pool {
 //     //     )
 //     // );
 //     // println!("Result: {:?}", point_selects(&mut conn, 1, 3));
-//     // println!("Result: {:?}", simple_ranges(&mut conn, 1, 3, 4));
-//     // println!(
-//     //     "Result: {:?}",
-//     //     non_index_updates(&mut conn, 1, 3, get_rand_c())
-//     // );
+//     // println!("Result: {:?}", order_ranges(&mut conn, 1, 3, 4));
+//     println!("Result: {:?}", sum_ranges(&mut conn, 1, 3, 4));
+//     println!("Result: {:?}", index_updates(&mut conn, 1, 3));
+//     println!("Result: {:?}", sum_ranges(&mut conn, 1, 3, 4));
 //     // println!("Result: {:?}", deletes(&mut conn, 1, 3));
 //     // println!("Result: {:?}", point_selects(&mut conn, 1, 3));
-//     // println!("Result: {:?}", simple_ranges(&mut conn, 1, 3, 4));
+//     // println!("Result: {:?}", order_ranges(&mut conn, 1, 3, 4));
 // }
 
 #[tokio::main]

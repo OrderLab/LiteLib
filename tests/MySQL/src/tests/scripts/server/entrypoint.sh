@@ -11,7 +11,7 @@ make install
 
 mkdir /usr/local/mysql/data
 /usr/local/mysql/bin/mysqld --initialize-insecure
-/usr/local/mysql/bin/mysqld --user=root --port=60000
+/usr/local/mysql/bin/mysqld --user=root --port=60000 --query_cache_type=ON
 
 /usr/local/mysql/bin/mysql -P 60000 -e "CREATE SCHEMA sbtest;"
 /usr/local/mysql/bin/mysql -P 60000 -e "CREATE USER 'sbtest'@'%' IDENTIFIED BY 'password';"

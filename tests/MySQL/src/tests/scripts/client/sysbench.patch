@@ -1,0 +1,20 @@
+diff --git a/src/lua/oltp_common.lua b/src/lua/oltp_common.lua
+index fdc5c83..fee84bb 100644
+--- a/src/lua/oltp_common.lua
++++ b/src/lua/oltp_common.lua
+@@ -253,13 +253,13 @@ local stmt_defs = {
+       "SELECT c FROM sbtest%u WHERE id=?",
+       t.INT},
+    simple_ranges = {
+-      "SELECT c FROM sbtest%u WHERE id BETWEEN ? AND ?",
++      "SELECT id, k, c FROM sbtest%u WHERE id BETWEEN ? AND ?",
+       t.INT, t.INT},
+    sum_ranges = {
+       "SELECT SUM(k) FROM sbtest%u WHERE id BETWEEN ? AND ?",
+        t.INT, t.INT},
+    order_ranges = {
+-      "SELECT c FROM sbtest%u WHERE id BETWEEN ? AND ? ORDER BY c",
++      "SELECT id, k, c FROM sbtest%u WHERE id BETWEEN ? AND ? ORDER BY c",
+        t.INT, t.INT},
+    distinct_ranges = {
+       "SELECT DISTINCT c FROM sbtest%u WHERE id BETWEEN ? AND ? ORDER BY c",
