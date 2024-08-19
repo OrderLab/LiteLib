@@ -70,12 +70,17 @@ bool ResponseDissector::Digest(
   }
 }
 
+template <typename T1, typename T2>
+concept HasOperatorPlus = requires(T1 a, T2 b) {
+  { a + b } -> std::same_as<T1>;
+};
+
 Value operator+(const Value &lhs, const Value &rhs) {
   return std::visit(
       [](auto &&lhs_value, auto &&rhs_value) -> Value {
         using T1 = std::decay_t<decltype(lhs_value)>;
         using T2 = std::decay_t<decltype(rhs_value)>;
-        if constexpr (std::is_same_v<T1, T2>) {
+        if constexpr (std::is_same_v<T1, T2> && HasOperatorPlus<T1, T2>) {
           return lhs_value + rhs_value;
         } else {
           LOG(FATAL) << "operator+: Unsupported Value type: "
@@ -85,6 +90,45 @@ Value operator+(const Value &lhs, const Value &rhs) {
         }
       },
       lhs, rhs);
+}
+
+Value &operator+=(Value &lhs, const Value &rhs) {
+  std::visit(
+      [&](auto &lhs_value, auto &rhs_value) -> void {
+        using T1 = std::decay_t<decltype(lhs_value)>;
+        using T2 = std::decay_t<decltype(rhs_value)>;
+        if constexpr (std::is_same_v<T1, T2> && HasOperatorPlus<T1, T2>) {
+          lhs_value += rhs_value;
+        } else {
+          LOG(FATAL) << "operator+=: Unsupported Value type: "
+                     << typeid(T1).name() << " + " << typeid(T2).name()
+                     << std::endl;
+        }
+      },
+      lhs, rhs);
+  return lhs;
+}
+
+template <typename T1, typename T2>
+concept HasOperatorMinus = requires(T1 a, T2 b) {
+  { a - b } -> std::same_as<T1>;
+};
+
+Value &operator-=(Value &lhs, const Value &rhs) {
+  std::visit(
+      [&](auto &lhs_value, auto &rhs_value) -> void {
+        using T1 = std::decay_t<decltype(lhs_value)>;
+        using T2 = std::decay_t<decltype(rhs_value)>;
+        if constexpr (std::is_same_v<T1, T2> && HasOperatorMinus<T1, T2>) {
+          lhs_value -= rhs_value;
+        } else {
+          LOG(FATAL) << "operator-=: Unsupported Value type: "
+                     << typeid(T1).name() << " - " << typeid(T2).name()
+                     << std::endl;
+        }
+      },
+      lhs, rhs);
+  return lhs;
 }
 
 bool ValueCast(Value &value, const Type &type) {

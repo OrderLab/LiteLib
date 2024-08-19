@@ -529,20 +529,94 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
         }
       } else if (result_table_entry->second.GetSelectStatement()
                          ->selectList->at(0)
-                         ->type == hsql::kExprColumnRef &&
+                         ->type == hsql::kExprFunctionRef &&
                  !strcmp(result_table_entry->second.GetSelectStatement()
                              ->selectList->at(0)
                              ->name,
                          "SUM")) {
-        // TODO
+        std::vector<size_t> index;
+        for (auto select_id = 0;
+             select_id < result_table_entry->second.GetSelectStatement()
+                             ->selectList->size();
+             ++select_id) {
+          auto column_name = result_table_entry->second.GetSelectStatement()
+                                 ->selectList->at(select_id)
+                                 ->exprList->at(0)
+                                 ->name;
+          auto column_it =
+              tables_[key.table].columns_name_to_index.find(column_name);
+          if (column_it == tables_[key.table].columns_name_to_index.end()) {
+            LOG(ERROR) << "Column not found: " << column_name << std::endl;
+          }
+          index.push_back(column_it->second);
+        }
+
+        bool invalidate = false;
+        std::vector<Value> old_row;
+        if (old_entry_match.value()) {
+          for (auto i = 0; i < index.size(); i++) {
+            std::optional<Value> old_value;
+            if (index[i] < tables_[key.table].primary_keys_size) {
+              old_value = key.primary_keys[index[i]];
+            } else {
+              old_value =
+                  old_entry
+                      ->values[index[i] - tables_[key.table].primary_keys_size];
+            }
+            if (!old_value.has_value()) {
+              invalidate = true;
+              break;
+            }
+            old_row.push_back(old_value.value());
+          }
+        }
+
+        std::vector<Value> new_row;
+        if (new_entry_match.value()) {
+          for (auto i = 0; i < index.size(); i++) {
+            std::optional<Value> value;
+            if (index[i] < tables_[key.table].primary_keys_size) {
+              value = key.primary_keys[index[i]];
+            } else {
+              value =
+                  new_entry
+                      ->values[index[i] - tables_[key.table].primary_keys_size];
+            }
+            if (!value.has_value()) {
+              invalidate = true;
+              break;
+            }
+            new_row.push_back(value.value());
+          }
+        }
+
+        if (invalidate) {
+          result_table_entry =
+              table_query_cache_entry->second.erase(result_table_entry);
+          continue;
+        }
+
+        auto &result = result_table_entry->second.result;
+
+        if (old_entry_match.value()) {
+          for (size_t i = 0; i < old_row.size(); i++) {
+            result.rows[0][i] -= old_row[i];
+          }
+        }
+
+        if (new_entry_match.value()) {
+          for (size_t i = 0; i < new_row.size(); i++) {
+            result.rows[0][i] += new_row[i];
+          }
+        }
       } else {
-        result_table_entry =
-            table_query_cache_entry->second.erase(result_table_entry);
         LOG(WARNING) << "Unsupported select type: "
                      << result_table_entry->second.GetSelectStatement()
                             ->selectList->at(0)
                             ->type
                      << std::endl;
+        result_table_entry =
+            table_query_cache_entry->second.erase(result_table_entry);
         continue;
       }
       ++result_table_entry;

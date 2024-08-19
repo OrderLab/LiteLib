@@ -37,6 +37,10 @@ using Value = std::variant<int64_t, uint64_t, std::string>;
 
 Value operator+(const Value &lhs, const Value &rhs);
 
+Value &operator+=(Value &lhs, const Value &rhs);
+
+Value &operator-=(Value &lhs, const Value &rhs);
+
 bool ValueCast(Value &value, const Type &type);
 
 Type FetchType(const uint8_t *&payload);
