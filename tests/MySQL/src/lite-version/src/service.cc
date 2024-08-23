@@ -402,19 +402,20 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
 }
 
 void MySQL::AssignNewNormalTask(NormalTask &&task) {
-  auto &worker = **cur_worker;
+  MySQLWorker *worker;
   {
     std::lock_guard<std::mutex> lock(cur_worker_mutex);
+    worker = *cur_worker;
     cur_worker++;
     if (cur_worker == workers_in_normal_.end()) {
       cur_worker = workers_in_normal_.begin();
     }
   }
 
-  worker.notify_queue_.push_back(std::move(task));
+  worker->notify_queue_.push_back(std::move(task));
 
   uint64_t buf = 1;
-  PLOG_IF(ERROR, write(worker.notify_event_fd_, &buf, sizeof(uint64_t)) !=
+  PLOG_IF(ERROR, write(worker->notify_event_fd_, &buf, sizeof(uint64_t)) !=
                      sizeof(uint64_t))
       << "failed writing to mysql eventfd";
 }
