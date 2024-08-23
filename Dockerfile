@@ -1,6 +1,6 @@
 FROM debian:12-slim
 
-ARG BOOST_VERSION=1.83.0
+ARG BOOST_VERSION=1.85.0
 ARG CMAKE_VERSION=3.27.7
 ARG NUM_JOBS=32
 
@@ -49,8 +49,8 @@ RUN cd /tmp && \
 RUN cd /tmp && \
     BOOST_VERSION_MOD=$(echo $BOOST_VERSION | tr . _) && \
 #    wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_MOD}.tar.bz2 && \
-    wget https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}.tar.xz && \
-    tar -xavf boost-${BOOST_VERSION}.tar.xz && \
+    wget https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}-cmake.tar.xz && \
+    tar -xavf boost-${BOOST_VERSION}-cmake.tar.xz && \
     cd boost-${BOOST_VERSION} && \
     ./bootstrap.sh --prefix=/usr/local && \
     ./b2 install && \
