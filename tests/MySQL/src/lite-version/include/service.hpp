@@ -7,6 +7,7 @@
 #include "packet.hpp"
 #include "query_cache.hpp"
 #include "table_cache.hpp"
+#include "worker.hpp"
 
 class MySQL {
   using Cache =
@@ -15,7 +16,7 @@ class MySQL {
       lite::Logger<MySQL, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  MySQL();
+  MySQL(const size_t &number_of_workers);
 
   ~MySQL();
 
@@ -42,6 +43,10 @@ class MySQL {
 
   Packet EmergencyConnectionEstablishHook(ConnectionInfo &conn);
 
+  Cache *dangling_cache_;  // used by workers
+
+  void AssignNewNormalTask(NormalTask &&task);
+
  private:
   Packet server_greeting_;
 
@@ -57,35 +62,9 @@ class MySQL {
                                               Cache *cache, Logger *logger,
                                               bool flow_control);
 
- public:  // normal task queue
-  struct NormalTask {
-    enum class Type {
-      kInsertCache,
-      kUpdateQuery,
-    } type;
+  friend class MySQLWorker;
 
-    Query_cache_block *query_cache_block_full_ptr;
-
-    std::string query;
-    ConnectionInfo
-        *conn;  // TODO: what if the connection is closed before it is handled?
-    Cache *cache;
-  };
-
-  evutil_socket_t notify_event_fd_;
-
-  lite::ThreadSafeQueue<NormalTask> notify_queue_;
-
-  Cache *dangling_cache_;
-
- private:
-  pthread_t thread_id_;
-
-  struct event_base *base_;
-
-  struct event notify_event_;
-
-  static void *ThreadBody(void *arg_self);
-
-  static void NotifyHandler(evutil_socket_t fd, short which, void *arg_self);
+  std::vector<MySQLWorker *> workers_in_normal_;
+  std::vector<MySQLWorker *>::iterator cur_worker = workers_in_normal_.begin();
+  std::mutex cur_worker_mutex;
 };

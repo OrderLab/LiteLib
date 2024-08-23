@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
     // TODO: make address and port configurable.
     std::string backend_addr = "localhost";
     std::string backend_port = "60000";
-    MySQL mysql;
+    MySQL mysql(thread_pool_size);
     lite::LiteServer<MySQL, Packet, Packet, ConnectionInfo, CacheKey,
                      CacheEntry>
         s(thread_pool_size, cache_size, mysql, backend_addr, backend_port,
