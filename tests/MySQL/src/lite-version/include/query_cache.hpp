@@ -26,6 +26,20 @@ class QueryCache {
                                           // number, and response code
 
    public:
+    Result() = default;
+    Result(Result &&rhs)
+        : prefix_packets(std::move(rhs.prefix_packets)),
+          suffix_packets(std::move(rhs.suffix_packets)),
+          rows(std::move(rhs.rows)) {}
+    // Result &operator=(Result &&rhs) {
+    //   if (this != &rhs) {
+    //     prefix_packets = std::move(rhs.prefix_packets);
+    //     suffix_packets = std::move(rhs.suffix_packets);
+    //     rows = std::move(rhs.rows);
+    //   }
+    //   return *this;
+    // }
+
     using Row = std::vector<Value>;
 
     std::vector<Row> rows;
@@ -37,22 +51,24 @@ class QueryCache {
   };
 
   // TODO: separate different columns
-  class ResultTableEntry {
+  class QueryAndResult {
    public:
-    Result result;
+    QueryAndResult() : mutex_ptr(std::make_unique<std::shared_mutex>()) {}
+    QueryAndResult(Result &&result, hsql::SQLParserResult &&query_ast)
+        : result(std::move(result)),
+          query_ast(std::move(query_ast)),
+          mutex_ptr(std::make_unique<std::shared_mutex>()),
+          select_statement(std::move(select_statement)) {}
+    // QueryAndResult &operator=(QueryAndResult &&rhs) {
+    //   if (this != &rhs) {
+    //     query_ast = std::move(rhs.query_ast);
+    //     result = std::move(rhs.result);
+    //     mutex_ptr = std::move(rhs.mutex_ptr);
+    //   }
+    //   return *this;
+    // }
 
-    ResultTableEntry() {}
-    ResultTableEntry(Result &&result, hsql::SQLParserResult &&query_ast)
-        : result(std::move(result)), query_ast(std::move(query_ast)) {}
-    ResultTableEntry &operator=(ResultTableEntry &&rhs) {
-      if (this != &rhs) {
-        query_ast = std::move(rhs.query_ast);
-        result = std::move(rhs.result);
-      }
-      return *this;
-    }
-
-    const hsql::SelectStatement *GetSelectStatement() {
+    const hsql::SelectStatement *GetSelectStatement() const {
       if (select_statement) {
         return select_statement;
       }
@@ -60,19 +76,33 @@ class QueryCache {
                  query_ast.getStatement(0));
     }
 
+    std::unique_ptr<std::shared_mutex> mutex_ptr;
+
+    Result result;
+
    private:
     hsql::SQLParserResult query_ast;
-    const hsql::SelectStatement *select_statement = nullptr;
+    mutable const hsql::SelectStatement *select_statement = nullptr;
   };
 
-  using ResultTable =
-      std::unordered_map<std::string,
-                         ResultTableEntry>;  // key: query string
+  class WhereQueryCache {
+   public:
+    WhereQueryCache() = default;
+    WhereQueryCache(WhereQueryCache &&rhs)
+        : query_and_results(std::move(rhs.query_and_results)) {}
+    boost::unordered::concurrent_flat_map<std::string, QueryAndResult>
+        query_and_results;  // key: query string
+  };
 
-  // TODO: use structural where clause as key
-  using TableQueryCache = std::unordered_map<std::string,
-                                             ResultTable>;  // key: serialized
-                                                            // where expr
+  class TableQueryCache {
+   public:
+    TableQueryCache() = default;
+    TableQueryCache(TableQueryCache &&rhs)
+        : where_query_caches(std::move(rhs.where_query_caches)) {}
+    // TODO: use structural where clause as key
+    boost::unordered::concurrent_flat_map<std::string, WhereQueryCache>
+        where_query_caches;  // key: serialized where expr
+  };
 
  public:
   QueryCache(MySQL &mysql);
@@ -98,8 +128,8 @@ class QueryCache {
 
   ptrdiff_t shm_v_offset_;
 
-  std::unordered_map<std::string, TableQueryCache>
-      query_cache_;  // key: table name
+  boost::unordered::concurrent_flat_map<std::string, TableQueryCache>
+      table_query_caches_;  // key: table name
 
   void ConnectToFull();
 

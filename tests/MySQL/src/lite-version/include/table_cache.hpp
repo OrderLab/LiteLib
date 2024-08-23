@@ -82,7 +82,7 @@ class TableCache {
   std::unordered_map<std::string, TableSchema> tables_;
 
   std::optional<bool> WhereMatch(const CacheKey &key, const CacheEntry &entry,
-                                 hsql::Expr *where);
+                                 const hsql::Expr *where);
 
   void UpdateQueryCache(const CacheKey &key, const CacheEntry *old_entry,
                         const CacheEntry *new_entry, QueryCache *query_cache,

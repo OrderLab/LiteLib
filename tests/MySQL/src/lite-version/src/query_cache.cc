@@ -196,11 +196,14 @@ bool QueryCache::NormalToEmergencyHook(TableCache &table_cache, Cache *cache) {
   BuildRelationsBetweenQueryAndCachedRows();
 
   size_t cnt = 0;
-  for (const auto &table_query_cache_ : query_cache_) {
-    for (const auto &where_query_cache : table_query_cache_.second) {
-      cnt += where_query_cache.second.size();
-    }
-  }
+  table_query_caches_.cvisit_all([&](const auto &table_query_cache_it) {
+    auto &[table, table_query_cache] = table_query_cache_it;
+    table_query_cache.where_query_caches.cvisit_all(
+        [&](const auto &where_query_cache_it) {
+          auto &[where, where_query_cache] = where_query_cache_it;
+          cnt += where_query_cache.query_and_results.size();
+        });
+  });
   LOG(INFO) << "Query cache size: " << cnt << std::endl;
 
   return true;
@@ -353,9 +356,22 @@ void QueryCache::AddQueryAndResult(std::string query,
   }
 
 insert_to_query_cache:
-  query_cache_[select_stmt->fromTable->getName()][where_stream.str()][query] =
-      ResultTableEntry(std::move(parsed_result), std::move(parse_result));
-};
+  table_query_caches_.insert(
+      std::make_pair(select_stmt->fromTable->getName(), TableQueryCache()));
+  table_query_caches_.visit(
+      select_stmt->fromTable->getName(), [&](auto &table_query_cache_it) {
+        auto &[_, table_query_cache] = table_query_cache_it;
+        table_query_cache.where_query_caches.insert(
+            std::make_pair(where_stream.str(), WhereQueryCache()));
+        table_query_cache.where_query_caches.visit(
+            where_stream.str(), [&](auto &where_query_cache_it) {
+              auto &[_, where_query_cache] = where_query_cache_it;
+              where_query_cache.query_and_results.insert(std::make_pair(
+                  query, QueryAndResult(std::move(parsed_result),
+                                        std::move(parse_result))));
+            });
+      });
+}
 
 void QueryCache::BuildRelationsBetweenQueryAndCachedRows() {
   // TODO
@@ -391,14 +407,25 @@ std::optional<Packet> QueryCache::ServeSelect(const std::string &query) {
   std::stringstream where_stream;
   if (select_stmt->whereClause != nullptr)
     printExpression(where_stream, select_stmt->whereClause, 0);
-  auto &table_query_cache = query_cache_[select_stmt->fromTable->getName()];
-  const auto &table_query_cache_it = table_query_cache.find(where_stream.str());
-  if (table_query_cache_it == table_query_cache.end()) return std::nullopt;
-  const auto &result_it = table_query_cache_it->second.find(query);
-  if (result_it == table_query_cache_it->second.end()) return std::nullopt;
-  Packet result_packet;
-  result_packet.buffer = result_it->second.result.Serialize();
-  return std::make_optional<Packet>(result_packet);
+  std::optional<Packet> ret = std::nullopt;
+  table_query_caches_.visit(
+      select_stmt->fromTable->getName(), [&](auto &table_query_cache_it) {
+        auto &[_, table_query_cache] = table_query_cache_it;
+        table_query_cache.where_query_caches.visit(
+            where_stream.str(), [&](auto &where_query_cache_it) {
+              auto &[_, where_query_cache] = where_query_cache_it;
+              where_query_cache.query_and_results.visit(
+                  query, [&](auto &query_and_result_it) {
+                    auto &[_, query_and_result] = query_and_result_it;
+                    std::shared_lock query_and_result_lock(
+                        *query_and_result.mutex_ptr);
+                    Packet result_packet;
+                    result_packet.buffer = query_and_result.result.Serialize();
+                    ret = std::make_optional<Packet>(result_packet);
+                  });
+            });
+      });
+  return ret;
 }
 
 bool QueryCache::SendQueryToFull(
@@ -486,7 +513,7 @@ void QueryCache::InvalidateUnprocessableUpdateDuringNormal(
   if (unprocessable) {
     std::stringstream ss;
     printStatementInfo(ss, stmt);
-    query_cache_.erase(stmt->table->name);
+    table_query_caches_.erase(stmt->table->name);
     LOG(INFO) << "Invalidated query cache for table: " << stmt->table->name
               << std::endl
               << " with query:" << ss.str() << std::endl;
@@ -502,20 +529,30 @@ void QueryCache::InvalidateUnprocessableUpdateDuringNormal(
   old_entry.values.resize(table.values_size);
   ExprToValue(stmt->where->expr2, key.primary_keys[column_it->second]);
 
-  auto &table_query_cache = query_cache_[stmt->table->name];
-  auto result_table_it = table_query_cache.begin();
-  while (result_table_it != table_query_cache.end()) {
-    auto old_match = table_cache.WhereMatch(key, old_entry,
-                                            result_table_it->second.begin()
-                                                ->second.GetSelectStatement()
-                                                ->whereClause);
-    if (!old_match.has_value() || old_match.value()) {
-      result_table_it = table_query_cache.erase(result_table_it);
-      continue;
-    }
-
-    ++result_table_it;
-  }
+  table_query_caches_.visit(stmt->table->name, [&](auto &table_query_cache_it) {
+    auto &[_, table_query_cache] = table_query_cache_it;
+    table_query_cache.where_query_caches.erase_if(
+        [&](auto &where_query_cache_it) {
+          auto &[_, where_query_cache] = where_query_cache_it;
+          bool ret = false;
+          where_query_cache.query_and_results.cvisit_while(
+              [&](const auto &query_and_result_it) {
+                auto &[_, query_and_result] = query_and_result_it;
+                std::shared_lock query_and_result_lock(
+                    *query_and_result.mutex_ptr);
+                auto old_match = table_cache.WhereMatch(
+                    key, old_entry,
+                    query_and_result.GetSelectStatement()->whereClause);
+                if (!old_match.has_value() || old_match.value()) {
+                  ret = true;
+                } else {
+                  ret = false;
+                }
+                return false;
+              });
+          return ret;
+        });
+  });
 }
 
 void QueryCache::InvalidateUnprocessableDeleteDuringNormal(
@@ -542,7 +579,7 @@ void QueryCache::InvalidateUnprocessableDeleteDuringNormal(
   if (unprocessable) {
     std::stringstream ss;
     printStatementInfo(ss, stmt);
-    query_cache_.erase(stmt->tableName);
+    table_query_caches_.erase(stmt->tableName);
     LOG(INFO) << "Invalidated query cache for table: " << stmt->tableName
               << std::endl
               << " with query:" << ss.str() << std::endl;
@@ -558,18 +595,28 @@ void QueryCache::InvalidateUnprocessableDeleteDuringNormal(
   old_entry.values.resize(table.values_size);
   ExprToValue(stmt->expr->expr2, key.primary_keys[column_it->second]);
 
-  auto &table_query_cache = query_cache_[stmt->tableName];
-  auto result_table_it = table_query_cache.begin();
-  while (result_table_it != table_query_cache.end()) {
-    auto old_match = table_cache.WhereMatch(key, old_entry,
-                                            result_table_it->second.begin()
-                                                ->second.GetSelectStatement()
-                                                ->whereClause);
-    if (!old_match.has_value() || old_match.value()) {
-      result_table_it = table_query_cache.erase(result_table_it);
-      continue;
-    }
-
-    ++result_table_it;
-  }
+  table_query_caches_.visit(stmt->tableName, [&](auto &table_query_cache_it) {
+    auto &[_, table_query_cache] = table_query_cache_it;
+    table_query_cache.where_query_caches.erase_if(
+        [&](auto &where_query_cache_it) {
+          auto &[_, where_query_cache] = where_query_cache_it;
+          bool ret = false;
+          where_query_cache.query_and_results.cvisit_while(
+              [&](const auto &query_and_result_it) {
+                auto &[_, query_and_result] = query_and_result_it;
+                std::shared_lock query_and_result_lock(
+                    *query_and_result.mutex_ptr);
+                auto old_match = table_cache.WhereMatch(
+                    key, old_entry,
+                    query_and_result.GetSelectStatement()->whereClause);
+                if (!old_match.has_value() || old_match.value()) {
+                  ret = true;
+                } else {
+                  ret = false;
+                }
+                return false;
+              });
+          return ret;
+        });
+  });
 }
