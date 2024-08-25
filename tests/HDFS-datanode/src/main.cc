@@ -74,13 +74,6 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    LOG(INFO) << "LiteDatanode_rpc starts" << std::endl;
-    LOG(INFO) << "\tlistening on port: " << port_1 << std::endl;
-    LOG(INFO) << "\tthread_pool_size: " << thread_pool_size << std::endl;
-    LOG(INFO) << "LiteDatanode_tcp starts" << std::endl;
-    LOG(INFO) << "\tlistening on port: " << port_2 << std::endl;
-    LOG(INFO) << "\tthread_pool_size: " << thread_pool_size << std::endl;
-
     // Initialise the server.
     // TODO: make address and port configurable.
     std::string backend_addr_1 = "nna";

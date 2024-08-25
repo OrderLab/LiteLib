@@ -41,14 +41,13 @@ class Datanode {
 
   // used to identify the Other type.
   std::shared_ptr<Packet> LastResponse = std::make_shared<Packet>();
-  // TODO: the cache is temporary
   hadoop::hdfs::datanode::HeartbeatRequestProto HeartbeatRequest;
   hadoop::common::RpcRequestHeaderProto rpc_request_header;
   hadoop::common::RequestHeaderProto requestHeaderProto;
 
   std::unordered_map<std::pair<std::string, long>, hadoop::hdfs::ExtendedBlockProto> BlockMap;
 
-  hadoop::hdfs::ExtendedBlockProto target;
+  std::unordered_map<ConnectionInfo *, hadoop::hdfs::OpWriteBlockProto> TargetMap;
 
   lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                    CacheEntry> *server;

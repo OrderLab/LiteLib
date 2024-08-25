@@ -12,7 +12,6 @@ void set_datanodeID(hadoop::hdfs::DatanodeIDProto *datanodeID,
 
 lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
                                             InputIterator end) {
-  // TODO: store the information in the cache
   buffer = std::make_shared<std::vector<uint8_t>>(begin, end);
   std::cout << buffer->size() << std::endl;
   std::string four_bytes(begin, begin + 4);
@@ -40,10 +39,10 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
       google::protobuf::io::CodedInputStream request_input(&array_input_1);
       google::protobuf::io::CodedInputStream response_input(&array_input_2);
       request = 1;
-      if (!ReadDelimitedFrom(&request_input, &rpc_request_header)) {
+      if (!ReadDelimitedFrom(&request_input, &rpc_request_header)) { // read request
         // reconstruct the coded input stream
         request = 0;
-        if (!ReadDelimitedFrom(&response_input, &rpc_response_header)) {
+        if (!ReadDelimitedFrom(&response_input, &rpc_response_header)) { // read response
           type = tcp;
           continue;
         }
@@ -81,7 +80,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
           } else if (requestHeaderProto.methodname() == "sendHeartbeat") {
             hadoop::hdfs::datanode::HeartbeatRequestProto heartbeatRequestProto;
             ReadDelimitedFrom(&request_input, &heartbeatRequestProto);
-            // test generate a rpc call and send it
+            // change the port in datanode id
             buffer = std::make_shared<std::vector<uint8_t>>();
             auto *registration = heartbeatRequestProto.release_registration();
             auto *datanodeID = registration->release_datanodeid();
@@ -142,9 +141,9 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
     } else if (type == tcp) {
       std::cout << "tcp" << std::endl;
       while (1) {
-        // the op packet
         uint16_t data_transfer_version =
             ntohs(*(reinterpret_cast<uint16_t *>(begin)));
+        // the op packet
         if (data_transfer_version == 28) {
           tcp_type = Op;
           opcode =
@@ -192,34 +191,6 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
           }
           break;
         }
-
-        // switch (opcode) {
-        //   case WRITE_BLOCK: {
-        //     hadoop::hdfs::OpWriteBlockProto OpWriteBlock;
-        //     ReadDelimitedFrom(&coded_input, &OpWriteBlock);
-        //     std::cout
-        //         << "block size: "
-        //         << OpWriteBlock.header().baseheader().block().numbytes()
-        //         << ", blockID: "
-        //         << OpWriteBlock.header().baseheader().block().blockid()
-        //         << std::endl;
-        //     break;
-        //   }
-        //   case READ_BLOCK: {
-        //     hadoop::hdfs::OpReadBlockProto OpReadBlock;
-        //     ReadDelimitedFrom(&coded_input, &OpReadBlock);
-        //     std::cout
-        //         << "Read the block. Offset: " << OpReadBlock.offset()
-        //         << ", len: " << OpReadBlock.len() << ", block size: "
-        //         << OpReadBlock.header().baseheader().block().numbytes()
-        //         << ", token kind size: "
-        //         << OpReadBlock.header().baseheader().token().kind().size()
-        //         << std::endl;
-        //     break;
-        //   }
-        //   default:
-        //     break;
-        // }
         tcp_type = Other;
         break;
       }

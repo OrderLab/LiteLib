@@ -53,4 +53,3 @@ services:
   #     command: ["yarn", "nodemanager"]
   #     env_file:
   #       - ./config
-

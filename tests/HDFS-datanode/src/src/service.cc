@@ -1,10 +1,15 @@
 #include "service.hpp"
 
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
 #include <fstream>
 
 #include "parse_util.hpp"
 template <typename T>
-class BlockGuard {
+class BlockGuard { // used to close the stream automatically
  public:
   BlockGuard(std::string BlockPath, std::shared_ptr<T> &blockstream_) {
     blockstream = std::make_shared<T>(BlockPath, std::ios::binary);
@@ -38,11 +43,42 @@ void WritePacketHeader(std::shared_ptr<std::vector<uint8_t>> &buffer,
   PacketHeader.SerializeWithCachedSizes(&coded_output_stream);
 }
 
+void WritePacket(std::shared_ptr<std::ifstream> &blockstream,
+                 std::shared_ptr<std::ifstream> &metastream, int seqno,
+                 int offset, size_t datasize, Packet &resp) {
+  size_t metasize = std::ceil(static_cast<double>(datasize) / 512.0) * 4;
+  std::cout << "calculated metasize: " << metasize << std::endl;
+  uint32_t pktlen = 4 + metasize + datasize;
+  WriteFixedInt32ToVector(pktlen, resp.buffer);
+  resp.packet_header.set_offsetinblock(static_cast<int64_t>(offset));
+  resp.packet_header.set_seqno(seqno);
+  if (datasize == 0) {
+    resp.packet_header.set_lastpacketinblock(1);
+  } else {
+    resp.packet_header.set_lastpacketinblock(0);
+  }
+  resp.packet_header.set_datalen(static_cast<int64_t>(datasize));
+  WritePacketHeader(resp.buffer, resp.packet_header);
+  size_t old_size = resp.buffer->size();
+  resp.buffer->resize(resp.buffer->size() + metasize + datasize);
+  if (seqno == 0) {
+    short version;
+    uint8_t type;
+    int bpc;
+    metastream->read(reinterpret_cast<char *>(&version), 2);
+    metastream->read(reinterpret_cast<char *>(&type), 1);
+    metastream->read(reinterpret_cast<char *>(&bpc), 4);
+  }
+  metastream->read(reinterpret_cast<char *>(resp.buffer->data()) + old_size,
+                   metasize);
+  blockstream->read(
+      reinterpret_cast<char *>(resp.buffer->data()) + old_size + metasize,
+      datasize);
+}
 void Datanode::SendHeartbeat() {
   bool connected = false;
   evutil_socket_t namenode_socket = 0;
   while (emergency.load()) {
-    // TODO: react to the response
     // auto callId = rpc_request_header.callid();
     // rpc_request_header.set_callid(++callId);
     // std::vector<google::protobuf::MessageLite *> messages;
@@ -67,13 +103,13 @@ void Datanode::SendHeartbeat() {
 void Datanode::NormalToEmergencyHook() {
   emergency.store(true);
   // periodically sending the heartbeat
-  HeartbeatThread =
-      new boost::thread(std::bind(&Datanode::SendHeartbeat, this));
+  // HeartbeatThread =
+  //     new boost::thread(std::bind(&Datanode::SendHeartbeat, this));
 }
 
 void Datanode::EmergencyToNormalHook() {
   emergency.store(false);
-  delete HeartbeatThread;
+  // delete HeartbeatThread;
 }
 
 std::pair<std::vector<std::shared_ptr<Packet>>, lite::RequestType>
@@ -101,6 +137,7 @@ Datanode::Match(
     ret.push_back(req);
   } else if (resp->type == Packet::tcp) {
     // combine the unknown responses
+    // This is because sometimes the packet will be split into two packets
     if (LastResponse->tcp_type == Packet::Other) {
       std::cout << "combine the unknown responses" << std::endl;
       std::shared_ptr<std::vector<uint8_t>> total_buffer = LastResponse->buffer;
@@ -165,6 +202,7 @@ Datanode::Match(
           LOG(ERROR) << "not packet header" << std::endl;
           break;
         } else if (req->packet_header.lastpacketinblock()) {
+          // last packet
           break;
         }
       } else {
@@ -210,9 +248,9 @@ void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
       std::cout << "poolId: " << poolId << std::endl;
       auto reports = BlockReportRequest.reports();
       for (auto report : reports) {
+        // TODO: fix the bug that the size is always 0
         std::cout << "number of blocks: " << report.blocks().size()
                   << std::endl;
-        // TOFO: the iteration does not work
         for (auto i = 0; i < report.blocks().size(); i++) {
           std::cout << "get one block" << std::endl;
           long blockId = report.blocks()[0];
@@ -225,7 +263,7 @@ void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
           block.set_blockid(blockId);
           block.set_generationstamp(generationstamp);
           block.set_numbytes(len);
-          BlockMap.emplace(std::make_pair(poolId, blockId), block);
+          BlockMap[std::make_pair(poolId, blockId)] = block;
           std::cout << "map the block: " << blockId << std::endl;
         }
       }
@@ -267,7 +305,7 @@ void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
                     << ", len: " << OpReadBlock.len() << ", poolId" << poolId
                     << ", block size: " << numbytes << ", blockId: " << blockId
                     << ", generationstamp: " << generationstamp << std::endl;
-          BlockMap.emplace(std::make_pair(poolId, blockId), block);
+          BlockMap[std::make_pair(poolId, blockId)] = block;
           std::cout << "map the block: " << blockId << std::endl;
           break;
         }
@@ -287,7 +325,7 @@ void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
           std::cout << "Write the block. poolId" << poolId
                     << ", block size: " << numbytes << ", blockId: " << blockId
                     << ", generationstamp: " << generationstamp << std::endl;
-          BlockMap.emplace(std::make_pair(poolId, blockId), block);
+          BlockMap[std::make_pair(poolId, blockId)] = block;
           std::cout << "map the block: " << blockId << std::endl;
           break;
         }
@@ -351,17 +389,12 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
             return std::make_pair(resp, false);
           }
           blockstream->seekg(offset);
-          metastream->seekg(0, std::ios::end);
-          if (!blockstream->good() || !metastream->good()) {
+          if (!blockstream->good()) {
             LOG(ERROR) << "Failed to seek to the offset: " << offset
                        << std::endl;
             WriteErrorResponse(resp.buffer);
             return std::make_pair(resp, false);
           }
-          std::streamsize metasize =
-              static_cast<std::streamoff>(metastream->tellg()) - 7;
-          std::cout << "metasize: " << metasize << std::endl;
-          metastream->seekg(7, std::ios::beg);
           auto *ReadOpChecksumInfo =
               resp.block_op_response.mutable_readopchecksuminfo();
           auto *Checksum = ReadOpChecksumInfo->mutable_checksum();
@@ -370,37 +403,23 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
           ReadOpChecksumInfo->set_chunkoffset(0);
           resp.block_op_response.set_status(hadoop::hdfs::Status::SUCCESS);
           WriteDelimitedTo(resp.buffer, &resp.block_op_response);
-          uint32_t pktlen = 4 + metasize + len;
-          WriteFixedInt32ToVector(pktlen, resp.buffer);
-          resp.packet_header.set_offsetinblock(static_cast<int64_t>(offset));
-          resp.packet_header.set_seqno(0);
-          resp.packet_header.set_lastpacketinblock(0);
-          resp.packet_header.set_datalen(static_cast<int64_t>(len));
-          if (!resp.packet_header.has_offsetinblock() ||
-              !resp.packet_header.has_seqno() ||
-              !resp.packet_header.has_lastpacketinblock() ||
-              !resp.packet_header.has_datalen()) {
-            LOG(ERROR) << "fail to set the packet header" << std::endl;
+          const size_t MAX_DATA_SIZE = 64 * 1024;  // 64KB
+          const size_t MAX_META_SIZE = 512; // metasize = ceil(datasize / 512) * 4
+          int seqno = 0;
+          while (len > MAX_DATA_SIZE) {
+            WritePacket(blockstream, metastream, seqno,
+                        static_cast<int>(offset) + seqno * MAX_DATA_SIZE,
+                        MAX_DATA_SIZE, resp);
+            seqno++;
+            len = len - MAX_DATA_SIZE;
           }
-          WritePacketHeader(resp.buffer, resp.packet_header);
-          size_t old_size = resp.buffer->size();
-          resp.buffer->resize(resp.buffer->size() + metasize + len);
-          short version;
-          metastream->read(reinterpret_cast<char *>(&version), 2);
-          std::cout << "version: " << version;
-          metastream->read(
-              reinterpret_cast<char *>(resp.buffer->data()) + old_size,
-              metasize);
-          blockstream->read(reinterpret_cast<char *>(resp.buffer->data()) +
-                                old_size + metasize,
-                            len);
-          pktlen = 4;
-          WriteFixedInt32ToVector(pktlen, resp.buffer);
-          resp.packet_header.set_offsetinblock(0);
-          resp.packet_header.set_seqno(1);
-          resp.packet_header.set_lastpacketinblock(1);
-          resp.packet_header.set_datalen(0);
-          WritePacketHeader(resp.buffer, resp.packet_header);
+          WritePacket(blockstream, metastream, seqno,
+                      static_cast<int>(offset) + seqno * MAX_DATA_SIZE, len,
+                      resp);
+          // last packet
+          WritePacket(blockstream, metastream, seqno + 1,
+                      static_cast<int>(offset) + seqno * MAX_DATA_SIZE + len, 0,
+                      resp);
           std::cout << "finish reading" << std::endl;
           return std::make_pair(resp, false);
           break;
@@ -412,12 +431,76 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
               static_cast<int>(req->buffer->size() - 3));
           google::protobuf::io::CodedInputStream coded_input(&array_input);
           hadoop::hdfs::OpWriteBlockProto OpWriteBlock;
-          ReadDelimitedFrom(&coded_input, &OpWriteBlock);
-          target = OpWriteBlock.header().baseheader().block();
-          BlockMap.emplace(std::make_pair(target.poolid(), target.blockid()),
-                           target);
-          resp.block_op_response.set_status(hadoop::hdfs::Status::SUCCESS);
-          WriteDelimitedTo(resp.buffer, &resp.block_op_response);
+          if (!ReadDelimitedFrom(&coded_input, &OpWriteBlock)) {
+            LOG(ERROR) << "fail to read the write op" << std::endl;
+            WriteErrorResponse(resp.buffer);
+            return std::make_pair(resp, false);
+          }
+          auto target = OpWriteBlock.header().baseheader().block();
+          TargetMap[&conn] = OpWriteBlock;
+          BlockMap[std::make_pair(target.poolid(), target.blockid())] = target;
+          // replication
+          auto DatanodeTargets = OpWriteBlock.targets();
+          // TODO: fix the bug that it is always empty
+          if (DatanodeTargets.empty()) {
+            resp.block_op_response.set_status(hadoop::hdfs::Status::SUCCESS);
+            WriteDelimitedTo(resp.buffer, &resp.block_op_response);
+          } else {
+            // This piece of code has not been tested
+            auto NextDatanodeId = DatanodeTargets[0].id();
+            const char *addr = NextDatanodeId.ipaddr().data();
+            auto port = NextDatanodeId.xferport();
+            int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+            if (sockfd < 0) {
+              LOG(ERROR) << "Socket creation failed" << std::endl;
+              WriteErrorResponse(resp.buffer);
+              return std::make_pair(resp, false);
+            }
+            sockaddr_in server_addr;
+            memset(&server_addr, 0, sizeof(server_addr));
+            server_addr.sin_family = AF_INET;
+            server_addr.sin_port = htons(port);
+            inet_pton(AF_INET, addr, &server_addr.sin_addr);
+            if (connect(sockfd, (struct sockaddr *)&server_addr,
+                        sizeof(server_addr)) < 0) {
+              LOG(ERROR) << "Connection to next datanode failed" << std::endl;
+              close(sockfd);
+              WriteErrorResponse(resp.buffer);
+              return std::make_pair(resp, false);
+            }
+            OpWriteBlock.mutable_targets()->DeleteSubrange(0, 1);
+            OpWriteBlock.clear_source();
+            std::shared_ptr<std::vector<uint8_t>> send_buffer;
+            WriteDelimitedTo(send_buffer, &OpWriteBlock);
+            if (send(sockfd, send_buffer->data(), send_buffer->size(), 0) < 0) {
+              LOG(ERROR) << "send failed" << std::endl;
+              close(sockfd);
+              WriteErrorResponse(resp.buffer);
+              return std::make_pair(resp, false);
+            }
+            std::cout << "send success " << std::endl;
+            char buffer[1024];
+            memset(buffer, 0, sizeof(buffer));
+            int bytes_received = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+            if (bytes_received < 0) {
+              LOG(ERROR) << "receive failed" << std::endl;
+              close(sockfd);
+              WriteErrorResponse(resp.buffer);
+              return std::make_pair(resp, false);
+            }
+            // Close socket
+            close(sockfd);
+            std::cout << "receive the response: " << buffer << std::endl;
+            google::protobuf::io::ArrayInputStream array_input(buffer,
+                                                               bytes_received);
+            google::protobuf::io::CodedInputStream coded_input(&array_input);
+            if (!ReadDelimitedFrom(&coded_input, &resp.block_op_response)) {
+              WriteErrorResponse(resp.buffer);
+              return std::make_pair(resp, false);
+            } else {
+              WriteDelimitedTo(resp.buffer, &resp.block_op_response);
+            }
+          }
           return std::make_pair(resp, false);
           break;
         }
@@ -437,6 +520,14 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
       std::streampos offset =
           static_cast<std::streampos>(packet_header.offsetinblock());
       auto datalen = packet_header.datalen();
+      auto it = TargetMap.find(&conn);
+      if (it == TargetMap.end()) {
+        LOG(ERROR) << "no such block" << std::endl;
+        WriteErrorResponse(resp.buffer);
+        return std::make_pair(resp, false);
+      }
+      auto OpWriteBlock = it->second;
+      auto target = OpWriteBlock.header().baseheader().block();
       if (!packet_header.lastpacketinblock()) {
         std::string BlockPath = "/workspace/data/dfs/data/current/" +
                                 target.poolid() +
@@ -456,8 +547,8 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
         }
         blockstream->seekp(offset);
         metastream->seekp(0, std::ios::end);
-        auto metasize = std::floor(datalen,512);
-        if (packet_header.seqno() == 0){
+        int metasize = std::ceil(datalen / 512) * 4;
+        if (packet_header.seqno() == 0) {
           short version = 1;
           uint8_t type = 2;
           int bpc = 512;
@@ -466,10 +557,11 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
           metastream->write(reinterpret_cast<char *>(&bpc), 4);
         }
         metastream->write(
-            reinterpret_cast<char *>(req->buffer->data()) + 6 + head_len, metasize);
-        blockstream->write(
-            reinterpret_cast<char *>(req->buffer->data()) + 6 + head_len + metasize,
-            datalen);
+            reinterpret_cast<char *>(req->buffer->data()) + 6 + head_len,
+            metasize);
+        blockstream->write(reinterpret_cast<char *>(req->buffer->data()) + 6 +
+                               head_len + metasize,
+                           datalen);
         std::cout << "write the block" << std::endl;
         if (!blockstream || !metastream) {
           LOG(ERROR) << "Failed to write the block: " << BlockPath << std::endl;
@@ -477,10 +569,66 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
           return std::make_pair(resp, false);
         }
       }
+      // replication
       hadoop::hdfs::PipelineAckProto PipelineAck;
-      PipelineAck.set_seqno(packet_header.seqno());
-      PipelineAck.add_reply(hadoop::hdfs::SUCCESS);
-      WriteDelimitedTo(resp.buffer, &PipelineAck);
+      auto DatanodeTargets = OpWriteBlock.targets();
+      std::cout << "targets size: " << DatanodeTargets.size() << std::endl;
+      if (DatanodeTargets.empty()) {
+        PipelineAck.set_seqno(packet_header.seqno());
+        PipelineAck.add_reply(hadoop::hdfs::SUCCESS);
+        WriteDelimitedTo(resp.buffer, &PipelineAck);
+      } else {
+        auto NextDatanodeId = DatanodeTargets[0].id();
+        const char *addr = NextDatanodeId.ipaddr().data();
+        auto port = NextDatanodeId.xferport();
+        int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (sockfd < 0) {
+          LOG(ERROR) << "Socket creation failed" << std::endl;
+          WriteErrorResponse(resp.buffer);
+          return std::make_pair(resp, false);
+        }
+        sockaddr_in server_addr;
+        memset(&server_addr, 0, sizeof(server_addr));
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(port);
+        inet_pton(AF_INET, addr, &server_addr.sin_addr);
+        if (connect(sockfd, (struct sockaddr *)&server_addr,
+                    sizeof(server_addr)) < 0) {
+          LOG(ERROR) << "Connection to next datanode failed" << std::endl;
+          close(sockfd);
+          WriteErrorResponse(resp.buffer);
+          return std::make_pair(resp, false);
+        }
+        if (send(sockfd, req->buffer->data(), req->buffer->size(), 0) < 0) {
+          LOG(ERROR) << "send failed" << std::endl;
+          close(sockfd);
+          WriteErrorResponse(resp.buffer);
+          return std::make_pair(resp, false);
+        }
+        std::cout << "send success " << std::endl;
+        char buffer[1024];
+        memset(buffer, 0, sizeof(buffer));
+        int bytes_received = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+        if (bytes_received < 0) {
+          LOG(ERROR) << "receive failed" << std::endl;
+          close(sockfd);
+          WriteErrorResponse(resp.buffer);
+          return std::make_pair(resp, false);
+        }
+        // Close socket
+        close(sockfd);
+        std::cout << "receive the response: " << buffer << std::endl;
+        google::protobuf::io::ArrayInputStream array_input(buffer,
+                                                           bytes_received);
+        google::protobuf::io::CodedInputStream coded_input(&array_input);
+        if (!ReadDelimitedFrom(&coded_input, &PipelineAck)) {
+          WriteErrorResponse(resp.buffer);
+          return std::make_pair(resp, false);
+        } else {
+          PipelineAck.add_reply(hadoop::hdfs::SUCCESS);
+          WriteDelimitedTo(resp.buffer, &PipelineAck);
+        }
+      }
       return std::make_pair(resp, false);
     }
   }
