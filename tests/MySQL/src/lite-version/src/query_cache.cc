@@ -10,8 +10,8 @@
 
 #include "service.hpp"
 
-QueryCache::Result QueryCache::Result::Deserialize(
-    std::vector<uint8_t> &buffer, const hsql::SelectStatement *stmt) {
+Result Result::Deserialize(std::vector<uint8_t> &buffer,
+                           const hsql::SelectStatement *stmt) {
   Result result;
 
   const uint8_t *begin = buffer.data();
@@ -49,7 +49,7 @@ QueryCache::Result QueryCache::Result::Deserialize(
   return result;
 }
 
-std::shared_ptr<std::vector<uint8_t>> QueryCache::Result::Serialize() {
+std::shared_ptr<std::vector<uint8_t>> Result::Serialize() {
   auto buffer = std::make_shared<std::vector<uint8_t>>();
   buffer->insert(buffer->end(), prefix_packets.begin(), prefix_packets.end());
 
@@ -356,8 +356,69 @@ void QueryCache::AddQueryAndResult(std::string query,
   }
 
 insert_to_query_cache:
+  auto query_and_result = std::make_unique<QueryAndResult>(
+      std::move(parsed_result), std::move(parse_result));
+  select_stmt =
+      query_and_result->GetSelectStatement();  // update select_stmt pointer
+
   table_query_caches_.insert(
       std::make_pair(select_stmt->fromTable->getName(), TableQueryCache()));
+
+  // index
+  const auto &where = select_stmt->whereClause;
+  if (where->type == hsql::kExprOperator && where->opType == hsql::kOpBetween &&
+      where->expr->type == hsql::kExprColumnRef &&
+      (*where->exprList)[0]->type == hsql::kExprLiteralInt &&
+      (*where->exprList)[1]->type == hsql::kExprLiteralInt) {
+    auto table_it = table_cache.tables_.find(select_stmt->fromTable->getName());
+    if (table_it == table_cache.tables_.end()) {
+      LOG(ERROR) << "WhereMatch: Table not found: "
+                 << select_stmt->fromTable->getName() << std::endl;
+    }
+    auto &table = table_it->second;
+
+    auto column_it = table.columns_name_to_index.find(where->expr->name);
+    if (column_it == table.columns_name_to_index.end()) {
+      LOG(ERROR) << "WhereMatch: Column not found: " << where->expr->name
+                 << std::endl;
+    }
+    auto column = table.columns[column_it->second];
+
+    if (column.type == kLL) {
+      Value lower_bound;
+      if (!ExprToValue((*where->exprList)[0], lower_bound)) {
+        LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+      }
+      if (!ValueCast(lower_bound, kLL)) {
+        LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+      }
+
+      Value upper_bound;
+      if (!ExprToValue((*where->exprList)[1], upper_bound)) {
+        LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+      }
+      if (!ValueCast(upper_bound, kLL)) {
+        LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+      }
+
+      table_query_caches_.visit(
+          select_stmt->fromTable->getName(), [&](auto &table_query_cache_it) {
+            auto &[_, table_query_cache] = table_query_cache_it;
+            table_query_cache.column_range_indices.insert(std::make_pair(
+                where->expr->name, std::make_unique<QueryCacheRangeIndex>()));
+            table_query_cache.column_range_indices.visit(
+                where->expr->name, [&](auto &column_range_index_it) {
+                  auto &[_, column_range_index] = column_range_index_it;
+                  column_range_index->Insert(query_and_result.get(),
+                                             std::get<kLL>(lower_bound),
+                                             std::get<kLL>(upper_bound));
+                });
+          });
+    }
+    // TODO: add unhandled types to a standalone index for iteration
+  }
+
+  // insert to query cache
   table_query_caches_.visit(
       select_stmt->fromTable->getName(), [&](auto &table_query_cache_it) {
         auto &[_, table_query_cache] = table_query_cache_it;
@@ -366,9 +427,8 @@ insert_to_query_cache:
         table_query_cache.where_query_caches.visit(
             where_stream.str(), [&](auto &where_query_cache_it) {
               auto &[_, where_query_cache] = where_query_cache_it;
-              where_query_cache.query_and_results.insert(std::make_pair(
-                  query, QueryAndResult(std::move(parsed_result),
-                                        std::move(parse_result))));
+              where_query_cache.query_and_results.insert(
+                  std::make_pair(query, std::move(query_and_result)));
             });
       });
 }
@@ -418,9 +478,9 @@ std::optional<Packet> QueryCache::ServeSelect(const std::string &query) {
                   query, [&](auto &query_and_result_it) {
                     auto &[_, query_and_result] = query_and_result_it;
                     std::shared_lock query_and_result_lock(
-                        *query_and_result.mutex_ptr);
+                        *(query_and_result->mutex_ptr));
                     Packet result_packet;
-                    result_packet.buffer = query_and_result.result.Serialize();
+                    result_packet.buffer = query_and_result->result.Serialize();
                     ret = std::make_optional<Packet>(result_packet);
                   });
             });
@@ -514,11 +574,14 @@ void QueryCache::InvalidateUnprocessableUpdateDuringNormal(
     std::stringstream ss;
     printStatementInfo(ss, stmt);
     table_query_caches_.erase(stmt->table->name);
+    // TODO: delete from index
     LOG(INFO) << "Invalidated query cache for table: " << stmt->table->name
               << std::endl
               << " with query:" << ss.str() << std::endl;
     return;
   }
+
+  // TODO: also check updated columns
 
   CacheKey key;
   CacheEntry old_entry;
@@ -529,30 +592,64 @@ void QueryCache::InvalidateUnprocessableUpdateDuringNormal(
   old_entry.values.resize(table.values_size);
   ExprToValue(stmt->where->expr2, key.primary_keys[column_it->second]);
 
+  if (table.columns[column_it->second].type != kLL) {
+    LOG(WARNING) << "Unsupported type for query index: "
+                 << table.columns[column_it->second].type << std::endl;
+    return;
+  }
   table_query_caches_.visit(stmt->table->name, [&](auto &table_query_cache_it) {
     auto &[_, table_query_cache] = table_query_cache_it;
-    table_query_cache.where_query_caches.erase_if(
-        [&](auto &where_query_cache_it) {
-          auto &[_, where_query_cache] = where_query_cache_it;
-          bool ret = false;
-          where_query_cache.query_and_results.cvisit_while(
-              [&](const auto &query_and_result_it) {
-                auto &[_, query_and_result] = query_and_result_it;
-                std::shared_lock query_and_result_lock(
-                    *query_and_result.mutex_ptr);
-                auto old_match = table_cache.WhereMatch(
-                    key, old_entry,
-                    query_and_result.GetSelectStatement()->whereClause);
-                if (!old_match.has_value() || old_match.value()) {
-                  ret = true;
-                } else {
-                  ret = false;
-                }
-                return false;
-              });
-          return ret;
+    table_query_cache.column_range_indices.visit(
+        stmt->where->expr->name, [&](auto &column_range_index_it) {
+          auto &[_, column_range_index] = column_range_index_it;
+          auto related_query_and_results = column_range_index->Query(
+              std::get<kLL>(key.primary_keys[column_it->second]));
+          for (const auto &related_query_and_result :
+               related_query_and_results) {
+            std::unique_lock query_and_result_lock(
+                *(related_query_and_result->mutex_ptr));
+
+            // remove from query cache
+            auto where_str = related_query_and_result->GetWhereClause();
+            table_query_cache.where_query_caches.erase_if(
+                where_str, [&](auto &where_query_cache_it) {
+                  auto &[_, where_query_cache] = where_query_cache_it;
+                  where_query_cache.query_and_results.erase(
+                      stmt->where->expr->name);
+                  return where_query_cache.query_and_results.empty();
+                });
+
+            // remove from index
+            column_range_index->Delete(related_query_and_result);
+          }
         });
   });
+
+  // table_query_caches_.visit(stmt->table->name, [&](auto
+  // &table_query_cache_it) {
+  //   auto &[_, table_query_cache] = table_query_cache_it;
+  //   table_query_cache.where_query_caches.erase_if(
+  //       [&](auto &where_query_cache_it) {
+  //         auto &[_, where_query_cache] = where_query_cache_it;
+  //         bool ret = false;
+  //         where_query_cache.query_and_results.cvisit_while(
+  //             [&](const auto &query_and_result_it) {
+  //               auto &[_, query_and_result] = query_and_result_it;
+  //               std::shared_lock query_and_result_lock(
+  //                   *(query_and_result->mutex_ptr));
+  //               auto old_match = table_cache.WhereMatch(
+  //                   key, old_entry,
+  //                   query_and_result->GetSelectStatement()->whereClause);
+  //               if (!old_match.has_value() || old_match.value()) {
+  //                 ret = true;
+  //               } else {
+  //                 ret = false;
+  //               }
+  //               return false;
+  //             });
+  //         return ret;
+  //       });
+  // });
 }
 
 void QueryCache::InvalidateUnprocessableDeleteDuringNormal(
@@ -586,6 +683,8 @@ void QueryCache::InvalidateUnprocessableDeleteDuringNormal(
     return;
   }
 
+  // TODO: also check updated columns
+
   CacheKey key;
   CacheEntry old_entry;
   // CacheEntry new_entry; // NOTE: don't need it right now, but is usable if
@@ -595,28 +694,62 @@ void QueryCache::InvalidateUnprocessableDeleteDuringNormal(
   old_entry.values.resize(table.values_size);
   ExprToValue(stmt->expr->expr2, key.primary_keys[column_it->second]);
 
+  if (table.columns[column_it->second].type != kLL) {
+    LOG(WARNING) << "Unsupported type for query index: "
+                 << table.columns[column_it->second].type << std::endl;
+    return;
+  }
   table_query_caches_.visit(stmt->tableName, [&](auto &table_query_cache_it) {
     auto &[_, table_query_cache] = table_query_cache_it;
-    table_query_cache.where_query_caches.erase_if(
-        [&](auto &where_query_cache_it) {
-          auto &[_, where_query_cache] = where_query_cache_it;
-          bool ret = false;
-          where_query_cache.query_and_results.cvisit_while(
-              [&](const auto &query_and_result_it) {
-                auto &[_, query_and_result] = query_and_result_it;
-                std::shared_lock query_and_result_lock(
-                    *query_and_result.mutex_ptr);
-                auto old_match = table_cache.WhereMatch(
-                    key, old_entry,
-                    query_and_result.GetSelectStatement()->whereClause);
-                if (!old_match.has_value() || old_match.value()) {
-                  ret = true;
-                } else {
-                  ret = false;
-                }
-                return false;
-              });
-          return ret;
+    table_query_cache.column_range_indices.visit(
+        stmt->expr->expr->name, [&](auto &column_range_index_it) {
+          auto &[_, column_range_index] = column_range_index_it;
+          auto related_query_and_results = column_range_index->Query(
+              std::get<kLL>(key.primary_keys[column_it->second]));
+          for (const auto &related_query_and_result :
+               related_query_and_results) {
+            std::unique_lock query_and_result_lock(
+                *(related_query_and_result->mutex_ptr));
+
+            // remove from query cache
+            auto where_str = related_query_and_result->GetWhereClause();
+            table_query_cache.where_query_caches.erase_if(
+                where_str, [&](auto &where_query_cache_it) {
+                  auto &[_, where_query_cache] = where_query_cache_it;
+                  where_query_cache.query_and_results.erase(
+                      stmt->expr->expr->name);
+                  return where_query_cache.query_and_results.empty();
+                });
+
+            // remove from index
+            column_range_index->Delete(related_query_and_result);
+          }
         });
   });
+
+  // table_query_caches_.visit(stmt->tableName, [&](auto &table_query_cache_it)
+  // {
+  //   auto &[_, table_query_cache] = table_query_cache_it;
+  //   table_query_cache.where_query_caches.erase_if(
+  //       [&](auto &where_query_cache_it) {
+  //         auto &[_, where_query_cache] = where_query_cache_it;
+  //         bool ret = false;
+  //         where_query_cache.query_and_results.cvisit_while(
+  //             [&](const auto &query_and_result_it) {
+  //               auto &[_, query_and_result] = query_and_result_it;
+  //               std::shared_lock query_and_result_lock(
+  //                   *(query_and_result->mutex_ptr));
+  //               auto old_match = table_cache.WhereMatch(
+  //                   key, old_entry,
+  //                   query_and_result->GetSelectStatement()->whereClause);
+  //               if (!old_match.has_value() || old_match.value()) {
+  //                 ret = true;
+  //               } else {
+  //                 ret = false;
+  //               }
+  //               return false;
+  //             });
+  //         return ret;
+  //       });
+  // });
 }

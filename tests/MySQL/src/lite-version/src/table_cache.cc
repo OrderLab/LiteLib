@@ -368,9 +368,9 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                   [&](const auto &query_and_result_it) {
                     auto &[query, query_and_result] = query_and_result_it;
                     std::shared_lock query_and_result_lock(
-                        *query_and_result.mutex_ptr);
+                        *(query_and_result->mutex_ptr));
                     const auto where =
-                        query_and_result.GetSelectStatement()->whereClause;
+                        query_and_result->GetSelectStatement()->whereClause;
                     old_entry_match =
                         old_entry ? WhereMatch(key, *old_entry, where) : false;
                     new_entry_match =
@@ -395,16 +395,16 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                   [&](auto &query_and_result_it) {
                     auto &[_, query_and_result] = query_and_result_it;
                     // TODO: diff entry in select list are diff types
-                    if (query_and_result.GetSelectStatement()
+                    if (query_and_result->GetSelectStatement()
                             ->selectList->at(0)
                             ->type == hsql::kExprColumnRef) {
                       std::vector<size_t> index;
                       for (auto select_id = 0;
-                           select_id < query_and_result.GetSelectStatement()
+                           select_id < query_and_result->GetSelectStatement()
                                            ->selectList->size();
                            ++select_id) {
                         auto column_name =
-                            query_and_result.GetSelectStatement()
+                            query_and_result->GetSelectStatement()
                                 ->selectList->at(select_id)
                                 ->name;
                         auto column_it =
@@ -465,10 +465,10 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                       }
 
                       // TODO: support limit
-                      auto &result = query_and_result.result;
+                      auto &result = query_and_result->result;
 
                       std::unique_lock query_and_result_lock(
-                          *query_and_result.mutex_ptr);
+                          *(query_and_result->mutex_ptr));
 
                       // remove old value
                       if (old_entry_match.value()) {
@@ -484,21 +484,22 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
 
                       // add new value
                       if (new_entry_match.value()) {
-                        if (query_and_result.GetSelectStatement()->order) {
-                          if (query_and_result.GetSelectStatement()
+                        if (query_and_result->GetSelectStatement()->order) {
+                          if (query_and_result->GetSelectStatement()
                                       ->order->size() == 1 &&
-                              (*query_and_result.GetSelectStatement()->order)[0]
+                              (*query_and_result->GetSelectStatement()
+                                    ->order)[0]
                                       ->expr->type == hsql::kExprColumnRef) {
                             auto column_it =
                                 tables_[key.table].columns_name_to_index.find(
-                                    (*query_and_result.GetSelectStatement()
+                                    (*query_and_result->GetSelectStatement()
                                           ->order)[0]
                                         ->expr->name);
                             if (column_it == tables_[key.table]
                                                  .columns_name_to_index.end()) {
                               LOG(ERROR)
                                   << "Column not found: "
-                                  << (*query_and_result.GetSelectStatement()
+                                  << (*query_and_result->GetSelectStatement()
                                            ->order)[0]
                                          ->expr->name
                                   << std::endl;
@@ -511,7 +512,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                                 index.begin();
 
                             size_t i = 0;
-                            if ((*query_and_result.GetSelectStatement()
+                            if ((*query_and_result->GetSelectStatement()
                                       ->order)[0]
                                     ->type == hsql::kOrderAsc) {
                               for (; i < result.rows.size(); i++) {
@@ -529,7 +530,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                             result.rows.insert(result.rows.begin() + i,
                                                new_row);
 
-                            if (query_and_result.GetSelectStatement()
+                            if (query_and_result->GetSelectStatement()
                                     ->selectDistinct) {
                               result.rows.erase(std::unique(result.rows.begin(),
                                                             result.rows.end()),
@@ -543,20 +544,20 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                           result.rows.push_back(new_row);
                         }
                       }
-                    } else if (query_and_result.GetSelectStatement()
+                    } else if (query_and_result->GetSelectStatement()
                                        ->selectList->at(0)
                                        ->type == hsql::kExprFunctionRef &&
-                               !strcmp(query_and_result.GetSelectStatement()
+                               !strcmp(query_and_result->GetSelectStatement()
                                            ->selectList->at(0)
                                            ->name,
                                        "SUM")) {
                       std::vector<size_t> index;
                       for (auto select_id = 0;
-                           select_id < query_and_result.GetSelectStatement()
+                           select_id < query_and_result->GetSelectStatement()
                                            ->selectList->size();
                            ++select_id) {
                         auto column_name =
-                            query_and_result.GetSelectStatement()
+                            query_and_result->GetSelectStatement()
                                 ->selectList->at(select_id)
                                 ->exprList->at(0)
                                 ->name;
@@ -616,10 +617,10 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                         return true;
                       }
 
-                      auto &result = query_and_result.result;
+                      auto &result = query_and_result->result;
 
                       std::unique_lock query_and_result_lock(
-                          *query_and_result.mutex_ptr);
+                          *(query_and_result->mutex_ptr));
 
                       if (old_entry_match.value()) {
                         for (size_t i = 0; i < old_row.size(); i++) {
@@ -636,7 +637,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                       // std::unique_lock query_and_result_lock(
                       //     *query_and_result.mutex_ptr);
                       LOG(WARNING) << "Unsupported select type: "
-                                   << query_and_result.GetSelectStatement()
+                                   << query_and_result->GetSelectStatement()
                                           ->selectList->at(0)
                                           ->type
                                    << std::endl;
@@ -644,7 +645,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                     }
                     return false;
                   });
-              return false;
+              return where_query_cache.query_and_results.empty();
             });
       });
 }
