@@ -24,8 +24,8 @@ services:
     #     limits:
     #       cpus: "2"
     #       memory: 8G
-    # ports:
-    #   - "3306:3306"
+    ports:
+      - "63306:63306"
     # command: --authentication_policy=mysql_native_password
     entrypoint: /workspace/tests/MySQL/src/tests/scripts/server/entrypoint.sh
     # network_mode: "host"

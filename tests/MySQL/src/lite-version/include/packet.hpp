@@ -22,6 +22,9 @@ class Packet {
   std::shared_ptr<std::vector<uint8_t>> buffer;
 
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end) {
+    // buffer = std::make_shared<std::vector<uint8_t>>(begin, end);
+    // begin = end;
+    // return lite::DeserializeResult::kGood;
     while (begin != end) {
       switch (parsing_state_) {
         case kReadingHeader0:

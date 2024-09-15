@@ -117,6 +117,8 @@ int vio_socket_io_wait(Vio *vio, enum enum_vio_io_event event)
 #define VIO_DONTWAIT 0
 #endif
 
+size_t profiles_cnt = 0;
+Record profiles[30000000];
 
 size_t vio_read(Vio *vio, uchar *buf, size_t size)
 {

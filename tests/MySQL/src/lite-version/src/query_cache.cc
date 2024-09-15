@@ -439,13 +439,13 @@ void QueryCache::FullListenerHandler(int fd, short which, void *arg_self) {
     event_del(&self->full_listener_event_);
     return;
   }
-  self->mysql_.notify_queue_.push_back(
-      {.type = MySQL::NormalTask::Type::kInsertCache,
-       .query_cache_block_full_ptr = query_cache_block_full_ptr});
-  uint64_t buf = 1;
-  PLOG_IF(ERROR, write(self->mysql_.notify_event_fd_, &buf, sizeof(uint64_t)) !=
-                     sizeof(uint64_t))
-      << "failed writing to mysql eventfd";
+  // self->mysql_.notify_queue_.push_back(
+  //     {.type = MySQL::NormalTask::Type::kInsertCache,
+  //      .query_cache_block_full_ptr = query_cache_block_full_ptr});
+  // uint64_t buf = 1;
+  // PLOG_IF(ERROR, write(self->mysql_.notify_event_fd_, &buf, sizeof(uint64_t)) !=
+  //                    sizeof(uint64_t))
+  //     << "failed writing to mysql eventfd";
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   // LOG(INFO) << "QueryCache::FullListenerHandler: " <<
   // query_cache_block_full_ptr

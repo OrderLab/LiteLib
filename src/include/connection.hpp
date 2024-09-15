@@ -48,8 +48,25 @@ class Connection {
     socklen_t addrlen;
     struct sockaddr_storage addr;
     addrlen = sizeof(addr);
-    return accept4(client_fd_, (struct sockaddr*)&addr, &addrlen,
-                   SOCK_NONBLOCK);
+    int sfd =
+        accept4(client_fd_, (struct sockaddr*)&addr, &addrlen, SOCK_NONBLOCK);
+
+    int flags = 1;
+    struct linger ling = {0, 0};
+    setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, (void*)&flags, sizeof(flags));
+    PLOG_IF(ERROR, setsockopt(sfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&flags,
+                              sizeof(flags)))
+        << "setsockopt";
+
+    PLOG_IF(ERROR,
+            setsockopt(sfd, SOL_SOCKET, SO_LINGER, (void*)&ling, sizeof(ling)))
+        << "setsockopt";
+
+    PLOG_IF(ERROR, setsockopt(sfd, IPPROTO_TCP, TCP_NODELAY, (void*)&flags,
+                              sizeof(flags)))
+        << "setsockopt";
+
+    return sfd;
   }
 
   /// Handle completion of a client read operation.

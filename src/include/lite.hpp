@@ -6,6 +6,15 @@
 #include <chrono>
 using namespace std::chrono_literals;
 
+struct ProfileRecord {
+  decltype(std::chrono::system_clock::now()) timestamp;
+  std::string message;
+
+  ProfileRecord(decltype(timestamp) timestamp, std::string message)
+      : timestamp(timestamp), message(message) {}
+};
+extern std::vector<ProfileRecord> profiles;
+
 #include "cache_impl.hpp"
 #include "cache_inner_impl.hpp"
 #include "concept.hpp"

@@ -2839,6 +2839,15 @@ void *Query_cache::LiteListenerThreadBody(void *arg_self) {
 }
 
 void Query_cache::LiteListenerHandler(int fd, short which, void *arg_self) {
+  fprintf(stderr, "LiteListenerHandler\n");
+  FILE *file = fopen("/root/full.log", "w");
+  for (size_t i = 0; i < profiles_cnt; i++) {
+    Record *record = &profiles[i];
+    fprintf(file, "%ld%09ld %s %d\n", record->ts.tv_sec, record->ts.tv_nsec, record->message, record->len);
+  }
+  fclose(file);
+  exit(0);
+
   Query_cache *self = static_cast<Query_cache *>(arg_self);
 
   Query_cache_block *point;

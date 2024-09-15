@@ -126,6 +126,8 @@ class QueryCache {
   void InvalidateUnprocessableUpdateDuringNormal(
       const hsql::UpdateStatement *stmt, TableCache &table_cache);
 
+  bool SendQueryToFull(Query_cache_block *query_cache_block_full_ptr);
+
  private:
   int full_to_lite_fd_, lite_to_full_fd_;
 
@@ -134,8 +136,6 @@ class QueryCache {
   struct event_base *full_listener_base_;
 
   struct event full_listener_event_;
-
-  bool SendQueryToFull(Query_cache_block *query_cache_block_full_ptr);
 
   static void *FullListenerThreadBody(void *arg_self);
 

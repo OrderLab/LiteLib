@@ -55,6 +55,8 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
     lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
         &pending_requests) {
+  pending_requests.clear();
+  return {std::vector<std::shared_ptr<Packet>>{}, true};
   // TODO: Find out the EOF packet of the response
   std::vector<std::shared_ptr<Packet>> related_reqs;
   bool forward_response = true;
@@ -78,6 +80,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
 void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
                          std::vector<std::shared_ptr<Packet>> requests,
                          ConnectionInfo &conn, Cache *cache) {
+  return;
   if (requests.empty()) {
     if (conn.state == ConnectionInfo::State::Init) {
       // server greeting
@@ -151,14 +154,15 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
   }
 
   if (query.size()) {
-    notify_queue_.push_back({.type = MySQL::NormalTask::Type::kUpdateQuery,
-                             .query = query,
-                             .conn = &conn,
-                             .cache = cache});
-    uint64_t buf = 1;
-    PLOG_IF(ERROR,
-            write(notify_event_fd_, &buf, sizeof(uint64_t)) != sizeof(uint64_t))
-        << "failed writing to mysql eventfd";
+    // notify_queue_.push_back({.type = MySQL::NormalTask::Type::kUpdateQuery,
+    //                          .query = query,
+    //                          .conn = &conn,
+    //                          .cache = cache});
+    // uint64_t buf = 1;
+    // PLOG_IF(ERROR,
+    //         write(notify_event_fd_, &buf, sizeof(uint64_t)) !=
+    //         sizeof(uint64_t))
+    //     << "failed writing to mysql eventfd";
   }
 
   return;
@@ -233,7 +237,17 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
   return {resp, false};
 }
 
+#include <fstream>
+
 void MySQL::NormalToEmergencyHook() {
+  query_cache_.SendQueryToFull(nullptr);
+  sleep(5);
+  std::ofstream ofs("/root/lite.log");
+  for (auto record : profiles) {
+    ofs << record.timestamp.time_since_epoch().count() << " " << record.message
+        << std::endl;
+  }
+  exit(0);
   if (!query_cache_.NormalToEmergencyHook(table_cache_, dangling_cache_)) {
     LOG(ERROR) << "Unable to parse query cache";
   }

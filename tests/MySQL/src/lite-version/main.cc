@@ -9,6 +9,8 @@
 #include "packet.hpp"
 #include "service.hpp"
 
+std::vector<ProfileRecord> profiles;
+
 void PrintHelp() {
   LOG(INFO) << "Usage: LiteMySQL [-t thread_num] [-s size] \n"
                "       [-p port] [-h help]\n";

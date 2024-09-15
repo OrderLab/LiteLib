@@ -747,6 +747,14 @@ inline_mysql_socket_getpeername
   return result;
 }
 
+typedef struct Record {
+  struct timespec ts;
+  char *message;
+  int len;
+} Record;
+extern size_t profiles_cnt;
+extern Record profiles[30000000];
+
 /** mysql_socket_send */
 
 static inline ssize_t
@@ -757,6 +765,9 @@ inline_mysql_socket_send
 #endif
  MYSQL_SOCKET mysql_socket, const SOCKBUF_T *buf, size_t n, int flags)
 {
+  struct timespec pre_ts;
+  clock_gettime(CLOCK_REALTIME, &pre_ts);
+
   ssize_t result;
 
 #ifdef HAVE_PSI_SOCKET_INTERFACE
@@ -779,6 +790,13 @@ inline_mysql_socket_send
       PSI_SOCKET_CALL(end_socket_wait)(locker, bytes_written);
     }
 
+    if (result > 0) {
+      struct timespec post_ts;
+      clock_gettime(CLOCK_REALTIME, &post_ts);
+      profiles[profiles_cnt++] = (Record){pre_ts, "pre_inline_mysql_socket_send", n};
+      profiles[profiles_cnt++] = (Record){post_ts, "post_inline_mysql_socket_send", result};
+    }
+
     return result;
   }
 #endif
@@ -799,6 +817,9 @@ inline_mysql_socket_recv
 #endif
  MYSQL_SOCKET mysql_socket,  SOCKBUF_T *buf, size_t n, int flags)
 {
+  struct timespec pre_ts;
+  clock_gettime(CLOCK_REALTIME, &pre_ts);
+
   ssize_t result;
 
 #ifdef HAVE_PSI_SOCKET_INTERFACE
@@ -819,6 +840,13 @@ inline_mysql_socket_recv
       size_t bytes_read;
       bytes_read= (result > -1) ? result : 0;
       PSI_SOCKET_CALL(end_socket_wait)(locker, bytes_read);
+    }
+
+    if (result > 0) {
+      struct timespec post_ts;
+      clock_gettime(CLOCK_REALTIME, &post_ts);
+      profiles[profiles_cnt++] = (Record){pre_ts, "pre_inline_mysql_socket_recv", n};
+      profiles[profiles_cnt++] = (Record){post_ts, "post_inline_mysql_socket_recv", result};
     }
 
     return result;

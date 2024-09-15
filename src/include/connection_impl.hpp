@@ -91,6 +91,9 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   }
   // TODO: handle the case when the buffer is not large enough
   // TODO: above TODOs apply to BackendHandler as well
+
+  profiles.push_back({std::chrono::system_clock::now(), "pre_request_read 0"});
+
   ssize_t bytes_transferred;
   if ((bytes_transferred = read(fd, conn->buffer_, 131072)) <= 0) {
     if (bytes_transferred == 0)
@@ -102,29 +105,46 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     // expected? (e.g. quit command in Memcached)
     return;
   }
+
+  profiles.push_back({std::chrono::system_clock::now(), "post_request_read " + std::to_string(bytes_transferred)});
+  // if (!network::Write(conn->backend_fd_, conn->buffer_, bytes_transferred)) {
+  //   LOG(ERROR) << "Failed to write response to backend" << std::endl;
+  //   return;
+  // }
   uint8_t* begin = conn->buffer_;
   uint8_t* end = begin + bytes_transferred;
   while (begin != end) {
-    const auto result = conn->request_->Deserialize(begin, end);
-    if (result == kGood) {
-      if (conn->backend_fd_ <= 0 && !conn->lite_core_.emergency_mode_) {
-        conn->ConnectBackend();
-      }
-      if (!conn->lite_core_.HandleRequest(
-              std::move(conn->request_), conn->extra_app_info_,
-              conn->pending_requests_, conn->client_fd_, conn->backend_fd_,
-              &conn->cache_, &conn->logger_)) {
-        delete conn;
-        return;
-      }
-      conn->request_ = std::make_unique<Request>();
-    } else if (result == kIndeterminate) {
-      continue;
-    } else if (result == kBad) {
-      LOG(ERROR) << "failed to parse request" << std::endl;
+    uint32_t len = *begin + (*(begin + 1) << 8) + (*(begin + 2) << 16) + 4;
+    if (!network::Write(conn->backend_fd_, begin, len)) {
+      LOG(ERROR) << "Failed to write response to backend" << std::endl;
       return;
     }
+    begin += len;
   }
+
+  profiles.push_back({std::chrono::system_clock::now(), "post_request_write 0"});
+
+  // while (begin != end) {
+  //   const auto result = conn->request_->Deserialize(begin, end);
+  //   if (result == kGood) {
+  //     if (conn->backend_fd_ <= 0 && !conn->lite_core_.emergency_mode_) {
+  //       conn->ConnectBackend();
+  //     }
+  //     if (!conn->lite_core_.HandleRequest(
+  //             std::move(conn->request_), conn->extra_app_info_,
+  //             conn->pending_requests_, conn->client_fd_, conn->backend_fd_,
+  //             &conn->cache_, &conn->logger_)) {
+  //       delete conn;
+  //       return;
+  //     }
+  //     conn->request_ = std::make_unique<Request>();
+  //   } else if (result == kIndeterminate) {
+  //     continue;
+  //   } else if (result == kBad) {
+  //     LOG(ERROR) << "failed to parse request" << std::endl;
+  //     return;
+  //   }
+  // }
   return;
 }
 
@@ -143,6 +163,9 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   ssize_t bytes_transferred;
+
+  profiles.push_back({std::chrono::system_clock::now(), "pre_response_read 0"});
+
   if ((bytes_transferred = read(fd, conn->buffer_, 131072)) <= 0) {
     if (bytes_transferred == 0) {
       ;  // LOG(WARNING) << "Backend disconnected: " << fd << std::endl;
@@ -154,25 +177,45 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     }
     return;
   }
+
+  profiles.push_back({std::chrono::system_clock::now(), "post_response_read " + std::to_string(bytes_transferred)});
+
+  // if (!network::Write(conn->client_fd_, conn->buffer_, bytes_transferred)) {
+  //   LOG(ERROR) << "Failed to write response to client" << std::endl;
+  //   return;
+  // }
   uint8_t* begin = conn->buffer_;
   uint8_t* end = begin + bytes_transferred;
   while (begin != end) {
-    const auto result = conn->response_->Deserialize(begin, end);
-    if (result == kGood) {
-      if (!conn->lite_core_.HandleResponse(
-              std::move(conn->response_), conn->extra_app_info_,
-              conn->pending_requests_, conn->client_fd_, &conn->cache_)) {
-        delete conn;
-        return;
-      }
-      conn->response_ = std::make_unique<Response>();
-    } else if (result == kIndeterminate) {
-      continue;
-    } else if (result == kBad) {
-      LOG(ERROR) << "failed to parse response" << std::endl;
+    uint32_t len = *begin + (*(begin + 1) << 8) + (*(begin + 2) << 16) + 4;
+    // uint32_t len = end - begin;
+    // if (len > 800) len = 800;
+    if (!network::Write(conn->client_fd_, begin, len)) {
+      LOG(ERROR) << "Failed to write response to client" << std::endl;
       return;
     }
+    begin += len;
   }
+
+  profiles.push_back({std::chrono::system_clock::now(), "post_response_write 0"});
+
+  // while (begin != end) {
+  //   const auto result = conn->response_->Deserialize(begin, end);
+  //   if (result == kGood) {
+  //     if (!conn->lite_core_.HandleResponse(
+  //             std::move(conn->response_), conn->extra_app_info_,
+  //             conn->pending_requests_, conn->client_fd_, &conn->cache_)) {
+  //       delete conn;
+  //       return;
+  //     }
+  //     conn->response_ = std::make_unique<Response>();
+  //   } else if (result == kIndeterminate) {
+  //     continue;
+  //   } else if (result == kBad) {
+  //     LOG(ERROR) << "failed to parse response" << std::endl;
+  //     return;
+  //   }
+  // }
   return;
 }
 
