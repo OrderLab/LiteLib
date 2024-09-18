@@ -46,9 +46,9 @@ int main(int argc, char* argv[]) {
   try {
     size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t cache_size(1024);
-    const char* port_1 = "11111";
-    const char* port_2 = "22222";
-    const char* port_3 = "33333";
+    const char* port_1 = "18020";
+    const char* port_2 = "9866";
+    const char* port_3 = "9867";
     const char* const short_opts = "t:p:a:h";
     const option long_opts[] = {{"thread_num", required_argument, nullptr, 't'},
                                 {"port", required_argument, nullptr, 'p'},
@@ -79,9 +79,9 @@ int main(int argc, char* argv[]) {
     std::string backend_addr_1 = "nna";
     std::string backend_port_1 = "8020";
     std::string backend_addr_2 = "dn1";
-    std::string backend_port_2 = "9866";
+    std::string backend_port_2 = "19866";
     std::string backend_addr_3 = "dn1";
-    std::string backend_port_3 = "9867";
+    std::string backend_port_3 = "19867";
     Datanode datanode;
     lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>

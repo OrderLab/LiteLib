@@ -84,7 +84,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
             buffer = std::make_shared<std::vector<uint8_t>>();
             auto *registration = heartbeatRequestProto.release_registration();
             auto *datanodeID = registration->release_datanodeid();
-            set_datanodeID(datanodeID, "dn1", 22222, 33333);
+            set_datanodeID(datanodeID, "dn1", 9866, 9867);
             registration->set_allocated_datanodeid(datanodeID);
             heartbeatRequestProto.set_allocated_registration(registration);
             std::vector<google::protobuf::MessageLite *> messages;
@@ -100,7 +100,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
             auto *registration =
                 registerDatanodeRequestProto.release_registration();
             auto *datanodeID = registration->release_datanodeid();
-            set_datanodeID(datanodeID, "dn1", 22222, 33333);
+            set_datanodeID(datanodeID, "dn1", 9866, 9867);
             registration->set_allocated_datanodeid(datanodeID);
             registerDatanodeRequestProto.set_allocated_registration(
                 registration);
@@ -118,7 +118,7 @@ lite::DeserializeResult Packet::Deserialize(InputIterator &begin,
             // change the port information
             auto *registration = blockReportRequestProto.release_registration();
             auto *datanodeID = registration->release_datanodeid();
-            set_datanodeID(datanodeID, "dn1", 22222, 33333);
+            set_datanodeID(datanodeID, "dn1", 9866, 9867);
             registration->set_allocated_datanodeid(datanodeID);
             blockReportRequestProto.set_allocated_registration(registration);
             buffer = std::make_shared<std::vector<uint8_t>>();

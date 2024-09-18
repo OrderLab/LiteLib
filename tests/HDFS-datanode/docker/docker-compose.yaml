@@ -1,55 +1,153 @@
-version: "2"
+version: '0.1.0'
 services:
-   namenode:
-      image: apache/hadoop:3
-      hostname: namenode
-      command: ["hdfs", "namenode"]
-      user: root
-      env_file:
-        - ./namenode_config
-      tty: true
-      environment:
-          ENSURE_NAMENODE_DIR: "/tmp/hadoop-root/dfs/name"
-      volumes:
-        - type: bind
-          source: ./namenode
-          target: /workspace 
-   datanode:
-      image: apache/hadoop:3
-      hostname: datanode
-      command: ["hdfs", "datanode"]
-      user: root
-      env_file:
-        - ./datanode_config  
-      tty: true    
-      volumes:
-        - type: bind
-          source: ./datanode
-          target: /workspace 
-   lite:
-      hostname: lite
-      build:
-        context: .
-        dockerfile: ./lite/Dockerfile
-      volumes:
-        - type: bind
-          source: /home/maizhezh/cascade
-          target: /workspace 
-      tty: true
+  namenode-active:
+    image: ubuntu:22.04
+    container_name: namenode-active
+    privileged: true
+    volumes:
+      - ./namenode/active:/workspace
+      - ./public/authorized_keys:/root/.ssh/authorized_keys
+      - ./public:/public
+    entrypoint: /workspace/entrypoint.sh
+    hostname: nna
+    ports:
+      - "9870:9870"
+    networks:
+      hdfs_net:
+        ipv4_address: 172.16.0.2
 
-      # entrypoint: /workspace/entrypoint.sh
-  #  resourcemanager:
-  #     image: apache/hadoop:3
-  #     hostname: resourcemanager
-  #     command: ["yarn", "resourcemanager"]
-  #     ports:
-  #        - 8088:8088
-  #     env_file:
-  #       - ./config
-  #     volumes:
-  #       - ./test.sh:/opt/test.sh
-  #  nodemanager:
-  #     image: apache/hadoop:3
-  #     command: ["yarn", "nodemanager"]
-  #     env_file:
-  #       - ./config
+  namenode-standby:
+    image: ubuntu:22.04
+    container_name: namenode-standby
+    privileged: true
+    volumes:
+      - ./namenode/standby:/workspace
+      - ./public/authorized_keys:/root/.ssh/authorized_keys
+      - ./public:/public
+    entrypoint: /workspace/entrypoint.sh
+    hostname: nns
+    ports:
+      - "9871:9870"
+    networks:
+      hdfs_net:
+        ipv4_address: 172.16.0.3
+    depends_on:
+      - namenode-active
+
+  datanode1:
+    image: ubuntu:22.04
+    container_name: datanode1
+    privileged: true
+    environment:
+      - WITH_LITE=true
+    volumes:
+      - ./datanode/datanode1:/workspace
+      - ./datanode/datanode_proto/entrypoint.sh:/workspace/entrypoint.sh
+      - ./datanode/datanode_proto/build_lite.sh:/workspace/build_lite.sh
+      - ./public/authorized_keys:/root/.ssh/authorized_keys
+      - ./public:/public
+      - ../src:/workspace/lite-version
+      # - ../../../../src:/workspace/lite-version/Lite
+    entrypoint: /workspace/entrypoint.sh
+    hostname: dn1
+    ports:
+      - "9864:9864"
+    networks:
+      hdfs_net:
+        ipv4_address: 172.16.0.4
+
+  datanode2:
+    image: ubuntu:22.04
+    container_name: datanode2
+    privileged: true
+    volumes:
+      - ./datanode/datanode2:/workspace
+      - ./datanode/datanode_proto/entrypoint.sh:/workspace/entrypoint.sh
+      - ./public/authorized_keys:/root/.ssh/authorized_keys
+      - ./public:/public
+    entrypoint: /workspace/entrypoint.sh
+    hostname: dn2
+    ports:
+      - "9865:9864"
+    networks:
+      hdfs_net:
+        ipv4_address: 172.16.0.5
+
+  datanode3:
+    image: ubuntu:22.04
+    container_name: datanode3
+    privileged: true
+    volumes:
+      - ./datanode/datanode3:/workspace
+      - ./datanode/datanode_proto/entrypoint.sh:/workspace/entrypoint.sh
+      - ./public/authorized_keys:/root/.ssh/authorized_keys
+      - ./public:/public
+    entrypoint: /workspace/entrypoint.sh
+    hostname: dn3
+    ports:
+      - "9866:9864"
+    networks:
+      hdfs_net:
+        ipv4_address: 172.16.0.6
+  # zookeeper1:
+  #   image: ubuntu:22.04
+  #   container_name: zk1
+  #   privileged: true
+  #   volumes:
+  #     - ./zookeeper/zookeeper1:/workspace
+  #     - ./zookeeper/zookeeper_proto/entrypoint.sh:/workspace/entrypoint.sh
+  #     - ./public/authorized_keys:/root/.ssh/authorized_keys
+  #     - ./public:/public
+  #   entrypoint: /workspace/entrypoint.sh
+  #   hostname: zk1
+  #   ports:
+  #     - "2181:2181"
+  #   networks:
+  #     hdfs_net:
+  #       ipv4_address: 172.17.0.2
+
+  # zookeeper2:
+  #   image: ubuntu:22.04
+  #   container_name: zk2
+  #   privileged: true
+  #   volumes:
+  #     - ./zookeeper/zookeeper2:/workspace
+  #     - ./zookeeper/zookeeper_proto/entrypoint.sh:/workspace/entrypoint.sh
+  #     - ./public/authorized_keys:/root/.ssh/authorized_keys
+  #     - ./public:/public
+  #   entrypoint: /workspace/entrypoint.sh
+  #   hostname: zk2
+  #   ports:
+  #     - "2182:2181"
+  #   networks:
+  #     hdfs_net:
+  #       ipv4_address: 172.17.0.3
+
+  # zookeeper3:
+  #   image: ubuntu:22.04
+  #   container_name: zk3
+  #   privileged: true
+  #   volumes:
+  #     - ./zookeeper/zookeeper3:/workspace
+  #     - ./zookeeper/zookeeper_proto/entrypoint.sh:/workspace/entrypoint.sh
+  #     - ./public/authorized_keys:/root/.ssh/authorized_keys
+  #     - ./public:/public
+  #   entrypoint: /workspace/entrypoint.sh
+  #   hostname: zk3
+  #   ports:
+  #     - "2183:2181"
+  #   networks:
+  #     hdfs_net:
+  #       ipv4_address: 172.17.0.4
+
+networks:
+  hdfs_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.0.0/16
+  # zkfc_net:
+  #   driver: bridge
+  #   ipam:
+  #     config:
+  #       - subnet: 172.17.0.0/16
