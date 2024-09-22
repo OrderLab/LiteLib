@@ -18,7 +18,7 @@ services:
       - type: bind
         source: ../../../..
         target: /workspace
-    cpuset: "0-3"
+    # cpuset: "0-3"
     # deploy:
     #   resources:
     #     limits:
@@ -34,7 +34,7 @@ services:
     image: severalnines/sysbench
     tty: true
     privileged: true
-    cpuset: "4-31"
+    # cpuset: "4-31"
     # deploy:
     #   resources:
     #     limits:

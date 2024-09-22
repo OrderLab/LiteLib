@@ -2,6 +2,7 @@
 
 #include <fcntl.h>
 #include <netinet/tcp.h>
+#include <sys/un.h>
 
 #include <cstring>
 #include <iostream>
@@ -16,22 +17,31 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
                                   const std::string& port) {
   // LOG(INFO) << "Try to connect to backend\n";
   evutil_socket_t backend_fd;
-  struct addrinfo hints, *res;
+  // struct addrinfo hints, *res;
 
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
+  // memset(&hints, 0, sizeof(hints));
+  // hints.ai_family = AF_UNSPEC;
+  // hints.ai_socktype = SOCK_STREAM;
 
-  if (getaddrinfo(addr.c_str(), port.c_str(), &hints, &res) != 0) {
-    PLOG(ERROR) << "getaddrinfo";
-    return -1;
-  }
+  // if (getaddrinfo(addr.c_str(), port.c_str(), &hints, &res) != 0) {
+  //   PLOG(ERROR) << "getaddrinfo";
+  //   return -1;
+  // }
+
+  const std::string socket_path = "/tmp/mysql.sock";
+
+  struct sockaddr_un unix_addr;
+  memset(&unix_addr, 0, sizeof(unix_addr));
+  unix_addr.sun_family = AF_UNIX;
+  strncpy(unix_addr.sun_path, socket_path.c_str(), sizeof(unix_addr.sun_path) - 1);
 
   bool connected = false;
   int flags = 1;
   struct linger ling = {0, 0};
-  for (; res; res = res->ai_next) {
-    backend_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  // for (; res; res = res->ai_next) {
+  //   backend_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  for (int i = 0; i < 1; i++) {
+    backend_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (backend_fd == -1) {
       // PLOG(ERROR) << "failed to connect backend";
       // goto connect_backend_exit;
@@ -56,11 +66,11 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
       continue;
     }
 
-    if (setsockopt(backend_fd, IPPROTO_TCP, TCP_NODELAY, (void*)&flags,
-                   sizeof(flags)) != 0) {
-      PLOG(ERROR) << "failed to set TCP_NODELAY for backend";
-      continue;
-    }
+    // if (setsockopt(backend_fd, IPPROTO_TCP, TCP_NODELAY, (void*)&flags,
+    //                sizeof(flags)) != 0) {
+    //   PLOG(ERROR) << "failed to set TCP_NODELAY for backend";
+    //   continue;
+    // }
 
     // set non-blocking
     int flags;
@@ -74,7 +84,8 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
       continue;
     }
 
-    if (connect(backend_fd, res->ai_addr, res->ai_addrlen) == -1) {
+    if (connect(backend_fd, (struct sockaddr*)&unix_addr, sizeof(unix_addr)) == -1) {
+    // if (connect(backend_fd, res->ai_addr, res->ai_addrlen) == -1) {
       /* If the socket is non-blocking, it is ok for connect() to
        * return an EINPROGRESS error here. */
       if (errno != EINPROGRESS) {
@@ -95,11 +106,11 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
 
   // LOG(INFO) << "Backend connected, fd: " << backend_fd << std::endl;
 
-  freeaddrinfo(res);
+  // freeaddrinfo(res);
   return backend_fd;
 
 connect_backend_exit:
-  freeaddrinfo(res);
+  // freeaddrinfo(res);
   return -1;
 }
 

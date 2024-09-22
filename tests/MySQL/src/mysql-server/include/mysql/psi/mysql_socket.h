@@ -790,12 +790,12 @@ inline_mysql_socket_send
       PSI_SOCKET_CALL(end_socket_wait)(locker, bytes_written);
     }
 
-    if (result > 0) {
-      struct timespec post_ts;
-      clock_gettime(CLOCK_REALTIME, &post_ts);
-      profiles[profiles_cnt++] = (Record){pre_ts, "pre_inline_mysql_socket_send", n};
-      profiles[profiles_cnt++] = (Record){post_ts, "post_inline_mysql_socket_send", result};
-    }
+    // if (result > 0) {
+    //   struct timespec post_ts;
+    //   clock_gettime(CLOCK_REALTIME, &post_ts);
+    //   profiles[profiles_cnt++] = (Record){pre_ts, "pre_inline_mysql_socket_send", n};
+    //   profiles[profiles_cnt++] = (Record){post_ts, "post_inline_mysql_socket_send", result};
+    // }
 
     return result;
   }
@@ -842,12 +842,12 @@ inline_mysql_socket_recv
       PSI_SOCKET_CALL(end_socket_wait)(locker, bytes_read);
     }
 
-    if (result > 0) {
-      struct timespec post_ts;
-      clock_gettime(CLOCK_REALTIME, &post_ts);
-      profiles[profiles_cnt++] = (Record){pre_ts, "pre_inline_mysql_socket_recv", n};
-      profiles[profiles_cnt++] = (Record){post_ts, "post_inline_mysql_socket_recv", result};
-    }
+    // if (result > 0) {
+    //   struct timespec post_ts;
+    //   clock_gettime(CLOCK_REALTIME, &post_ts);
+    //   profiles[profiles_cnt++] = (Record){pre_ts, "pre_inline_mysql_socket_recv", n};
+    //   profiles[profiles_cnt++] = (Record){post_ts, "post_inline_mysql_socket_recv", result};
+    // }
 
     return result;
   }

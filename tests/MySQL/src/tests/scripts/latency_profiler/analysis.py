@@ -148,3 +148,8 @@ no_send_full = partition_full_log("lite_while_full_does_not_send/full.log")
 no_send_full_parsed = analysis_vanilla(no_send_full, "no_send_full", False)
 no_send_lite = partition_lite_log("lite_while_full_does_not_send/lite.log")
 analysis_lite(no_send_lite, no_send_full_parsed, "no_send_lite")
+
+lite_no_des_full = partition_full_log("lite_no_des/full.log")
+lite_no_des_full_parsed = analysis_vanilla(lite_no_des_full, "lite_no_des_full", False)
+lite_no_des_lite = partition_lite_log("lite_no_des/lite.log")
+analysis_lite(lite_no_des_lite, lite_no_des_full_parsed, "lite_no_des_lite")
