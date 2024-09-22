@@ -68,8 +68,8 @@ int main(int argc, char* argv[]) {
 
     // Initialise the server.
     // TODO: make address and port configurable.
-    std::string backend_addr = "localhost";
-    std::string backend_port = "60000";
+    std::string backend_addr = "/tmp/mysql.sock";
+    std::string backend_port = "";
     MySQL mysql(thread_pool_size);
     lite::LiteServer<MySQL, Packet, Packet, ConnectionInfo, CacheKey,
                      CacheEntry>

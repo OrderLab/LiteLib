@@ -28,6 +28,7 @@ class LiteServer {
   LiteServer& operator=(const LiteServer&) = delete;
 
   /// Construct the server with the given thread pool size and maximum.
+  /// when backend_port is empty, backend_addr is treated as a unix socket path
   explicit LiteServer(const size_t& nthreads, const size_t& max_item_count,
                       Application& app, std::string& backend_addr,
                       std::string& backend_port,
@@ -44,7 +45,7 @@ class LiteServer {
   /// Dispatch a new connection to the next thread in round-robin order.
   void DispatchNewConnection(const evutil_socket_t sfd);
 
-  CacheInstance *GetCacheDecoupledFromAnyConnection();
+  CacheInstance* GetCacheDecoupledFromAnyConnection();
 
  private:
   static int NewSocket(struct addrinfo* addr_info);
