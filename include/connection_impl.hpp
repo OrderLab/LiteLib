@@ -102,6 +102,17 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     // expected? (e.g. quit command in Memcached)
     return;
   }
+
+  bool forwarded = false;
+  if (!conn->lite_core_.emergency_mode_) {
+    forwarded = true;
+    if (!network::Write(conn->backend_fd_, conn->buffer_, bytes_transferred)) {
+      LOG(ERROR) << "Failed to write request to backend" << std::endl;
+      delete conn;
+      return;
+    }
+  }
+
   uint8_t* begin = conn->buffer_;
   uint8_t* end = begin + bytes_transferred;
   while (begin != end) {
@@ -113,7 +124,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       if (!conn->lite_core_.HandleRequest(
               std::move(conn->request_), conn->extra_app_info_,
               conn->pending_requests_, conn->client_fd_, conn->backend_fd_,
-              &conn->cache_, &conn->logger_)) {
+              &conn->cache_, &conn->logger_, forwarded)) {
         delete conn;
         return;
       }
@@ -154,6 +165,17 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     }
     return;
   }
+
+  bool forwarded = false;
+  if (!conn->lite_core_.emergency_mode_) {
+    forwarded = true;
+    if (!network::Write(conn->client_fd_, conn->buffer_, bytes_transferred)) {
+      LOG(ERROR) << "Failed to write request to backend" << std::endl;
+      delete conn;
+      return;
+    }
+  }
+
   uint8_t* begin = conn->buffer_;
   uint8_t* end = begin + bytes_transferred;
   while (begin != end) {
@@ -161,7 +183,8 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     if (result == kGood) {
       if (!conn->lite_core_.HandleResponse(
               std::move(conn->response_), conn->extra_app_info_,
-              conn->pending_requests_, conn->client_fd_, &conn->cache_)) {
+              conn->pending_requests_, conn->client_fd_, &conn->cache_,
+              forwarded)) {
         delete conn;
         return;
       }

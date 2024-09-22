@@ -55,12 +55,13 @@ class LiteCore : public Daemon {
                          &pending_requests,
                      const evutil_socket_t client_fd,
                      const evutil_socket_t backend_fd, CacheInstance *cache,
-                     LoggerInstance *logger);
+                     LoggerInstance *logger, const bool forwarded);
 
   bool HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
                       ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
                           &pending_requests,
-                      const evutil_socket_t client_fd, CacheInstance *cache);
+                      const evutil_socket_t client_fd, CacheInstance *cache,
+                      const bool forwarded);
 
   std::string &backend_addr_, &backend_port_;
 
