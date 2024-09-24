@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
     // TODO: make address and port configurable.
     std::string backend_addr = "/tmp/mysql.sock";
     std::string backend_port = "";
-    MySQL mysql(thread_pool_size);
+    MySQL mysql(1); // FIXME: ordering issues for number greater than 1
     lite::LiteServer<MySQL, Packet, Packet, ConnectionInfo, CacheKey,
                      CacheEntry>
         s(thread_pool_size, cache_size, mysql, backend_addr, backend_port,

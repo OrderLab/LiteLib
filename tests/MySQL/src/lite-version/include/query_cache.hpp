@@ -50,12 +50,14 @@ class Result {
 // TODO: separate different columns
 class QueryAndResult {
  public:
-  QueryAndResult() : mutex_ptr(std::make_unique<std::shared_mutex>()) {}
+  QueryAndResult()
+      : mutex_ptr(std::make_unique<std::shared_mutex>()),
+        select_statement(nullptr) {}
   QueryAndResult(Result &&result, hsql::SQLParserResult &&query_ast)
       : result(std::move(result)),
         query_ast(std::move(query_ast)),
         mutex_ptr(std::make_unique<std::shared_mutex>()),
-        select_statement(std::move(select_statement)) {}
+        select_statement(nullptr) {}
   // QueryAndResult &operator=(QueryAndResult &&rhs) {
   //   if (this != &rhs) {
   //     query_ast = std::move(rhs.query_ast);
@@ -85,7 +87,7 @@ class QueryAndResult {
 
  private:
   hsql::SQLParserResult query_ast;
-  mutable const hsql::SelectStatement *select_statement = nullptr;
+  mutable const hsql::SelectStatement *select_statement;
 };
 
 class QueryCache {

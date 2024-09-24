@@ -57,11 +57,12 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
                          std::vector<std::shared_ptr<Packet>> requests,
                          ConnectionInfo &conn, Cache *cache) {
   if (requests.empty()) {
-    if (conn.state == ConnectionInfo::State::Init) {
-      // server greeting
-      server_greeting_.buffer = resp->buffer;
-      conn.state = ConnectionInfo::State::ServerGreeted;
-    }
+    // TODO: add lock and uncomment
+    // if (conn.state == ConnectionInfo::State::Init) {
+    //   // server greeting
+    //   server_greeting_.buffer = resp->buffer;
+    //   conn.state = ConnectionInfo::State::ServerGreeted;
+    // }
     return;
   }
 

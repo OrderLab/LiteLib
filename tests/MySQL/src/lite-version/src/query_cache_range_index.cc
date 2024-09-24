@@ -14,7 +14,7 @@ std::vector<QueryAndResult *> QueryCacheRangeIndex::Query(const int index) {
       }
     });
     if (begin == end) break;
-    int mid = (begin + end) / 2;
+    long long mid = ((long long)begin + (long long)end) / 2;
     if (mid <= index) {
       begin = mid + 1;
     } else {
@@ -65,7 +65,7 @@ void QueryCacheRangeIndex::InsertInternal(QueryAndResult *query_and_result,
     });
     return;
   }
-  int mid = (node_begin + node_end) / 2;
+  long long mid = ((long long)node_begin + (long long)node_end) / 2;
   if (end <= mid) {
     InsertInternal(query_and_result, begin, end, node_begin, mid);
   } else if (begin > mid) {
@@ -89,7 +89,7 @@ void QueryCacheRangeIndex::DeleteInternal(QueryAndResult *query_and_result,
     });
     return;
   }
-  int mid = (node_begin + node_end) / 2;
+  long long mid = ((long long)node_begin + (long long)node_end) / 2;
   if (end <= mid) {
     DeleteInternal(query_and_result, begin, end, node_begin, mid);
   } else if (begin > mid) {
