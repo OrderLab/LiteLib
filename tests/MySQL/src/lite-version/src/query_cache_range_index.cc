@@ -58,7 +58,8 @@ void QueryCacheRangeIndex::InsertInternal(QueryAndResult *query_and_result,
                                           const int node_begin,
                                           const int node_end) {
   if (begin == node_begin && end == node_end) {
-    range_index.visit(Range{begin, end}, [&](auto &node_it) {
+    auto obj = std::make_pair(Range{begin, end}, Node(query_and_result));
+    range_index.emplace_or_visit(std::move(obj), [&](auto &node_it) {
       auto &[_, node] = node_it;
       std::unique_lock node_lock(node.mutex);
       node.query_and_results.insert(query_and_result);

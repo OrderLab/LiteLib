@@ -345,7 +345,7 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
         resp = std::move(result.value());
         break;
       }
-      LOG(WARNING) << "Query not found in the cache: " << query << std::endl;
+      // LOG(WARNING) << "Query not found in the cache: " << query << std::endl;
       return {resp, true};
     }
     case hsql::kStmtInsert: {

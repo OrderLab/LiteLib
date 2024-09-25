@@ -333,7 +333,7 @@ std::optional<bool> TableCache::WhereMatch(const CacheKey &key,
     if (!ValueCast(lower_bound, column.type)) {
       LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
     }
-    if (!(value.value() <= lower_bound)) return false;
+    if (!(lower_bound <= value.value())) return false;
 
     Value upper_bound;
     if (!ExprToValue((*where->exprList)[1], upper_bound)) {
@@ -384,10 +384,10 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
               }
 
               if (!update_query_cache) {
-                if (old_entry_match.value() || new_entry_match.value()) {
-                  return true;
-                } else {
+                if (!old_entry_match.value() || !new_entry_match.value()) {
                   return false;
+                } else {
+                  return true;
                 }
               }
 

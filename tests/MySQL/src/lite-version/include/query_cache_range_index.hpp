@@ -12,6 +12,14 @@ class QueryCacheRangeIndex {
   struct Node {
     std::shared_mutex mutex;
     std::set<QueryAndResult *> query_and_results;
+
+    Node() = default;
+    Node(QueryAndResult *query_and_result) {
+      query_and_results.insert(query_and_result);
+    }
+    Node(Node &&rhs)
+        : query_and_results(std::move(rhs.query_and_results)) {
+    }  // TODO: make sure mutex is correct
   };
 
   std::vector<QueryAndResult *> Query(const int index);

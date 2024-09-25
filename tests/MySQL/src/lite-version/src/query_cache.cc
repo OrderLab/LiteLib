@@ -202,6 +202,11 @@ bool QueryCache::NormalToEmergencyHook(TableCache &table_cache, Cache *cache) {
         [&](const auto &where_query_cache_it) {
           auto &[where, where_query_cache] = where_query_cache_it;
           cnt += where_query_cache.query_and_results.size();
+          where_query_cache.query_and_results.cvisit_all(
+              [&](const auto &query_and_result_it) {
+                auto &[query, query_and_result] = query_and_result_it;
+                LOG(INFO) << "Query: " << query << std::endl;
+              });
         });
   });
   LOG(INFO) << "Query cache size: " << cnt << std::endl;
@@ -609,18 +614,12 @@ void QueryCache::InvalidateUnprocessableUpdateDuringNormal(
             std::unique_lock query_and_result_lock(
                 *(related_query_and_result->mutex_ptr));
 
-            // remove from query cache
-            auto where_str = related_query_and_result->GetWhereClause();
-            table_query_cache.where_query_caches.erase_if(
-                where_str, [&](auto &where_query_cache_it) {
-                  auto &[_, where_query_cache] = where_query_cache_it;
-                  where_query_cache.query_and_results.erase(
-                      stmt->where->expr->name);
-                  return where_query_cache.query_and_results.empty();
-                });
-
             // remove from index
             column_range_index->Delete(related_query_and_result);
+
+            // remove from query cache
+            auto where_str = related_query_and_result->GetWhereClause();
+            table_query_cache.where_query_caches.erase(where_str);
           }
         });
   });
@@ -711,18 +710,12 @@ void QueryCache::InvalidateUnprocessableDeleteDuringNormal(
             std::unique_lock query_and_result_lock(
                 *(related_query_and_result->mutex_ptr));
 
-            // remove from query cache
-            auto where_str = related_query_and_result->GetWhereClause();
-            table_query_cache.where_query_caches.erase_if(
-                where_str, [&](auto &where_query_cache_it) {
-                  auto &[_, where_query_cache] = where_query_cache_it;
-                  where_query_cache.query_and_results.erase(
-                      stmt->expr->expr->name);
-                  return where_query_cache.query_and_results.empty();
-                });
-
             // remove from index
             column_range_index->Delete(related_query_and_result);
+
+            // remove from query cache
+            auto where_str = related_query_and_result->GetWhereClause();
+            table_query_cache.where_query_caches.erase(where_str);
           }
         });
   });
