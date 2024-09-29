@@ -380,14 +380,14 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
 
               if (!old_entry_match.has_value() ||
                   !new_entry_match.has_value()) {
-                return true;
+                goto remove_where_clause;
               }
 
               if (!update_query_cache) {
                 if (!old_entry_match.value() || !new_entry_match.value()) {
                   return false;
                 } else {
-                  return true;
+                  goto remove_where_clause;
                 }
               }
 
@@ -461,7 +461,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
 
                       if (invalidate) {
                         // TODO: support unknown values
-                        return true;
+                        goto remove_query_and_result;
                       }
 
                       // TODO: support limit
@@ -478,7 +478,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                           result.rows.erase(pos);
                         } else {
                           LOG(WARNING) << "Old row not found" << std::endl;
-                          return true;
+                          goto remove_query_and_result;
                         }
                       }
 
@@ -503,7 +503,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                                            ->order)[0]
                                          ->expr->name
                                   << std::endl;
-                              return true;
+                              goto remove_query_and_result;
                             }
 
                             size_t index_in_row =
@@ -538,7 +538,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                             }
                           } else {
                             // TODO: support other orders
-                            return true;
+                            goto remove_query_and_result;
                           }
                         } else {
                           result.rows.push_back(new_row);
@@ -614,7 +614,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                       }
 
                       if (invalidate) {
-                        return true;
+                        goto remove_query_and_result;
                       }
 
                       auto &result = query_and_result->result;
@@ -641,11 +641,95 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                                           ->selectList->at(0)
                                           ->type
                                    << std::endl;
-                      return true;
+                      goto remove_query_and_result;
                     }
                     return false;
+
+                  remove_query_and_result:
+                    auto column_name = query_and_result->GetSelectStatement()
+                                           ->whereClause->expr->name;
+                    table_query_cache.column_range_indices.visit(
+                        column_name, [&](auto &column_range_index_it) {
+                          auto &[_, column_range_index] = column_range_index_it;
+                          column_range_index->Delete(query_and_result.get());
+                        });
+                    return true;
                   });
+
               return where_query_cache.query_and_results.empty();
+
+            remove_where_clause:
+
+              Value lower_bound, upper_bound;
+              std::string column_name;
+
+              where_query_cache.query_and_results.cvisit_while(
+                  [&](const auto &query_and_result_it) {
+                    auto &[query, query_and_result] = query_and_result_it;
+                    std::shared_lock query_and_result_lock(
+                        *(query_and_result->mutex_ptr));
+                    const auto where =
+                        query_and_result->GetSelectStatement()->whereClause;
+
+                    column_name = where->expr->name;
+
+                    if (where->opType == hsql::kOpBetween) {
+                      if (!ExprToValue((*where->exprList)[0], lower_bound)) {
+                        LOG(ERROR)
+                            << "WhereMatch: ExprToValue failed" << std::endl;
+                      }
+                      if (!ValueCast(lower_bound, kLL)) {
+                        LOG(ERROR)
+                            << "WhereMatch: ValueCast failed" << std::endl;
+                      }
+
+                      if (!ExprToValue((*where->exprList)[1], upper_bound)) {
+                        LOG(ERROR)
+                            << "WhereMatch: ExprToValue failed" << std::endl;
+                      }
+                      if (!ValueCast(upper_bound, kLL)) {
+                        LOG(ERROR)
+                            << "WhereMatch: ValueCast failed" << std::endl;
+                      }
+                    } else if (where->opType == hsql::kOpEquals) {
+                      if (!ExprToValue(where->expr2, lower_bound)) {
+                        LOG(ERROR)
+                            << "WhereMatch: ExprToValue failed" << std::endl;
+                      }
+                      if (!ValueCast(lower_bound, kLL)) {
+                        LOG(ERROR)
+                            << "WhereMatch: ValueCast failed" << std::endl;
+                      }
+                      upper_bound = lower_bound;
+                    }
+
+                    return false;
+                  });
+
+              // if (column.type != kLL) {
+              //   // TODO: support other types
+              //   LOG(ERROR) << "Unsupported type for query index: "
+              //              << column.type << std::endl;
+              //   return true;
+              // }
+
+              where_query_cache.query_and_results.erase_if(
+                  [&](auto &query_and_result_it) {
+                    auto &[_, query_and_result] = query_and_result_it;
+
+                    table_query_cache.column_range_indices.visit(
+                        column_name, [&](auto &column_range_index_it) {
+                          auto &[_, column_range_index] = column_range_index_it;
+                          column_range_index->Delete(
+                              query_and_result.get(),
+                              std::get<kLL>(lower_bound),
+                              std::get<kLL>(upper_bound));
+                        });
+
+                    return true;
+                  });
+
+              return true;
             });
       });
 }

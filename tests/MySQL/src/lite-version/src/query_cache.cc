@@ -371,10 +371,14 @@ insert_to_query_cache:
 
   // index
   const auto &where = select_stmt->whereClause;
-  if (where->type == hsql::kExprOperator && where->opType == hsql::kOpBetween &&
-      where->expr->type == hsql::kExprColumnRef &&
-      (*where->exprList)[0]->type == hsql::kExprLiteralInt &&
-      (*where->exprList)[1]->type == hsql::kExprLiteralInt) {
+  if (where->type == hsql::kExprOperator &&
+          (where->opType == hsql::kOpBetween &&
+           where->expr->type == hsql::kExprColumnRef &&
+           (*where->exprList)[0]->type == hsql::kExprLiteralInt &&
+           (*where->exprList)[1]->type == hsql::kExprLiteralInt) ||
+      (where->opType == hsql::kOpEquals &&
+       where->expr->type == hsql::kExprColumnRef &&
+       where->expr2->type == hsql::kExprLiteralInt)) {
     auto table_it = table_cache.tables_.find(select_stmt->fromTable->getName());
     if (table_it == table_cache.tables_.end()) {
       LOG(ERROR) << "WhereMatch: Table not found: "
@@ -390,20 +394,29 @@ insert_to_query_cache:
     auto column = table.columns[column_it->second];
 
     if (column.type == kLL) {
-      Value lower_bound;
-      if (!ExprToValue((*where->exprList)[0], lower_bound)) {
-        LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
-      }
-      if (!ValueCast(lower_bound, kLL)) {
-        LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
-      }
+      Value lower_bound, upper_bound;
+      if (where->opType == hsql::kOpBetween) {
+        if (!ExprToValue((*where->exprList)[0], lower_bound)) {
+          LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+        }
+        if (!ValueCast(lower_bound, kLL)) {
+          LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+        }
 
-      Value upper_bound;
-      if (!ExprToValue((*where->exprList)[1], upper_bound)) {
-        LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
-      }
-      if (!ValueCast(upper_bound, kLL)) {
-        LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+        if (!ExprToValue((*where->exprList)[1], upper_bound)) {
+          LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+        }
+        if (!ValueCast(upper_bound, kLL)) {
+          LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+        }
+      } else {
+        if (!ExprToValue(where->expr2, lower_bound)) {
+          LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+        }
+        if (!ValueCast(lower_bound, kLL)) {
+          LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+        }
+        upper_bound = lower_bound;
       }
 
       table_query_caches_.visit(

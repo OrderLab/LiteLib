@@ -8,7 +8,7 @@ std::vector<QueryAndResult *> QueryCacheRangeIndex::Query(const int index) {
   for (;;) {
     range_index.visit(Range{begin, end}, [&](auto &node_it) {
       auto &[_, node] = node_it;
-      std::shared_lock node_lock(node.mutex);
+      std::shared_lock node_lock(*node.mutex_ptr);
       for (auto query_and_result : node.query_and_results) {
         ret.push_back(query_and_result);
       }
@@ -33,24 +33,39 @@ void QueryCacheRangeIndex::Delete(QueryAndResult *query_and_result) {
   // TODO: assert that it's a between where clause
   const auto where = query_and_result->GetSelectStatement()->whereClause;
 
-  Value lower_bound;
-  if (!ExprToValue((*where->exprList)[0], lower_bound)) {
-    LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
-  }
-  if (!ValueCast(lower_bound, kLL)) {
-    LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
-  }
+  Value lower_bound, upper_bound;
 
-  Value upper_bound;
-  if (!ExprToValue((*where->exprList)[1], upper_bound)) {
-    LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
-  }
-  if (!ValueCast(upper_bound, kLL)) {
-    LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+  if (where->opType == hsql::kOpBetween) {
+    if (!ExprToValue((*where->exprList)[0], lower_bound)) {
+      LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+    }
+    if (!ValueCast(lower_bound, kLL)) {
+      LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+    }
+
+    if (!ExprToValue((*where->exprList)[1], upper_bound)) {
+      LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+    }
+    if (!ValueCast(upper_bound, kLL)) {
+      LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+    }
+  } else {
+    if (!ExprToValue(where->expr2, lower_bound)) {
+      LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+    }
+    if (!ValueCast(lower_bound, kLL)) {
+      LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+    }
+    upper_bound = lower_bound;
   }
 
   DeleteInternal(query_and_result, std::get<kLL>(lower_bound),
                  std::get<kLL>(upper_bound), min, max);
+}
+
+void QueryCacheRangeIndex::Delete(QueryAndResult *query_and_result,
+                                  const int begin, const int end) {
+  DeleteInternal(query_and_result, begin, end, min, max);
 }
 
 void QueryCacheRangeIndex::InsertInternal(QueryAndResult *query_and_result,
@@ -61,7 +76,7 @@ void QueryCacheRangeIndex::InsertInternal(QueryAndResult *query_and_result,
     auto obj = std::make_pair(Range{begin, end}, Node(query_and_result));
     range_index.emplace_or_visit(std::move(obj), [&](auto &node_it) {
       auto &[_, node] = node_it;
-      std::unique_lock node_lock(node.mutex);
+      std::unique_lock node_lock(*node.mutex_ptr);
       node.query_and_results.insert(query_and_result);
     });
     return;
@@ -84,7 +99,7 @@ void QueryCacheRangeIndex::DeleteInternal(QueryAndResult *query_and_result,
   if (begin == node_begin && end == node_end) {
     range_index.erase_if(Range{begin, end}, [&](auto &node_it) {
       auto &[_, node] = node_it;
-      std::unique_lock node_lock(node.mutex);
+      std::unique_lock node_lock(*node.mutex_ptr);
       node.query_and_results.erase(query_and_result);
       return node.query_and_results.empty();
     });
