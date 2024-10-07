@@ -73,7 +73,7 @@ concept IsApplication = requires(
   // Hook function for establishing emergency connection
   {
     app.EmergencyConnectionEstablishHook(conn_info)
-  } -> std::convertible_to<Response>;
+  } -> std::convertible_to<std::optional<Response>>;
 };
 
 template <typename ProtocolMessage>

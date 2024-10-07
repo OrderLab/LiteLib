@@ -146,6 +146,14 @@ class Redis {
                                          ConnectionInfo &conn, Cache *cache,
                                          Logger *logger, bool flow_control);
 
+  void NormalToEmergencyHook() {}
+
+  void EmergencyToNormalHook() {}
+
+  std::optional<Packet> EmergencyConnectionEstablishHook(ConnectionInfo &conn) {
+    return std::nullopt;
+  }
+
  private:
   void NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
                         const bool in_transaction = false);
