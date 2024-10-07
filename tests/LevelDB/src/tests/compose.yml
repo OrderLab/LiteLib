@@ -1,9 +1,7 @@
 services:
   leveldb:
     container_name: leveldb-server
-    build:
-      context: .
-      dockerfile: ./scripts/leveldb/Dockerfile
+    image: lite-sys
     tty: true
     privileged: true
     volumes:
