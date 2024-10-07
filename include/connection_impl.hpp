@@ -49,12 +49,14 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     ConnectBackend();
 
   if (lite_core_.emergency_mode_) {
-    auto greeting_msg =
+    std::optional<Response> greeting_msg =
         lite_core_.app_.EmergencyConnectionEstablishHook(extra_app_info_);
-    const auto buffer = greeting_msg.Serialize();
-    if (!network::Write(client_fd_, buffer)) {
-      LOG(ERROR) << "Failed to write greeting message to client" << std::endl;
-      delete this;
+    if (greeting_msg.has_value()) {
+      const auto buffer = greeting_msg.value().Serialize();
+      if (!network::Write(client_fd_, buffer)) {
+        LOG(ERROR) << "Failed to write greeting message to client" << std::endl;
+        delete this;
+      }
     }
   }
 }
