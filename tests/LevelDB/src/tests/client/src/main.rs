@@ -13,16 +13,17 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::{sleep, sleep_until, Duration, Instant};
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Deserialize)]
 enum ExperimentType {
     Full,
     Lite(usize, String),
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Deserialize)]
 struct RemoteScriptConfig {
     experiment_type: ExperimentType,
     remote_addr: String,
+    remote_ssh_port: String,
     write_buffer_size: usize,
     #[serde(deserialize_with = "deserialize_duration")]
     crash_time: Duration,
@@ -202,10 +203,13 @@ async fn main() {
 
     // -------------------------- Init remote servers -------------------------
     if let Some(remote_script_config) = &cfg.benchmark.remote_script {
+        let remote_script_config = remote_script_config.clone();
         let output = Command::new("ssh")
             .args([
                 "-tt",
                 &remote_script_config.remote_addr,
+                "-p",
+                &remote_script_config.remote_ssh_port,
                 &match &remote_script_config.experiment_type {
                     ExperimentType::Full => format! {
                         r#"python3 /workspace/scripts/leveldb/init.py -t Full -b {} -f {}"#,
@@ -310,8 +314,9 @@ async fn main() {
     );
 
     // -------------------------- Set up remote scripts -----------------------
-    if let Some(remote_script_config) = cfg.benchmark.remote_script {
+    if let Some(remote_script_config) = &cfg.benchmark.remote_script {
         let now = SystemTime::now();
+        let remote_script_config = remote_script_config.clone();
         let file_prefix = cfg.benchmark.file_prefix.clone();
         let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
         let secs = duration_since_epoch.as_secs();
@@ -322,6 +327,8 @@ async fn main() {
                 .args([
                     "-tt",
                     &remote_script_config.remote_addr,
+                    "-p",
+                    &remote_script_config.remote_ssh_port,
                     &format!(
                         r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {}"#,
                         remote_script_config.crash_time.as_secs(),
@@ -561,4 +568,67 @@ async fn main() {
         elapsed.as_millis(),
         cfg.benchmark.num_keys as f64 / elapsed.as_secs_f64()
     );
+
+
+    // -------------------------- Copy results from remote server -------------
+    if let Some(remote_script_config) = cfg.benchmark.remote_script {
+        let file_prefix = cfg.benchmark.file_prefix.clone();
+        let remote_addr = remote_script_config.remote_addr.clone();
+        let remote_ssh_port = remote_script_config.remote_ssh_port.clone();
+        tokio::spawn(async move {
+            let output = Command::new("scp")
+                .args([
+                    "-P",
+                    &remote_ssh_port,
+                    &format!(
+                        r#"{}:/workspace/client/monitor.{}.jsonl"#,
+                        remote_addr,
+                        file_prefix,
+                    ),
+                    ".",
+                ])
+                .output()
+                .expect("Failed to copy monitor.jsonl from remote server");
+            match output.status.code() {
+                Some(0) => {
+                    println!("Copied monitor.jsonl from remote server: {:?}", output);
+                }
+                Some(_) => {
+                    panic!("Failed to copy monitor.jsonl from remote server: {:?}", output);
+                }
+                None => {
+                    panic!("Failed to copy monitor.jsonl from remote server: {:?}", output);
+                }
+            }
+        });
+        let file_prefix = cfg.benchmark.file_prefix.clone();
+        let remote_addr = remote_script_config.remote_addr.clone();
+        let remote_ssh_port = remote_script_config.remote_ssh_port.clone();
+        tokio::spawn(async move {
+            let output = Command::new("scp")
+                .args([
+                    "-P",
+                    &remote_ssh_port,
+                    &format!(
+                        r#"{}:/workspace/client/{}.log"#,
+                        remote_addr,
+                        file_prefix,
+                    ),
+                    ".",
+                ])
+                .output()
+                .expect("Failed to copy log from remote server");
+            match output.status.code() {
+                Some(0) => {
+                    println!("Copied log from remote server: {:?}", output);
+                }
+                Some(_) => {
+                    panic!("Failed to copy log from remote server: {:?}", output);
+                }
+                None => {
+                    panic!("Failed to copy log from remote server: {:?}", output);
+                }
+            }
+        });
+    }
 }

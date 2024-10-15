@@ -1,3 +1,4 @@
+name: leveldb
 services:
   leveldb:
     container_name: leveldb-server
@@ -8,16 +9,17 @@ services:
       - type: bind
         source: .
         target: /workspace
-    cpuset: "0-3"
+    # cpuset: "0-3"
     ports:
       - "6379:6379"
+      - "54321:22"
     entrypoint: /workspace/scripts/leveldb/entrypoint.sh
   client:
     container_name: leveldb-client
     image: rust:bookworm
     tty: true
     privileged: true
-    cpuset: "4-31"
+    # cpuset: "4-31"
     volumes:
       - type: bind
         source: .
