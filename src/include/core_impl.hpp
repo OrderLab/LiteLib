@@ -194,6 +194,16 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     }                                                                  \
   } while (0)
 
+#define SendReplayReqWithoutAssertion(conn, req, buffer)               \
+  do {                                                                 \
+    (conn)->pending_requests_.push_back(std::make_pair((req), false)); \
+    if (!network::Write((conn)->backend_fd_, (buffer))) {              \
+      LOG(ERROR) << "line#" << __LINE__                                \
+                 << " Replay failed to write to backend\n";            \
+      return false;                                                    \
+    }                                                                  \
+  } while (0)
+
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
@@ -258,7 +268,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
             // blocking the worker. So that we can wait for the server's
             // responses
           }
-          SendReplayReq(*entry->backend_conn_ptr, entry->req, buffer);
+          SendReplayReqWithoutAssertion(*entry->backend_conn_ptr, entry->req,
+                                        buffer);
         }
       }
       delete entry;

@@ -77,8 +77,112 @@ index 72d9685..c0a8fd7 100644
          server->start();
      }
  
+diff --git a/src/rl_connection.cpp b/src/rl_connection.cpp
+index 5e49310..a3ce4c3 100644
+--- a/src/rl_connection.cpp
++++ b/src/rl_connection.cpp
+@@ -28,7 +28,7 @@
+             read_buffer[buffered_data]=0;                                        \
+             return 0;}}while(0)
+ 
+-#define START_WRITER() do{if(!writer_started){writer_started=true;ev_io_start(server->loop, &write_watcher);}}while(0)
++#define START_WRITER() do{if(!writer_started){writer_started=true;ev_io_start(loop, &write_watcher);}}while(0)
+ 
+ RLConnection::RLConnection(RLServer *s, int fd):
+     db_index(0), fd(fd), server(s), buffered_data(0),writer_started(false)
+@@ -50,26 +50,37 @@ RLConnection::RLConnection(RLServer *s, int fd):
+     server->clients_num++;
+     //memcpy(sockaddr, &addr, addr_len);
+     //ip = inet_ntoa(sockaddr.sin_addr);
++
++    loop = ev_loop_new(0);
+ }
+ 
+ RLConnection::~RLConnection()
+ {
+     if(open){
+-        ev_io_stop(server->loop, &read_watcher);
++        ev_io_stop(loop, &read_watcher);
+         if(writer_started){
+-            ev_io_stop(server->loop, &write_watcher);
++            ev_io_stop(loop, &write_watcher);
+         }
+         close(fd);
+     }
++    ev_loop_destroy(loop);
+     server->clients_num--;
+ }
+ 
+ void RLConnection::start()
+ {
+-    ev_io_set(&write_watcher, fd, EV_WRITE);
++    connection_thread = std::thread(&RLConnection::event_loop, this);
++    connection_thread.detach();
++}
++
++void RLConnection::event_loop(RLConnection* conn)
++{
++    ev_io_set(&conn->write_watcher, conn->fd, EV_WRITE);
++
++    ev_io_set(&conn->read_watcher, conn->fd, EV_READ);
++    ev_io_start(conn->loop, &conn->read_watcher);
+ 
+-    ev_io_set(&read_watcher, fd, EV_READ);
+-    ev_io_start(server->loop, &read_watcher);
++    ev_run(conn->loop, 0);
+ }
+ 
+ 
+@@ -222,14 +233,14 @@ int RLConnection::do_write(){
+         }else{
+             perror("Write Error Msg");
+             writer_started=false;
+-            ev_io_stop(server->loop, &write_watcher);
++            ev_io_stop(loop, &write_watcher);
+             return -1;
+         }
+     }
+     write_buffer.erase(0,nwritten);
+     if(write_buffer.size()<=0){
+         writer_started=false;
+-        ev_io_stop(server->loop, &write_watcher);
++        ev_io_stop(loop, &write_watcher);
+     }
+     return 1;
+ }
+diff --git a/src/rl_connection.h b/src/rl_connection.h
+index 4e63d4a..fbc2beb 100644
+--- a/src/rl_connection.h
++++ b/src/rl_connection.h
+@@ -10,6 +10,7 @@
+ 
+ #include <vector>
+ #include <string>
++#include <thread>
+ 
+ #include <ev.h>
+ #include <leveldb/c.h>
+@@ -41,6 +42,9 @@ public:
+     ev_timer timeout_watcher;
+     ev_timer goodbye_watcher;
+ 
++    struct ev_loop* loop;
++    std::thread connection_thread;
++
+     /*** methods ***/
+ 
+     RLConnection(RLServer *s, int fd);
+@@ -49,6 +53,8 @@ public:
+     static void on_readable(struct ev_loop *loop, ev_io *watcher, int revents);
+     static void on_writable(struct ev_loop *loop, ev_io *watcher, int revents);
+ 
++    static void event_loop(RLConnection *connection);
++
+     void start();
+     size_t get_int();
+     int  do_read();
 diff --git a/src/rl_request.cpp b/src/rl_request.cpp
-index b9007a7..6819520 100644
+index b9007a7..c07579f 100644
 --- a/src/rl_request.cpp
 +++ b/src/rl_request.cpp
 @@ -37,6 +37,7 @@ void RLRequest::init_cmd_map()
@@ -89,6 +193,15 @@ index b9007a7..6819520 100644
      RLRequest::cmd_map["multi"]      = &RLRequest::rl_multi;
      RLRequest::cmd_map["exec"]       = &RLRequest::rl_exec;
      RLRequest::cmd_map["discard"]    = &RLRequest::rl_discard;
+@@ -171,7 +172,7 @@ void RLRequest::rl_select(){
+     connection->write_status("OK");
+ }
+ 
+-void RLRequest::rl_multi(){
++void RLRequest::rl_multi(){ // TODO: no longer correct after multithreading
+     if(connection->transaction){
+         connection->write_error("ERR MULTI calls can not be nested");
+         return;
 @@ -304,3 +305,13 @@ void RLRequest::rl_shutdown(){
      fprintf(stderr, "SHUTDOWN by client\n");
      exit(0);
@@ -199,10 +312,27 @@ index 65c97ab..3caab45 100644
  
      if(connection == NULL) {
 diff --git a/src/rl_server.h b/src/rl_server.h
-index 3356d66..82ff0d6 100644
+index 3356d66..763f76b 100644
 --- a/src/rl_server.h
 +++ b/src/rl_server.h
-@@ -31,7 +31,7 @@ public:
+@@ -10,6 +10,7 @@
+ 
+ #include <vector>
+ #include <string>
++#include <atomic>
+ 
+ #include <ev.h>
+ #include <leveldb/db.h>
+@@ -23,7 +24,7 @@ public:
+     std::string hostaddr;
+     int port;
+     int fd;
+-    int clients_num;
++    std::atomic<int> clients_num;
+     struct ev_loop* loop;
+     ev_io connection_watcher;
+     leveldb::Options *options;
+@@ -31,7 +32,7 @@ public:
      leveldb::WriteOptions write_options;
      leveldb::DB **db;
  
