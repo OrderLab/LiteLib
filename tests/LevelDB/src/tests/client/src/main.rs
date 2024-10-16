@@ -1,6 +1,6 @@
 use async_mutex::Mutex;
 use deadpool_redis::{
-    redis::{cmd, pipe, Connection as RedisConnection},
+    redis::{cmd, Connection as RedisConnection},
     Runtime,
 };
 use dotenvy::dotenv;
@@ -43,6 +43,7 @@ struct BenchmarkConfig {
     test_duration: Duration,
     rps: usize,
     key_distribution: KeyDistribution,
+    write_ratio: f64,
     #[serde(deserialize_with = "deserialize_duration")]
     timeout: Duration,
     retry_count: usize,
@@ -74,7 +75,7 @@ enum Status {
     Miss,
     Timeout,
     Error,
-    TransactionError,
+    // TransactionError,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -100,29 +101,24 @@ fn get_last_n_char(string: &str, n: usize) -> &str {
     &string[len - n..]
 }
 
-async fn do_transaction(
+async fn do_query(
     i: usize,
     conn: &mut RedisConnection,
     key: usize,
     base_value: &str,
     old_suffix_expected: &mut usize,
+    is_write: bool,
 ) -> QueryRecord {
-    let new_suffix_expected = *old_suffix_expected + 1;
+    let new_suffix_expected = *old_suffix_expected + is_write as usize;
     let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
-    let old_value_expected = format!("{}_{}_{}", base_value, key, *old_suffix_expected);
-    let mut pipe = pipe();
-    let cmd = pipe
-        .atomic()
-        .cmd("GET")
-        .arg(&key)
-        .cmd("SET")
-        .arg(&key)
-        .arg(&new_value_expected)
-        .ignore()
-        .cmd("GET")
-        .arg(&key);
     let request_time = SystemTime::now();
-    let result = cmd.query::<(Option<String>, Option<String>)>(&mut *conn);
+    let result = match is_write {
+        true => match cmd("SET").arg(&key).arg(&new_value_expected).query::<String>(conn) {
+            Ok(_) => Ok(Some(new_value_expected.clone())),
+            Err(e) => Err(e),
+        },
+        false => cmd("GET").arg(&key).query::<Option<String>>(&mut *conn),
+    };
     let response_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
@@ -130,44 +126,26 @@ async fn do_transaction(
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
     match result {
-        Ok((old_value, new_value)) => {
+        Ok(new_value) => {
             let mut status = Status::Success;
-            match old_value {
-                Some(old_value) => {
-                    if old_value != old_value_expected {
-                        eprintln!(
-                            "\ni: {}, key: {}, expected old value: {:?}, old value: {:?}. If the old value is newer than expected, it may be because a timeout occurred between the server sending the response and the client receiving it.\n",
-                            i,
-                            key,
-                            get_last_n_char(&old_value_expected, 10),
-                            get_last_n_char(&old_value, 10)
-                        );
-                        status = Status::Error;
-                    }
-                }
-                None => {
-                    eprintln!("\ni: {}, key: {} can't get old value\n", i, key);
-                    status = Status::Miss
-                }
-            };
             match new_value {
                 Some(new_value) => {
                     if new_value != new_value_expected {
                         eprintln!(
-                            "\ni: {}, key: {}, expected new value: {:?}, new value: {:?}\n",
+                            "\ni: {}, key: {}, expected value: {:?}, actual value: {:?}\n",
                             i,
                             key,
                             get_last_n_char(&new_value_expected, 10),
                             get_last_n_char(&new_value, 10)
                         );
-                        status = Status::TransactionError;
+                        status = Status::Error;
                     } else {
                         *old_suffix_expected = new_suffix_expected;
                     }
                 }
                 None => {
-                    eprintln!("\ni: {}, key: {} can't get new value\n", i, key);
-                    status = Status::TransactionError;
+                    eprintln!("\ni: {}, key: {} can't get value\n", i, key);
+                    status = Status::Miss;
                 }
             };
             QueryRecord {
@@ -302,6 +280,13 @@ async fn main() {
             }
         }
     }
+    let mut is_write = Vec::new();
+    {
+        let mut rng = rand::thread_rng();
+        for _ in 0..num_requests {
+            is_write.push(rng.gen_bool(cfg.benchmark.write_ratio));
+    }
+}
 
     let mut handles = Vec::new();
     let records = Arc::new(Mutex::new(vec![]));
@@ -369,6 +354,7 @@ async fn main() {
         let iter_end_time = start_time + interval * (i as u32 + 1);
         let pool = pool.clone();
         let key = idx[i];
+        let is_write = is_write[i];
         let value = values[idx[i]].clone();
         let base_value = base_value.clone();
         let records = Arc::clone(&records);
@@ -388,12 +374,13 @@ async fn main() {
                         conn.set_write_timeout(Some(cfg.benchmark.timeout))
                             .expect("set_write_timeout failed");
                         let mut old_suffix_expected = (*value_guard).clone();
-                        let query_record = do_transaction(
+                        let query_record = do_query(
                             i,
                             &mut conn,
                             key,
                             &base_value,
                             &mut old_suffix_expected,
+                            is_write,
                         )
                         .await;
                         let finished = query_record.status != Status::Timeout;
