@@ -16,12 +16,12 @@ namespace network {
 evutil_socket_t TryConnectBackend(const std::string& addr,
                                   const std::string& port) {
   // LOG(INFO) << "Try to connect to backend\n";
-  if (port.empty()) {  // unix socket
+  if (addr.empty()) {  // unix socket
     evutil_socket_t backend_fd;
     struct sockaddr_un unix_addr;
     memset(&unix_addr, 0, sizeof(unix_addr));
     unix_addr.sun_family = AF_UNIX;
-    strncpy(unix_addr.sun_path, addr.c_str(), sizeof(unix_addr.sun_path) - 1);
+    strncpy(unix_addr.sun_path, port.c_str(), sizeof(unix_addr.sun_path) - 1);
 
     int flags = 1;
     struct linger ling = {0, 0};
