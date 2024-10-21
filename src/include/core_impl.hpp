@@ -223,9 +223,12 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   LOG(INFO) << "replay start, live connections: " << live_connections_.size()
             << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
-    c->ConnectBackend();
-    LOG(INFO) << "Connect backend " << c->backend_fd_ << " to " << c->client_fd_
-              << std::endl;
+    if (!c->ConnectBackend()) {
+      LOG(ERROR) << "Failed to connect to backend" << std::endl;
+    } else {
+      LOG(INFO) << "Connect backend " << c->backend_fd_ << " to "
+                << c->client_fd_ << std::endl;
+    }
   });
 
   std::map<WorkerInstance *, ConnectionInstance *>
