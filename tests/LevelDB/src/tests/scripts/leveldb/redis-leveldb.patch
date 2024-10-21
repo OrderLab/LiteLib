@@ -229,10 +229,17 @@ index fb93138..8a61129 100644
      void rl_multi();
      void rl_exec();
 diff --git a/src/rl_server.cpp b/src/rl_server.cpp
-index 65c97ab..3caab45 100644
+index 65c97ab..663b036 100644
 --- a/src/rl_server.cpp
 +++ b/src/rl_server.cpp
-@@ -17,6 +17,9 @@
+@@ -11,12 +11,16 @@
+ 
+ #include <unistd.h>
+ #include <sys/socket.h>
++#include <sys/un.h>
+ #include <netinet/tcp.h> /* TCP_NODELAY */
+ #include <netinet/in.h>  /* inet_ntoa */
+ #include <arpa/inet.h>   /* inet_ntoa */
  
  #include <leveldb/filter_policy.h>
  
@@ -242,24 +249,26 @@ index 65c97ab..3caab45 100644
  #include "rl_util.h"
  #include "rl_server.h"
  #include "rl_connection.h"
-@@ -33,7 +36,7 @@
+@@ -33,14 +37,16 @@
  #define EVBACKEND EVBACKEND_KQUEUE
  #endif
  
 -RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int dbn):
 +RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int dbn, size_t write_buffer_size):
      db_num(dbn), db_path(_db_path), hostaddr(_hostaddr), port(_port),
-     fd(-1), clients_num(0)
+-    fd(-1), clients_num(0)
++    tcp_fd(-1), unix_fd(-1), clients_num(0)
  {
-@@ -41,6 +44,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+ 
      printf("HOSTADDR:(%s)\n",hostaddr.c_str());
      printf("DB_PATH:(%s)\n",db_path.c_str());
      printf("PORT:(%d)\n",port);
 +    printf("WRITE_BUFFER_SIZE:(%ld)\n",write_buffer_size);
++    printf("UNIX Socket: /tmp/redis-leveldb.sock\n");
  
      leveldb::Status status;
  
-@@ -48,12 +52,20 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+@@ -48,12 +54,20 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
          options = new leveldb::Options[1];
          options[0].create_if_missing = true;
          options[0].filter_policy = leveldb::NewBloomFilterPolicy(10);
@@ -282,7 +291,7 @@ index 65c97ab..3caab45 100644
          }
      }else{
          options = new leveldb::Options[db_num];
-@@ -63,6 +75,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+@@ -63,6 +77,7 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
          for(int i=0;i<db_num;i++){
              options[i].create_if_missing = true;
              options[i].filter_policy = leveldb::NewBloomFilterPolicy(16);
@@ -290,29 +299,183 @@ index 65c97ab..3caab45 100644
  
              int count = sprintf(buf, "/db-%03d", i);
              //TODO the db path
-@@ -154,6 +167,10 @@ void RLServer::start()
-     ev_io_start(loop, &connection_watcher);
+@@ -76,8 +91,8 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+     }
  
-     printf("Server running successfully\n");
+     loop = ev_loop_new(EVBACKEND);
+-    connection_watcher.data = this;
+-
++    tcp_connection_watcher.data = this;
++    unix_connection_watcher.data = this;
+ }
+ 
+ RLServer::~RLServer(){
+@@ -93,30 +108,32 @@ RLServer::~RLServer(){
+     delete[] options;
+     delete[] db;
+     if(loop) ev_loop_destroy(loop);
+-    close(fd);
++    close(tcp_fd);
++    close(unix_fd);
+ }
+ 
+ 
+ void RLServer::start()
+ {
++    // -------------------------------- tcp socket ----------------------------
+     struct linger ling = {0, 0};
+     struct sockaddr_in addr;
+     int flags = 1;
+ 
+-    if((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
++    if((tcp_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+         perror("socket()");
+         exit(1);
+     }
+ 
+     flags = 1;
+-    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *)&flags, sizeof(flags));
+-    setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags, sizeof(flags));
+-    setsockopt(fd, SOL_SOCKET, SO_LINGER, (void *)&ling, sizeof(ling));
++    setsockopt(tcp_fd, SOL_SOCKET, SO_REUSEADDR, (void *)&flags, sizeof(flags));
++    setsockopt(tcp_fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags, sizeof(flags));
++    setsockopt(tcp_fd, SOL_SOCKET, SO_LINGER, (void *)&ling, sizeof(ling));
+ 
+     /* XXX: Sending single byte chunks in a response body? Perhaps there is a
+      * need to enable the Nagel algorithm dynamically. For now disabling.
+      */
+-    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
++    setsockopt(tcp_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
+ 
+     /* the memset call clears nonstandard fields in some impementations that
+      * otherwise mess things up.
+@@ -135,51 +152,95 @@ void RLServer::start()
+         addr.sin_addr.s_addr = htonl(INADDR_ANY);
+     }
+ 
+-    if(bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
++    if(bind(tcp_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+         perror("bind()");
+-        if(fd > 0) close(fd);
++        if(tcp_fd > 0) close(tcp_fd);
+         exit(1);
+     }
+ 
+-    if(listen(fd, MAX_CONNECTIONS) < 0) {
++    if(listen(tcp_fd, MAX_CONNECTIONS) < 0) {
+         perror("listen()");
+         exit(1);
+     }
+ 
+-    set_nonblock(fd);
++    set_nonblock(tcp_fd);
+ 
+-    ev_init(&connection_watcher, RLServer::on_connection);
++    ev_init(&tcp_connection_watcher, RLServer::on_tcp_connection);
+ 
+-    ev_io_set(&connection_watcher, fd, EV_READ);
+-    ev_io_start(loop, &connection_watcher);
++    ev_io_set(&tcp_connection_watcher, tcp_fd, EV_READ);
++    ev_io_start(loop, &tcp_connection_watcher);
+ 
+-    printf("Server running successfully\n");
+-    ev_run(loop, 0);
+-}
++    // -------------------------------- unix socket ---------------------------
+ 
+-void RLServer::on_connection(struct ev_loop *loop, ev_io *watcher, int revents)
+-{
+-    RLServer *s = static_cast<RLServer*>(watcher->data);
+-    if(EV_ERROR & revents) {
+-        puts("on_connection() got error event, closing server.");
+-        return;
++    struct sockaddr_un unix_addr;
++    if((unix_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
++        perror("socket()");
++        exit(1);
+     }
+ 
+-    struct sockaddr_in addr; // connector's address information
+-    socklen_t addr_len = sizeof(addr);
+-    int fd = accept(s->fd, (struct sockaddr*)&addr, &addr_len);
++    memset(&unix_addr, 0, sizeof(unix_addr));
++    unix_addr.sun_family = AF_UNIX;
++    strncpy(unix_addr.sun_path, "/tmp/redis-leveldb.sock", sizeof(unix_addr.sun_path) - 1);
+ 
+-    if(fd < 0) {
+-        perror("accept()");
+-        return;
+-    }
++    unlink("/tmp/redis-leveldb.sock"); // Remove the socket file if it already exists
+ 
+-    RLConnection *connection = new RLConnection(s, fd);
++    if(bind(unix_fd, (struct sockaddr *)&unix_addr, sizeof(unix_addr)) < 0) {
++        perror("bind()");
++        if(unix_fd > 0) close(unix_fd);
++        exit(1);
++    }
+ 
+-    if(connection == NULL) {
+-        close(fd);
+-        return;
++    if(listen(unix_fd, MAX_CONNECTIONS) < 0) {
++        perror("listen()");
++        exit(1);
+     }
+-    connection->start();
+ 
++    set_nonblock(unix_fd);
++
++    ev_init(&unix_connection_watcher, RLServer::on_unix_connection);
++    ev_io_set(&unix_connection_watcher, unix_fd, EV_READ);
++    ev_io_start(loop, &unix_connection_watcher);
++
++    // -------------------------------- ev loop -------------------------------
++
++    printf("Server running successfully\n");
 +    const auto now = std::chrono::system_clock::now();
 +    std::cout << "boot time " << std::chrono::duration_cast<std::chrono::nanoseconds>(
 +                 now.time_since_epoch()).count() << std::endl;
 +
-     ev_run(loop, 0);
++    ev_run(loop, 0);
  }
- 
-@@ -174,6 +191,9 @@ void RLServer::on_connection(struct ev_loop *loop, ev_io *watcher, int revents)
-         return;
-     }
- 
-+    int flags = 1;
-+    setsockopt(s->fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
 +
-     RLConnection *connection = new RLConnection(s, fd);
- 
-     if(connection == NULL) {
++#define on_connection_def(func_name, fd_name)                              \
++  void RLServer::func_name(struct ev_loop *loop, ev_io *watcher,           \
++                           int revents) {                                  \
++    RLServer *s = static_cast<RLServer *>(watcher->data);                  \
++    if (EV_ERROR & revents) {                                              \
++      puts("on_connection() got error event, closing server.");            \
++      return;                                                              \
++    }                                                                      \
++                                                                           \
++    struct sockaddr_in addr; /* connector's address information */         \
++    socklen_t addr_len = sizeof(addr);                                     \
++    int conn_fd = accept(s->fd_name, (struct sockaddr *)&addr, &addr_len); \
++                                                                           \
++    if (conn_fd < 0) {                                                     \
++      perror("accept()");                                                  \
++      return;                                                              \
++    }                                                                      \
++                                                                           \
++    int flags = 1;                                                         \
++    setsockopt(s->fd_name, IPPROTO_TCP, TCP_NODELAY, (void *)&flags,       \
++               sizeof(flags));                                             \
++                                                                           \
++    RLConnection *connection = new RLConnection(s, conn_fd);               \
++                                                                           \
++    if (connection == NULL) {                                              \
++      close(conn_fd);                                                      \
++      return;                                                              \
++    }                                                                      \
++    connection->start();                                                   \
++  }
++
++on_connection_def(on_tcp_connection, tcp_fd);
++on_connection_def(on_unix_connection, unix_fd);
+\ No newline at end of file
 diff --git a/src/rl_server.h b/src/rl_server.h
-index 3356d66..763f76b 100644
+index 3356d66..b4af24a 100644
 --- a/src/rl_server.h
 +++ b/src/rl_server.h
 @@ -10,6 +10,7 @@
@@ -323,16 +486,19 @@ index 3356d66..763f76b 100644
  
  #include <ev.h>
  #include <leveldb/db.h>
-@@ -23,7 +24,7 @@ public:
+@@ -22,19 +23,21 @@ public:
+     std::string db_path;
      std::string hostaddr;
      int port;
-     int fd;
+-    int fd;
 -    int clients_num;
++    int tcp_fd, unix_fd;
 +    std::atomic<int> clients_num;
      struct ev_loop* loop;
-     ev_io connection_watcher;
+-    ev_io connection_watcher;
++    ev_io tcp_connection_watcher, unix_connection_watcher;
      leveldb::Options *options;
-@@ -31,7 +32,7 @@ public:
+     leveldb::ReadOptions read_options;
      leveldb::WriteOptions write_options;
      leveldb::DB **db;
  
@@ -340,7 +506,13 @@ index 3356d66..763f76b 100644
 +    RLServer(const char *db_path, const char *hostaddr, int port, int dbn=0, size_t write_buffer_size=0);
      ~RLServer();
      void start();
-     static void on_connection(struct ev_loop *loop, ev_io *watcher, int revents);
+-    static void on_connection(struct ev_loop *loop, ev_io *watcher, int revents);
++
++    static void on_tcp_connection(struct ev_loop *loop, ev_io *watcher, int revents);
++    static void on_unix_connection(struct ev_loop *loop, ev_io *watcher, int revents);
+ };
+ 
+ 
 diff --git a/src/rl_util.cpp b/src/rl_util.cpp
 index 16bb92a..71794e1 100644
 --- a/src/rl_util.cpp
