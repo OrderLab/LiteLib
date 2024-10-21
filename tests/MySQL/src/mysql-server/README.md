@@ -24,6 +24,12 @@ mkdir /usr/local/mysql/data
 /usr/local/mysql/bin/mysql -P 60000 -e "GRANT ALL PRIVILEGES ON sbtest.* TO 'sbtest'@'%';"
 ```
 
+# Clean Sysbench
+
+```sh
+/usr/local/mysql/bin/mysql -P 60000 -e "USE sbtest; DROP TABLE IF EXISTS sbtest1;"
+```
+
 # Query Cache Related Stat
 
 ```sh

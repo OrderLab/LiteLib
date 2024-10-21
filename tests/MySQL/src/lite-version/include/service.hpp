@@ -1,24 +1,24 @@
 #pragma once
 
 #include <lite.hpp>
+#include <optional>
 
 #include "dissect.hpp"
 #include "packet.hpp"
-
-struct CacheEntry {
-  std::shared_ptr<Packet> ToRequest(const std::string &key) const {
-    return std::make_shared<Packet>();
-  }
-};
+#include "query_cache.hpp"
+#include "table_cache.hpp"
+#include "worker.hpp"
 
 class MySQL {
-  using Cache = lite::Cache<MySQL, Packet, Packet, ConnectionInfo, std::string,
-                            CacheEntry>;
-  using Logger = lite::Logger<MySQL, Packet, Packet, ConnectionInfo,
-                              std::string, CacheEntry>;
+  using Cache =
+      lite::Cache<MySQL, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>;
+  using Logger =
+      lite::Logger<MySQL, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  MySQL();
+  MySQL(const size_t &number_of_workers);
+
+  ~MySQL();
 
   std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
       const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
@@ -39,20 +39,32 @@ class MySQL {
 
   void NormalToEmergencyHook();
 
-  void EmergencyToNormalHook() {}
+  void EmergencyToNormalHook();
 
   Packet EmergencyConnectionEstablishHook(ConnectionInfo &conn);
+
+  Cache *dangling_cache_;  // used by workers
+
+  void AssignNewNormalTask(NormalTask &&task);
 
  private:
   Packet server_greeting_;
 
-  std::unordered_map<std::string, std::shared_ptr<std::vector<uint8_t>>>
-      query_cache_;
+  TableCache table_cache_;
 
-  bool ParseQueryCache();
+  QueryCache query_cache_;
+
+  void NormalUpdateQuery(std::string &query, ConnectionInfo *conn,
+                         Cache *cache);
 
   std::pair<Packet, bool> EmergencyServeQuery(std::string &query,
                                               ConnectionInfo &conn,
                                               Cache *cache, Logger *logger,
                                               bool flow_control);
+
+  friend class MySQLWorker;
+
+  std::vector<MySQLWorker *> workers_in_normal_;
+  std::vector<MySQLWorker *>::iterator cur_worker = workers_in_normal_.begin();
+  std::mutex cur_worker_mutex;
 };

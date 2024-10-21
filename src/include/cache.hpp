@@ -28,7 +28,7 @@ class Cache {  // A wrapper for CacheInner
   ~Cache() {}
 
   bool Add(const CacheKey &key, const CacheEntry &value,
-           bool in_transaction = false);
+           bool in_transaction = false, bool log = true);
 
   bool Get(const CacheKey &key, CacheEntry &value, bool in_transaction = false);
 
@@ -36,10 +36,10 @@ class Cache {  // A wrapper for CacheInner
   bool Delete(const CacheKey &key, bool in_transaction = false);
 
   bool Replace(const CacheKey &key, const CacheEntry &value,
-               bool in_transaction = false);
+               bool in_transaction = false, bool log = true);
 
   bool Set(const CacheKey &key, const CacheEntry &value,
-           bool in_transaction = false);
+           bool in_transaction = false, bool log = true);
 
   void ConstVisitAll(
       std::function<void(const CacheKey &, const CacheEntry &)> visitor,

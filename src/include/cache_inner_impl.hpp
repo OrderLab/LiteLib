@@ -103,7 +103,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
   ListNode *lru_node = nullptr;
   cache_.cvisit(key, [&](auto &element) {
     lru_node = element.second.lru_node;
-    dirty_node = element.second.dirty_node;
+    dirty_node = element.second.state->dirty_node;
   });
   if (!lru_node || !cache_.erase(key)) return false;
 

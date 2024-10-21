@@ -1,8 +1,11 @@
 #include "service.hpp"
 
+#include <hsql/SQLParser.h>
+#include <hsql/util/sqlhelper.h>
+
 #include "mysql-server/protocol_classic.hpp"
 
-MySQL::MySQL() {
+MySQL::MySQL(const size_t &number_of_workers) : query_cache_(*this) {
   server_greeting_.buffer =
       std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
           0x4a, 0x0,  0x0,  0x0,  0xa,  0x35, 0x2e, 0x37, 0x2e, 0x34,
@@ -13,6 +16,17 @@ MySQL::MySQL() {
           0x14, 0x30, 0x69, 0x7c, 0x5b, 0x0,  0x6d, 0x79, 0x73, 0x71,
           0x6c, 0x5f, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x70,
           0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x0});
+
+  for (size_t i = 0; i < number_of_workers; i++) {
+    workers_in_normal_.push_back(new MySQLWorker(*this));
+  }
+  cur_worker = workers_in_normal_.begin();
+}
+
+MySQL::~MySQL() {
+  for (auto &worker : workers_in_normal_) {
+    delete worker;
+  }
 }
 
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
@@ -43,21 +57,15 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
                          std::vector<std::shared_ptr<Packet>> requests,
                          ConnectionInfo &conn, Cache *cache) {
   if (requests.empty()) {
-    if (conn.state == ConnectionInfo::State::Init) {
-      // server greeting
-      server_greeting_.buffer = resp->buffer;
-      conn.state = ConnectionInfo::State::ServerGreeted;
-    }
+    // TODO: add lock and uncomment
+    // if (conn.state == ConnectionInfo::State::Init) {
+    //   // server greeting
+    //   server_greeting_.buffer = resp->buffer;
+    //   conn.state = ConnectionInfo::State::ServerGreeted;
+    // }
     return;
   }
-  // LOG(INFO) << "req: " << requests.size() << std::endl;
-  // for (auto &req : requests) {
-  //   LOG(INFO) << "  req len: " << req->buffer->size() - 4 << std::endl;
-  // }
-  // LOG(INFO) << "resp: " << conn.responses.size() << std::endl;
-  // for (auto &resp : conn.responses) {
-  //   LOG(INFO) << "  resp len: " << resp->buffer->size() - 4 << std::endl;
-  // }
+
   for (size_t i = 1; i < requests.size(); i++) {
     requests[0]->payload_length_ += requests[i]->payload_length_;
     requests[0]->buffer->insert(requests[0]->buffer->end(),
@@ -72,6 +80,15 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
     return;
   }
 
+  // LOG(INFO) << "req: " << requests.size() << std::endl;
+  // for (auto &req : requests) {
+  //   LOG(INFO) << "  req len: " << req->buffer->size() - 4 << std::endl;
+  // }
+  // LOG(INFO) << "resp: " << conn.responses.size() << std::endl;
+  // for (auto &resp : conn.responses) {
+  //   LOG(INFO) << "  resp len: " << resp->buffer->size() - 4 << std::endl;
+  // }
+
   COM_DATA req_com_data;
   enum_server_command req_cmd;
   if (!get_command_and_parse_packet(&req_com_data, &req_cmd,
@@ -81,6 +98,8 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
                  << (int)requests[0]->buffer->data()[4] << std::endl;
   }
 
+  // TODO: multiple queries in one request
+  std::string query;
   switch (req_cmd) {
     case COM_STMT_PREPARE: {
       if (!(*conn.responses[0]->buffer)[4]) {  // response code == Ok
@@ -97,15 +116,24 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
     case COM_STMT_EXECUTE: {
       auto [stmt_it, values] =
           DissectExecuteStatement(requests[0]->buffer->data() + 5, conn);
-      // std::string query = stmt_it->second.query;
-      // for (size_t i = 0; i < values.size(); i++) {
-      //   query.replace(query.find("?"), 1, SerializeValue(values[i],
-      //   stmt_it->second.types[i]));
-      // }
-      // LOG(INFO) << "COM_STMT_EXECUTE: " << query << std::endl;
+      query = stmt_it->second.query;
+      for (size_t i = 0; i < values.size(); i++)
+        query.replace(query.find("?"), 1, ValueToString(values[i]));
+      break;
+    }
+    case COM_QUERY: {
+      query = req_com_data.com_query.query;
+      break;
     }
     default:
       break;
+  }
+
+  if (query.size()) {
+    AssignNewNormalTask({.type = NormalTask::Type::kUpdateQuery,
+                         .query = query,
+                         .conn = &conn,
+                         .cache = cache});
   }
 
   return;
@@ -121,6 +149,7 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
                                               ConnectionInfo &conn,
                                               Cache *cache, Logger *logger,
                                               bool flow_control) {
+  // TODO: flow_control
   Packet resp;
   conn.request_payload.insert(conn.request_payload.end(),
                               req->buffer->begin() + 4, req->buffer->end());
@@ -156,11 +185,17 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
       auto [stmt_it, values] =
           DissectExecuteStatement(conn.request_payload.data() + 1, conn);
       std::string query = stmt_it->second.query;
-      for (size_t i = 0; i < values.size(); i++) {
-        query.replace(query.find("?"), 1,
-                      SerializeValue(values[i], stmt_it->second.types[i]));
-      }
+      for (size_t i = 0; i < values.size(); i++)
+        query.replace(query.find("?"), 1, ValueToString(values[i]));
       return EmergencyServeQuery(query, conn, cache, logger, flow_control);
+    }
+    case COM_PING: {
+      resp.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+          0x7, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0});
+      break;
+    }
+    case COM_QUIT: {
+      return {resp, false};
     }
     default: {
       LOG(WARNING) << "Unsupported command: " << req_cmd << std::endl;
@@ -174,14 +209,73 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
 }
 
 void MySQL::NormalToEmergencyHook() {
-  if (!ParseQueryCache()) {
+  if (!query_cache_.NormalToEmergencyHook(table_cache_, dangling_cache_)) {
     LOG(ERROR) << "Unable to parse query cache";
   }
 }
 
+void MySQL::EmergencyToNormalHook() { query_cache_.EmergencyToNormalHook(); }
+
 Packet MySQL::EmergencyConnectionEstablishHook(ConnectionInfo &conn) {
   conn.state = ConnectionInfo::ServerGreeted;
   return server_greeting_;
+}
+
+void MySQL::NormalUpdateQuery(std::string &query, ConnectionInfo *conn,
+                              Cache *cache) {
+  hsql::SQLParserResult result;
+  hsql::SQLParser::parse(query, &result);
+
+  if (!result.isValid()) {
+    LOG(ERROR) << "Unable to parse query: " << query << std::endl
+               << "\t" << result.errorMsg() << " L" << result.errorLine() << ':'
+               << result.errorColumn() << std::endl;
+    return;
+  }
+
+  for (unsigned i = 0; i < result.size(); ++i) {
+    auto stmt = result.getStatement(i);
+    // hsql::printStatementInfo(stmt);
+    switch (stmt->type()) {
+      case hsql::StatementType::kStmtSelect: {
+        break;
+      }
+      case hsql::StatementType::kStmtInsert: {
+        auto insert_stmt = dynamic_cast<const hsql::InsertStatement *>(stmt);
+        table_cache_.HandleInsert(*insert_stmt, cache, &query_cache_, false);
+        break;
+      }
+      case hsql::StatementType::kStmtUpdate: {
+        auto update_stmt = dynamic_cast<const hsql::UpdateStatement *>(stmt);
+        if (!table_cache_.HandleUpdate(*update_stmt, cache, &query_cache_,
+                                       false)) {
+          query_cache_.InvalidateUnprocessableUpdateDuringNormal(update_stmt,
+                                                                 table_cache_);
+        }
+        break;
+      }
+      case hsql::StatementType::kStmtDelete: {
+        auto delete_stmt = dynamic_cast<const hsql::DeleteStatement *>(stmt);
+        if (!table_cache_.HandleDelete(*delete_stmt, cache, &query_cache_,
+                                       false)) {
+          query_cache_.InvalidateUnprocessableDeleteDuringNormal(delete_stmt,
+                                                                 table_cache_);
+        }
+        break;
+      }
+      case hsql::StatementType::kStmtTransaction: {
+        // TODO
+        break;
+      }
+      default: {
+        // kStmtImport, kStmtCreate, kStmtDrop, kStmtPrepare, kStmtExecute,
+        // kStmtExport, kStmtRename, kStmtAlter, kStmtShow, kStmtTransaction
+        LOG(WARNING) << "Unsupported statement type: " << stmt->type()
+                     << std::endl
+                     << "\t" << query << std::endl;
+      }
+    }
+  }
 }
 
 std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
@@ -189,24 +283,140 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
                                                    Cache *cache, Logger *logger,
                                                    bool flow_control) {
   Packet resp;
-  if (query == "BEGIN") {
-    resp.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
-        0x7, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x3, 0x0, 0x0, 0x0});
-    // TODO: handle it
-  } else if (query == "COMMIT") {
-    resp.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
-        0x7, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0});
-    // TODO: handle it
-  } else {
-    auto cache_it = query_cache_.find(query);
-    if (cache_it != query_cache_.end()) {
-      resp.buffer = cache_it->second;
-    } else {
-      LOG(WARNING) << "Query not found in the cache: " << query << std::endl;
+
+  hsql::SQLParserResult result;
+  hsql::SQLParser::parse(query, &result);
+
+  if (!result.isValid()) {
+    LOG(ERROR) << "Unable to parse query: " << query << std::endl
+               << "\t" << result.errorMsg() << " L" << result.errorLine() << ':'
+               << result.errorColumn() << std::endl;
+    return {resp, true};
+  }
+
+  if (result.size() != 1) {
+    LOG(WARNING) << "Multiple queries in one query string: " << query
+                 << std::endl;
+    return {resp, true};
+  }
+
+  auto stmt = result.getStatement(0);
+
+  switch (stmt->type()) {
+    case hsql::kStmtTransaction: {
+      auto transaction_stmt =
+          dynamic_cast<const hsql::TransactionStatement *>(stmt);
+      switch (transaction_stmt->command) {
+        case hsql::kBeginTransaction: {
+          resp.buffer =
+              std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+                  0x7, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x3, 0x0, 0x0, 0x0});
+          // TODO: handle it
+          break;
+        }
+        case hsql::kCommitTransaction: {
+          resp.buffer =
+              std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+                  0x7, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0});
+          // TODO: handle it
+          break;
+        }
+        case hsql::kRollbackTransaction: {
+          // TODO: handle it
+          break;
+        }
+        default: {
+          LOG(WARNING) << "Unsupported transaction command: "
+                       << transaction_stmt->command << std::endl;
+          return {resp, true};
+        }
+      }
+      break;
+    }
+    case hsql::kStmtSelect: {
+      auto result = query_cache_.ServeSelect(query);
+      if (result.has_value()) {
+        resp = std::move(result.value());
+        break;
+      }
+      result = table_cache_.ServePointSelect(
+          dynamic_cast<const hsql::SelectStatement &>(*stmt), cache);
+      if (result.has_value()) {
+        resp = std::move(result.value());
+        break;
+      }
+      // LOG(WARNING) << "Query not found in the cache: " << query << std::endl;
       return {resp, true};
+    }
+    case hsql::kStmtInsert: {
+      auto insert_stmt = dynamic_cast<const hsql::InsertStatement *>(stmt);
+      if (table_cache_.HandleInsert(*insert_stmt, cache, &query_cache_)) {
+        resp.buffer = std::make_shared<std::vector<uint8_t>>(
+            std::vector<uint8_t>{0xa, 0x0, 0x0, 0x1, 0x0, 0x1, 0xfd, 0x7b, 0xb0,
+                                 0x7, 0x3, 0x0, 0x0, 0x0});
+        // TODO: handle it
+      } else {
+        LOG(WARNING) << "Unable to handle insert statement: " << query
+                     << std::endl;
+        return {resp, true};
+      }
+      break;
+    }
+    case hsql::kStmtUpdate: {
+      auto update_stmt = dynamic_cast<const hsql::UpdateStatement *>(stmt);
+      if (table_cache_.HandleUpdate(*update_stmt, cache, &query_cache_)) {
+        resp.buffer =
+            std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+                0x30, 0x0,  0x0,  0x1,  0x0,  0x1,  0x0,  0x3,  0x0,
+                0x0,  0x0,  0x28, 0x52, 0x6f, 0x77, 0x73, 0x20, 0x6d,
+                0x61, 0x74, 0x63, 0x68, 0x65, 0x64, 0x3a, 0x20, 0x31,
+                0x20, 0x20, 0x43, 0x68, 0x61, 0x6e, 0x67, 0x65, 0x64,
+                0x3a, 0x20, 0x31, 0x20, 0x20, 0x57, 0x61, 0x72, 0x6e,
+                0x69, 0x6e, 0x67, 0x73, 0x3a, 0x20, 0x30});
+        // TODO: handle it
+      } else {
+        LOG(WARNING) << "Unable to handle update statement: " << query
+                     << std::endl;
+        return {resp, true};
+      }
+      break;
+    }
+    case hsql::kStmtDelete: {
+      // TODO
+      auto delete_stmt = dynamic_cast<const hsql::DeleteStatement *>(stmt);
+      if (table_cache_.HandleDelete(*delete_stmt, cache, &query_cache_)) {
+        resp.buffer =
+            std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+                0x7, 0x0, 0x0, 0x1, 0x0, 0x1, 0x0, 0x3, 0x0, 0x0, 0x0});
+        // TODO: handle it
+      } else {
+        LOG(WARNING) << "Unable to handle delete statement: " << query
+                     << std::endl;
+        return {resp, true};
+      }
+      break;
     }
   }
 
   conn.request_payload.clear();
   return {resp, false};
+}
+
+void MySQL::AssignNewNormalTask(NormalTask &&task) {
+  MySQLWorker *worker;
+  {
+    std::lock_guard<std::mutex> lock(cur_worker_mutex);
+    worker = *cur_worker;
+    cur_worker++;
+    if (cur_worker == workers_in_normal_.end()) {
+      cur_worker = workers_in_normal_.begin();
+    }
+  }
+
+  worker->notify_queue_.push_back(std::move(task));
+
+  uint64_t buf = 1;
+  PLOG_IF(ERROR, write(worker->notify_event_fd_, &buf, sizeof(uint64_t)) !=
+                     sizeof(uint64_t))
+      << "failed writing to mysql eventfd";
 }

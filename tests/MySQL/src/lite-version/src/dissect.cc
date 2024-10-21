@@ -11,6 +11,7 @@ bool ResponseDissector::Digest(
   if (state_ == END) {
     inter_eof_cnt = 0;
     responses.clear();
+    state_ = NORMAL;
   }
   responses.push_back(resp);
 
@@ -40,6 +41,9 @@ bool ResponseDissector::Digest(
           state_ = END;
           return true;
         }
+      } else if ((*resp->buffer)[3] == 0x01) {  // packet number
+        state_ = END;
+        return true;
       } else {  // has augmented packet
         state_ = NORMAL;
         return false;
@@ -66,99 +70,198 @@ bool ResponseDissector::Digest(
   }
 }
 
-// tests/MySQL/src/mysql-server/libmysql/libmysql.c
-Type FetchType(const uint8_t *&payload) {
-  Type ret;
-  ret.type = (enum_field_types) * (payload++);
-  switch (ret.type) {
-    case MYSQL_TYPE_TINY:
-    case MYSQL_TYPE_SHORT:
-    case MYSQL_TYPE_LONG:
-    case MYSQL_TYPE_LONGLONG:
-      ret.flags = *(payload++);
+template <typename T1, typename T2>
+concept HasOperatorPlus = requires(T1 a, T2 b) {
+  { a + b } -> std::same_as<T1>;
+};
+
+Value operator+(const Value &lhs, const Value &rhs) {
+  return std::visit(
+      [](auto &&lhs_value, auto &&rhs_value) -> Value {
+        using T1 = std::decay_t<decltype(lhs_value)>;
+        using T2 = std::decay_t<decltype(rhs_value)>;
+        if constexpr (std::is_same_v<T1, T2> && HasOperatorPlus<T1, T2>) {
+          return lhs_value + rhs_value;
+        } else {
+          LOG(FATAL) << "operator+: Unsupported Value type: "
+                     << typeid(T1).name() << " + " << typeid(T2).name()
+                     << std::endl;
+          return Value{};
+        }
+      },
+      lhs, rhs);
+}
+
+Value &operator+=(Value &lhs, const Value &rhs) {
+  std::visit(
+      [&](auto &lhs_value, auto &rhs_value) -> void {
+        using T1 = std::decay_t<decltype(lhs_value)>;
+        using T2 = std::decay_t<decltype(rhs_value)>;
+        if constexpr (std::is_same_v<T1, T2> && HasOperatorPlus<T1, T2>) {
+          lhs_value += rhs_value;
+        } else {
+          LOG(FATAL) << "operator+=: Unsupported Value type: "
+                     << typeid(T1).name() << " + " << typeid(T2).name()
+                     << std::endl;
+        }
+      },
+      lhs, rhs);
+  return lhs;
+}
+
+template <typename T1, typename T2>
+concept HasOperatorMinus = requires(T1 a, T2 b) {
+  { a - b } -> std::same_as<T1>;
+};
+
+Value &operator-=(Value &lhs, const Value &rhs) {
+  std::visit(
+      [&](auto &lhs_value, auto &rhs_value) -> void {
+        using T1 = std::decay_t<decltype(lhs_value)>;
+        using T2 = std::decay_t<decltype(rhs_value)>;
+        if constexpr (std::is_same_v<T1, T2> && HasOperatorMinus<T1, T2>) {
+          lhs_value -= rhs_value;
+        } else {
+          LOG(FATAL) << "operator-=: Unsupported Value type: "
+                     << typeid(T1).name() << " - " << typeid(T2).name()
+                     << std::endl;
+        }
+      },
+      lhs, rhs);
+  return lhs;
+}
+
+bool ValueCast(Value &value, const Type &type) {
+  if (value.index() == type) {
+    return true;
+  }
+
+  switch (type) {
+    case kULL:
+      if (auto v = std::get_if<int64_t>(&value)) {
+        value = static_cast<uint64_t>(*v);
+        return true;
+      } else if (auto v = std::get_if<std::string>(&value)) {
+        value = std::stoull(*v);
+        return true;
+      }
+      return true;
+      break;
+    case kLL:
+      if (auto v = std::get_if<uint64_t>(&value)) {
+        value = static_cast<int64_t>(*v);
+        return true;
+      } else if (auto v = std::get_if<std::string>(&value)) {
+        value = std::stoll(*v);
+        return true;
+      }
+      break;
+    case kVARCHAR:
+      if (auto v = std::get_if<int64_t>(&value)) {
+        value = std::to_string(*v);
+        return true;
+      } else if (auto v = std::get_if<uint64_t>(&value)) {
+        value = std::to_string(*v);
+        return true;
+      }
       break;
     default:
-      LOG(WARNING) << "Unsupported MySQL type: " << ret.type << std::endl;
+      LOG(WARNING) << "Unsupported Type Cast: " << value.index() << " -> "
+                   << type << std::endl;
       break;
   }
-  return ret;
+  return false;
+}
+
+// tests/MySQL/src/mysql-server/libmysql/libmysql.c
+Type FetchType(const uint8_t *&payload) {
+  const auto type = (enum_field_types) * (payload++);
+  uint flags;
+  switch (type) {
+    case MYSQL_TYPE_LONGLONG:
+      flags = *(payload++);
+      if (flags)
+        return kULL;
+      else
+        return kLL;
+      break;
+    default:
+      LOG(WARNING) << "Unsupported MySQL type: " << type << std::endl;
+  }
+  return kUnknown;
 }
 
 Value FetchValue(const uint8_t *&payload, const Type &type) {
   Value ret;
-  switch (type.type) {
-    case MYSQL_TYPE_TINY:
-      if (type.flags) {  // unsigned
-        ret.uint8 = *(payload++);
-      } else {
-        ret.int8 = *(payload++);
-      }
-      break;
-    case MYSQL_TYPE_SHORT:
-      if (type.flags) {  // unsigned
-        ret.uint16 = uint2korr(payload);
-      } else {
-        ret.int16 = sint2korr(payload);
-      }
-      payload += 2;
-      break;
-    case MYSQL_TYPE_LONG:
-      if (type.flags) {  // unsigned
-        ret.uint32 = uint4korr(payload);
-      } else {
-        ret.int32 = sint4korr(payload);
-      }
-      payload += 4;
-      break;
-    case MYSQL_TYPE_LONGLONG:
-      if (type.flags) {  // unsigned
-        ret.uint64 = uint8korr(payload);
-      } else {
-        ret.int64 = sint8korr(payload);
-      }
+  switch (type) {
+    case kULL:
+      ret = uint8korr(payload);
+      payload += 8;
+    case kLL:
+      ret = sint8korr(payload);
       payload += 8;
       break;
+    case kVARCHAR: {
+      uint8_t len = *(payload++);
+      ret = std::string(reinterpret_cast<const char *>(payload), len);
+      payload += len;
+      break;
+    }
     default:
+      LOG(WARNING) << "Unsupported Type type: " << type << std::endl;
       break;
   }
   return ret;
 }
 
-std::string SerializeValue(const Value &value, const Type &type) {
-  std::string ret;
-  switch (type.type) {
-    case MYSQL_TYPE_TINY:
-      if (type.flags) {  // unsigned
-        ret = std::to_string(value.uint8);
-      } else {
-        ret = std::to_string(value.int8);
-      }
+template <class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+
+std::string ValueToString(const Value &value) {
+  return std::visit(overloaded{
+                        [](int64_t value) { return std::to_string(value); },
+                        [](uint64_t value) { return std::to_string(value); },
+                        [](std::string value) { return value; },
+                    },
+                    value);
+}
+
+std::vector<uint8_t> ValueToNetworkBuffer(const Value &value) {
+  std::vector<uint8_t> buffer;
+  std::visit(overloaded{
+                 [&buffer](int64_t value) {
+                   buffer.insert(buffer.end(), int2pointer(value),
+                                 int2pointer(value) + 8);
+                 },
+                 [&buffer](uint64_t value) {
+                   buffer.insert(buffer.end(), int2pointer(value),
+                                 int2pointer(value) + 8);
+                 },
+                 [&buffer](std::string value) {
+                   uint8_t len = value.size();
+                   buffer.push_back(len);
+                   buffer.insert(buffer.end(), value.begin(), value.end());
+                 },
+             },
+             value);
+  return buffer;
+}
+
+bool ExprToValue(hsql::Expr *expr, Value &value) {
+  switch (expr->type) {
+    case hsql::ExprType::kExprLiteralInt:
+      value = expr->ival;
       break;
-    case MYSQL_TYPE_SHORT:
-      if (type.flags) {  // unsigned
-        ret = std::to_string(value.uint16);
-      } else {
-        ret = std::to_string(value.int16);
-      }
-      break;
-    case MYSQL_TYPE_LONG:
-      if (type.flags) {  // unsigned
-        ret = std::to_string(value.uint32);
-      } else {
-        ret = std::to_string(value.int32);
-      }
-      break;
-    case MYSQL_TYPE_LONGLONG:
-      if (type.flags) {  // unsigned
-        ret = std::to_string(value.uint64);
-      } else {
-        ret = std::to_string(value.int64);
-      }
+    case hsql::ExprType::kExprLiteralString:
+      value = expr->name;
       break;
     default:
-      break;
+      LOG(WARNING) << "Unsupported Expr type: " << expr->type << std::endl;
+      return false;
   }
-  return ret;
+  return true;
 }
 
 // https://dev.mysql.com/doc/dev/mysql-server/8.0.37/page_protocol_com_stmt_execute.html

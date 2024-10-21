@@ -19,6 +19,11 @@ services:
         source: ../../../..
         target: /workspace
     cpuset: "0-3"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "2"
+    #       memory: 8G
     # ports:
     #   - "3306:3306"
     # command: --authentication_policy=mysql_native_password
@@ -30,6 +35,11 @@ services:
     tty: true
     privileged: true
     cpuset: "4-31"
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "4"
+    #       memory: 4G
     volumes:
       - type: bind
         source: ../../../../

@@ -1,7 +1,13 @@
 #pragma once
 
+#include <hsql/SQLParser.h>
+
+#include <variant>
+
 #include "mysql-server/binary_log_types.hpp"
 #include "packet.hpp"
+
+#define int2pointer(A) (reinterpret_cast<uint8_t *>(&(A)))
 
 class ResponseDissector {
   int8_t inter_eof_cnt = 0;
@@ -20,27 +26,32 @@ class ResponseDissector {
                   &responses);  // true: end of the response
 };
 
-struct Type {
-  enum_field_types type;
-  uint flags;
-};
+enum Type {
+  kLL,
+  kULL,
+  kVARCHAR,
 
-union Value {
-  int8_t int8;
-  uint8_t uint8;
-  int16_t int16;
-  uint16_t uint16;
-  int32_t int32;
-  uint32_t uint32;
-  int64_t int64;
-  uint64_t uint64;
+  kUnknown,  // should be the last one
 };
+using Value = std::variant<int64_t, uint64_t, std::string>;
+
+Value operator+(const Value &lhs, const Value &rhs);
+
+Value &operator+=(Value &lhs, const Value &rhs);
+
+Value &operator-=(Value &lhs, const Value &rhs);
+
+bool ValueCast(Value &value, const Type &type);
 
 Type FetchType(const uint8_t *&payload);
 
 Value FetchValue(const uint8_t *&payload, const Type &type);
 
-std::string SerializeValue(const Value &value, const Type &type);
+std::string ValueToString(const Value &value);
+
+std::vector<uint8_t> ValueToNetworkBuffer(const Value &value);
+
+bool ExprToValue(hsql::Expr *expr, Value &value);
 
 struct PreparedStatement {
   uint8_t param_num;
