@@ -28,7 +28,7 @@ class LiteServer {
   LiteServer& operator=(const LiteServer&) = delete;
 
   /// Construct the server with the given thread pool size and maximum.
-  /// when backend_port is empty, backend_addr is treated as a unix socket path
+  /// when backend_addr is empty, backend_port is treated as a unix socket path
   explicit LiteServer(const size_t& nthreads, const size_t& max_item_count,
                       Application& app, std::string& backend_addr,
                       std::string& backend_port,
