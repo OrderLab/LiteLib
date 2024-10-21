@@ -87,7 +87,7 @@ else:
         "-t",
         "/tmp/lite_LevelDB",
         "-p",
-        "60001",
+        "/tmp/redis-leveldb.sock",
         "-m",
         "1",
     ]
@@ -122,7 +122,7 @@ else:
         "-t",
         "/tmp/lite_LevelDB",
         "-p",
-        "60001",
+        "/tmp/redis-leveldb.sock",
         "-m",
         "0",
     ]
