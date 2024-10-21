@@ -8,10 +8,10 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Add(const CacheKey &key, const CacheEntry &value,
-                            bool in_transaction) {
+                            bool in_transaction, bool log) {
   LogEntryInstance *dirty = nullptr;
   CacheStateInstance *state = nullptr;
-  if (cache_inner_.emergency_mode_) {
+  if (cache_inner_.emergency_mode_ && log) {
     dirty =
         new LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
   }
@@ -57,20 +57,20 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Set(const CacheKey &key, const CacheEntry &value,
-                            bool in_transaction) {
-  if (Add(key, value, in_transaction)) return true;
-  return Replace(key, value, in_transaction);
+                            bool in_transaction, bool log) {
+  if (Add(key, value, in_transaction, log)) return true;
+  return Replace(key, value, in_transaction, log);
 }
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Replace(const CacheKey &key, const CacheEntry &value,
-                                bool in_transaction) {
+                                bool in_transaction, bool log) {
   LogEntryInstance *old_dirty = nullptr;
   LogEntryInstance *dirty = nullptr;
   CacheStateInstance *state = nullptr;
-  if (cache_inner_.emergency_mode_) {
+  if (cache_inner_.emergency_mode_ && log) {
     dirty =
         new LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
   }

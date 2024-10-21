@@ -55,7 +55,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                       &pending_requests,
                   const evutil_socket_t client_fd,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
-                  LoggerInstance *logger) {
+                  LoggerInstance *logger, const bool forwarded) {
   if (!emergency_mode_ && backend_fd <= 0) {
     LOG(WARNING) << "Core: Fall back and entering emergency mode "
                  << GetUNIXTimeStamp() << std::endl;
@@ -82,10 +82,12 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       return false;
     }
   } else {
-    const auto buffer = req->Serialize();
-    if (!network::Write(backend_fd, buffer)) {
-      LOG(ERROR) << "Failed to write request to backend" << std::endl;
-      return false;
+    if (!forwarded) {
+      const auto buffer = req->Serialize();
+      if (!network::Write(backend_fd, buffer)) {
+        LOG(ERROR) << "Failed to write request to backend" << std::endl;
+        return false;
+      }
     }
     // TODO: enable application to filter/modify requests before pushing back
     pending_requests.push_back(std::make_pair(req, true));
@@ -103,14 +105,17 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
                    ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
                        &pending_requests,
-                   const evutil_socket_t client_fd, CacheInstance *cache) {
+                   const evutil_socket_t client_fd, CacheInstance *cache,
+                   const bool forwarded) {
   const auto [related_stateful_request, forward_resp] =
       app_.Match(resp, conn_info, pending_requests);
   if (forward_resp) {
-    const auto buffer = resp->Serialize();
-    if (!network::Write(client_fd, buffer)) {
-      LOG(ERROR) << "Failed to write response to client" << std::endl;
-      return false;
+    if (!forwarded) {
+      const auto buffer = resp->Serialize();
+      if (!network::Write(client_fd, buffer)) {
+        LOG(ERROR) << "Failed to write response to client" << std::endl;
+        return false;
+      }
     }
     // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
     app_.NormalUpdate(resp, std::move(related_stateful_request), conn_info,
