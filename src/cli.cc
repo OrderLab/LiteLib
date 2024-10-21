@@ -25,8 +25,8 @@ void PrintHelp() {
   std::cout << "MessageType:\n";
   constexpr auto values = magic_enum::enum_values<lite::PipeMessage>();
   for (const auto v : values) {
-    std::cout << "  " << std::setw(4) << magic_enum::enum_integer(v) << ": "
-              << magic_enum::enum_name(v) << std::endl;
+    std::cout << "  " << std::setw(4) << (int)magic_enum::enum_integer(v)
+              << ": " << magic_enum::enum_name(v) << std::endl;
   }
   std::cout << std::endl;
 }
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
   std::string default_target = "/tmp/lite";
   const char* target = default_target.c_str();
   lite::pipe_message_t message = {
-      .action = lite::PipeMessage::kExitEmergencyMode, .backend_port = 60000};
+      .action = lite::PipeMessage::kExitEmergencyMode, .backend_port = "60000"};
 
   const char* const short_opts = "t:p:m:h";
   const option long_opts[] = {{"target", required_argument, nullptr, 't'},
@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
         target = optarg;
         break;
       case 'p':
-        message.backend_port = std::stoi(optarg);
+        message.backend_port = optarg;
         break;
       case 'm': {
         const auto action_opt =
@@ -75,8 +75,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Write the message to the named pipe
-  ssize_t bytes_written = write(fd, &message, sizeof(message));
-  if (bytes_written == -1) {
+  if (!message.write(fd)) {
     throw std::runtime_error("failed to write to the named pipe");
   }
 
