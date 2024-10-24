@@ -18,7 +18,10 @@ apt-get install -y \
     htop \
     iotop \
     iftop \
-    tcpdump
+    tcpdump \
+    criu \
+    iptables \
+    rsync
 
 cpanm --quiet --notest --skip-satisfied --force Redis
 

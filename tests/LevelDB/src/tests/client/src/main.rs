@@ -16,6 +16,7 @@ use tokio::time::{sleep, sleep_until, Duration, Instant};
 #[derive(Debug, Clone, serde::Deserialize)]
 enum ExperimentType {
     Full,
+    Checkpoint,
     Lite(usize, String),
 }
 
@@ -38,6 +39,7 @@ enum KeyDistribution {
 #[derive(Debug, serde::Deserialize)]
 struct BenchmarkConfig {
     num_keys: usize,
+    key_length: usize,
     value_length: usize,
     #[serde(deserialize_with = "deserialize_duration")]
     test_duration: Duration,
@@ -47,6 +49,7 @@ struct BenchmarkConfig {
     #[serde(deserialize_with = "deserialize_duration")]
     timeout: Duration,
     retry_count: usize,
+    check_correctness: bool,
     file_prefix: String,
     remote_script: Option<RemoteScriptConfig>,
 }
@@ -93,6 +96,10 @@ struct Record {
     queries: Vec<QueryRecord>,
 }
 
+fn generate_key(i: usize, length: usize) -> String {
+    format!("{:0width$}", i, width = length)
+}
+
 fn get_last_n_char(string: &str, n: usize) -> &str {
     let len = string.len();
     if len < n {
@@ -104,16 +111,21 @@ fn get_last_n_char(string: &str, n: usize) -> &str {
 async fn do_query(
     i: usize,
     conn: &mut RedisConnection,
-    key: usize,
+    key_index: usize,
+    key: &str,
     base_value: &str,
     old_suffix_expected: &mut usize,
     is_write: bool,
 ) -> QueryRecord {
     let new_suffix_expected = *old_suffix_expected + is_write as usize;
-    let new_value_expected = format!("{}_{}_{}", base_value, key, new_suffix_expected);
+    let new_value_expected = format!("{}_{}_{}", base_value, key_index, new_suffix_expected);
     let request_time = SystemTime::now();
     let result = match is_write {
-        true => match cmd("SET").arg(&key).arg(&new_value_expected).query::<String>(conn) {
+        true => match cmd("SET")
+            .arg(&key)
+            .arg(&new_value_expected)
+            .query::<String>(conn)
+        {
             Ok(_) => Ok(Some(new_value_expected.clone())),
             Err(e) => Err(e),
         },
@@ -157,7 +169,11 @@ async fn do_query(
         Err(e) => {
             // println!("request error i: {}, key: {}, error: {:?}", i, key, e);
             QueryRecord {
-                status: if e.detail() != Some("flow control enabled") { Status::Timeout } else { Status::Error },
+                status: if e.detail() != Some("flow control enabled") {
+                    Status::Timeout
+                } else {
+                    Status::Error
+                },
                 // status: Status::Timeout,
                 request: request_time,
                 response: response_time,
@@ -194,6 +210,11 @@ async fn main() {
                         remote_script_config.write_buffer_size,
                         cfg.benchmark.file_prefix
                     },
+                    ExperimentType::Checkpoint => format!(
+                        r#"python3 /workspace/scripts/leveldb/init.py -t Checkpoint -b {} -f {}"#,
+                        remote_script_config.write_buffer_size,
+                        cfg.benchmark.file_prefix
+                    ),
                     ExperimentType::Lite(num_threads, memory_size) => format!(
                         r#"python3 /workspace/scripts/leveldb/init.py -t Lite -n {} -s {} -b {} -f {}"#,
                         num_threads, memory_size, remote_script_config.write_buffer_size,
@@ -243,7 +264,7 @@ async fn main() {
                 panic!("Initialize failed i: {}, error: {}", i, e);
             });
             cmd("SET")
-                .arg(&i)
+                .arg(generate_key(i, cfg.benchmark.key_length))
                 .arg(&value)
                 .query::<String>(&mut conn)
                 .unwrap();
@@ -285,8 +306,8 @@ async fn main() {
         let mut rng = rand::thread_rng();
         for _ in 0..num_requests {
             is_write.push(rng.gen_bool(cfg.benchmark.write_ratio));
+        }
     }
-}
 
     let mut handles = Vec::new();
     let records = Arc::new(Mutex::new(vec![]));
@@ -320,6 +341,7 @@ async fn main() {
                         target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
                         match &remote_script_config.experiment_type {
                             ExperimentType::Full => "Full",
+                            ExperimentType::Checkpoint => "Checkpoint",
                             ExperimentType::Lite(_, _) => "Lite",
                         },
                         cfg.benchmark.test_duration.as_secs(),
@@ -378,6 +400,7 @@ async fn main() {
                             i,
                             &mut conn,
                             key,
+                            &generate_key(key, cfg.benchmark.key_length),
                             &base_value,
                             &mut old_suffix_expected,
                             is_write,
@@ -499,67 +522,71 @@ async fn main() {
     }
 
     // -------------------------- Check correctness ---------------------------
-    let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
-    // BUG: Error occurred while creating a new object: Cannot assign requested address (os error 99) if some connections are aborted
-    let mut handles = Vec::new();
-    let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Validating");
-    bar.set_style(
-        ProgressStyle::with_template(
-            "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",
-        )
-        .unwrap(),
-    );
-    let start_time = Instant::now();
-    for i in 1..cfg.benchmark.num_keys + 1 {
-        let pool = pool.clone();
-        let i = i; // Copy i into the closure
-        let expected_value = format!("{}_{}_{}", base_value, i, values[i].lock().await);
-        let bar = bar.clone();
-        let handle = tokio::spawn(async move {
-            let mut conn = pool.get().await.unwrap_or_else(|e| {
-                panic!("validating failed key: {}, error: {}", i, e);
-            });
-            let actual_value: Option<String> = cmd("GET").arg(&i).query(&mut conn).unwrap();
-            match actual_value {
-                Some(actual_value) => {
-                    if actual_value != expected_value {
+    if cfg.benchmark.check_correctness {
+        let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
+        // BUG: Error occurred while creating a new object: Cannot assign requested address (os error 99) if some connections are aborted
+        let mut handles = Vec::new();
+        let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Validating");
+        bar.set_style(
+            ProgressStyle::with_template(
+                "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",
+            )
+            .unwrap(),
+        );
+        let start_time = Instant::now();
+        for i in 1..cfg.benchmark.num_keys + 1 {
+            let pool = pool.clone();
+            let i = i; // Copy i into the closure
+            let expected_value = format!("{}_{}_{}", base_value, i, values[i].lock().await);
+            let bar = bar.clone();
+            let handle = tokio::spawn(async move {
+                let mut conn = pool.get().await.unwrap_or_else(|e| {
+                    panic!("validating failed key: {}, error: {}", i, e);
+                });
+                let actual_value: Option<String> = cmd("GET")
+                    .arg(generate_key(i, cfg.benchmark.key_length))
+                    .query(&mut conn)
+                    .unwrap();
+                match actual_value {
+                    Some(actual_value) => {
+                        if actual_value != expected_value {
+                            eprintln!(
+                                "\nERR! key: {}, expected value: {:?}, actual value: {:?}. If the actual value is newer than expected, it may be because a timeout occurred between the server sending the response and the client receiving it.\n",
+                                i,
+                                get_last_n_char(&expected_value, 10),
+                                get_last_n_char(&actual_value, 10)
+                            );
+                        }
+                    }
+                    None => {
                         eprintln!(
-                            "\nERR! key: {}, expected value: {:?}, actual value: {:?}. If the actual value is newer than expected, it may be because a timeout occurred between the server sending the response and the client receiving it.\n",
+                            "\nERR! key: {}, expected value: {:?}, no actual value\n",
                             i,
-                            get_last_n_char(&expected_value, 10),
-                            get_last_n_char(&actual_value, 10)
+                            get_last_n_char(&expected_value, 10)
                         );
                     }
                 }
-                None => {
-                    eprintln!(
-                        "\nERR! key: {}, expected value: {:?}, no actual value\n",
-                        i,
-                        get_last_n_char(&expected_value, 10)
-                    );
-                }
-            }
-            bar.inc(1);
-        });
-        handles.push(handle);
+                bar.inc(1);
+            });
+            handles.push(handle);
+        }
+        for handle in handles {
+            handle.await.unwrap();
+        }
+        let end_time = Instant::now();
+        bar.finish();
+        println!("\nFinished validating correctness");
+        let elapsed = end_time - start_time;
+        println!(
+            "Validation time: {:?} ms, rps: {:?}",
+            elapsed.as_millis(),
+            cfg.benchmark.num_keys as f64 / elapsed.as_secs_f64()
+        );
     }
-    for handle in handles {
-        handle.await.unwrap();
-    }
-    let end_time = Instant::now();
-    bar.finish();
-    println!("\nFinished validating correctness");
-    let elapsed = end_time - start_time;
-    println!(
-        "Validation time: {:?} ms, rps: {:?}",
-        elapsed.as_millis(),
-        cfg.benchmark.num_keys as f64 / elapsed.as_secs_f64()
-    );
-
 
     // -------------------------- Copy results from remote server -------------
     if let Some(remote_script_config) = cfg.benchmark.remote_script {
-        sleep(Duration::from_secs(5)).await;
+        sleep(Duration::from_secs(10)).await;
         let file_prefix = cfg.benchmark.file_prefix.clone();
         let remote_addr = remote_script_config.remote_addr.clone();
         let remote_ssh_port = remote_script_config.remote_ssh_port.clone();
@@ -570,8 +597,7 @@ async fn main() {
                     &remote_ssh_port,
                     &format!(
                         r#"{}:/workspace/client/monitor.{}.jsonl"#,
-                        remote_addr,
-                        file_prefix,
+                        remote_addr, file_prefix,
                     ),
                     ".",
                 ])
@@ -582,10 +608,16 @@ async fn main() {
                     println!("Copied monitor.jsonl from remote server: {:?}", output);
                 }
                 Some(_) => {
-                    panic!("Failed to copy monitor.jsonl from remote server: {:?}", output);
+                    panic!(
+                        "Failed to copy monitor.jsonl from remote server: {:?}",
+                        output
+                    );
                 }
                 None => {
-                    panic!("Failed to copy monitor.jsonl from remote server: {:?}", output);
+                    panic!(
+                        "Failed to copy monitor.jsonl from remote server: {:?}",
+                        output
+                    );
                 }
             }
         });
@@ -597,11 +629,7 @@ async fn main() {
                 .args([
                     "-P",
                     &remote_ssh_port,
-                    &format!(
-                        r#"{}:/workspace/client/{}.log"#,
-                        remote_addr,
-                        file_prefix,
-                    ),
+                    &format!(r#"{}:/workspace/client/{}.log"#, remote_addr, file_prefix,),
                     ".",
                 ])
                 .output()

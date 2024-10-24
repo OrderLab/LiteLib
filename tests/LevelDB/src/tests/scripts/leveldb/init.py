@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser(description="Init experiment")
 parser.add_argument(
     "-t",
     "--experiment_type",
-    choices=["Full", "Lite"],
+    choices=["Full", "Checkpoint", "Lite"],
     required=True,
     help="The type of the experiment",
 )
@@ -39,9 +39,6 @@ time.sleep(1)
 if args.experiment_type == "Full":
     # boot_command = ["redis-server", "--port", "6379", "--protected-mode", "no"]
     boot_command = [
-        "taskset",
-        "-c",
-        "0,1",
         "/workspace/redis-leveldb/redis-leveldb",
         "-P",
         "6379",
@@ -50,6 +47,24 @@ if args.experiment_type == "Full":
     ]
     utils.StartBackgroundProcess(
         boot_command, "/workspace/client/" + args.file_prefix + ".log"
+    )
+if args.experiment_type == "Checkpoint":
+    os.system(r"rm -rf /workspace/scripts/leveldb/criu")
+    os.system(r"mkdir -p /workspace/scripts/leveldb/criu/foo")
+    os.system(r"mkdir -p /workspace/scripts/leveldb/criu/foobak")
+    os.system(r"mkdir -p /workspace/scripts/leveldb/criu/foo_before_restore")
+
+    boot_command = [
+        "/workspace/redis-leveldb/redis-leveldb",
+        "-D",
+        "/workspace/scripts/leveldb/criu/foo",
+        "-P",
+        "6379",
+        "-B",
+        str(args.write_buffer_size),
+    ]
+    utils.StartBackgroundProcess(
+        boot_command, "/workspace/scripts/leveldb/criu/foo/" + args.file_prefix + ".log"
     )
 else:
     # boot_command = ["redis-server", "--port", "60000", "--protected-mode", "no"]
@@ -61,7 +76,7 @@ else:
         str(args.write_buffer_size),
     ]
     utils.StartBackgroundProcess(
-        boot_command, "/workspace/redis-leveldb/backend-log-1.txt"
+        boot_command, "/workspace/redis-leveldb/" + args.file_prefix + "-backend-log-1.txt"
     )
 
     boot_command = [
