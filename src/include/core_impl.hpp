@@ -23,20 +23,19 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              const std::chrono::milliseconds sliding_window_size,
              const size_t replay_expected_rps, const double flow_control_ratio,
              const size_t n_replay_threads, bool crash_recover)
-    : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
-             pipe_path),
+    : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port, 
+    pipe_path),
       app_(app),
       crash_recover_(crash_recover),
       cache_inner_(max_item_count, emergency_mode_),
       logger_inner_(sliding_window_size),
       backend_addr_(backend_addr),
-      backend_port_(backend_port),
       barrier_(barrier),
       workers_(workers),
       replay_rate_(sliding_window_size),
       replay_expected_rps_(replay_expected_rps),
       flow_control_ratio_(flow_control_ratio) {
-  for (int i = 0; i < n_replay_threads; i++) {
+    for (int i = 0; i < n_replay_threads; i++) {
     replay_workers_.emplace_back(new WorkerInstance(*this, barrier_));
     (**replay_workers_.rbegin()).Run("lite-replay-worker");
   }
@@ -220,7 +219,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   replay_rate_.Reset(replay_expected_rps_);  // Reset the sliding window
   is_replaying_ = true;
-  LOG(INFO) << "replay start, live connections: " << live_connections_.size()
+    LOG(INFO) << "replay start, live connections: " << live_connections_.size()
             << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
     if (!c->ConnectBackend()) {
