@@ -110,7 +110,11 @@ bool Write(const evutil_socket_t fd, const uint8_t buffer[], size_t len) {
     if (bytes_written <= 0 && errno != EAGAIN) {
       PLOG(ERROR) << "write to " << fd;  // TODO: max tries
       return false;
-    } else {
+    } else if (errno == EAGAIN) {
+      PLOG(WARNING) << "write to " << fd; 
+      continue;
+    }
+  }
       // TODO: how to handle EAGAIN?
       len -= bytes_written;
       begin += bytes_written;
