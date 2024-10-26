@@ -77,4 +77,14 @@ class Memcached {
                                          ConnectionInfo &conn_info,
                                          Cache *cache, Logger *logger,
                                          bool flow_control) const;
+  
+  void NormalToEmergencyHook() {}
+
+  void EmergencyToNormalHook() {}
+
+  Packet EmergencyConnectionEstablishHook(ConnectionInfo &conn_info) {
+    Packet packet = Packet();
+    packet.buffer = nullptr;
+    return packet;
+  }
 };
