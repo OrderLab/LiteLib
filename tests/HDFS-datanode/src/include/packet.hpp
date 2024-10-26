@@ -12,15 +12,15 @@
 class Packet {
   using InputIterator = uint8_t *;
 
- public:
+public:
   enum Type { rpc = 0, tcp = 1 };
 
-  enum TcpType {          // related field (comment)
-    Op = 0,               // opcode
-    BlockOpResponse = 1,  // status, block_op_response
-    ReplyStatus = 2,      // status
-    PacketHeader = 3,     // packet_header
-    Other = 4             // (Maybe unfinished packet or data)
+  enum TcpType {         // related field (comment)
+    Op = 0,              // opcode
+    BlockOpResponse = 1, // status, block_op_response
+    ReplyStatus = 2,     // status
+    PacketHeader = 3,    // packet_header
+    Other = 4            // (Maybe unfinished packet or data)
   };
   enum Opcode : unsigned {
     WRITE_BLOCK = 80,
@@ -74,15 +74,15 @@ class Packet {
 
   hadoop::common::RpcResponseHeaderProto RpcResponseHeader;
 
-  Packet() {buffer = std::make_shared<std::vector<uint8_t>>();}
-  
+  Packet() { buffer = std::make_shared<std::vector<uint8_t>>(); }
+
   Packet(std::shared_ptr<std::vector<uint8_t>> buffer_, Type type_) {
     type = type_;
     auto begin = buffer_->data();
     auto end = begin + buffer_->size();
     uint8_t *&reftobegin = begin;
     Deserialize(reftobegin, end);
-    std::cout<< "buffer size:" << buffer->size()<<std::endl;
+    std::cout << "buffer size:" << buffer->size() << std::endl;
   }
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
 

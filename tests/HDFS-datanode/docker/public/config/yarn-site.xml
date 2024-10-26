@@ -9,7 +9,7 @@
       JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_MAPRED_HOME</value>
   </property>
 
-  <property>
+  <!-- <property>
     <name>yarn.resourcemanager.ha.rm-ids</name>
     <value>rm1,rm2</value>
   </property>
@@ -20,6 +20,10 @@
   <property>
     <name>yarn.resourcemanager.hostname.rm2</name>
     <value>nns</value>
+  </property> -->
+  <property>
+    <name>yarn.resourcemanager.hostname</name>
+    <value>nna</value>
   </property>
 
   <!-- <property>

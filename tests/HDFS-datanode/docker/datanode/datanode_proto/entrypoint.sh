@@ -33,3 +33,7 @@ tail -f /dev/null
 ./lite_cli -t /tmp/LiteDatanode_data -p 60001 -m 1
 ./lite_cli -t /tmp/LiteDatanode_rpc -p 60001 -m 1
 ./lite_cli -t /tmp/LiteDatanode_nnrpc -p 60001 -m 1
+
+./lite_cli -t /tmp/LiteDatanode_data -p 60001 -m 0
+./lite_cli -t /tmp/LiteDatanode_rpc -p 60001 -m 0
+./lite_cli -t /tmp/LiteDatanode_nnrpc -p 60001 -m 0

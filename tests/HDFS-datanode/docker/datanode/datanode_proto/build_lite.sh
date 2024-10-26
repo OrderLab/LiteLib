@@ -2,6 +2,7 @@
 
 apt-get install -y --no-install-recommends \
         build-essential \
+        cmake \
         software-properties-common \
         autoconf \
         automake \
