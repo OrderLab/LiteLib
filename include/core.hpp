@@ -63,7 +63,7 @@ class LiteCore : public Daemon {
                       const evutil_socket_t client_fd, CacheInstance *cache,
                       const bool forwarded);
 
-  std::string &backend_addr_, &backend_port_;
+  std::string &backend_addr_;
 
   bool is_replaying_ = false;
 
