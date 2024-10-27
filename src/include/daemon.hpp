@@ -17,6 +17,8 @@ class Daemon {
 
   std::atomic<bool> emergency_mode_ = false;
 
+  std::string &backend_port_;
+
   static size_t GetUNIXTimeStamp();
 
  private:
@@ -33,8 +35,6 @@ class Daemon {
   struct event pipe_event_;
 
   std::string pipe_path_;
-
-  std::string &backend_port_;
 
   void CreatePipeAndRegisterEvent();
 
