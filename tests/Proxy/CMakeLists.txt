@@ -12,7 +12,7 @@ set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost 1.83 REQUIRED COMPONENTS
              system thread)
 find_package(Libevent REQUIRED)
-find_package (glog 0.6.0 REQUIRED)
+find_package (glog 0.4.0 REQUIRED)
 
 add_subdirectory(Lite)
 

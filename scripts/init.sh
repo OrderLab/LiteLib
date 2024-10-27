@@ -21,6 +21,9 @@ main() {
 
   # Remove /mydata and resize the root filesystem
   exec ./resize_rootfs.sh
+
+  # Install dependencies for litesys
+  exec ./litesys_dependency.sh
 }
 
 main
