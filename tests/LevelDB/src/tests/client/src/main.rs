@@ -606,7 +606,6 @@ async fn main() {
 
     // -------------------------- Copy results to remote server -------------
     if let Some(remote_script_config) = cfg.benchmark.remote_script {
-        sleep(Duration::from_secs(10)).await;
         let file_prefix = cfg.benchmark.file_prefix.clone();
         let work_dir = cfg.benchmark.work_dir.clone();
         let remote_addr = remote_script_config.remote_addr.clone();
