@@ -1,7 +1,5 @@
 #!/bin/bash
 
-cd /workspace/scripts/leveldb/criu/
-
 case $CRTOOLS_SCRIPT_ACTION in
 	(post-dump)
 		rm -rf foobak/

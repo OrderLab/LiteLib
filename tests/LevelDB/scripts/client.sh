@@ -23,6 +23,8 @@ main() {
   check_not_root
   install_rust
   compile_client
+
+  echo "Please do ssh-copy-id to the server node"
 }
 
 main

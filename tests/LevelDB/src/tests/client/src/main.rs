@@ -22,6 +22,7 @@ enum ExperimentType {
 
 #[derive(Debug, Clone, serde::Deserialize)]
 struct RemoteScriptConfig {
+    root_dir: String,
     experiment_type: ExperimentType,
     remote_addr: String,
     remote_ssh_port: String,
@@ -50,6 +51,7 @@ struct BenchmarkConfig {
     timeout: Duration,
     retry_count: usize,
     check_correctness: bool,
+    work_dir: String,
     file_prefix: String,
     remote_script: Option<RemoteScriptConfig>,
 }
@@ -195,6 +197,11 @@ async fn main() {
         .map(char::from)
         .collect();
 
+    // -------------------------- Create work directory ----------------------
+    std::fs::create_dir_all(&cfg.benchmark.work_dir).unwrap_or_else(|e| {
+        panic!("Failed to create work directory {}: {}", cfg.benchmark.work_dir, e);
+    });
+
     // -------------------------- Init remote servers -------------------------
     if let Some(remote_script_config) = &cfg.benchmark.remote_script {
         let remote_script_config = remote_script_config.clone();
@@ -205,20 +212,29 @@ async fn main() {
                 "-p",
                 &remote_script_config.remote_ssh_port,
                 &match &remote_script_config.experiment_type {
-                    ExperimentType::Full => format! {
-                        r#"python3 /workspace/scripts/leveldb/init.py -t Full -b {} -f {}"#,
+                    ExperimentType::Full => format!(
+                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/init.py -t Full -b {} -f {} -r {} -w {}"#,
+                        remote_script_config.root_dir,
                         remote_script_config.write_buffer_size,
-                        cfg.benchmark.file_prefix
-                    },
+                        cfg.benchmark.file_prefix,
+                        remote_script_config.root_dir,
+                        cfg.benchmark.work_dir
+                    ),
                     ExperimentType::Checkpoint => format!(
-                        r#"python3 /workspace/scripts/leveldb/init.py -t Checkpoint -b {} -f {}"#,
+                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/init.py -t Checkpoint -b {} -f {} -r {} -w {}"#,
+                        remote_script_config.root_dir,
                         remote_script_config.write_buffer_size,
-                        cfg.benchmark.file_prefix
+                        cfg.benchmark.file_prefix,
+                        remote_script_config.root_dir,
+                        cfg.benchmark.work_dir
                     ),
                     ExperimentType::Lite(num_threads, memory_size) => format!(
-                        r#"python3 /workspace/scripts/leveldb/init.py -t Lite -n {} -s {} -b {} -f {}"#,
+                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/init.py -t Lite -n {} -s {} -b {} -f {} -r {} -w {}"#,
+                        remote_script_config.root_dir,
                         num_threads, memory_size, remote_script_config.write_buffer_size,
-                        cfg.benchmark.file_prefix
+                        cfg.benchmark.file_prefix,
+                        remote_script_config.root_dir,
+                        cfg.benchmark.work_dir
                     ),
                 },
             ])
@@ -324,6 +340,7 @@ async fn main() {
         let now = SystemTime::now();
         let remote_script_config = remote_script_config.clone();
         let file_prefix = cfg.benchmark.file_prefix.clone();
+        let work_dir = cfg.benchmark.work_dir.clone();
         let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
         let secs = duration_since_epoch.as_secs();
         let target_time = UNIX_EPOCH + Duration::from_secs(secs + 3);
@@ -336,7 +353,8 @@ async fn main() {
                     "-p",
                     &remote_script_config.remote_ssh_port,
                     &format!(
-                        r#"python3 /workspace/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {}"#,
+                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {} -r {} -w {}"#,
+                        remote_script_config.root_dir,
                         remote_script_config.crash_time.as_secs(),
                         target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
                         match &remote_script_config.experiment_type {
@@ -347,6 +365,8 @@ async fn main() {
                         cfg.benchmark.test_duration.as_secs(),
                         file_prefix,
                         remote_script_config.write_buffer_size,
+                        remote_script_config.root_dir,
+                        work_dir
                     ),
                 ])
                 .output()
@@ -584,10 +604,11 @@ async fn main() {
         );
     }
 
-    // -------------------------- Copy results from remote server -------------
+    // -------------------------- Copy results to remote server -------------
     if let Some(remote_script_config) = cfg.benchmark.remote_script {
         sleep(Duration::from_secs(10)).await;
         let file_prefix = cfg.benchmark.file_prefix.clone();
+        let work_dir = cfg.benchmark.work_dir.clone();
         let remote_addr = remote_script_config.remote_addr.clone();
         let remote_ssh_port = remote_script_config.remote_ssh_port.clone();
         tokio::spawn(async move {
@@ -595,54 +616,29 @@ async fn main() {
                 .args([
                     "-P",
                     &remote_ssh_port,
+                    &format!(r#"{}.jsonl"#, file_prefix,),
                     &format!(
-                        r#"{}:/workspace/client/monitor.{}.jsonl"#,
-                        remote_addr, file_prefix,
+                        r#"{}:{}"#,
+                        remote_addr, work_dir
                     ),
-                    ".",
                 ])
                 .output()
-                .expect("Failed to copy monitor.jsonl from remote server");
+                .expect("Failed to copy monitor.jsonl to remote server");
             match output.status.code() {
                 Some(0) => {
-                    println!("Copied monitor.jsonl from remote server: {:?}", output);
+                    println!("Copied monitor.jsonl to remote server: {:?}", output);
                 }
                 Some(_) => {
                     panic!(
-                        "Failed to copy monitor.jsonl from remote server: {:?}",
+                        "Failed to copy monitor.jsonl to remote server: {:?}",
                         output
                     );
                 }
                 None => {
                     panic!(
-                        "Failed to copy monitor.jsonl from remote server: {:?}",
+                        "Failed to copy monitor.jsonl to remote server: {:?}",
                         output
                     );
-                }
-            }
-        });
-        let file_prefix = cfg.benchmark.file_prefix.clone();
-        let remote_addr = remote_script_config.remote_addr.clone();
-        let remote_ssh_port = remote_script_config.remote_ssh_port.clone();
-        tokio::spawn(async move {
-            let output = Command::new("scp")
-                .args([
-                    "-P",
-                    &remote_ssh_port,
-                    &format!(r#"{}:/workspace/client/{}.log"#, remote_addr, file_prefix,),
-                    ".",
-                ])
-                .output()
-                .expect("Failed to copy log from remote server");
-            match output.status.code() {
-                Some(0) => {
-                    println!("Copied log from remote server: {:?}", output);
-                }
-                Some(_) => {
-                    panic!("Failed to copy log from remote server: {:?}", output);
-                }
-                None => {
-                    panic!("Failed to copy log from remote server: {:?}", output);
                 }
             }
         });

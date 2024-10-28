@@ -30,7 +30,7 @@ install_dependencies() {
     perl \
     procps
   sudo cpanm --quiet --notest --skip-satisfied --force Redis
-  pip3 install psutil redis
+  pip3 install psutil redis matplotlib
 }
 
 build_redis_leveldb() {

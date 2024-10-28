@@ -44,17 +44,23 @@ parser.add_argument(
     type=int,
     help="The size of the write buffer of LevelDB",
 )
+parser.add_argument(
+    "-r", "--root_dir", type=str, required=True, help="The root directory of the repository"
+)
+parser.add_argument(
+    "-w", "--work_dir", type=str, required=True, help="The working directory"
+)
 args = parser.parse_args()
 
-monitor_log_file = f"/workspace/client/monitor." + args.file_prefix + ".jsonl"
+monitor_log_file = args.work_dir + "/monitor." + args.file_prefix + ".jsonl"
 boot_command = [
     "python3",
-    "/workspace/scripts/leveldb/monitor.py",
+    args.root_dir + "/tests/LevelDB/src/tests/scripts/leveldb/monitor.py",
     str(args.total_time),
     monitor_log_file,
     str(args.start_time),
 ]
-utils.StartBackgroundProcess(boot_command, "/workspace/scripts/leveldb/" + args.file_prefix + "-monitor-log.txt")
+utils.StartBackgroundProcess(boot_command, args.work_dir + "/" + args.file_prefix + "-monitor-log.txt")
 
 start_time = args.start_time / 1e9
 crash_time = start_time + args.crash_time
@@ -74,7 +80,7 @@ if args.experiment_type == "Checkpoint":
         "-t",
         str(redis_leveldb_pid),
         "-D",
-        "/workspace/scripts/leveldb/criu",
+        args.work_dir + "/checkpoint-data",
         "--tcp-close",
         "--ext-unix-sk",
         "--file-locks",
@@ -82,12 +88,12 @@ if args.experiment_type == "Checkpoint":
         "--skip-in-flight",
         "-vvvv",
         "-o",
-        "/workspace/scripts/leveldb/" + args.file_prefix + "-dump.log",
+        args.work_dir + "/" + args.file_prefix + "-dump.log",
 		"--action-script",
-        "/workspace/scripts/leveldb/criuhelper.sh"
+        args.root_dir + "/tests/LevelDB/src/tests/scripts/leveldb/criuhelper.sh"
     ]
     utils.StartBackgroundProcess(
-        boot_command, "/workspace/scripts/leveldb/" + args.file_prefix + "-dump-log.txt"
+        boot_command, args.work_dir + "/" + args.file_prefix + "-dump-log.txt"
     )
 
 sleep_for(crash_time - time.time())
@@ -100,17 +106,16 @@ if args.experiment_type == "Full":
     # time.sleep(10)
 
     boot_command = [
-        "taskset",
-        "-c",
-        "0,1",
-        "/workspace/redis-leveldb/redis-leveldb",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        "-D",
+        args.work_dir + "/full-data",
         "-P",
         "6379",
         "-B",
         str(args.write_buffer_size),
     ]
     utils.StartBackgroundProcess(
-        boot_command, "/workspace/client/" + args.file_prefix + ".log", True
+        boot_command, args.work_dir + "/" + args.file_prefix + ".log", True
     )
 elif args.experiment_type == "Checkpoint":
     sleep_for(1)
@@ -120,21 +125,21 @@ elif args.experiment_type == "Checkpoint":
         "-t",
         str(redis_leveldb_pid),
         "-D",
-        "/workspace/scripts/leveldb/criu",
+        args.work_dir + "/checkpoint-data",
         "--tcp-close",
         "--restore-detached",
         "-vvvv",
         "-o",
-        "/workspace/scripts/leveldb/" + args.file_prefix + "-restore.log",
+        args.work_dir + "/" + args.file_prefix + "-restore.log",
 	    "--action-script",
-        "/workspace/scripts/leveldb/criuhelper.sh",
+        args.root_dir + "/tests/LevelDB/src/tests/scripts/leveldb/criuhelper.sh",
     ]
     utils.StartBackgroundProcess(
-        boot_command, "/workspace/scripts/leveldb/" + args.file_prefix + "-restore-log.txt"
+        boot_command, args.work_dir + "/" + args.file_prefix + "-restore-log.txt"
     )
-else:
+elif args.experiment_type == "Lite":
     boot_command = [
-        "/workspace/server/lite_cli",
+        args.root_dir + "/tests/LevelDB/src/lite-version/build/Lite/lite_cli",
         "-t",
         "/tmp/lite_LevelDB",
         "-p",
@@ -142,12 +147,14 @@ else:
         "-m",
         "1",
     ]
-    utils.StartBackgroundProcess(boot_command, "/workspace/server/" + args.file_prefix + "-lite-cli-log-1.txt")
+    utils.StartBackgroundProcess(boot_command, args.work_dir + "/" + args.file_prefix + "-lite-cli-log-1.txt")
 
     # time.sleep(1)
 
     boot_command = [
-        "/workspace/redis-leveldb/redis-leveldb",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        "-D",
+        args.work_dir + "/lite-data",
         "-P",
         "60001",
         "-B",
@@ -155,7 +162,7 @@ else:
     ]
     # boot_command = ["redis-server", "--port", "60001"]
     utils.StartBackgroundProcess(
-        boot_command, "/workspace/redis-leveldb/" + args.file_prefix + "-backend-log-2.txt"
+        boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-2.txt"
     )
 
     # time.sleep(9)
@@ -169,7 +176,7 @@ else:
             result = False
 
     boot_command = [
-        "/workspace/server/lite_cli",
+        args.root_dir + "/tests/LevelDB/src/lite-version/build/Lite/lite_cli",
         "-t",
         "/tmp/lite_LevelDB",
         "-p",
@@ -177,4 +184,6 @@ else:
         "-m",
         "0",
     ]
-    utils.StartBackgroundProcess(boot_command, "/workspace/server/" + args.file_prefix + "-lite-cli-log-2.txt")
+    utils.StartBackgroundProcess(boot_command, args.work_dir + "/" + args.file_prefix + "-lite-cli-log-2.txt")
+else:
+    raise ValueError("Invalid experiment type")
