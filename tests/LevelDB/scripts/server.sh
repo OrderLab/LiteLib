@@ -22,7 +22,6 @@ build_lite_version() {
 
 install_dependencies() {
   sudo apt-get install -y --no-install-recommends \
-    criu \
     libsnappy-dev \
     libev-dev \
     libgmp-dev \
@@ -31,6 +30,37 @@ install_dependencies() {
     procps
   sudo cpanm --quiet --notest --skip-satisfied --force Redis
   pip3 install psutil redis matplotlib
+}
+
+install_criu() {
+  sudo apt-get install -y --no-install-recommends \
+    libprotobuf-dev \
+    libprotobuf-c-dev \
+    protobuf-c-compiler \
+    protobuf-compiler \
+    python3-protobuf \
+    pkg-config \
+    libbsd-dev \
+    iproute2 \
+    libnftables-dev \
+    libcap-dev \
+    libnl-3-dev \
+    libnet-dev \
+    libaio-dev \
+    libgnutls28-dev \
+    python3-future \
+    asciidoctor
+
+  CURRENT_DIR=$(pwd)
+  mkdir -p ${HOME}/dependencies/criu
+  cd ${HOME}/dependencies/criu
+  wget http://github.com/checkpoint-restore/criu/archive/v4.0/criu-4.0.tar.gz
+  tar -xazf criu-4.0.tar.gz
+  cd criu-4.0
+  make -j${NUM_JOBS}
+  sudo make install
+
+  cd $CURRENT_DIR
 }
 
 build_redis_leveldb() {
@@ -42,8 +72,9 @@ build_redis_leveldb() {
 
 main() {
   check_not_root
-  # build_lite_version
-  # install_dependencies
+  build_lite_version
+  install_dependencies
+  install_criu
   build_redis_leveldb
 }
 
