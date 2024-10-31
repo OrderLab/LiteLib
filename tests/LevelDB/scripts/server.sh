@@ -54,6 +54,7 @@ install_criu() {
     asciidoctor
 
   CURRENT_DIR=$(pwd)
+  sudo chown -R $(whoami):$(whoami) ${HOME}/dependencies
   mkdir -p ${HOME}/dependencies/criu
   cd ${HOME}/dependencies/criu
   wget http://github.com/checkpoint-restore/criu/archive/v4.0/criu-4.0.tar.gz
