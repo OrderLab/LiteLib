@@ -13,11 +13,13 @@ check_not_root() {
 }
 
 build_lite_version() {
+  CURRENT_DIR=$(pwd)
   cd ../src/lite-version
   mkdir -p build
   cd build
   cmake .. -DCMAKE_BUILD_TYPE=Release
   make -j${NUM_JOBS}
+  cd $CURRENT_DIR
 }
 
 install_dependencies() {
