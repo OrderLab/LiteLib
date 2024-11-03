@@ -79,6 +79,8 @@ main() {
   install_dependencies
   install_criu
   build_redis_leveldb
+
+  echo "Please do ssh-copy-id to the client node"
 }
 
 main

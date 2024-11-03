@@ -10,5 +10,8 @@ case $CRTOOLS_SCRIPT_ACTION in
 		mv foo/ foo_before_restore/
 		mv foobak/ foo
 		;;
+	(post-resume)
+		echo "boot time `date +%s%N`" >> foo_before_restore/foo/reboot_time.log
+		;;
 	(*) echo "No action for " $CRTOOLS_SCRIPT_ACTION;;
 esac

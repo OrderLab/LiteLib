@@ -4,6 +4,8 @@ import os
 import utils
 import redis
 import psutil
+import random
+import threading
 
 
 def sleep_for(seconds):
@@ -45,10 +47,17 @@ parser.add_argument(
     help="The size of the write buffer of LevelDB",
 )
 parser.add_argument(
-    "-r", "--root_dir", type=str, required=True, help="The root directory of the repository"
+    "-r",
+    "--root_dir",
+    type=str,
+    required=True,
+    help="The root directory of the repository",
 )
 parser.add_argument(
     "-w", "--work_dir", type=str, required=True, help="The working directory"
+)
+parser.add_argument(
+    "-i", "--checkpoint_interval", type=int, help="The interval of checkpointing"
 )
 args = parser.parse_args()
 
@@ -60,20 +69,15 @@ boot_command = [
     monitor_log_file,
     str(args.start_time),
 ]
-utils.StartBackgroundProcess(boot_command, args.work_dir + "/" + args.file_prefix + "-monitor-log.txt")
-
-start_time = args.start_time / 1e9
-crash_time = start_time + args.crash_time
-
-print(
-    f"Current time: {time.time()}, Start time: {start_time}, Crash time: {crash_time}"
+utils.StartBackgroundProcess(
+    boot_command, args.work_dir + "/" + args.file_prefix + "-monitor-log.txt"
 )
 
-sleep_for(start_time - time.time())
-# ---------------------------------------------------------------- exp begins
-
 redis_leveldb_pid = get_pid_by_name("redis-leveldb")
-if args.experiment_type == "Checkpoint":
+checkpoint_lock = threading.Lock()
+
+
+def checkpoint_dump(cnt):
     boot_command = [
         "criu",
         "dump",
@@ -88,13 +92,49 @@ if args.experiment_type == "Checkpoint":
         "--skip-in-flight",
         "-vvvv",
         "-o",
-        args.work_dir + "/" + args.file_prefix + "-dump.log",
-		"--action-script",
-        args.root_dir + "/tests/LevelDB/src/tests/scripts/leveldb/criuhelper.sh"
+        args.work_dir + "/" + args.file_prefix + "-dump" + str(cnt) + ".log",
+        "--action-script",
+        args.root_dir + "/tests/LevelDB/src/tests/scripts/leveldb/criuhelper.sh",
     ]
-    utils.StartBackgroundProcess(
-        boot_command, args.work_dir + "/" + args.file_prefix + "-dump-log.txt"
+    with checkpoint_lock:
+        process = utils.StartBackgroundProcess(
+            boot_command,
+            args.work_dir + "/" + args.file_prefix + "-dump-log" + str(cnt) + ".txt",
+        )
+        process.wait()
+
+
+def periodic_checkpoint(interval, end_time):
+    first_checkpoint_time = time.time()
+    i = 1
+    while time.time() < end_time:
+        checkpoint_dump(i)
+        i += 1
+        time.sleep(interval - (time.monotonic() - first_checkpoint_time) % interval)
+    os.system(f"cp {args.work_dir}/checkpoint-data/foo_before_restore/foo/{args.file_prefix}.log {args.work_dir}")
+    os.system(f"cat {args.work_dir}/checkpoint-data/foo_before_restore/foo/reboot_time.log >> {args.work_dir}/{args.file_prefix}.log")
+
+
+start_time = args.start_time / 1e9
+crash_time = start_time + args.crash_time
+
+print(
+    f"Current time: {time.time()}, Start time: {start_time}, Crash time: {crash_time}"
+)
+
+sleep_for(start_time - time.time())
+# ---------------------------------------------------------------- exp begins
+
+if args.experiment_type == "Checkpoint":
+    checkpoint_start_time = start_time + random.uniform(0, args.checkpoint_interval)
+    print(f"Checkpoint start time: {checkpoint_start_time - start_time}")
+    checkpoint_thread = threading.Thread(
+        target=periodic_checkpoint,
+        args=(args.checkpoint_interval, start_time + args.total_time),
     )
+    sleep_for(checkpoint_start_time - time.time())
+    checkpoint_thread.start()
+
 
 sleep_for(crash_time - time.time())
 # ---------------------------------------------------------------- crashes
@@ -103,8 +143,6 @@ os.system(r'pgrep "redis-leveldb" | xargs kill -2')
 os.system(r'pgrep "redis-server" | xargs kill -2')
 
 if args.experiment_type == "Full":
-    # time.sleep(10)
-
     boot_command = [
         args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
         "-D",
@@ -118,7 +156,6 @@ if args.experiment_type == "Full":
         boot_command, args.work_dir + "/" + args.file_prefix + ".log", True
     )
 elif args.experiment_type == "Checkpoint":
-    sleep_for(1)
     boot_command = [
         "criu",
         "restore",
@@ -131,12 +168,14 @@ elif args.experiment_type == "Checkpoint":
         "-vvvv",
         "-o",
         args.work_dir + "/" + args.file_prefix + "-restore.log",
-	    "--action-script",
+        "--action-script",
         args.root_dir + "/tests/LevelDB/src/tests/scripts/leveldb/criuhelper.sh",
     ]
-    utils.StartBackgroundProcess(
-        boot_command, args.work_dir + "/" + args.file_prefix + "-restore-log.txt"
-    )
+    with checkpoint_lock:
+        process = utils.StartBackgroundProcess(
+            boot_command, args.work_dir + "/" + args.file_prefix + "-restore-log.txt"
+        )
+        process.wait()
 elif args.experiment_type == "Lite":
     boot_command = [
         args.root_dir + "/tests/LevelDB/src/lite-version/build/Lite/lite_cli",
@@ -147,9 +186,9 @@ elif args.experiment_type == "Lite":
         "-m",
         "1",
     ]
-    utils.StartBackgroundProcess(boot_command, args.work_dir + "/" + args.file_prefix + "-lite-cli-log-1.txt")
-
-    # time.sleep(1)
+    utils.StartBackgroundProcess(
+        boot_command, args.work_dir + "/" + args.file_prefix + "-lite-cli-log-1.txt"
+    )
 
     boot_command = [
         args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
@@ -160,12 +199,9 @@ elif args.experiment_type == "Lite":
         "-B",
         str(args.write_buffer_size),
     ]
-    # boot_command = ["redis-server", "--port", "60001"]
     utils.StartBackgroundProcess(
         boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-2.txt"
     )
-
-    # time.sleep(9)
 
     result = False
     while not result:
@@ -184,6 +220,8 @@ elif args.experiment_type == "Lite":
         "-m",
         "0",
     ]
-    utils.StartBackgroundProcess(boot_command, args.work_dir + "/" + args.file_prefix + "-lite-cli-log-2.txt")
+    utils.StartBackgroundProcess(
+        boot_command, args.work_dir + "/" + args.file_prefix + "-lite-cli-log-2.txt"
+    )
 else:
     raise ValueError("Invalid experiment type")

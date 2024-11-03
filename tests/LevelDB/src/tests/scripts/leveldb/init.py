@@ -27,7 +27,11 @@ parser.add_argument(
     "-f", "--file_prefix", type=str, required=True, help="The file prefix"
 )
 parser.add_argument(
-    "-r", "--root_dir", type=str, required=True, help="The root directory of the repository"
+    "-r",
+    "--root_dir",
+    type=str,
+    required=True,
+    help="The root directory of the repository",
 )
 parser.add_argument(
     "-w", "--work_dir", type=str, required=True, help="The working directory"
@@ -35,6 +39,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 os.system(r"mkdir -p " + args.work_dir)
+os.system(r"chmod 777 " + args.work_dir)
 
 os.system(r'pgrep "redis-leveldb" | xargs kill -9')
 os.system(r'pgrep "LiteLevelDB" | xargs kill -9')
@@ -75,7 +80,8 @@ elif args.experiment_type == "Checkpoint":
         str(args.write_buffer_size),
     ]
     utils.StartBackgroundProcess(
-        boot_command, args.work_dir + "/checkpoint-data/foo/" + args.file_prefix + ".log"
+        boot_command,
+        args.work_dir + "/checkpoint-data/foo/" + args.file_prefix + ".log",
     )
 elif args.experiment_type == "Lite":
     os.system(r"rm -rf " + args.work_dir + "/lite-data")

@@ -16,7 +16,7 @@ use tokio::time::{sleep, sleep_until, Duration, Instant};
 #[derive(Debug, Clone, serde::Deserialize)]
 enum ExperimentType {
     Full,
-    Checkpoint,
+    Checkpoint(usize),
     Lite(usize, String),
 }
 
@@ -211,32 +211,27 @@ async fn main() {
                 &remote_script_config.remote_addr,
                 "-p",
                 &remote_script_config.remote_ssh_port,
-                &match &remote_script_config.experiment_type {
-                    ExperimentType::Full => format!(
-                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/init.py -t Full -b {} -f {} -r {} -w {}"#,
+                &format!(
+                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/init.py -t {} -b {} -f {} -r {} -w {} -n {} -s {}"#,
                         remote_script_config.root_dir,
+                        match &remote_script_config.experiment_type {
+                            ExperimentType::Full => "Full",
+                            ExperimentType::Checkpoint(_) => "Checkpoint",
+                            ExperimentType::Lite(_, _) => "Lite",
+                        },
                         remote_script_config.write_buffer_size,
                         cfg.benchmark.file_prefix,
                         remote_script_config.root_dir,
-                        cfg.benchmark.work_dir
+                        cfg.benchmark.work_dir,
+                        match &remote_script_config.experiment_type {
+                            ExperimentType::Lite(num_threads, _) => num_threads,
+                            _ => &0,
+                        },
+                        match &remote_script_config.experiment_type {
+                            ExperimentType::Lite(_, memory_size) => memory_size,
+                            _ => "0G",
+                        },
                     ),
-                    ExperimentType::Checkpoint => format!(
-                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/init.py -t Checkpoint -b {} -f {} -r {} -w {}"#,
-                        remote_script_config.root_dir,
-                        remote_script_config.write_buffer_size,
-                        cfg.benchmark.file_prefix,
-                        remote_script_config.root_dir,
-                        cfg.benchmark.work_dir
-                    ),
-                    ExperimentType::Lite(num_threads, memory_size) => format!(
-                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/init.py -t Lite -n {} -s {} -b {} -f {} -r {} -w {}"#,
-                        remote_script_config.root_dir,
-                        num_threads, memory_size, remote_script_config.write_buffer_size,
-                        cfg.benchmark.file_prefix,
-                        remote_script_config.root_dir,
-                        cfg.benchmark.work_dir
-                    ),
-                },
             ])
             .output()
             .expect("Failed to init remote leveldb server");
@@ -353,20 +348,24 @@ async fn main() {
                     "-p",
                     &remote_script_config.remote_ssh_port,
                     &format!(
-                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {} -r {} -w {}"#,
+                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {} -r {} -w {} -i {}"#,
                         remote_script_config.root_dir,
                         remote_script_config.crash_time.as_secs(),
                         target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
                         match &remote_script_config.experiment_type {
                             ExperimentType::Full => "Full",
-                            ExperimentType::Checkpoint => "Checkpoint",
+                            ExperimentType::Checkpoint(_) => "Checkpoint",
                             ExperimentType::Lite(_, _) => "Lite",
                         },
                         cfg.benchmark.test_duration.as_secs(),
                         file_prefix,
                         remote_script_config.write_buffer_size,
                         remote_script_config.root_dir,
-                        work_dir
+                        work_dir,
+                        match &remote_script_config.experiment_type {
+                            ExperimentType::Checkpoint(checkpoint_interval) => checkpoint_interval,
+                            _ => &0,
+                        },
                     ),
                 ])
                 .output()
@@ -622,20 +621,20 @@ async fn main() {
                     ),
                 ])
                 .output()
-                .expect("Failed to copy monitor.jsonl to remote server");
+                .expect("Failed to copy client log to remote server");
             match output.status.code() {
                 Some(0) => {
-                    println!("Copied monitor.jsonl to remote server: {:?}", output);
+                    println!("Copied client log to remote server: {:?}", output);
                 }
                 Some(_) => {
                     panic!(
-                        "Failed to copy monitor.jsonl to remote server: {:?}",
+                        "Failed to copy client log to remote server: {:?}",
                         output
                     );
                 }
                 None => {
                     panic!(
-                        "Failed to copy monitor.jsonl to remote server: {:?}",
+                        "Failed to copy client log to remote server: {:?}",
                         output
                     );
                 }
