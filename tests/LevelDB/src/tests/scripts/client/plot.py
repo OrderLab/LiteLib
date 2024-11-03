@@ -6,6 +6,7 @@ import numpy as np
 import os
 import re
 from datetime import datetime
+from concurrent.futures import ProcessPoolExecutor
 
 
 def annotate_time_points(ax, stat):
@@ -141,9 +142,8 @@ for filename in args.filenames:
             f"Invalid file type: {filename}. Expected a '.jsonl' file."
         )
 
-logs = []
-for i in range(cnt):
-    with open(args.filenames[i], "r") as f:
+def process_file(filename):
+    with open(filename, "r") as f:
         data = json.load(f)
         for line in data:
             line["begin"] = line["begin"]["secs"] + line["begin"]["nanos"] / 1e9
@@ -154,7 +154,12 @@ for i in range(cnt):
                 query["response"] = (
                     query["response"]["secs"] + query["response"]["nanos"] / 1e9
                 )
-        logs.append(data)
+        return data
+
+
+logs = []
+with ProcessPoolExecutor() as executor:
+    logs = list(executor.map(process_file, args.filenames[:cnt]))
 
 client_throughput_lim = np.nan
 client_latency_lim = np.nan
