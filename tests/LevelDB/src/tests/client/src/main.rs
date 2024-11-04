@@ -24,6 +24,7 @@ enum ExperimentType {
 struct RemoteScriptConfig {
     root_dir: String,
     experiment_type: ExperimentType,
+    cpu_limit: usize,
     remote_addr: String,
     remote_ssh_port: String,
     write_buffer_size: usize,
@@ -348,7 +349,7 @@ async fn main() {
                     "-p",
                     &remote_script_config.remote_ssh_port,
                     &format!(
-                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {} -r {} -w {} -i {}"#,
+                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {} -r {} -w {} -c {} -i {}"#,
                         remote_script_config.root_dir,
                         remote_script_config.crash_time.as_secs(),
                         target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),
@@ -362,6 +363,7 @@ async fn main() {
                         remote_script_config.write_buffer_size,
                         remote_script_config.root_dir,
                         work_dir,
+                        remote_script_config.cpu_limit,
                         match &remote_script_config.experiment_type {
                             ExperimentType::Checkpoint(checkpoint_interval) => checkpoint_interval,
                             _ => &0,

@@ -48,11 +48,17 @@ os.system(r'pgrep "redis-server" | xargs kill -9')
 os.system(r"rm dump.rdb")
 time.sleep(1)
 
+os.system(r'cgset -r cpu.max="4000000 100000" cpulimited') # 40 cores
+os.system(r'cgget -g cpu:cpulimited')
+
 if args.experiment_type == "Full":
     os.system(r"rm -rf " + args.work_dir + "/full-data")
     os.system(r"mkdir -p " + args.work_dir + "/full-data")
     # boot_command = ["redis-server", "--port", "6379", "--protected-mode", "no"]
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
         "-D",
         args.work_dir + "/full-data",
@@ -71,6 +77,9 @@ elif args.experiment_type == "Checkpoint":
     os.system(r"mkdir -p " + args.work_dir + "/checkpoint-data/foo_before_restore")
 
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
         "-D",
         args.work_dir + "/checkpoint-data/foo",
@@ -88,6 +97,9 @@ elif args.experiment_type == "Lite":
     os.system(r"mkdir -p " + args.work_dir + "/lite-data")
     # boot_command = ["redis-server", "--port", "60000", "--protected-mode", "no"]
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
         "-D",
         args.work_dir + "/lite-data",
@@ -101,6 +113,9 @@ elif args.experiment_type == "Lite":
     )
 
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
         "-t",
         str(args.num_threads),

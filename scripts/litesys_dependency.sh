@@ -35,7 +35,8 @@ install_dependencies() {
     cmake \
     rsync \
     iptables \
-    tcpdump
+    tcpdump \
+    cgroup-tools
 }
 
 install_boost() {
@@ -75,6 +76,8 @@ main() {
   install_boost
   install_libevent
   configure_ssh
+
+  echo "Dependencies installed successfully!"
 }
 
 main

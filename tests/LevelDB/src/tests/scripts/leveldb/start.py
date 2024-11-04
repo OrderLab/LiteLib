@@ -60,7 +60,13 @@ parser.add_argument(
 parser.add_argument(
     "-i", "--checkpoint_interval", type=int, help="The interval of checkpointing"
 )
+parser.add_argument(
+    "-c", "--cpu_limit", type=int, required=True, help="The CPU limit of the whole system"
+)
 args = parser.parse_args()
+
+os.system(r'cgset -r cpu.max="' + str(args.cpu_limit) + '00000 100000" cpulimited')
+os.system(r'cgget -g cpu:cpulimited')
 
 monitor_log_file = args.work_dir + "/monitor." + args.file_prefix + ".jsonl"
 boot_command = [
@@ -80,6 +86,9 @@ checkpoint_lock = threading.Lock()
 
 def checkpoint_dump(cnt):
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         "criu",
         "dump",
         "-t",
@@ -140,10 +149,13 @@ if args.experiment_type == "Checkpoint":
 sleep_for(crash_time - time.time())
 # ---------------------------------------------------------------- crashes
 
-os.kill(redis_leveldb_pid, signal.SIGKILL)
+os.system(r'pgrep "redis-leveldb" | xargs kill -2')
 
 if args.experiment_type == "Full":
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
         "-D",
         args.work_dir + "/full-data",
@@ -157,6 +169,9 @@ if args.experiment_type == "Full":
     )
 elif args.experiment_type == "Checkpoint":
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         "criu",
         "restore",
         "-t",
@@ -164,7 +179,6 @@ elif args.experiment_type == "Checkpoint":
         "-D",
         args.work_dir + "/checkpoint-data",
         "--tcp-close",
-        "--restore-detached",
         "-vvvv",
         "-o",
         args.work_dir + "/" + args.file_prefix + "-restore.log",
@@ -180,6 +194,9 @@ elif args.experiment_type == "Checkpoint":
         process.wait()
 elif args.experiment_type == "Lite":
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/lite-version/build/Lite/lite_cli",
         "-t",
         "/tmp/lite_LevelDB",
@@ -193,6 +210,9 @@ elif args.experiment_type == "Lite":
     )
 
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
         "-D",
         args.work_dir + "/lite-data",
@@ -214,6 +234,9 @@ elif args.experiment_type == "Lite":
             result = False
 
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/lite-version/build/Lite/lite_cli",
         "-t",
         "/tmp/lite_LevelDB",

@@ -25,6 +25,7 @@ main() {
   compile_client
 
   echo "Please do ssh-copy-id to the server node"
+  echo "LevelDB client initialization is done."
 }
 
 main
