@@ -1,4 +1,5 @@
 import argparse
+import signal
 import time
 import os
 import utils
@@ -139,8 +140,7 @@ if args.experiment_type == "Checkpoint":
 sleep_for(crash_time - time.time())
 # ---------------------------------------------------------------- crashes
 
-os.system(r'pgrep "redis-leveldb" | xargs kill -2')
-os.system(r'pgrep "redis-server" | xargs kill -2')
+os.kill(redis_leveldb_pid, signal.SIGKILL)
 
 if args.experiment_type == "Full":
     boot_command = [
@@ -172,6 +172,8 @@ elif args.experiment_type == "Checkpoint":
         args.root_dir + "/tests/LevelDB/src/tests/scripts/leveldb/criuhelper.sh",
     ]
     with checkpoint_lock:
+        while psutil.pid_exists(redis_leveldb_pid):
+            time.sleep(0.1)
         process = utils.StartBackgroundProcess(
             boot_command, args.work_dir + "/" + args.file_prefix + "-restore-log.txt"
         )
