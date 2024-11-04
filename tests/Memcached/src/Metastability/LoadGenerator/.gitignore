@@ -4,4 +4,10 @@ result_stats/
 results_warm_cache/
 traces/
 TraceReplay
-TraceReplay.o
+TraceReplay.cpp
+run_experiment.py
+TraceReader
+trigger_size_k.py
+TraceFileGenerator.py
+*.d
+*.o
