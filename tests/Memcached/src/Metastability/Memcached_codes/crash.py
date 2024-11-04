@@ -41,7 +41,7 @@ elif exp_type == 'lite' or exp_type == 'replica':
   """)
   os.system(r'ipvsadm -l')
 
-  boot_command = ["ip", "net", "e", "testx", "memcached", "-p", "60002", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4"]
+  boot_command = ["ip", "net", "e", "testx", "memcached", "-p", "60002", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4", "-l", "0.0.0.0"]
   subprocess.Popen(boot_command, start_new_session=True)
   print(boot_command)
 
@@ -85,7 +85,7 @@ elif exp_type == 'full':
   " | ipvsadm -R
   """)
   os.system(r'ipvsadm -l')
-  boot_command = ["ip", "net", "e", "testx", "memcached", "-p", "60002", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4"]
+  boot_command = ["ip", "net", "e", "testx", "memcached", "-p", "60002", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4", "-l", "0.0.0.0"]
   # subprocess.Popen(boot_command, start_new_session=True)
   # boot_command = f"taskset -c 0,1,2,3 ip net e testx memcached -p 60000 -d -u root --enable-shutdown -m {str(CACHE_MEM_SIZE)} -t 4 -d"
   # for i in range(0, 1000):

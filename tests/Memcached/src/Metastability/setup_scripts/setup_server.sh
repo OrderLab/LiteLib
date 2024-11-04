@@ -6,7 +6,7 @@ set -x
 # apt -y install software-properties-common
 DATABASE_SERVER_IP=${1:-"node2"}
 MEMCACHED_SERVER_IP=${2:-"node1"}
-DATABASE_QUERY_WEIGHT=${3:-"5000"}
+DATABASE_QUERY_WEIGHT=${3:-"50"}
 
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2
@@ -14,11 +14,11 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 add-apt-repository ppa:ondrej/php -y
-apt -y install php7.2-cli php7.2-fpm php7.2-curl php7.2-gd php7.2-mysql php7.2-mbstring zip unzip php7.2-memcache
+apt -y install php7.2-cli php7.2-fpm php7.2-curl php7.2-gd php7.2-mysql php7.2-mbstring zip unzip php7.2-memcached
 
 apt -y install nginx
 cp /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bak
-cp ../config_files/default /etc/nginx/sites-available/default
+cp ../config_files/default.new /etc/nginx/sites-available/default
 # cp ../config_files/default /etc/nginx/conf.d/default.conf
 
 # curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb
