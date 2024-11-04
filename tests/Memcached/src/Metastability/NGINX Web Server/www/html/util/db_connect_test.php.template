@@ -1,5 +1,5 @@
 <?php
-$servername = "node2";
+$servername = "DATABASE_SERVER_IP";
 $username = "metastable";
 $password = "hello@123";
  
