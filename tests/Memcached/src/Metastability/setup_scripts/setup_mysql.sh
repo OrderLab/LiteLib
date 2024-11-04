@@ -3,7 +3,7 @@
 set -e
 set -x
 
-NGINX_SERVER_IP=${1:-"node0"}
+NGINX_SERVER_IP=${1:-"%"}
 DB_ENTRIES=${2:-"1504000"}
 
 if [ "$(id -u)" != "0" ]; then

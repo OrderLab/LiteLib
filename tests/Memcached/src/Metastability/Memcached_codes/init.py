@@ -50,7 +50,7 @@ else:
   " | ipvsadm -R""")
   # ---------------------------------------------------------------------------------------------------------------------- temp inner proxy
 
-  boot_command = ["ip", "net", "e", "testx", "memcached", "-p", "60000", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4"]
+  boot_command = ["ip", "net", "e", "testx", "memcached", "-p", "60000", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "4", "-l", "0.0.0.0"]
   subprocess.Popen(boot_command, start_new_session=True)
   print(boot_command)
   # taskset -c 0,1,2,3 ip net e testx memcached -p 60000 -d -u root --enable-shutdown -m 1024 -t 4
