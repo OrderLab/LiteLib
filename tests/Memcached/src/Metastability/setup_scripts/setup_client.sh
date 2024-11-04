@@ -8,6 +8,11 @@ MEMCACHED_SERVER_IP=${2:-"node1"}
 DB_ENTRIES=${3:-"140000"}
 MASTER_VM=${4:-"node3"}
 
+if [ "$(id -u)" -eq 0 ]; then
+  echo "This script should not be run as root. Please run as a regular user."
+  exit 1
+fi
+
 sudo apt -y install libjpeg8-dev zlib1g-dev
 
 pip3 install matplotlib scipy pymemcache SciencePlots
