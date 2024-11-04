@@ -60,5 +60,5 @@ BEGIN
 END //
 DELIMITER ;
 
-GRANT EXECUTE ON metastable_test_db.* TO 'metastable'@'%';
+GRANT EXECUTE ON metastable_test_db.* TO 'metastable'@'remote_server_ip';
 FLUSH PRIVILEGES;
