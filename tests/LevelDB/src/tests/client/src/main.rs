@@ -349,7 +349,7 @@ async fn main() {
                     "-p",
                     &remote_script_config.remote_ssh_port,
                     &format!(
-                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {} -r {} -w {} -c {} -i {}"#,
+                        r#"sudo python3 {}/tests/LevelDB/src/tests/scripts/leveldb/start.py -c {} -s {} -t {} -l {} -f {} -b {} -r {} -w {} -u {} -i {}"#,
                         remote_script_config.root_dir,
                         remote_script_config.crash_time.as_secs(),
                         target_time.duration_since(UNIX_EPOCH).unwrap().as_nanos(),

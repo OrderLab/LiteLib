@@ -61,7 +61,7 @@ parser.add_argument(
     "-i", "--checkpoint_interval", type=int, help="The interval of checkpointing"
 )
 parser.add_argument(
-    "-c", "--cpu_limit", type=int, required=True, help="The CPU limit of the whole system"
+    "-u", "--cpu_limit", type=int, required=True, help="The CPU limit of the whole system"
 )
 args = parser.parse_args()
 
