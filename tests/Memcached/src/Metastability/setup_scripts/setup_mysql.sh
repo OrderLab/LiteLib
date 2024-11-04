@@ -40,7 +40,8 @@ mysql -u root < init_database.sql
 mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'hello@123';;FLUSH PRIVILEGES;"
 ./mysql_random_data_load metastable_test_db large_test_table $DB_ENTRIES --user=root --password=hello@123
 
+cp linearize_column_data.sql.template linearize_column_data.sql
 sed -i "/SET @a:=/c\SET @a:= $DB_ENTRIES;" linearize_column_data.sql
-mysql -u root < linearize_column_data.sql
+mysql -u root -phello@123 < linearize_column_data.sql
 
 echo "Done executing setup_mysql.sh"
