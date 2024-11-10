@@ -228,7 +228,7 @@ void* WorkerThread(void* ptr)
 
 void usage(char* argv0)
 {
-    cerr << "Usage: " << argv0 << " -t traceFile [-r resultsFilename] [-u baseUrl] [-n numThreads] [-o] [-c] [-i pathToRSAKey] [-s SSHDest] [-m SSHCmd]" << endl;
+    cerr << "Usage: " << argv0 << " -t traceFile [-r resultsFilename] [-u baseUrl] [-n numThreads] [-o] [-c] [-s SSHDest] [-m SSHCmd]" << endl;
     exit(-1);
 }
 
@@ -245,9 +245,9 @@ int main(int argc, char** argv)
         tlp: Total Loadshedding period (dictates how windows will be spread ) h
     */
     int opt = 0;
-    string filename, path_to_rsa_key, ssh_dest, ssh_cmd;
+    string filename, ssh_dest, ssh_cmd;
     do {
-        opt = getopt(argc, argv, "t:r:u:n:i:s:m:oc");
+        opt = getopt(argc, argv, "t:r:u:n:s:m:oc");
         switch (opt) {         
             case 't':
                 filename.assign(optarg);
@@ -270,10 +270,6 @@ int main(int argc, char** argv)
 
             case 'c':
                 openLoop = false;
-                break;
-
-            case 'i':
-                path_to_rsa_key.assign(optarg);
                 break;
 
             case 's':
@@ -313,15 +309,12 @@ int main(int argc, char** argv)
       string _t("-t");
       string _o("-o");
       string _StrictHostKeyChecking("StrictHostKeyChecking=no");
-      string _i("-i");
       string _p("-p");
       string _22("22");
       cerr << "ssh cmd: " << ssh_cmd << endl;
       char* argument_list[] = {&_t[0],
                                &_o[0],
                                &_StrictHostKeyChecking[0],
-                               &_i[0],
-                               &path_to_rsa_key[0],
                                &_p[0],
                                &_22[0],
                                &ssh_dest[0],
