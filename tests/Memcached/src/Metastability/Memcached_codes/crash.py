@@ -17,7 +17,8 @@ for proc in psutil.process_iter(['pid', 'name']):
 if os.path.exists("/tmp/memcached.sock"):
   os.remove("/tmp/memcached.sock")
 if exp_type == 'lite':
-  boot_command = ["~/lite_cli", "-t", "/tmp/lite_memcached", "-p", "/tmp/memcached.sock", "-m", "1"]
+  path = os.path.expanduser('~/lite_cli')
+  boot_command = [path, "-t", "/tmp/lite_memcached", "-p", "/tmp/memcached.sock", "-m", "1"]
   subprocess.Popen(boot_command, start_new_session=True)
   print(boot_command)
 print('failure triggered')
@@ -29,7 +30,8 @@ if exp_type == 'lite':
   subprocess.Popen(boot_command, start_new_session=True)
   print(boot_command)
 
-  boot_command = ["~/lite_cli", "-t", "/tmp/lite_memcached", "-p", "/tmp/memcached.sock", "-m", "0"]
+  path = os.path.expanduser('~/lite_cli')
+  boot_command = [path, "-t", "/tmp/lite_memcached", "-p", "/tmp/memcached.sock", "-m", "0"]
   subprocess.Popen(boot_command, start_new_session=True)
   print(boot_command)
 elif exp_type == 'full':
