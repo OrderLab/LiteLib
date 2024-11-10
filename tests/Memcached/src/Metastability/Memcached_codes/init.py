@@ -19,7 +19,9 @@ REPLICA_SIZE = 50
 # REPLICA_SIZE = 512
 # REPLICA_SIZE = 256
 
-os.system(r'pgrep "cached" | xargs kill -9')
+os.system(r'pgrep "memcached" | xargs kill -9')
+os.system(r'pgrep "LiteMemcached" | xargs kill -9')
+os.system(r'pgrep "lite_cli" | xargs kill -9')
 time.sleep(1)
 
 if exp_type == 'lite':
@@ -27,7 +29,8 @@ if exp_type == 'lite':
   subprocess.Popen(boot_command, start_new_session=True)
   print(boot_command)
 
-  boot_command = ["~/LiteMemcached", '-t', '4', '-s', f"{LITE_SIZE}"]
+  path = os.path.expanduser('~/LiteMemcached')
+  boot_command = [path, '-t', '4', '-s', f"{LITE_SIZE}"]
   subprocess.Popen(boot_command, start_new_session=True)
   print(boot_command)
 elif exp_type == 'full':
