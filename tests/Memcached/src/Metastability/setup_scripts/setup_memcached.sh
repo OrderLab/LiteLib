@@ -3,6 +3,7 @@
 set -e
 set -x
 
+NUM_JOBS=${1:-"40"}
 WARM_UP_SIZE=${2:-"140000"}
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -11,6 +12,8 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 sudo apt-get -y install memcached libmemcached-tools
+sudo systemctl stop memcached
+sudo systemctl disable memcached
 # apt-get -y install ipvsadm iproute2
 # ln -s /usr/bin/memcached /usr/bin/memcached.replica
 
@@ -40,5 +43,13 @@ ln -s "`pwd`/../Memcached_codes/warm_up_cache.py" ~/warm_up_cache.py
 ln -s "`pwd`/../Memcached_codes/crash.py" ~/crash.py
 ln -s "`pwd`/../Memcached_codes/monitor.py" ~/monitor.py
 ln -s "`pwd`/../Memcached_codes/init.py" ~/init.py
+
+cd ../../lite-version
+mkdir -p build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j${NUM_JOBS}
+ln -s "`pwd`/LiteMemcached" ~/LiteMemcached
+ln -s "`pwd`/Lite/lite_cli" ~/lite_cli
 
 echo "Done executing setup_memcached.sh"
