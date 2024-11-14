@@ -7,6 +7,7 @@ import os
 import re
 from datetime import datetime
 from concurrent.futures import ProcessPoolExecutor
+import sys
 
 
 def annotate_time_points(ax, stat):
@@ -20,7 +21,7 @@ def annotate_time_points(ax, stat):
             ax.axvline(x=stat[t], color=c, dashes=dash, label=label)
 
 
-def plot_throughput(ax, stat, prefix, ylim):
+def plot_throughput(ax, stat, prefix, ylim, xlim):
     annotate_time_points(ax, stat)
     type = [
         ("Success", "tab:green"),
@@ -45,34 +46,31 @@ def plot_throughput(ax, stat, prefix, ylim):
             base = next_base
     ax.set_xlabel("Time (s)")
     ax.set_ylabel(prefix + " Throughput")
-    ax.set_xlim(0, total_time)
+    ax.set_xlim(0, xlim)
     ax.set_ylim(0, ylim)
     ax.legend()
 
 
-def plot_latency(ax, stat, type, ylabel, ylim):
+def plot_latency(ax, stat, type, ylabel, ylim, xlim):
     annotate_time_points(ax, stat)
-    total_time = len(stat["cnt"])
     ax.plot(stat[type])
-    ax.set_xlim(0, total_time)
+    ax.set_xlim(0, xlim)
     ax.set_ylim(0, ylim)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel(ylabel + " (ms)")
 
 
-def plot_tries(ax, stat, ylim):
+def plot_tries(ax, stat, ylim, xlim):
     annotate_time_points(ax, stat)
-    total_time = len(stat["cnt"])
     ax.plot(stat["avg_tries"])
-    ax.set_xlim(0, total_time)
+    ax.set_xlim(0, xlim)
     ax.set_ylim(0.8, ylim)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Tries (Success)")
 
 
-def plot_resource(ax, stat, res_name, ylim):
+def plot_resource(ax, stat, res_name, ylim, xlim):
     annotate_time_points(ax, stat)
-    total_time = len(stat["cnt"])
     for process_name, process_usage in stat["resource"].items():
         ax.plot(
             process_usage[res_name],
@@ -89,7 +87,7 @@ def plot_resource(ax, stat, res_name, ylim):
         borderaxespad=0,
         ncol=1,
     )
-    ax.set_xlim(0, total_time)
+    ax.set_xlim(0, xlim)
     ax.set_ylim(0, ylim)
 
 
@@ -132,6 +130,8 @@ def get_timestamp_in_the_end_of_a_line(line):
 parser = argparse.ArgumentParser(description="Process JSON files.")
 
 parser.add_argument("-f", "--filenames", nargs="+", help="The path to the JSON file(s)")
+parser.add_argument("-t", "--total_time", type=int, default=7200, help="maximum duration")
+parser.add_argument("-j", "--concurrency", type=int, default=3, help="number of concurrent processes")
 
 args = parser.parse_args()
 
@@ -158,7 +158,7 @@ def process_file(filename):
 
 
 logs = []
-with ProcessPoolExecutor() as executor:
+with ProcessPoolExecutor(max_workers=args.concurrency) as executor:
     logs = list(executor.map(process_file, args.filenames[:cnt]))
 
 client_throughput_lim = np.nan
@@ -328,48 +328,58 @@ for i in range(cnt):
             ordered_process_usages[process_name] = process_usages[process_name]
     stats[i]["resource"] = ordered_process_usages
 
-fig, axs = plt.subplots(10, cnt, figsize=(5 * cnt, 40))
-plt.subplots_adjust(hspace=0.3, wspace=0.3)
-for i in range(cnt):
-    axs[0, i].set_title(args.filenames[i][:-6], y=1.2)
-    plot_throughput(axs[0, i], stats[i], "Client", client_throughput_lim * 1.1)
-    plot_latency(
-        axs[1, i],
-        stats[i],
-        "avg_agg_lat",
-        "Avg Client Latency",
-        client_latency_lim * 1.1,
-    )
-    plot_latency(
-        axs[2, i],
-        stats[i],
-        "p95_agg_lat",
-        "95% Client Latency",
-        client_latency_lim * 1.1,
-    )
-    plot_tries(axs[3, i], stats[i], tries_lim * 1.1)
-    plot_throughput(axs[4, i], stats[i], "Server", server_throughput_lim * 1.1)
-    plot_latency(
-        axs[5, i],
-        stats[i],
-        "avg_server_lat",
-        "Avg Server Latency",
-        server_latency_lim * 1.1,
-    )
-    plot_latency(
-        axs[6, i],
-        stats[i],
-        "p95_server_lat",
-        "95% Server Latency",
-        server_latency_lim * 1.1,
-    )
-    plot_resource(axs[7, i], stats[i], "cpu", cpu_ylim * 1.1)
-    plot_resource(axs[8, i], stats[i], "mem", mem_ylim * 1.1)
-    plot_latency(
-        axs[9, i],
-        stats[i],
-        "avg_lock_wait_time",
-        "Avg Lock Wait Time",
-        lock_time_lim * 1.1,
-    )
-plt.savefig(f"leveldb.png", bbox_inches="tight")
+def plot(duration, name):
+    fig, axs = plt.subplots(10, cnt, figsize=(5 * cnt, 40))
+    plt.subplots_adjust(hspace=0.3, wspace=0.3)
+    for i in range(cnt):
+        xlim = min(duration, len(stats[i]["cnt"]))
+        axs[0, i].set_title(args.filenames[i][:-6], y=1.2)
+        plot_throughput(axs[0, i], stats[i], "Client", client_throughput_lim * 1.1, xlim)
+        plot_latency(
+            axs[1, i],
+            stats[i],
+            "avg_agg_lat",
+            "Avg Client Latency",
+            client_latency_lim * 1.1,
+            xlim,
+        )
+        plot_latency(
+            axs[2, i],
+            stats[i],
+            "p95_agg_lat",
+            "95% Client Latency",
+            client_latency_lim * 1.1,
+            xlim,
+        )
+        plot_tries(axs[3, i], stats[i], tries_lim * 1.1, xlim)
+        plot_throughput(axs[4, i], stats[i], "Server", server_throughput_lim * 1.1, xlim)
+        plot_latency(
+            axs[5, i],
+            stats[i],
+            "avg_server_lat",
+            "Avg Server Latency",
+            server_latency_lim * 1.1,
+            xlim,
+        )
+        plot_latency(
+            axs[6, i],
+            stats[i],
+            "p95_server_lat",
+            "95% Server Latency",
+            server_latency_lim * 1.1,
+            xlim,
+        )
+        plot_resource(axs[7, i], stats[i], "cpu", cpu_ylim * 1.1, xlim)
+        plot_resource(axs[8, i], stats[i], "mem", mem_ylim * 1.1, xlim)
+        plot_latency(
+            axs[9, i],
+            stats[i],
+            "avg_lock_wait_time",
+            "Avg Lock Wait Time",
+            lock_time_lim * 1.1,
+            xlim,
+        )
+    plt.savefig(name, bbox_inches="tight")
+
+plot(args.total_time, "leveldb")
+plot(sys.maxsize, "leveldb_full")

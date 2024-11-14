@@ -4,4 +4,4 @@ server
 redis.db
 dump.rdb
 *.pcap
-tmp-data/
+tmp-data*/

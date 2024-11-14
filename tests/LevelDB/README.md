@@ -35,5 +35,5 @@ cd /workspace/client
 ```bash
 # in server node
 cd `git rev-parse --show-toplevel`/tests/LevelDB/src/tests/tmp-data
-python ../scripts/client/plot.py -f ./log1.jsonl ./log2.jsonl
+python3 ../scripts/client/plot.py -f ./full.jsonl ./lite.jsonl ./checkpoint.jsonl -t 120 -j 2
 ```

@@ -73,21 +73,12 @@ build_redis_leveldb() {
   make test
 }
 
-create_cgroup() {
-  sudo cgcreate -g cpu:/cpulimited
-  # sudo cgset -r cgroup.type="threaded" cpulimited
-  # sudo cgget -g cpu:cpulimited
-  sudo cgset -r cpu.max="400000 100000" cpulimited # 400%
-  sudo cgget -g cpu:cpulimited
-}
-
 main() {
   check_not_root
   build_lite_version
   install_dependencies
   install_criu
   build_redis_leveldb
-  create_cgroup
 
   echo "Please do ssh-copy-id to the client node"
   echo "LevelDB server initialization is done."

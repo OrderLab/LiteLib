@@ -134,7 +134,7 @@ print(
 
 sleep_for(start_time - time.time())
 # ---------------------------------------------------------------- exp begins
-
+checkpoint_thread = None
 if args.experiment_type == "Checkpoint":
     checkpoint_start_time = start_time + random.uniform(0, args.checkpoint_interval)
     print(f"Checkpoint start time: {checkpoint_start_time - start_time}")
@@ -179,6 +179,7 @@ elif args.experiment_type == "Checkpoint":
         "-D",
         args.work_dir + "/checkpoint-data",
         "--tcp-close",
+        "-d",
         "-vvvv",
         "-o",
         args.work_dir + "/" + args.file_prefix + "-restore.log",
@@ -192,6 +193,7 @@ elif args.experiment_type == "Checkpoint":
             boot_command, args.work_dir + "/" + args.file_prefix + "-restore-log.txt"
         )
         process.wait()
+    checkpoint_thread.join()
 elif args.experiment_type == "Lite":
     boot_command = [
         "cgexec",

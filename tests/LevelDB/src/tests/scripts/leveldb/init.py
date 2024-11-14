@@ -48,6 +48,8 @@ os.system(r'pgrep "redis-server" | xargs kill -9')
 os.system(r"rm dump.rdb")
 time.sleep(1)
 
+os.system(r'cgdelete -g cpu:/cpulimited')
+os.system(r'cgcreate -g cpu:/cpulimited')
 os.system(r'cgset -r cpu.max="4000000 100000" cpulimited') # 40 cores
 os.system(r'cgget -g cpu:cpulimited')
 
