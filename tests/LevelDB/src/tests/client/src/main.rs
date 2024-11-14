@@ -1,6 +1,7 @@
 use async_mutex::Mutex;
 use deadpool_redis::{
-    redis::{cmd, Connection as RedisConnection},
+    redis::cmd,
+    CustomRedisConnection as RedisConnection,
     Runtime,
 };
 use dotenvy::dotenv;
@@ -111,6 +112,17 @@ fn get_last_n_char(string: &str, n: usize) -> &str {
     &string[len - n..]
 }
 
+macro_rules! update_conn_if_not_established {
+    ($conn:expr, $timeout:expr) => {
+        if $conn.conn.is_none() {
+            $conn.conn = $conn.client.get_connection_with_timeout($timeout).ok();
+            if $conn.conn.is_none() {
+                println!("Failed to establish connection");
+            }
+        }
+    };
+}
+
 async fn do_query(
     i: usize,
     conn: &mut RedisConnection,
@@ -119,20 +131,33 @@ async fn do_query(
     base_value: &str,
     old_suffix_expected: &mut usize,
     is_write: bool,
+    timeout: Duration,
 ) -> QueryRecord {
     let new_suffix_expected = *old_suffix_expected + is_write as usize;
     let new_value_expected = format!("{}_{}_{}", base_value, key_index, new_suffix_expected);
     let request_time = SystemTime::now();
-    let result = match is_write {
-        true => match cmd("SET")
-            .arg(&key)
-            .arg(&new_value_expected)
-            .query::<String>(conn)
-        {
-            Ok(_) => Ok(Some(new_value_expected.clone())),
-            Err(e) => Err(e),
+    update_conn_if_not_established!(conn, timeout);
+    let result = match &mut conn.conn {
+        Some(conn) => {
+            conn.set_read_timeout(Some(timeout - request_time.elapsed().unwrap()))
+                .expect("set_read_timeout failed");
+            conn.set_write_timeout(Some(timeout - request_time.elapsed().unwrap()))
+                .expect("set_write_timeout failed");
+            match is_write {
+                true => match cmd("SET")
+                    .arg(&key)
+                    .arg(&new_value_expected)
+                    .query::<String>(conn)
+                {
+                    Ok(_) => Ok(Some(new_value_expected.clone())),
+                    Err(e) => Err(e),
+                },
+                false => cmd("GET").arg(&key).query::<Option<String>>(conn),
+            }
         },
-        false => cmd("GET").arg(&key).query::<Option<String>>(&mut *conn),
+        None => Err(redis::RedisError::from(
+            std::io::Error::new(std::io::ErrorKind::TimedOut, "Operation timed out")
+        )),
     };
     let response_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -173,6 +198,7 @@ async fn do_query(
             // println!("request error i: {}, key: {}, error: {:?}", i, key, e);
             QueryRecord {
                 status: if e.detail() != Some("flow control enabled") {
+                    conn.is_valid = false;
                     Status::Timeout
                 } else {
                     Status::Error
@@ -275,10 +301,11 @@ async fn main() {
             let mut conn = pool.get().await.unwrap_or_else(|e| {
                 panic!("Initialize failed i: {}, error: {}", i, e);
             });
+            update_conn_if_not_established!(conn, cfg.benchmark.timeout);
             cmd("SET")
                 .arg(generate_key(i, cfg.benchmark.key_length))
                 .arg(&value)
-                .query::<String>(&mut conn)
+                .query::<String>(&mut conn.conn.as_mut().unwrap())
                 .unwrap();
             bar.inc(1);
         });
@@ -412,10 +439,6 @@ async fn main() {
                 match pool.get().await {
                     Ok(mut conn) => {
                         let mut value_guard = value.lock().await;
-                        conn.set_read_timeout(Some(cfg.benchmark.timeout))
-                            .expect("set_read_timeout failed");
-                        conn.set_write_timeout(Some(cfg.benchmark.timeout))
-                            .expect("set_write_timeout failed");
                         let mut old_suffix_expected = (*value_guard).clone();
                         let query_record = do_query(
                             i,
@@ -425,6 +448,7 @@ async fn main() {
                             &base_value,
                             &mut old_suffix_expected,
                             is_write,
+                            cfg.benchmark.timeout,
                         )
                         .await;
                         let finished = query_record.status != Status::Timeout;
@@ -564,9 +588,10 @@ async fn main() {
                 let mut conn = pool.get().await.unwrap_or_else(|e| {
                     panic!("validating failed key: {}, error: {}", i, e);
                 });
+                update_conn_if_not_established!(conn, cfg.benchmark.timeout);
                 let actual_value: Option<String> = cmd("GET")
                     .arg(generate_key(i, cfg.benchmark.key_length))
-                    .query(&mut conn)
+                    .query(&mut conn.conn.as_mut().unwrap())
                     .unwrap();
                 match actual_value {
                     Some(actual_value) => {
