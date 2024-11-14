@@ -54,7 +54,7 @@ pub struct CustomRedisConnection {
 }
 
 impl CustomRedisConnection {
-    fn new(client: Client) -> Self {
+    pub fn new(client: Client) -> Self {
         Self {
             client,
             conn: None,

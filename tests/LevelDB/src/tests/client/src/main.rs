@@ -1,9 +1,5 @@
 use async_mutex::Mutex;
-use deadpool_redis::{
-    redis::cmd,
-    CustomRedisConnection as RedisConnection,
-    Runtime,
-};
+use deadpool_redis::{redis::cmd, CustomRedisConnection as RedisConnection, Runtime};
 use dotenvy::dotenv;
 use duration_str::deserialize_duration;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -52,6 +48,7 @@ struct BenchmarkConfig {
     #[serde(deserialize_with = "deserialize_duration")]
     timeout: Duration,
     retry_count: usize,
+    enable_connection_pool: bool,
     check_correctness: bool,
     work_dir: String,
     file_prefix: String,
@@ -117,7 +114,7 @@ macro_rules! update_conn_if_not_established {
         if $conn.conn.is_none() {
             $conn.conn = $conn.client.get_connection_with_timeout($timeout).ok();
             if $conn.conn.is_none() {
-                println!("Failed to establish connection");
+                // println!("Failed to establish connection");
             }
         }
     };
@@ -154,10 +151,11 @@ async fn do_query(
                 },
                 false => cmd("GET").arg(&key).query::<Option<String>>(conn),
             }
-        },
-        None => Err(redis::RedisError::from(
-            std::io::Error::new(std::io::ErrorKind::TimedOut, "Operation timed out")
-        )),
+        }
+        None => Err(redis::RedisError::from(std::io::Error::new(
+            std::io::ErrorKind::TimedOut,
+            "Operation timed out",
+        ))),
     };
     let response_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -226,7 +224,10 @@ async fn main() {
 
     // -------------------------- Create work directory ----------------------
     std::fs::create_dir_all(&cfg.benchmark.work_dir).unwrap_or_else(|e| {
-        panic!("Failed to create work directory {}: {}", cfg.benchmark.work_dir, e);
+        panic!(
+            "Failed to create work directory {}: {}",
+            cfg.benchmark.work_dir, e
+        );
     });
 
     // -------------------------- Init remote servers -------------------------
@@ -429,6 +430,7 @@ async fn main() {
         let base_value = base_value.clone();
         let records = Arc::clone(&records);
         let bar = bar.clone();
+        let conn_info = cfg.redis.connection.as_ref().unwrap().clone();
         let handle = tokio::spawn(async move {
             let begin = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -436,43 +438,54 @@ async fn main() {
             let mut queries = Vec::new();
             let mut tries = 1;
             while tries <= cfg.benchmark.retry_count {
-                match pool.get().await {
-                    Ok(mut conn) => {
-                        let mut value_guard = value.lock().await;
-                        let mut old_suffix_expected = (*value_guard).clone();
-                        let query_record = do_query(
-                            i,
-                            &mut conn,
-                            key,
-                            &generate_key(key, cfg.benchmark.key_length),
-                            &base_value,
-                            &mut old_suffix_expected,
-                            is_write,
-                            cfg.benchmark.timeout,
-                        )
-                        .await;
-                        let finished = query_record.status != Status::Timeout;
-                        queries.push(query_record);
-                        *value_guard = old_suffix_expected;
-                        if finished {
-                            break;
+                let mut pool_conn: deadpool_redis::Connection;
+                let mut redis_conn: RedisConnection;
+                let mut redis_conn_mut: &mut RedisConnection;
+                if cfg.benchmark.enable_connection_pool {
+                    match pool.get().await {
+                        Ok(conn) => {
+                            pool_conn = conn;
+                            redis_conn_mut = pool_conn.as_mut();
                         }
-                        tries += 1;
-                        drop(value_guard);
+                        Err(e) => {
+                            // eprintln!("\npool error i: {}, key: {}, error: {}\n", i, key, e);
+                            let now_time = SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .expect("Time went backwards");
+                            queries.push(QueryRecord {
+                                status: Status::Timeout,
+                                request: now_time,
+                                response: now_time,
+                            });
+                            tries += 1;
+                            continue;
+                        }
                     }
-                    Err(_) => {
-                        // eprintln!("\npool error i: {}, key: {}, error: {}\n", i, key, e);
-                        let now_time = SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .expect("Time went backwards");
-                        queries.push(QueryRecord {
-                            status: Status::Timeout,
-                            request: now_time,
-                            response: now_time,
-                        });
-                        tries += 1;
-                    }
-                };
+                } else {
+                    redis_conn = RedisConnection::new(redis::Client::open(conn_info.clone()).unwrap());
+                    redis_conn_mut = &mut redis_conn;
+                }
+                let mut value_guard = value.lock().await;
+                let mut old_suffix_expected = (*value_guard).clone();
+                let query_record = do_query(
+                    i,
+                    &mut redis_conn_mut,
+                    key,
+                    &generate_key(key, cfg.benchmark.key_length),
+                    &base_value,
+                    &mut old_suffix_expected,
+                    is_write,
+                    cfg.benchmark.timeout,
+                )
+                .await;
+                let finished = query_record.status != Status::Timeout;
+                queries.push(query_record);
+                *value_guard = old_suffix_expected;
+                if finished {
+                    break;
+                }
+                tries += 1;
+                drop(value_guard);
             }
             let record = Record {
                 i,
@@ -642,10 +655,7 @@ async fn main() {
                     "-P",
                     &remote_ssh_port,
                     &format!(r#"{}.jsonl"#, file_prefix,),
-                    &format!(
-                        r#"{}:{}"#,
-                        remote_addr, work_dir
-                    ),
+                    &format!(r#"{}:{}"#, remote_addr, work_dir),
                 ])
                 .output()
                 .expect("Failed to copy client log to remote server");
@@ -654,16 +664,10 @@ async fn main() {
                     println!("Copied client log to remote server: {:?}", output);
                 }
                 Some(_) => {
-                    panic!(
-                        "Failed to copy client log to remote server: {:?}",
-                        output
-                    );
+                    panic!("Failed to copy client log to remote server: {:?}", output);
                 }
                 None => {
-                    panic!(
-                        "Failed to copy client log to remote server: {:?}",
-                        output
-                    );
+                    panic!("Failed to copy client log to remote server: {:?}", output);
                 }
             }
         });
