@@ -76,49 +76,28 @@ void WritePacket(std::shared_ptr<std::ifstream> &blockstream,
                         metasize,
                     datasize);
 }
-void Datanode::SendHeartbeat() {
-  std::cout << "send heartbeat" << std::endl;
+void Datanode::SendHeartbeatEmergency() {
   bool connected = false;
   evutil_socket_t namenode_socket = 0;
-  // while (emergency.load()) {
-  // auto callId = rpc_request_header.callid();
-  // rpc_request_header.set_callid(++callId);
-  // std::vector<google::protobuf::MessageLite *> messages;
-  // messages.push_back(&rpc_request_header);
-  // messages.push_back(&requestHeaderProto);
-  // messages.push_back(&HeartbeatRequest);
-  // std::shared_ptr<std::vector<uint8_t>> buffer =
-  //     std::make_shared<std::vector<uint8_t>>();
-  // WriteRpc(buffer, messages);
-  // auto conn = *(server->GetFirstWorker()->conns_.begin());
-  // std::shared_ptr<Packet> heartbeat = std::make_shared<Packet>(buffer,
-  // Packet::rpc); if (!conn->SendCustomizedPackets(heartbeat,
-  // heartbeat->buffer)){
-  //   LOG(ERROR) << "failed to send heartbeat" << std::endl;
-  // }
-  // std::cout << "send heartbeat in emergency" << std::endl;
-  // sleep for 3 seconds
-  // boost::this_thread::sleep_for(boost::chrono::seconds(3));
-  // }
   try {
     while (emergency.load()) {
       boost::this_thread::sleep_for(boost::chrono::seconds(3));
       std::cout << "send heartbeat in emergency" << std::endl;
-      // auto callId = rpc_request_header.callid();
-      // rpc_request_header.set_callid(++callId);
-      // std::vector<google::protobuf::MessageLite *> messages;
-      // messages.push_back(&rpc_request_header);
-      // messages.push_back(&requestHeaderProto);
-      // messages.push_back(&HeartbeatRequest);
-      // std::shared_ptr<std::vector<uint8_t>> buffer =
-      //     std::make_shared<std::vector<uint8_t>>();
-      // WriteRpc(buffer, messages);
-      // auto conn = *(server->GetFirstWorker()->conns_.begin());
-      // std::shared_ptr<Packet> heartbeat =
-      //     std::make_shared<Packet>(buffer, Packet::rpc);
-      // if (!conn->SendCustomizedPackets(heartbeat, heartbeat->buffer)) {
-      //   LOG(ERROR) << "failed to send heartbeat" << std::endl;
-      // }
+      auto callId = rpc_request_header.callid();
+      rpc_request_header.set_callid(++callId);
+      std::vector<google::protobuf::MessageLite *> messages;
+      messages.push_back(&rpc_request_header);
+      messages.push_back(&requestHeaderProto);
+      messages.push_back(&HeartbeatRequest);
+      std::shared_ptr<std::vector<uint8_t>> buffer =
+          std::make_shared<std::vector<uint8_t>>();
+      WriteRpc(buffer, messages);
+      auto conn = *(server->GetFirstWorker()->conns_.begin());
+      std::shared_ptr<Packet> heartbeat =
+          std::make_shared<Packet>(buffer, Packet::rpc);
+      if (!conn->SendCustomizedPackets(heartbeat, heartbeat->buffer)) {
+        LOG(ERROR) << "failed to send heartbeat" << std::endl;
+      }
       // Check for thread interruption
       boost::this_thread::interruption_point();
     }
@@ -132,7 +111,7 @@ void Datanode::NormalToEmergencyHook() {
   emergency.store(true);
   // periodically sending the heartbeat
   HeartbeatThread =
-      new boost::thread(std::bind(&Datanode::SendHeartbeat, this));
+      new boost::thread(std::bind(&Datanode::SendHeartbeatEmergency, this));
 }
 
 void Datanode::EmergencyToNormalHook() {
@@ -254,6 +233,12 @@ Datanode::Match(
 void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
                             std::vector<std::shared_ptr<Packet>> requests,
                             ConnectionInfo &conn, Cache *cache) {
+  resp->Print();
+  if(resp->tcp_type == Packet::BlockOpResponse) {
+    hadoop::hdfs::BlockOpResponseProto blockOpResponse;
+    blockOpResponse.ParseFromArray(resp->buffer->data(), resp->buffer->size());
+    std::cout << "blockOpResponse: " << blockOpResponse.DebugString() << std::endl;
+  }
   if (resp->type == Packet::rpc) {
     std::shared_ptr<Packet> req = requests.front();
     uint32_t offset = 4;
@@ -268,6 +253,7 @@ void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
         static_cast<int>(req->buffer->size() - offset));
     google::protobuf::io::CodedInputStream coded_input(&array_input);
     if (req->RequestHeader.methodname() == "sendHeartbeat") {
+      std::cout << "send heartbeat in normal mode" << std::endl;
       ReadDelimitedFrom(&coded_input, &HeartbeatRequest);
       rpc_request_header = req->RpcRequestHeader;
       requestHeaderProto = req->RequestHeader;
@@ -394,15 +380,15 @@ void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
   }
 }
 
-std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
-                                                 ConnectionInfo &conn,
-                                                 Cache *cache, Logger *logger,
-                                                 bool flow_control) {
+std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache, Logger *logger, bool flow_control) {
   if (req->type == Packet::tcp) {
     Packet resp;
+    resp.type = Packet::tcp;
     if (req->tcp_type == Packet::Op) {
+      resp.tcp_type = Packet::BlockOpResponse;
       switch (req->opcode) {
       case Packet::READ_BLOCK: {
+        resp.opcode = Packet::READ_BLOCK;
         std::cout << "try to read the disk" << std::endl;
         google::protobuf::io::ArrayInputStream array_input(
             req->buffer->data() + 3, static_cast<int>(req->buffer->size() - 3));
@@ -415,8 +401,6 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
             static_cast<std::streampos>(OpReadBlock.offset());
         std::streamsize len = static_cast<std::streamsize>(OpReadBlock.len());
 
-        resp.type == Packet::tcp;
-        resp.tcp_type == Packet::BlockOpResponse;
         std::vector<google::protobuf::MessageLite *> messages;
         auto it = BlockMap.find(
             std::make_pair(TargetBlock.poolid(), TargetBlock.blockid()));
@@ -475,10 +459,12 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
                     static_cast<int>(offset) + seqno * MAX_DATA_SIZE + len, 0,
                     resp);
         std::cout << "finish reading" << std::endl;
+        resp.Print();
         return std::make_pair(resp, false);
         break;
       }
       case Packet::WRITE_BLOCK: {
+        resp.opcode = Packet::ZERO;
         std::cout << "try to write the disk" << std::endl;
         google::protobuf::io::ArrayInputStream array_input(
             req->buffer->data() + 3, static_cast<int>(req->buffer->size() - 3));
@@ -489,6 +475,7 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
           WriteErrorResponse(resp.buffer);
           return std::make_pair(resp, false);
         }
+
         auto target = OpWriteBlock.header().baseheader().block();
         TargetMap[&conn] = OpWriteBlock;
         BlockMap[std::make_pair(target.poolid(), target.blockid())] = target;
@@ -498,65 +485,85 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
         if (DatanodeTargets.empty()) {
           std::cout << "no replication" << std::endl;
           resp.block_op_response.set_status(hadoop::hdfs::Status::SUCCESS);
-          WriteDelimitedTo(resp.buffer, &resp.block_op_response);
+          // WriteDelimitedTo(resp.buffer, &resp.block_op_response);
+          int size = resp.block_op_response.ByteSizeLong();
+          resp.buffer->resize(size);
+          resp.block_op_response.SerializeToArray(resp.buffer->data(), size);
+          hadoop::hdfs::BlockOpResponseProto blockOpResponse;
+          blockOpResponse.ParseFromArray(resp.buffer->data(), resp.buffer->size());
+          std::cout << "blockOpResponse: " << blockOpResponse.DebugString() << std::endl;
+          // Error: resp.buffer seems wrong
         } else {
           // This piece of code has not been tested
           std::cout << "replication number: " << DatanodeTargets.size()
                     << std::endl;
-          auto NextDatanodeId = DatanodeTargets[0].id();
-          const char *addr = NextDatanodeId.ipaddr().data();
-          auto port = NextDatanodeId.xferport();
-          int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-          if (sockfd < 0) {
-            LOG(ERROR) << "Socket creation failed" << std::endl;
-            WriteErrorResponse(resp.buffer);
-            return std::make_pair(resp, false);
-          }
-          sockaddr_in server_addr;
-          memset(&server_addr, 0, sizeof(server_addr));
-          server_addr.sin_family = AF_INET;
-          server_addr.sin_port = htons(port);
-          inet_pton(AF_INET, addr, &server_addr.sin_addr);
-          if (connect(sockfd, (struct sockaddr *)&server_addr,
-                      sizeof(server_addr)) < 0) {
-            LOG(ERROR) << "Connection to next datanode failed" << std::endl;
+          for(auto datanode : DatanodeTargets) {
+            auto NextDatanodeId = datanode.id();
+            const char *addr = NextDatanodeId.ipaddr().data();
+            auto port = NextDatanodeId.xferport();
+            int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+            if (sockfd < 0) {
+              LOG(ERROR) << "Socket creation failed" << std::endl;
+              WriteErrorResponse(resp.buffer);
+              return std::make_pair(resp, false);
+            }
+            sockaddr_in server_addr;
+            memset(&server_addr, 0, sizeof(server_addr));
+            server_addr.sin_family = AF_INET;
+            server_addr.sin_port = htons(port);
+            inet_pton(AF_INET, addr, &server_addr.sin_addr);
+            if (connect(sockfd, (struct sockaddr *)&server_addr,
+                        sizeof(server_addr)) < 0) {
+              LOG(ERROR) << "Connection to next datanode failed" << std::endl;
+              close(sockfd);
+              WriteErrorResponse(resp.buffer);
+              return std::make_pair(resp, false);
+            }
+
+            std::cout << "connect to datanode at " << addr << ":" << port << std::endl;
+            OpWriteBlock.mutable_targets()->DeleteSubrange(0, 1);
+            OpWriteBlock.clear_source();
+            std::shared_ptr<std::vector<uint8_t>> send_buffer = std::make_shared<std::vector<uint8_t>>();
+            // WriteDelimitedTo(*send_buffer, &OpWriteBlock);
+            int size = OpWriteBlock.ByteSizeLong();
+            send_buffer->resize(size);
+            OpWriteBlock.SerializeToArray(send_buffer->data(), size);
+            
+            int sent = send(sockfd, send_buffer->data(), send_buffer->size(), 0);
+            std::cout << "sent: " << sent << std::endl;
+            if (sent < 0) {
+              LOG(ERROR) << "send failed" << std::endl;
+              close(sockfd);
+              WriteErrorResponse(resp.buffer);
+              return std::make_pair(resp, false);
+            }
+            std::cout << "send success " << std::endl;
+            char buffer[1024];
+            memset(buffer, 0, sizeof(buffer));
+            int bytes_received = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+            if (bytes_received < 0) {
+              LOG(ERROR) << "receive failed" << std::endl;
+              close(sockfd);
+              WriteErrorResponse(resp.buffer);
+              return std::make_pair(resp, false);
+            }
+            std::cout << "bytes received: " << bytes_received << std::endl;
+            // Close socket
             close(sockfd);
-            WriteErrorResponse(resp.buffer);
-            return std::make_pair(resp, false);
+            std::cout << "receive the response: " << buffer << std::endl;
+            google::protobuf::io::ArrayInputStream array_input(buffer,
+                                                              bytes_received);
+            google::protobuf::io::CodedInputStream coded_input(&array_input);
+            if (!ReadDelimitedFrom(&coded_input, &resp.block_op_response)) {
+              WriteErrorResponse(resp.buffer);
+              return std::make_pair(resp, false);
+            } else {
+              WriteDelimitedTo(resp.buffer, &resp.block_op_response);
+            }
           }
-          OpWriteBlock.mutable_targets()->DeleteSubrange(0, 1);
-          OpWriteBlock.clear_source();
-          std::shared_ptr<std::vector<uint8_t>> send_buffer;
-          WriteDelimitedTo(send_buffer, &OpWriteBlock);
-          if (send(sockfd, send_buffer->data(), send_buffer->size(), 0) < 0) {
-            LOG(ERROR) << "send failed" << std::endl;
-            close(sockfd);
-            WriteErrorResponse(resp.buffer);
-            return std::make_pair(resp, false);
-          }
-          std::cout << "send success " << std::endl;
-          char buffer[1024];
-          memset(buffer, 0, sizeof(buffer));
-          int bytes_received = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
-          if (bytes_received < 0) {
-            LOG(ERROR) << "receive failed" << std::endl;
-            close(sockfd);
-            WriteErrorResponse(resp.buffer);
-            return std::make_pair(resp, false);
-          }
-          // Close socket
-          close(sockfd);
-          std::cout << "receive the response: " << buffer << std::endl;
-          google::protobuf::io::ArrayInputStream array_input(buffer,
-                                                             bytes_received);
-          google::protobuf::io::CodedInputStream coded_input(&array_input);
-          if (!ReadDelimitedFrom(&coded_input, &resp.block_op_response)) {
-            WriteErrorResponse(resp.buffer);
-            return std::make_pair(resp, false);
-          } else {
-            WriteDelimitedTo(resp.buffer, &resp.block_op_response);
-          }
+          
         }
+        resp.Print();
         return std::make_pair(resp, false);
         break;
       }
@@ -564,6 +571,7 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
         break;
       }
     } else if (req->tcp_type == Packet::PacketHeader) {
+      resp.tcp_type = Packet::PacketHeader;
       uint32_t packet_length =
           ntohl(*(reinterpret_cast<uint32_t *>(req->buffer->data())));
       short head_len =
@@ -584,6 +592,7 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
       }
       auto OpWriteBlock = it->second;
       auto target = OpWriteBlock.header().baseheader().block();
+
       if (!packet_header.lastpacketinblock()) {
         std::string BlockPath = "/workspace/data/dfs/data/current/" +
                                 target.poolid() +
@@ -634,7 +643,11 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req,
       if (DatanodeTargets.empty()) {
         PipelineAck.set_seqno(packet_header.seqno());
         PipelineAck.add_reply(hadoop::hdfs::SUCCESS);
-        WriteDelimitedTo(resp.buffer, &PipelineAck);
+        // WriteDelimitedTo(resp.buffer, &PipelineAck);
+        int size = PipelineAck.ByteSizeLong();
+        resp.buffer->resize(size);
+        PipelineAck.SerializeToArray(resp.buffer->data(), size);
+        return std::make_pair(resp, false);
       } else {
         auto NextDatanodeId = DatanodeTargets[0].id();
         const char *addr = NextDatanodeId.ipaddr().data();

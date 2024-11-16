@@ -78,7 +78,7 @@ class Datanode {
   Packet EmergencyConnectionEstablishHook(ConnectionInfo conn_info) {
     return Packet{};
   }
-  void SendHeartbeat();
+  void SendHeartbeatEmergency();
 
   void RegisterServer(lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo,
                                        std::string, CacheEntry> *liteserver) {

@@ -23,6 +23,7 @@ public:
     Other = 4            // (Maybe unfinished packet or data)
   };
   enum Opcode : unsigned {
+    ZERO = 0,
     WRITE_BLOCK = 80,
     READ_BLOCK = 81,
     READ_METADATA = 82,
@@ -87,4 +88,14 @@ public:
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
 
   std::shared_ptr<std::vector<uint8_t>> Serialize() const { return buffer; }
+
+
+  void Print() const {
+    std::cout << "packet:" << std::endl;
+    std::cout << "type:" << type << std::endl;
+    std::cout << "tcp_type:" << tcp_type << std::endl;
+    std::cout << "opcode:" << opcode << std::endl;
+    std::cout << "status:" << status << std::endl;
+    std::cout << "buffer size:" << buffer->size() << std::endl;
+  }
 };
