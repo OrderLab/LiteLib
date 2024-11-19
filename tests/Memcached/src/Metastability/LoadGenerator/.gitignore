@@ -1,7 +1,6 @@
 experiment_plots/
 result_plots*/
 result_stats/
-results_warm_cache/
 traces/
 TraceReplay
 TraceReplay.cpp

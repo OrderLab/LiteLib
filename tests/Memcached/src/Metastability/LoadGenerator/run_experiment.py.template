@@ -56,7 +56,6 @@ else:
     closed_loop_flag = ""  
 # config for connecting to memcached server VM
 memcached_host = 'memcached'
-master_vm = 'client'
 memcached_VM_command = f"python3 ~/warm_up_cache.py {exp_type}"
 """
  trigger size == -1 denotes a flush_all
@@ -68,7 +67,7 @@ memcached_VM_command = f"python3 ~/warm_up_cache.py {exp_type}"
 metastable_stats_array = []
 
 # trace replay config  
-result_file_name = "results_warm_cache/result_300.0.1.00001.txt"
+result_file_name = "result_stats/result_300.0.1.00001.txt"
 trace_file_name  = "traces/trace_file_300.0_1.00001.txt"
  
 
@@ -104,11 +103,13 @@ generate_trace_command = 'python3 TraceFileGenerator.py ' + str(_lambda) + ' ' +
 os.system(generate_trace_command)
 
 # step 3: start tracing and run the TraceReplay (using & making the process non blocking) 
+today_date_time = datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
+
 trace_file_name = "traces/trace_file_" + str(float(_lambda)) + "_" + str(float(zipf_parameter)) + "_" + str(float(duration_of_test)) + ".txt"
-results_directory = "results_warm_cache/" 
-result_file_name = "result_" + str(float(_lambda)) + "_" + str(float(zipf_parameter)) + "_DUR_" + str(duration_of_test) + "_TRIGGER_" + str(trigger_time) + "_TMOUT_"+ str(timeout) +".txt"
+results_directory = "result_stats/" 
+result_file_name = f"result_ARV_RATE_{str(float(_lambda))}_ALPHA_{str(float(zipf_parameter))}_DUR_{str(duration_of_test)}_TRIGGER_{str(trigger_time)}_DATE_TIME_{today_date_time}_TMOUT_{str(timeout)}_EXP_{exp_type}.txt"
 result_file_path = results_directory + result_file_name
-monitor_file_name = "monitor_" + str(float(_lambda)) + "_" + str(float(zipf_parameter)) + "_DUR_" + str(duration_of_test) + "_TRIGGER_" + str(trigger_time) + "_TMOUT_"+ str(timeout) +".txt"
+monitor_file_name = f"monitor_ARV_RATE_{str(float(_lambda))}_ALPHA_{str(float(zipf_parameter))}_DUR_{str(duration_of_test)}_TRIGGER_{str(trigger_time)}_DATE_TIME_{today_date_time}_TMOUT_{str(timeout)}_EXP_{exp_type}.txt"
 memcached_monitor_command = "python3 ~/monitor.py {} {}".format(duration_of_test, monitor_file_name)
 trace_replay_thread = Thread(target= run_trace_replay, args=(trace_file_name, num_threads, result_file_path,f"{memcached_host}",memcached_monitor_command))
 trace_replay_thread.start()  
@@ -152,33 +153,16 @@ try:
 except CalledProcessError:
     print('ERROR: Connection to host failed!')
 
-process_stats_command = "python3 collect_stats_over_time.py {} {} {} {} {} {}".format(result_file_path, _lambda, zipf_parameter, trigger_time,duration_of_test, local_monitor_file)
+process_stats_command = "python3 collect_stats_over_time.py {} {} {} {} {} {} {} {}".format(result_file_path, _lambda, zipf_parameter, trigger_time,duration_of_test, local_monitor_file, exp_type, today_date_time)
 print(process_stats_command)
 os.system(process_stats_command)
-
-os_command = f"ssh-keyscan {memcached_host}  >> $HOME/.ssh/known_hosts"
-#os_command = f"ssh-keyscan {master_vm}  >> $HOME/.ssh/known_hosts"
-
-try:
-    # Set scp and ssh data.
-    connHost = master_vm
-    connPath = '/workspace/LoadGenerator/results_warm_cache/' + result_file_name  
-    #os_command = f"ssh-keyscan {master_vm}  >> $HOME/.ssh/known_hosts"
-    #os.system(os_command)
-    # Use scp to send file from local to host.
-    scp_command = "scp -o StrictHostKeyChecking=no " +  result_file_path + " {}:{}".format(connHost, connPath)
-    #scp = subprocess.Popen(['scp', '-i', connPrivateKey, result_file_path, '{}@{}:{}'.format(connUser, connHost, connPath)])
-    os.system(scp_command)
-except CalledProcessError:
-    print('ERROR: Connection to host failed!')
-
 
 # step 8: decide whether metastable issue occured or not based on cache hit rate over time
     # step 8.1 : grab stats file
     # step 8.2 pick cache hit rate from two distant points in time (after the trigger, after 10 seconds) (currently testing 12th second -- last second)
     # step 8.3: decide whether metastable issue occured or not, by using the a simple trend line
 
-stats_file_name = "STATS_ARV_RATE_{}_ALPHA_{}_TRIGGER_{}_DUR_{}.txt".format(_lambda, zipf_parameter, trigger_time, duration_of_test)
+stats_file_name = "stats_ARV_RATE_{}_ALPHA_{}_DUR_{}_TRIGGER_{}_DATE_TIME_{}_TMOUT_{}_EXP_{}.txt".format(_lambda, zipf_parameter, duration_of_test, trigger_time, today_date_time, timeout, exp_type)
 stats_directory = "result_stats"
 stats_file_path = os.path.join( stats_directory, stats_file_name)  
 stats_data = []
