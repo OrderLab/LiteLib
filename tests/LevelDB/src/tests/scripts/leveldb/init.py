@@ -46,6 +46,8 @@ os.system(r'pgrep "LiteLevelDB" | xargs kill -9')
 os.system(r'pgrep "lite_cli" | xargs kill -9')
 os.system(r'pgrep "redis-server" | xargs kill -9')
 os.system(r"rm dump.rdb")
+os.system(r"rm -rf /tmp/lite_LevelDB")
+os.system(r"rm -rf /tmp/redis-leveldb.sock")
 time.sleep(1)
 
 os.system(r'cgdelete -g cpu:/cpulimited')
@@ -106,7 +108,7 @@ elif args.experiment_type == "Lite":
         "-D",
         args.work_dir + "/lite-data",
         "-P",
-        "60000",
+        "8323",
         "-B",
         str(args.write_buffer_size),
     ]

@@ -219,7 +219,7 @@ elif args.experiment_type == "Lite":
         "-D",
         args.work_dir + "/lite-data",
         "-P",
-        "60001",
+        "8324",
         "-B",
         str(args.write_buffer_size),
     ]
@@ -229,7 +229,7 @@ elif args.experiment_type == "Lite":
 
     result = False
     while not result:
-        r = redis.Redis(host="localhost", port=60001)
+        r = redis.Redis(host="localhost", port=8324)
         try:
             result = r.ping()
         except redis.exceptions.ConnectionError:
