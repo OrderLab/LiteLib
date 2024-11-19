@@ -6,7 +6,7 @@ set -x
 # apt -y install software-properties-common
 DATABASE_SERVER_IP=${1:-"node2"}
 MEMCACHED_SERVER_IP=${2:-"node1"}
-DATABASE_QUERY_WEIGHT=${3:-"50"}
+DATABASE_QUERY_WEIGHT=${3:-"25"}
 
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2
@@ -53,12 +53,15 @@ chmod 777 /etc/php/7.2/fpm/php.ini
 chmod 777 /etc/php/7.2/fpm/pool.d/www.conf
 
 cp /etc/php/7.2/fpm/php.ini /etc/php/7.2/fpm/php.ini.bak
-sed -i 's/max_execution-time/;max_execution_time/' /etc/php/7.2/fpm/php.ini
-echo "max_execution-time = 1" >> /etc/php/7.2/fpm/php.ini
+sed -i 's/max_execution_time/;max_execution_time/' /etc/php/7.2/fpm/php.ini
+echo "max_execution_time = 1" >> /etc/php/7.2/fpm/php.ini
 
 cp /etc/php/7.2/fpm/pool.d/www.conf /etc/php/7.2/fpm/pool.d/www.conf.bak
 sed -i 's/request_terminate_timeout/;request_terminate_timeout/' /etc/php/7.2/fpm/pool.d/www.conf
 echo "request_terminate_timeout= 1s" >> /etc/php/7.2/fpm/pool.d/www.conf
+sed -i 's/pm = dynamic/;pm = dynamic/' /etc/php/7.2/fpm/pool.d/www.conf
+echo "pm = static" >> /etc/php/7.2/fpm/pool.d/www.conf
+echo "pm.max_children = 32" >> /etc/php/7.2/fpm/pool.d/www.conf
 
 service nginx reload
 service php7.2-fpm restart

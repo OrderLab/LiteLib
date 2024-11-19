@@ -348,9 +348,9 @@ if __name__ == "__main__":
             new_hit_throughput,
             new_p99_latency,
             new_avg_latency,
-        ) = read_log_and_write_to_summary(f"{new_file_prefix}.result.txt", f"{new_file_prefix}.summary.txt")
+        ) = read_log_and_write_to_summary(f"result_{new_file_prefix}.txt", f"summary_{new_file_prefix}.txt")
         new_process_usages = read_monitor_log(
-            f"{new_file_prefix}.monitor.txt", new_num_seconds
+            f"monitor_{new_file_prefix}.txt", new_num_seconds
         )
         file_prefix.append(new_file_prefix)
         num_seconds.append(new_num_seconds)

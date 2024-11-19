@@ -1,15 +1,15 @@
 <?php
 //fill memcached with data
-$memcached_server = "MEMCACHED_SERVER_IP"
-ini_set('max_execution_time', '0'); // for infinite time of execution 
+$memcached_server = "MEMCACHED_SERVER_IP";
+// ini_set('max_execution_time', '0'); // for infinite time of execution 
 $mem_var = new Memcached();
 $mem_var->addServer($memcached_server , 11211); 
 echo "throughput test code\r\n";
-$iter = 10;
+$iter = 3;
 $i = 0;
 $total_completed_jobs = 0;
 $experiment_time_period = 30;
-$total_num_db_entries = 34511000;
+$total_num_db_entries = 140000;
 
 while($i < $iter){
 

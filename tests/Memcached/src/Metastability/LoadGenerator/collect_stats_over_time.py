@@ -139,8 +139,8 @@ def plot_multiple_data2( x_points, y_points1, y_points2, y_points3,
 
 args_len = len(sys.argv[1:])
 
-if(args_len != 6):        
-        print("enter valid parameter, provide absolute file path for resultFile from TraceReplay, arrival_rate, trigger_size, test_duration")
+if(args_len != 8):        
+        print("enter valid parameter, provide absolute file path for resultFile from TraceReplay, arrival_rate, alpha, trigger_size, test_duration, monitor_file, exp_type, today_date_time")
         exit()
     
 file_name = sys.argv[1:][0]
@@ -149,6 +149,8 @@ alpha = sys.argv[1:][2]
 trigger_size = sys.argv[1:][3]
 test_duration = sys.argv[1:][4]
 monitor_file = sys.argv[1:][5]
+exp_type = sys.argv[1:][6]
+today_date_time = sys.argv[1:][7]
 
 ns_in_a_sec = 1000000000  
 num_seconds = -1
@@ -200,7 +202,7 @@ final_stats_directory = os.path.join(current_directory, r'result_stats')
 
 if not os.path.exists(final_stats_directory):
    os.makedirs(final_stats_directory)
-stats_file_name = "STATS_ARV_RATE_{}_ALPHA_{}_TRIGGER_{}_DUR_{}.txt".format(arrival_rate, alpha, trigger_size, test_duration) 
+stats_file_name = "stats_ARV_RATE_{}_ALPHA_{}_DUR_{}_TRIGGER_{}_DATE_TIME_{}_TMOUT_{}_EXP_{}.txt".format(arrival_rate, alpha, test_duration, trigger_size, today_date_time, kill_timeout_for_php, exp_type) 
 stats_file_path = os.path.join( final_stats_directory, stats_file_name)
 
 stats_file = open(stats_file_path, "w") 
@@ -223,12 +225,11 @@ hit_rate_points  = np.array( hit_rates)
 error_rate_points = np.array( error_rates)
 time_points = np.array(time_points)
 latency_points = np.array(latency_per_second)
-today_date_time = datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
-A_file_with_image_extension =  f"A_IMG_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_TRIGGER_{trigger_size}_DUR_{test_duration}_{today_date_time}_TO_{kill_timeout_for_php}.png"   
-H_file_with_image_extension =  f"H_IMG_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_TRIGGER_{trigger_size}_DUR_{test_duration}_{today_date_time}_TO_{kill_timeout_for_php}.png"   
-L_file_with_image_extension =  f"L_IMG_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_TRIGGER_{trigger_size}_DUR_{test_duration}_{today_date_time}_TO_{kill_timeout_for_php}.png"   
-E_file_with_image_extension =  f"E_IMG_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_TRIGGER_{trigger_size}_DUR_{test_duration}_{today_date_time}_TO_{kill_timeout_for_php}.png"   
-C_file_with_image_extension = f"C_IMG_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_TRIGGER_{trigger_size}_DUR_{test_duration}_{today_date_time}_TO_{kill_timeout_for_php}.png"
+A_file_with_image_extension =  f"a_img_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_DUR_{test_duration}_TRIGGER_{trigger_size}_DATE_TIME_{today_date_time}_TMOUT_{kill_timeout_for_php}_EXP_{exp_type}.png"   
+H_file_with_image_extension =  f"h_img_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_DUR_{test_duration}_TRIGGER_{trigger_size}_DATE_TIME_{today_date_time}_TMOUT_{kill_timeout_for_php}_EXP_{exp_type}.png"   
+L_file_with_image_extension =  f"l_img_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_DUR_{test_duration}_TRIGGER_{trigger_size}_DATE_TIME_{today_date_time}_TMOUT_{kill_timeout_for_php}_EXP_{exp_type}.png"   
+E_file_with_image_extension =  f"e_img_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_DUR_{test_duration}_TRIGGER_{trigger_size}_DATE_TIME_{today_date_time}_TMOUT_{kill_timeout_for_php}_EXP_{exp_type}.png"   
+C_file_with_image_extension = f"c_img_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_DUR_{test_duration}_TRIGGER_{trigger_size}_DATE_TIME_{today_date_time}_TMOUT_{kill_timeout_for_php}_EXP_{exp_type}.png"
 plot_data(time_points, hit_rate_points, H_file_with_image_extension)
 plot_data(time_points, error_rate_points, E_file_with_image_extension)
 plot_data(time_points, latency_points, L_file_with_image_extension)

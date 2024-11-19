@@ -4,7 +4,7 @@ from os.path import isfile, join
 import subprocess
 
 traces_directory = "traces"
-results_directory = "results_warm_cache"
+results_directory = "result_stats"
 
 file_names = [f for f in listdir(traces_directory) if isfile(join(traces_directory, f))]
 num_files = len(file_names)
