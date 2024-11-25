@@ -475,7 +475,8 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
           WriteErrorResponse(resp.buffer);
           return std::make_pair(resp, false);
         }
-
+        
+        std::cout << "Original OpWriteBlock size: " << OpWriteBlock.ByteSizeLong() << ", OpWriteBlock:\n" << OpWriteBlock.DebugString() << std::endl;
         auto target = OpWriteBlock.header().baseheader().block();
         TargetMap[&conn] = OpWriteBlock;
         BlockMap[std::make_pair(target.poolid(), target.blockid())] = target;
@@ -483,17 +484,14 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
         auto DatanodeTargets = OpWriteBlock.targets();
         // TODO: fix the bug that it is always empty
         if (DatanodeTargets.empty()) {
-          std::cout << "no replication" << std::endl;
           resp.block_op_response.set_status(hadoop::hdfs::Status::SUCCESS);
-          // WriteDelimitedTo(resp.buffer, &resp.block_op_response);
-          int size = resp.block_op_response.ByteSizeLong();
-          resp.buffer->resize(size);
-          resp.block_op_response.SerializeToArray(resp.buffer->data(), size);
-          hadoop::hdfs::BlockOpResponseProto blockOpResponse;
-          blockOpResponse.ParseFromArray(resp.buffer->data(), resp.buffer->size());
-          std::cout << "blockOpResponse: " << blockOpResponse.DebugString() << std::endl;
-          // Error: resp.buffer seems wrong
-        } else {
+          resp.block_op_response.set_firstbadlink("");
+
+          u_int8_t size = resp.block_op_response.ByteSizeLong();
+          resp.buffer->resize(1 + size);
+          resp.buffer->data()[0] = size;
+          resp.block_op_response.SerializeToArray(resp.buffer->data() + 1, size);
+          } else {
           // This piece of code has not been tested
           std::cout << "replication number: " << DatanodeTargets.size()
                     << std::endl;
@@ -521,13 +519,51 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
             }
 
             std::cout << "connect to datanode at " << addr << ":" << port << std::endl;
-            OpWriteBlock.mutable_targets()->DeleteSubrange(0, 1);
-            OpWriteBlock.clear_source();
+            OpWriteBlock.clear_targets();
+
+            hadoop::hdfs::DatanodeInfoProto* source = OpWriteBlock.mutable_source();
+
+            // probably not needed till set_numblocks
+            hadoop::hdfs::DatanodeIDProto* id = source->mutable_id();
+            id->set_ipaddr("");
+            id->set_hostname("");
+            id->set_datanodeuuid("");
+            id->set_xferport(0);
+            id->set_infoport(0);
+            id->set_ipcport(0);
+            id->set_infosecureport(0);
+
+            source->set_capacity(0);
+            source->set_dfsused(0);
+            source->set_remaining(0);
+            source->set_blockpoolused(0);
+            source->set_lastupdate(0);
+            source->set_xceivercount(0);
+            source->set_nondfsused(0);
+            source->set_adminstate(hadoop::hdfs::DatanodeInfoProto::NORMAL);
+            source->set_cachecapacity(0);
+            source->set_cacheused(0);
+            source->set_lastupdatemonotonic(0);
+            source->set_lastblockreporttime(0);
+            source->set_lastblockreportmonotonic(0);
+            source->set_numblocks(0);
+
+            OpWriteBlock.clear_targetstoragetypes();
+            OpWriteBlock.clear_targetpinnings();
+            OpWriteBlock.clear_targetstorageids();
+
+            std::cout << "New OpWriteBlock size: " << OpWriteBlock.ByteSizeLong() << ", OpWriteBlock:\n" << OpWriteBlock.DebugString() << std::endl;
             std::shared_ptr<std::vector<uint8_t>> send_buffer = std::make_shared<std::vector<uint8_t>>();
-            // WriteDelimitedTo(*send_buffer, &OpWriteBlock);
+
             int size = OpWriteBlock.ByteSizeLong();
-            send_buffer->resize(size);
-            OpWriteBlock.SerializeToArray(send_buffer->data(), size);
+            uint8_t appendBytes[] = {0x0, 0x1c, 0x50, static_cast<uint8_t>(size & 0xFF), 0x1};
+            size_t appendLength = sizeof(appendBytes);
+
+            // Append the bytes to send_buffer
+            send_buffer->insert(send_buffer->end(), appendBytes, appendBytes + appendLength);
+            // WriteDelimitedTo(*send_buffer, &OpWriteBlock);
+            send_buffer->resize(appendLength + size);
+            OpWriteBlock.SerializeToArray(send_buffer->data() + appendLength, size);
             
             int sent = send(sockfd, send_buffer->data(), send_buffer->size(), 0);
             std::cout << "sent: " << sent << std::endl;
@@ -537,7 +573,7 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
               WriteErrorResponse(resp.buffer);
               return std::make_pair(resp, false);
             }
-            std::cout << "send success " << std::endl;
+            std::cout << "send success" << std::endl;
             char buffer[1024];
             memset(buffer, 0, sizeof(buffer));
             int bytes_received = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
@@ -559,11 +595,13 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
               return std::make_pair(resp, false);
             } else {
               WriteDelimitedTo(resp.buffer, &resp.block_op_response);
+              std::cout << "resp.block_op_response: " << resp.block_op_response.DebugString() << std::endl;
             }
           }
           
         }
-        resp.Print();
+        resp.Print(); 
+        std::cout << "op response status: " << resp.block_op_response.status() << "\n";
         return std::make_pair(resp, false);
         break;
       }
@@ -641,12 +679,14 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
       auto DatanodeTargets = OpWriteBlock.targets();
       std::cout << "targets size: " << DatanodeTargets.size() << std::endl;
       if (DatanodeTargets.empty()) {
-        PipelineAck.set_seqno(packet_header.seqno());
-        PipelineAck.add_reply(hadoop::hdfs::SUCCESS);
-        // WriteDelimitedTo(resp.buffer, &PipelineAck);
-        int size = PipelineAck.ByteSizeLong();
-        resp.buffer->resize(size);
-        PipelineAck.SerializeToArray(resp.buffer->data(), size);
+        // PipelineAck.set_seqno(packet_header.seqno());
+        // PipelineAck.set_status(hadoop::hdfs::SUCCESS);
+        // // WriteDelimitedTo(resp.buffer, &PipelineAck);
+        // int size = PipelineAck.ByteSizeLong();
+        // resp.buffer->resize(size);
+        // PipelineAck.SerializeToArray(resp.buffer->data(), size);
+        resp.block_op_response.set_status(hadoop::hdfs::SUCCESS);
+        // resp.block_op_response.set_seqno(packet_header.seqno());
         return std::make_pair(resp, false);
       } else {
         auto NextDatanodeId = DatanodeTargets[0].id();
@@ -686,9 +726,7 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
           WriteErrorResponse(resp.buffer);
           return std::make_pair(resp, false);
         }
-        // Close socket
-        close(sockfd);
-        std::cout << "receive the response: " << buffer << std::endl;
+        // close(sockfd);
         google::protobuf::io::ArrayInputStream array_input(buffer,
                                                            bytes_received);
         google::protobuf::io::CodedInputStream coded_input(&array_input);
