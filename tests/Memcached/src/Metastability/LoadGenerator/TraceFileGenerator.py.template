@@ -7,6 +7,7 @@ import sys
 import os.path
 import numpy as np 
 import collections
+from concurrent.futures import ProcessPoolExecutor
 
 row_nums_in_db = 140000
 print("TraceFileGenerator: parameters: " + str(sys.argv[1:]))
@@ -15,15 +16,17 @@ print("TraceFileGenerator: parameters: " + str(sys.argv[1:]))
 arrival_rate_parameter = float(sys.argv[1:][0])
 alpha= float(sys.argv[1:][1]) 
 duration_of_test = int(sys.argv[1:][2])
+read_write_ratio = float(sys.argv[1:][3])
 
-f_name = "traces/trace_file_" + str(arrival_rate_parameter) + "_" + str(alpha) + "_" + str(float(duration_of_test)) +".txt"
+f_name = "traces/trace_file_" + str(arrival_rate_parameter) + "_" + str(alpha) + "_" + str(float(duration_of_test)) + "_" + str(read_write_ratio) + ".txt"
 if(os.path.isfile(f_name)):
     print("traces already generated")
     sys.exit(0)
 f = open(f_name, "w+")
 
 number_of_arrivals = int(arrival_rate_parameter * duration_of_test) 
-request_types =  np.zeros(number_of_arrivals).astype(int)
+# request_types =  np.zeros(number_of_arrivals).astype(int)
+request_types = np.random.choice([0, 1], size=number_of_arrivals, p=[1-read_write_ratio, read_write_ratio])
 job_size_rate_parameter = 100
 
 scale_arrival = 1/arrival_rate_parameter
@@ -37,12 +40,41 @@ job_sizes = np.random.exponential(scale_jobsize, number_of_arrivals).astype(int)
 # zipf distribution for generating load 
 zipf_rand_num_iter = 0
 job_types = np.zeros(number_of_arrivals)
+# while(zipf_rand_num_iter!= number_of_arrivals):
+#     new_zipf_value = np.random.zipf(alpha) 
+#     if(new_zipf_value>0 and new_zipf_value<=row_nums_in_db):
+#         job_types[zipf_rand_num_iter] = new_zipf_value
+#         zipf_rand_num_iter+=1 
+def generate_batch(start_idx, size, alpha, row_nums_in_db):
+    result = np.zeros(size)
+    filled = 0
+    while filled < size:
+        batch = size - filled
+        zipf_values = np.random.zipf(alpha, batch) 
+        valid_mask = (zipf_values > 0) & (zipf_values <= row_nums_in_db)
+        valid_values = zipf_values[valid_mask]
+        num_valid = len(valid_values)
+        if num_valid > 0:
+            result[filled:filled+num_valid] = valid_values
+            filled += num_valid
+    return start_idx, result
 
-while(zipf_rand_num_iter!= number_of_arrivals):
-    new_zipf_value = np.random.zipf(alpha) 
-    if(new_zipf_value>0 and new_zipf_value<=row_nums_in_db):
-        job_types[zipf_rand_num_iter] = new_zipf_value
-        zipf_rand_num_iter+=1 
+num_threads = 32
+batch_size = number_of_arrivals // num_threads
+remaining = number_of_arrivals % num_threads
+
+with ProcessPoolExecutor(max_workers=num_threads) as executor:
+    futures = []
+    start_idx = 0
+    
+    for i in range(num_threads):
+        size = batch_size + (1 if i < remaining else 0)
+        futures.append(executor.submit(generate_batch, start_idx, size, alpha, row_nums_in_db))
+        start_idx += size
+        
+    for future in futures:
+        idx, result = future.result()
+        job_types[idx:idx+len(result)] = result
         
 #  job_types_unscaled =  np.random.zipf(alpha, number_of_arrivals) #zipf.rvs(alpha, size = number_of_arrivals)
 job_types = job_types.astype(int) #(job_types_unscaled/float(max(job_types_unscaled)))*1000

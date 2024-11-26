@@ -18,7 +18,8 @@ zipf_parameter=float(sys.argv[1:][3])
 num_threads=int(sys.argv[1:][4])
 sleep_period_before_trigger=int(sys.argv[1:][5])
 timeout=int(sys.argv[1:][7]) # not used in this experiment
-exp_type = sys.argv[1:][8]
+read_write_ratio=float(sys.argv[1:][8])
+exp_type = sys.argv[1:][9]
 
 if(sys.argv[1:][6] == "False"):
     closed_loop_test= False
@@ -27,8 +28,8 @@ else:
 
 args_len = len(sys.argv[1:])
 
-if(args_len != 9):        
-        print("enter valid parameters:  load, trigger, duration of test, zipf_param, num_threads, trigger_offset, closed_loop_test, time_out, exp_type")
+if(args_len != 10):        
+        print("enter valid parameters:  load, trigger, duration of test, zipf_param, num_threads, trigger_offset, closed_loop_test, time_out, read_write_ratio, exp_type")
         exit()
 
 def run_trace_replay(_trace_file_name, _num_threads, _result_file_name, _memcached_host, _memcached_monitor_command):
@@ -99,17 +100,17 @@ except subprocess.CalledProcessError as e:
     pass
 
 # step 2: generate a new trace, we want new traces even for same config (to reduce bias)  
-generate_trace_command = 'python3 TraceFileGenerator.py ' + str(_lambda) + ' ' + str(zipf_parameter) + ' ' + str(duration_of_test)
+generate_trace_command = 'python3 TraceFileGenerator.py ' + str(_lambda) + ' ' + str(zipf_parameter) + ' ' + str(duration_of_test) + ' ' + str(read_write_ratio)
 os.system(generate_trace_command)
 
 # step 3: start tracing and run the TraceReplay (using & making the process non blocking) 
 today_date_time = datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
 
-trace_file_name = "traces/trace_file_" + str(float(_lambda)) + "_" + str(float(zipf_parameter)) + "_" + str(float(duration_of_test)) + ".txt"
+trace_file_name = "traces/trace_file_" + str(float(_lambda)) + "_" + str(float(zipf_parameter)) + "_" + str(float(duration_of_test)) + "_" + str(read_write_ratio) + ".txt"
 results_directory = "result_stats/" 
-result_file_name = f"result_ARV_RATE_{str(float(_lambda))}_ALPHA_{str(float(zipf_parameter))}_DUR_{str(duration_of_test)}_TRIGGER_{str(trigger_time)}_DATE_TIME_{today_date_time}_TMOUT_{str(timeout)}_EXP_{exp_type}.txt"
+result_file_name = f"result_ARV_RATE_{str(float(_lambda))}_ALPHA_{str(float(zipf_parameter))}_DUR_{str(duration_of_test)}_RW_RATIO_{str(read_write_ratio)}_TRIGGER_{str(trigger_time)}_DATE_TIME_{today_date_time}_TMOUT_{str(timeout)}_EXP_{exp_type}.txt"
 result_file_path = results_directory + result_file_name
-monitor_file_name = f"monitor_ARV_RATE_{str(float(_lambda))}_ALPHA_{str(float(zipf_parameter))}_DUR_{str(duration_of_test)}_TRIGGER_{str(trigger_time)}_DATE_TIME_{today_date_time}_TMOUT_{str(timeout)}_EXP_{exp_type}.txt"
+monitor_file_name = f"monitor_ARV_RATE_{str(float(_lambda))}_ALPHA_{str(float(zipf_parameter))}_DUR_{str(duration_of_test)}_RW_RATIO_{str(read_write_ratio)}_TRIGGER_{str(trigger_time)}_DATE_TIME_{today_date_time}_TMOUT_{str(timeout)}_EXP_{exp_type}.txt"
 memcached_monitor_command = "python3 ~/monitor.py {} {}".format(duration_of_test, monitor_file_name)
 trace_replay_thread = Thread(target= run_trace_replay, args=(trace_file_name, num_threads, result_file_path,f"{memcached_host}",memcached_monitor_command))
 trace_replay_thread.start()  
@@ -153,7 +154,7 @@ try:
 except CalledProcessError:
     print('ERROR: Connection to host failed!')
 
-process_stats_command = "python3 collect_stats_over_time.py {} {} {} {} {} {} {} {}".format(result_file_path, _lambda, zipf_parameter, trigger_time,duration_of_test, local_monitor_file, exp_type, today_date_time)
+process_stats_command = "python3 collect_stats_over_time.py {} {} {} {} {} {} {} {} {}".format(result_file_path, _lambda, zipf_parameter, trigger_time,duration_of_test, local_monitor_file, exp_type, today_date_time, read_write_ratio)
 print(process_stats_command)
 os.system(process_stats_command)
 
@@ -162,7 +163,7 @@ os.system(process_stats_command)
     # step 8.2 pick cache hit rate from two distant points in time (after the trigger, after 10 seconds) (currently testing 12th second -- last second)
     # step 8.3: decide whether metastable issue occured or not, by using the a simple trend line
 
-stats_file_name = "stats_ARV_RATE_{}_ALPHA_{}_DUR_{}_TRIGGER_{}_DATE_TIME_{}_TMOUT_{}_EXP_{}.txt".format(_lambda, zipf_parameter, duration_of_test, trigger_time, today_date_time, timeout, exp_type)
+stats_file_name = "stats_ARV_RATE_{}_ALPHA_{}_DUR_{}_RW_RATIO_{}_TRIGGER_{}_DATE_TIME_{}_TMOUT_{}_EXP_{}.txt".format(_lambda, zipf_parameter, duration_of_test, read_write_ratio, trigger_time, today_date_time, timeout, exp_type)
 stats_directory = "result_stats"
 stats_file_path = os.path.join( stats_directory, stats_file_name)  
 stats_data = []
