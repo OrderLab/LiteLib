@@ -7,11 +7,14 @@ import subprocess
 exp_type = sys.argv[1:][0]
 
 CACHE_MEM_SIZE = 4096000
-# CACHE_MEM_SIZE = 16
+# CACHE_MEM_SIZE = 70
 # LITE_SIZE = 2560
 # LITE_SIZE = 10240
 # REPLICA_SIZE = 67
 LITE_SIZE = 40960
+# LITE_SIZE = 81920
+# LITE_SIZE = 122880
+# LITE_SIZE = 163840
 # REPLICA_SIZE = 67
 # REPLICA_SIZE = 50
 # LITE_SIZE = 3276800
@@ -44,6 +47,7 @@ def StartBackgroundProcess(boot_command, log_file, append=False, env=dict()):
 os.system(r'pgrep "memcached" | xargs kill -9')
 os.system(r'pgrep "LiteMemcached" | xargs kill -9')
 os.system(r'pgrep "lite_cli" | xargs kill -9')
+os.system(r'rm -rf /tmp/memcached.sock')
 time.sleep(1)
 
 if exp_type == 'lite':

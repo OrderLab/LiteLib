@@ -47,15 +47,43 @@ BEGIN
     JOIN large_test_table L2 ON L1.tcol04 = L2.id
     WHERE L1.id = current_index;
 
-    UPDATE large_test_table SET tcol07 = tcol07 * 1.0000001 WHERE id = new_index;
+    -- UPDATE large_test_table SET tcol07 = tcol07 * 1.0000001 WHERE id = new_index;
 
     SET current_index = new_index;
     SET i = i + 1;
   END WHILE;
 
+  -- SELECT SQL_NO_CACHE *
+  -- FROM large_test_table L1
+  -- JOIN large_test_table L2 ON L1.tcol04 = L2.id
+  -- WHERE L1.id = current_index;
   SELECT SQL_NO_CACHE *
   FROM large_test_table L1
-  JOIN large_test_table L2 ON L1.tcol04 = L2.id
+  WHERE L1.id = current_index;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE PerformUpdate(IN current_index INT, IN query_weight INT)
+BEGIN
+  DECLARE i INT DEFAULT 0;
+  DECLARE new_index INT;
+
+  WHILE i < query_weight DO
+    SELECT SQL_NO_CACHE L2.id INTO new_index
+    FROM large_test_table L1
+    JOIN large_test_table L2 ON L1.tcol04 = L2.id
+    WHERE L1.id = current_index;
+
+    -- UPDATE large_test_table SET tcol07 = tcol07 * 1.0000001 WHERE id = new_index;
+
+    SET current_index = new_index;
+    SET i = i + 1;
+  END WHILE;
+
+  UPDATE large_test_table SET tcol07 = tcol07 * 1.0000001 WHERE id = current_index;
+  SELECT SQL_NO_CACHE *
+  FROM large_test_table L1
   WHERE L1.id = current_index;
 END //
 DELIMITER ;

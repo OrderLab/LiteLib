@@ -6,6 +6,7 @@ import subprocess
 import psutil
 from sync import sync
 import socket
+import bmemcached
 
 def StartBackgroundProcess(boot_command, log_file, append=False, env=dict()):
   print(boot_command)
@@ -36,8 +37,6 @@ CACHE_MEM_SIZE = 4096000
 for proc in psutil.process_iter(['pid', 'name']):
   if proc.info['name'] == 'memcached':
     proc.kill()
-if os.path.exists("/tmp/memcached.sock"):
-  os.remove("/tmp/memcached.sock")
 if exp_type == 'lite':
   path = os.path.expanduser('~/lite_cli')
   boot_command = [path, "-t", "/tmp/lite_memcached", "-p", "/tmp/memcached.sock", "-m", "1"]
@@ -47,22 +46,42 @@ print('failure triggered')
 time.sleep(crash_time)
 
 if exp_type == 'lite':
+  os.remove("/tmp/memcached.sock")
   boot_command = ["memcached", "-s", "/tmp/memcached.sock", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32"]
   StartBackgroundProcess(boot_command, "/tmp/memcached.log", True)
+
+  # Wait until unix socket is available
+  while True:
+      try:
+          sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          sock.connect("/tmp/memcached.sock")
+          sock.close()
+          break
+      except (socket.error, FileNotFoundError):
+          continue
 
   path = os.path.expanduser('~/lite_cli')
   boot_command = [path, "-t", "/tmp/lite_memcached", "-p", "/tmp/memcached.sock", "-m", "0"]
   StartBackgroundProcess(boot_command, "/tmp/lite_cli-2.log")
+
+  time.sleep(4)
+  client = bmemcached.Client(['/tmp/memcached.sock'])
+  stats = client.stats()
+  for server, server_stats in stats.items():
+    if 'curr_items' in server_stats:
+        print(f"Current number of keys: {server_stats['curr_items']}")
+    else:
+        print(f"Could not retrieve 'curr_items' from server: {server}")
 elif exp_type == 'full':
   # Wait until port 11211 is available
-  while True:
-      sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      try:
-          sock.bind(('0.0.0.0', 11211))
-          sock.close()
-          break
-      except socket.error:
-          continue
+  # while True:
+  #     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  #     try:
+  #         sock.bind(('0.0.0.0', 11211))
+  #         sock.close()
+  #         break
+  #     except socket.error:
+  #         continue
   boot_command = ["memcached", "-d", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32", "-l", "0.0.0.0"]
   StartBackgroundProcess(boot_command, "/tmp/memcached.log", True)
 else:

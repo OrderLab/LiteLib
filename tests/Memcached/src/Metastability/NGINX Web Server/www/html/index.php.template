@@ -12,12 +12,12 @@ $servername = "DATABASE_SERVER_IP";
 $username = "metastable";
 $password = "hello@123";
 $memcached_server = "MEMCACHED_SERVER_IP";
-//$request_type = $_GET['request_type'];
+$request_type = $_GET['request_type'];
 //$request_size = $_GET['request_size'];
 //$arrival_time = $_GET['arrival_time'];
 //$retry_policy = $_GET['retry_policy']; 
 $request_index = $_GET['request_index'];     
-$pool_size = 2; // connections number / core number
+$pool_size = 1 // connections number / core number
 $persistent_id = rand(1, $pool_size);
 $mem_var = new Memcached($persistent_id);
 // $mem_var = new Memcached();
@@ -52,13 +52,15 @@ if( !count($mem_var->getServerList()) )
 
 $memcached_response = 0;
 
-if ($connected) $memcached_response =  $mem_var->get($request_index) ;   
+if ($connected && $request_type == 0) {
+    $memcached_response =  $mem_var->get($request_index) ;   
+}
 
 // ob_start();
 // var_dump($request_index);
 // var_dump($mem_var->getResultCode());
 // error_log(ob_get_clean());
-if ($memcached_response) {
+if ($memcached_response && $request_type == 0) {
 
   // $end_time = microtime(true);
   // $execution_time = ($end_time - $start_time) * 1000000;
@@ -69,8 +71,7 @@ if ($memcached_response) {
     #echo "Data was found in memcached\r\n";
     //echo $memcached_response;  
    echo 1; 
-  
-} else 
+} else
 {  
 
       // $end_time = microtime(true);
@@ -160,56 +161,62 @@ if ($memcached_response) {
       // GRANT EXECUTE ON metastable_test_db.* TO 'metastable'@'%';
       // FLUSH PRIVILEGES;
 
-      $result = mysqli_query($dbh,"CALL PerformJoin($request_index, $database_query_weight)");
-
-      // $end_time = microtime(true);
-      // $execution_time = ($end_time - $start_time) * 1000000;
-      // ob_start();
-      // var_dump("MySQL Query Executed: ". $execution_time . " us");
-      // error_log(ob_get_clean());
-      // $start_time = microtime(true);
-
-      if ($result === false) {
-        die('Error : ('. $dbh->errno .') '. $dbh->error);
+      $result = null;
+      if ($request_type == 0) {
+        $result = mysqli_query($dbh,"CALL PerformJoin($request_index, $database_query_weight)");
+      } else {
+        $result = mysqli_query($dbh,"CALL PerformUpdate($request_index, $database_query_weight)");
       }
 
-      $data_array = mysqli_fetch_array($result);
-      $result -> free_result();
-      $dbh -> close();
-      
-      // $end_time = microtime(true);
-      // $execution_time = ($end_time - $start_time) * 1000000;
-      // ob_start();
-      // var_dump("MySQL Query Result Fetched: ". $execution_time . " us");
-      // error_log(ob_get_clean());
-      // $start_time = microtime(true);
-      
-      $stringified_data = implode("+",$data_array);  
-      #echo $stringified_data . "\n";
-      if ($connected) {
-      $mem_set_result = $mem_var->set($request_index,  $stringified_data);
-      
-      // $end_time = microtime(true);
-      // $execution_time = ($end_time - $start_time) * 1000000;
-      // ob_start();
-      // var_dump("Memcached Set Response: ". $execution_time . " us");
-      // error_log(ob_get_clean());
-      // $start_time = microtime(true);
-
-      if(!$mem_set_result){
-          if ($mem_var->getResultCode() == 35) { // MEMCACHED_SERVER_MARKED_DEAD
-            $mem_var->quit();
-            $mem_var->resetServerList();
-          } else {
-            ob_start();
-            var_dump($mem_set_result);
-            var_dump($mem_var->getResultCode());
-            error_log(ob_get_clean());
-          }
-          // echo -97;
-          // exit();
-          }
+        // $end_time = microtime(true);
+        // $execution_time = ($end_time - $start_time) * 1000000;
+        // ob_start();
+        // var_dump("MySQL Query Executed: ". $execution_time . " us");
+        // error_log(ob_get_clean());
+        // $start_time = microtime(true);
+  
+        if ($result === false) {
+          die('Error : ('. $dbh->errno .') '. $dbh->error);
         }
+  
+        $data_array = mysqli_fetch_array($result);
+        $result -> free_result();
+        $dbh -> close();
+        
+        // $end_time = microtime(true);
+        // $execution_time = ($end_time - $start_time) * 1000000;
+        // ob_start();
+        // var_dump("MySQL Query Result Fetched: ". $execution_time . " us");
+        // error_log(ob_get_clean());
+        // $start_time = microtime(true);
+        
+        $stringified_data = implode("+",$data_array);  
+        #echo $stringified_data . "\n";
+        if ($connected) {
+        $mem_set_result = $mem_var->set($request_index,  $stringified_data);
+        
+        // $end_time = microtime(true);
+        // $execution_time = ($end_time - $start_time) * 1000000;
+        // ob_start();
+        // var_dump("Memcached Set Response: ". $execution_time . " us");
+        // error_log(ob_get_clean());
+        // $start_time = microtime(true);
+  
+        if(!$mem_set_result){
+            if ($mem_var->getResultCode() == 35 || $mem_var->getResultCode() == 3) { // MEMCACHED_SERVER_MARKED_DEAD
+              $mem_var->quit();
+              $mem_var->resetServerList();
+            } else {
+              ob_start();
+              var_dump($mem_set_result);
+              var_dump($mem_var->getResultCode());
+              error_log(ob_get_clean());
+            }
+            // echo -97;
+            // exit();
+            }
+          }
+
 
       echo 2;   
 
