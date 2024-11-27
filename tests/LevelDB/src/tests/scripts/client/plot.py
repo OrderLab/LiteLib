@@ -1,12 +1,9 @@
 import json
 import argparse
-import math
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import re
 from datetime import datetime
-from concurrent.futures import ProcessPoolExecutor
 import sys
 
 
@@ -17,7 +14,7 @@ def annotate_time_points(ax, stat):
         ("replay_time", "replayed", "green", (1, 2, 2, 2)),
     ]
     for t, label, c, dash in type:
-        if stat[t] is not np.nan:
+        if not np.isnan(stat[t]):
             ax.axvline(x=stat[t], color=c, dashes=dash, label=label)
 
 
@@ -91,75 +88,21 @@ def plot_resource(ax, stat, res_name, ylim, xlim):
     ax.set_ylim(0, ylim)
 
 
-def mean2d(arr):
-    ret = np.empty(len(arr))
-    for i in range(len(arr)):
-        if len(arr[i]) == 0:
-            ret[i] = np.nan
-        else:
-            ret[i] = np.mean(arr[i])
-    return ret
-
-
-def p2d(arr, p):
-    ret = np.empty(len(arr))
-    for i in range(len(arr)):
-        if len(arr[i]) == 0:
-            ret[i] = np.nan
-        else:
-            ret[i] = np.percentile(arr[i], p)
-    return ret
-
-
-begin_time = 0
-
-
-def get_index(time):
-    return math.floor(time - begin_time)
-
-
-def get_timestamp_in_the_end_of_a_line(line):
-    match = re.search(r"\b(\d+)\b$", line)
-    if match:
-        number = match.group(1)
-        return float(number) / 1e9 - begin_time
-        # return np.floor(float(number) / 1e9 - begin_time)
-    return np.nan
-
-
 parser = argparse.ArgumentParser(description="Process JSON files.")
 
 parser.add_argument("-f", "--filenames", nargs="+", help="The path to the JSON file(s)")
-parser.add_argument("-t", "--total_time", type=int, default=7200, help="maximum duration")
-parser.add_argument("-j", "--concurrency", type=int, default=3, help="number of concurrent processes")
+parser.add_argument(
+    "-t", "--total_time", type=int, default=7200, help="maximum duration"
+)
 
 args = parser.parse_args()
 
 cnt = len(args.filenames)
 for filename in args.filenames:
-    if not filename.endswith(".jsonl"):
+    if not filename.endswith(".json"):
         raise argparse.ArgumentTypeError(
-            f"Invalid file type: {filename}. Expected a '.jsonl' file."
+            f"Invalid file type: {filename}. Expected a '.json' file."
         )
-
-def process_file(filename):
-    with open(filename, "r") as f:
-        data = json.load(f)
-        for line in data:
-            line["begin"] = line["begin"]["secs"] + line["begin"]["nanos"] / 1e9
-            for query in line["queries"]:
-                query["request"] = (
-                    query["request"]["secs"] + query["request"]["nanos"] / 1e9
-                )
-                query["response"] = (
-                    query["response"]["secs"] + query["response"]["nanos"] / 1e9
-                )
-        return data
-
-
-logs = []
-with ProcessPoolExecutor(max_workers=args.concurrency) as executor:
-    logs = list(executor.map(process_file, args.filenames[:cnt]))
 
 client_throughput_lim = np.nan
 client_latency_lim = np.nan
@@ -167,62 +110,40 @@ tries_lim = np.nan
 server_throughput_lim = np.nan
 server_latency_lim = np.nan
 lock_time_lim = np.nan
+cpu_ylim = np.nan
+mem_ylim = np.nan
+
 
 stats = []
 for i in range(cnt):
-    begin_time = np.min([line["begin"] for line in logs[i]])
-    last_response_time = np.max(
-        [query["response"] for line in logs[i] for query in line["queries"]]
-    )
-    total_time = get_index(last_response_time) + 1
-    stat = {
-        "cnt": np.zeros(total_time),
-        "server_lat_list": [[] for _ in range(total_time)],
-        "agg_lat_list": [[] for _ in range(total_time)],
-        "tries": [[] for _ in range(total_time)],
-        "ClientSuccess": np.zeros(total_time),
-        "ClientMiss": np.zeros(total_time),
-        "ClientTimeout": np.zeros(total_time),
-        "ClientError": np.zeros(total_time),
-        "ClientTransactionError": np.zeros(total_time),
-        "ServerSuccess": np.zeros(total_time),
-        "ServerMiss": np.zeros(total_time),
-        "ServerError": np.zeros(total_time),
-        "ServerTimeout": np.zeros(total_time),
-        "ServerTransactionError": np.zeros(total_time),
-        "lock_wait_time": [[] for _ in range(total_time)],
-        "begin_time": begin_time,
-    }
-    for line in logs[i]:
-        begin_index = get_index(line["queries"][0]["request"])
-        stat["cnt"][begin_index] += 1
-        if line["queries"][-1]["status"] == "Success":
-            stat["agg_lat_list"][begin_index].append(
-                line["queries"][-1]["response"] - line["queries"][0]["request"],
-            )
-            assert len(stat["agg_lat_list"][begin_index]) > 0
-            stat["tries"][begin_index].append(len(line["queries"]))
-        stat["Client" + line["queries"][-1]["status"]][begin_index] += 1
-        for query in line["queries"]:
-            request_index = get_index(query["request"])
-            if query["status"] == "Success":
-                stat["server_lat_list"][request_index].append(
-                    query["response"] - query["request"],
-                )
-            stat["Server" + query["status"]][request_index] += 1
-        stat["lock_wait_time"][get_index(line["begin"])].append(
-            line["queries"][0]["request"] - line["begin"],
-        )
-        for i in range(len(line["queries"]) - 1):
-            stat["lock_wait_time"][get_index(line["queries"][i]["response"])].append(
-                line["queries"][i + 1]["request"] - line["queries"][i]["response"],
-            )
-    stat["avg_agg_lat"] = mean2d(stat["agg_lat_list"]) * 1000
-    stat["p95_agg_lat"] = p2d(stat["agg_lat_list"], 95) * 1000
-    stat["avg_server_lat"] = mean2d(stat["server_lat_list"]) * 1000
-    stat["p95_server_lat"] = p2d(stat["server_lat_list"], 95) * 1000
-    stat["avg_tries"] = mean2d(stat["tries"])
-    stat["avg_lock_wait_time"] = mean2d(stat["lock_wait_time"]) * 1000
+    stat_file = args.filenames[i]
+    with open(stat_file, "r") as f:
+        stat = json.load(f)
+
+    stat_len = len(stat["cnt"])
+    if stat_len > args.total_time:
+        stat_len = args.total_time
+        stat["cnt"] = stat["cnt"][:stat_len]
+        stat["ClientSuccess"] = stat["ClientSuccess"][:stat_len]
+        stat["ClientMiss"] = stat["ClientMiss"][:stat_len]
+        stat["ClientTimeout"] = stat["ClientTimeout"][:stat_len]
+        stat["ClientError"] = stat["ClientError"][:stat_len]
+        stat["ClientTransactionError"] = stat["ClientTransactionError"][:stat_len]
+        stat["ServerSuccess"] = stat["ServerSuccess"][:stat_len]
+        stat["ServerMiss"] = stat["ServerMiss"][:stat_len]
+        stat["ServerTimeout"] = stat["ServerTimeout"][:stat_len]
+        stat["ServerError"] = stat["ServerError"][:stat_len]
+        stat["ServerTransactionError"] = stat["ServerTransactionError"][:stat_len]
+        stat["avg_agg_lat"] = stat["avg_agg_lat"][:stat_len]
+        stat["p95_agg_lat"] = stat["p95_agg_lat"][:stat_len]
+        stat["avg_server_lat"] = stat["avg_server_lat"][:stat_len]
+        stat["p95_server_lat"] = stat["p95_server_lat"][:stat_len]
+        stat["avg_tries"] = stat["avg_tries"][:stat_len]
+        stat["avg_lock_wait_time"] = stat["avg_lock_wait_time"][:stat_len]
+        for process_name, process_usage in stat["resource"].items():
+            process_usage["cpu"] = process_usage["cpu"][:stat_len]
+            process_usage["mem"] = process_usage["mem"][:stat_len]
+
     client_throughput_lim = np.nanmax(
         [
             client_throughput_lim,
@@ -253,133 +174,121 @@ for i in range(cnt):
     )
     tries_lim = np.nanmax([tries_lim, np.nanmax(stat["avg_tries"])])
     lock_time_lim = np.nanmax([lock_time_lim, np.nanmax(stat["avg_lock_wait_time"])])
-    stats.append(stat)
-
-for i in range(cnt):
-    log_file = args.filenames[i][:-6] + ".log"
-    stat = stats[i]
-    stat["crash_time"] = np.nan
-    stat["reboot_time"] = np.nan
-    stat["replay_time"] = np.nan
-    if not os.path.exists(log_file):
-        print(f"Log file {log_file} does not exist, won't plot special timestamps")
-    else:
-        begin_time = stat["begin_time"]
-        with open(log_file, "r") as f:
-            lines = f.readlines()
-        for line in lines:
-            if ("ntering emergency mode" in line or "crash time" in line) and stat[
-                "crash_time"
-            ] is np.nan:
-                stat["crash_time"] = get_timestamp_in_the_end_of_a_line(line)
-            if "Exiting emergency mode" in line or "boot time" in line:
-                stat["reboot_time"] = get_timestamp_in_the_end_of_a_line(line)
-            if "Exited emergency mode" in line:
-                stat["replay_time"] = get_timestamp_in_the_end_of_a_line(line)
-        begin_time_str = datetime.fromtimestamp(begin_time).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-        print(
-            f"Case: {args.filenames[i][:-6]}, begin_time: {begin_time_str}, crash time: {stat['crash_time']}, reboot time: {stat['reboot_time']}, replay time: {stat['replay_time']}"
-        )
-
-cpu_ylim = np.nan
-mem_ylim = np.nan
-
-for i in range(cnt):
-    dir_name, file_name = os.path.split(args.filenames[i])
-    args.filenames[i] = os.path.join(dir_name, "monitor." + file_name)
-    if not args.filenames[i].endswith(".jsonl"):
-        raise argparse.ArgumentTypeError(
-            f"Invalid file type: {args.filenames[i]}. Expected a '.jsonl' file."
-        )
-    with open(args.filenames[i], "r") as file:
-        lines = file.readlines()
-    process_usages = {}
-    for line in lines:
-        try:
-            data = json.loads(line)
-            time = 0
-            for process_name, process_info in data.items():
-                if process_name == "time":
-                    time = int(process_info)
-                else:
-                    if process_name not in process_usages:
-                        process_usages[process_name] = {
-                            "cpu": np.full(len(stats[i]["cnt"]) + 100, np.nan),
-                            "mem": np.full(len(stats[i]["cnt"]) + 100, np.nan),
-                        }
-                    process_usages[process_name]["cpu"][time] = process_info["cpu"]
-                    process_usages[process_name]["mem"][time] = process_info["mem"]
-        except json.JSONDecodeError:
-            pass
-    for process_usage in process_usages.values():
-        cpu = process_usage["cpu"][0 : len(stats[i]["cnt"])]
-        mem = process_usage["mem"][0 : len(stats[i]["cnt"])]
-        mem = mem / 1024.0 / 1024.0
-        process_usage["cpu"] = cpu
-        process_usage["mem"] = mem
+    for process_name, process_usage in stat["resource"].items():
         cpu_ylim = np.nanmax([cpu_ylim, np.nanmax(process_usage["cpu"])])
         mem_ylim = np.nanmax([mem_ylim, np.nanmax(process_usage["mem"])])
-    ordered_process_usages = {}
-    ordered_process_usages["redis-leveldb"] = process_usages["redis-leveldb"]
-    for process_name in sorted(process_usages.keys()):
-        if process_name != "redis-leveldb":
-            ordered_process_usages[process_name] = process_usages[process_name]
-    stats[i]["resource"] = ordered_process_usages
 
-def plot(duration, name):
-    fig, axs = plt.subplots(10, cnt, figsize=(5 * cnt, 40))
-    plt.subplots_adjust(hspace=0.3, wspace=0.3)
-    for i in range(cnt):
-        xlim = min(duration, len(stats[i]["cnt"]))
-        axs[0, i].set_title(args.filenames[i][:-6], y=1.2)
-        plot_throughput(axs[0, i], stats[i], "Client", client_throughput_lim * 1.1, xlim)
-        plot_latency(
-            axs[1, i],
-            stats[i],
-            "avg_agg_lat",
-            "Avg Client Latency",
-            client_latency_lim * 1.1,
-            xlim,
+    print(f"{os.path.basename(stat_file)[:-10]}-------------------------------------------")
+    if not np.isnan(stat["crash_time"]):
+        idx = int(stat["crash_time"]) - 1
+        print(
+            "before crash avg latency_client_avg", np.nanmean(stat["avg_agg_lat"][:idx])
         )
-        plot_latency(
-            axs[2, i],
-            stats[i],
-            "p95_agg_lat",
-            "95% Client Latency",
-            client_latency_lim * 1.1,
-            xlim,
+        print(
+            "before crash avg latency_client_p95", np.nanmean(stat["p95_agg_lat"][:idx])
         )
-        plot_tries(axs[3, i], stats[i], tries_lim * 1.1, xlim)
-        plot_throughput(axs[4, i], stats[i], "Server", server_throughput_lim * 1.1, xlim)
-        plot_latency(
-            axs[5, i],
-            stats[i],
-            "avg_server_lat",
-            "Avg Server Latency",
-            server_latency_lim * 1.1,
-            xlim,
+        print(
+            "before crash avg latency_server_avg",
+            np.nanmean(stat["avg_server_lat"][:idx]),
         )
-        plot_latency(
-            axs[6, i],
-            stats[i],
-            "p95_server_lat",
-            "95% Server Latency",
-            server_latency_lim * 1.1,
-            xlim,
+        print(
+            "before crash avg latency_server_p95",
+            np.nanmean(stat["p95_server_lat"][:idx]),
         )
-        plot_resource(axs[7, i], stats[i], "cpu", cpu_ylim * 1.1, xlim)
-        plot_resource(axs[8, i], stats[i], "mem", mem_ylim * 1.1, xlim)
-        plot_latency(
-            axs[9, i],
-            stats[i],
-            "avg_lock_wait_time",
-            "Avg Lock Wait Time",
-            lock_time_lim * 1.1,
-            xlim,
+    if not np.isnan(stat["reboot_time"]):
+        if not np.isnan(stat["replay_time"]):
+            xlim = stat["replay_time"]
+        else:
+            xlim = stat["reboot_time"]
+        idx = int(xlim) + 1
+        print(
+            "after reboot/replay avg latency_client_avg",
+            np.nanmean(stat["avg_agg_lat"][idx:]),
         )
-    plt.savefig(name, bbox_inches="tight")
+        print(
+            "after reboot/replay avg latency_client_p95",
+            np.nanmean(stat["p95_agg_lat"][idx:]),
+        )
+        print(
+            "after reboot/replay avg latency_server_avg",
+            np.nanmean(stat["avg_server_lat"][idx:]),
+        )
+        print(
+            "after reboot/replay avg latency_server_p95",
+            np.nanmean(stat["p95_server_lat"][idx:]),
+        )
+    if not np.isnan(stat["replay_time"]):
+        crash_time = int(stat["crash_time"]) + 1
+        reboot_time = int(stat["reboot_time"])
+        replay_time = int(stat["replay_time"])
+        server_success = np.array(stat["ServerSuccess"])
+        server_miss = np.array(stat["ServerMiss"])
+        hit_rate = server_success / (server_success + server_miss)
+        print(f"avg hit rate from crash to replay: {np.nanmean(hit_rate[crash_time:replay_time])}")
+    stats.append(stat)
 
-plot(args.total_time, "leveldb")
-plot(sys.maxsize, "leveldb_full")
+
+def plot(duration, name, filenames):
+    # Define plot configurations
+    plot_configs = [
+        ("throughput_client", plot_throughput, ["Client", client_throughput_lim]),
+        (
+            "latency_client_avg",
+            plot_latency,
+            ["avg_agg_lat", "Avg Client Latency", client_latency_lim],
+        ),
+        (
+            "latency_client_p95",
+            plot_latency,
+            ["p95_agg_lat", "95% Client Latency", client_latency_lim],
+        ),
+        ("tries", plot_tries, [tries_lim]),
+        ("throughput_server", plot_throughput, ["Server", server_throughput_lim]),
+        (
+            "latency_server_avg",
+            plot_latency,
+            ["avg_server_lat", "Avg Server Latency", server_latency_lim],
+        ),
+        (
+            "latency_server_p95",
+            plot_latency,
+            ["p95_server_lat", "95% Server Latency", server_latency_lim],
+        ),
+        ("resource_cpu", plot_resource, ["cpu", cpu_ylim]),
+        ("resource_mem", plot_resource, ["mem", mem_ylim]),
+        (
+            "lock_wait_time",
+            plot_latency,
+            ["avg_lock_wait_time", "Avg Lock Wait Time", lock_time_lim],
+        ),
+    ]
+
+    # Create and save individual plots for each row
+    for row, (plot_name, plot_func, args) in enumerate(plot_configs):
+        fig, axs = plt.subplots(1, cnt, figsize=(5 * cnt, 4))
+        if cnt == 1:
+            axs = [axs]
+
+        for i in range(cnt):
+            xlim = min(duration, len(stats[i]["cnt"]))
+            axs[i].set_title(os.path.basename(filenames[i])[:-10])
+
+            # Call plot function with appropriate arguments
+            if plot_func == plot_throughput:
+                plot_func(axs[i], stats[i], args[0], args[1] * 1.1, xlim)
+            elif plot_func == plot_tries:
+                plot_func(axs[i], stats[i], args[0] * 1.1, xlim)
+            elif plot_func == plot_resource:
+                plot_func(axs[i], stats[i], args[0], args[1] * 1.1, xlim)
+            elif plot_func == plot_latency:
+                plot_func(axs[i], stats[i], args[0], args[1], args[2] * 1.1, xlim)
+            else:
+                raise ValueError(f"Unknown plot function: {plot_func}")
+
+        plt.tight_layout()
+        fig.savefig(f"{name}_{plot_name}.png", bbox_inches="tight")
+        fig.savefig(f"{name}_{plot_name}.pdf", bbox_inches="tight")
+        plt.close(fig)
+
+
+plot(args.total_time, "leveldb" + str(args.total_time), args.filenames)
