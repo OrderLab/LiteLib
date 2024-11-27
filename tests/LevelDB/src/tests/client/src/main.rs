@@ -48,6 +48,7 @@ struct BenchmarkConfig {
     #[serde(deserialize_with = "deserialize_duration")]
     timeout: Duration,
     retry_count: usize,
+    inital_iter_count: usize,
     enable_connection_pool: bool,
     check_correctness: bool,
     work_dir: String,
@@ -280,50 +281,53 @@ async fn main() {
     let pool = cfg.redis.create_pool(Some(Runtime::Tokio1)).unwrap();
 
     // -------------------------- Init the database ---------------------------
-    let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Initializing");
-    bar.set_style(
-        ProgressStyle::with_template(
-            "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",
-        )
-        .unwrap(),
-    );
-    let mut handles = Vec::new();
     let mut values = Vec::new();
     for _ in 0..cfg.benchmark.num_keys + 1 {
         values.push(Arc::new(Mutex::new(0 as usize)));
     }
-    let start_time = Instant::now();
-    for i in (1..cfg.benchmark.num_keys + 1).rev() {
-        let pool = pool.clone();
-        let i = i; // Copy i into the closure
-        let value = format!("{}_{}_{}", base_value, i, 0);
-        let bar = bar.clone();
-        let handle = tokio::spawn(async move {
-            let mut conn = pool.get().await.unwrap_or_else(|e| {
-                panic!("Initialize failed i: {}, error: {}", i, e);
+    for iter in 0..cfg.benchmark.inital_iter_count {
+        println!("Initializing database for the {}th time", iter);
+        let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Initializing");
+        bar.set_style(
+            ProgressStyle::with_template(
+                "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",
+            )
+            .unwrap(),
+        );
+        let mut handles = Vec::new();
+        let start_time = Instant::now();
+        for i in (1..cfg.benchmark.num_keys + 1).rev() {
+            let pool = pool.clone();
+            let i = i; // Copy i into the closure
+            let value = format!("{}_{}_{}", base_value, i, 0);
+            let bar = bar.clone();
+            let handle = tokio::spawn(async move {
+                let mut conn = pool.get().await.unwrap_or_else(|e| {
+                    panic!("Initialize failed i: {}, error: {}", i, e);
+                });
+                update_conn_if_not_established!(conn, cfg.benchmark.timeout);
+                cmd("SET")
+                    .arg(generate_key(i, cfg.benchmark.key_length))
+                    .arg(&value)
+                    .query::<String>(&mut conn.conn.as_mut().unwrap())
+                    .unwrap();
+                bar.inc(1);
             });
-            update_conn_if_not_established!(conn, cfg.benchmark.timeout);
-            cmd("SET")
-                .arg(generate_key(i, cfg.benchmark.key_length))
-                .arg(&value)
-                .query::<String>(&mut conn.conn.as_mut().unwrap())
-                .unwrap();
-            bar.inc(1);
-        });
-        handles.push(handle);
+            handles.push(handle);
+        }
+        for handle in handles {
+            handle.await.unwrap();
+        }
+        let end_time = Instant::now();
+        bar.finish();
+        println!("\nFinished initializing database");
+        let elapsed = end_time - start_time;
+        println!(
+            "Initialization time: {:?} ms, rps: {:?}",
+            elapsed.as_millis(),
+            cfg.benchmark.num_keys as f64 / elapsed.as_secs_f64()
+        );
     }
-    for handle in handles {
-        handle.await.unwrap();
-    }
-    let end_time = Instant::now();
-    bar.finish();
-    println!("\nFinished initializing database");
-    let elapsed = end_time - start_time;
-    println!(
-        "Initialization time: {:?} ms, rps: {:?}",
-        elapsed.as_millis(),
-        cfg.benchmark.num_keys as f64 / elapsed.as_secs_f64()
-    );
 
     // -------------------------- Generate requests ---------------------------
     let mut idx = Vec::new();
@@ -367,7 +371,7 @@ async fn main() {
         let work_dir = cfg.benchmark.work_dir.clone();
         let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
         let secs = duration_since_epoch.as_secs();
-        let target_time = UNIX_EPOCH + Duration::from_secs(secs + 3);
+        let target_time = UNIX_EPOCH + Duration::from_secs(secs + 15);
 
         tokio::spawn(async move {
             let output = Command::new("ssh")

@@ -136,7 +136,8 @@ sleep_for(start_time - time.time())
 # ---------------------------------------------------------------- exp begins
 checkpoint_thread = None
 if args.experiment_type == "Checkpoint":
-    checkpoint_start_time = start_time + random.uniform(0, args.checkpoint_interval)
+    target_checkpoint_time = args.crash_time - args.checkpoint_interval / 2
+    checkpoint_start_time = start_time + target_checkpoint_time - target_checkpoint_time // args.checkpoint_interval * args.checkpoint_interval
     print(f"Checkpoint start time: {checkpoint_start_time - start_time}")
     checkpoint_thread = threading.Thread(
         target=periodic_checkpoint,
