@@ -418,7 +418,7 @@ async fn main() {
         });
 
         let duration_until_target_time = target_time
-            .duration_since(now)
+            .duration_since(SystemTime::now())
             .expect("Target time is in the past");
         sleep(duration_until_target_time).await;
     }

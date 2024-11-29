@@ -120,7 +120,7 @@ def periodic_checkpoint(interval, end_time):
     while time.time() < end_time:
         checkpoint_dump(i)
         i += 1
-        time.sleep(interval - (time.monotonic() - first_checkpoint_time) % interval)
+        time.sleep(interval - (time.time() - first_checkpoint_time) % interval)
     os.system(f"cp {args.work_dir}/checkpoint-data/foo_before_restore/foo/{args.file_prefix}.log {args.work_dir}")
     os.system(f"cat {args.work_dir}/checkpoint-data/foo_before_restore/foo/reboot_time.log >> {args.work_dir}/{args.file_prefix}.log")
 
