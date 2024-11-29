@@ -32,11 +32,18 @@ def plot_throughput(ax, stat, prefix, ylim, xlim):
     for t, c in type:
         next_base = base + stat[prefix + t]
         if (next_base != base).any():
+            label = t
+            if t == "Error":
+                label = (
+                    "Stale Data"
+                    if np.isnan(stat["replay_time"])
+                    else "AdmissionControl"
+                )
             ax.fill_between(
                 range(total_time),
                 base,
                 next_base,
-                label=t,
+                label=label,
                 alpha=0.5,
                 color=c,
             )
@@ -78,10 +85,10 @@ def plot_resource(ax, stat, res_name, ylim, xlim):
     ax.set_xlabel("Time (s)")
     ax.set_ylabel(f"{res_name} usage" + (" (%)" if res_name == "cpu" else " (MB)"))
     ax.legend(
-        bbox_to_anchor=(0, 1.02, 1, 0.2),
+        # bbox_to_anchor=(0, 1.02, 1, 0.2),
         loc="lower left",
-        mode="expand",
-        borderaxespad=0,
+        # mode="expand",
+        # borderaxespad=0,
         ncol=1,
     )
     ax.set_xlim(0, xlim)
@@ -178,7 +185,9 @@ for i in range(cnt):
         cpu_ylim = np.nanmax([cpu_ylim, np.nanmax(process_usage["cpu"])])
         mem_ylim = np.nanmax([mem_ylim, np.nanmax(process_usage["mem"])])
 
-    print(f"{os.path.basename(stat_file)[:-10]}-------------------------------------------")
+    print(
+        f"{os.path.basename(stat_file)[:-10]}-------------------------------------------"
+    )
     if not np.isnan(stat["crash_time"]):
         idx = int(stat["crash_time"]) - 1
         print(
@@ -217,6 +226,17 @@ for i in range(cnt):
             "after reboot/replay avg latency_server_p95",
             np.nanmean(stat["p95_server_lat"][idx:]),
         )
+        duration = 30
+        print(
+            f"{duration}s after reboot/replay avg client error rate",
+            np.nanmean(
+                np.array(stat["ClientError"][idx : idx + duration])
+                / (
+                    np.array(stat["ClientSuccess"][idx : idx + duration])
+                    + np.array(stat["ClientError"][idx : idx + duration])
+                )
+            ),
+        )
     if not np.isnan(stat["replay_time"]):
         crash_time = int(stat["crash_time"]) + 1
         reboot_time = int(stat["reboot_time"])
@@ -224,7 +244,38 @@ for i in range(cnt):
         server_success = np.array(stat["ServerSuccess"])
         server_miss = np.array(stat["ServerMiss"])
         hit_rate = server_success / (server_success + server_miss)
-        print(f"avg hit rate from crash to replay: {np.nanmean(hit_rate[crash_time:replay_time])}")
+        print(
+            f"avg hit rate from crash to replay: {np.nanmean(hit_rate[crash_time:replay_time])}"
+        )
+        print(
+            "admission control rate: ",
+            stat["ServerError"][reboot_time]
+            / (stat["ServerSuccess"][reboot_time] + stat["ServerError"][reboot_time]),
+        )
+        print(
+            "admission control rate (+1s): ",
+            stat["ServerError"][reboot_time + 1]
+            / (
+                stat["ServerSuccess"][reboot_time + 1]
+                + stat["ServerError"][reboot_time + 1]
+            ),
+        )
+        print(
+            "emergency mode avg latency_server_avg",
+            np.nanmean(stat["avg_server_lat"][crash_time:replay_time]),
+        )
+        print(
+            "emergency mode avg latency_server_p95",
+            np.nanmean(stat["p95_server_lat"][crash_time:replay_time]),
+        )
+        print(
+            "emergency mode avg latency_client_avg",
+            np.nanmean(stat["avg_agg_lat"][crash_time:replay_time]),
+        )
+        print(
+            "emergency mode avg latency_client_p95",
+            np.nanmean(stat["p95_agg_lat"][crash_time:replay_time]),
+        )
     stats.append(stat)
 
 
