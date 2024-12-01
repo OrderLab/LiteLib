@@ -4,7 +4,8 @@ set -e
 set -x
 
 NGINX_SERVER_IP=${1:-"%"}
-DB_ENTRIES=${2:-"1504000"}
+# DB_ENTRIES=${2:-"1504000"}
+DB_ENTRIES=${2:-"34600000"}
 
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2
@@ -38,10 +39,18 @@ mysql -u root < init_database.sql
 # wget https://github.com/Percona-Lab/mysql_random_data_load/releases/download/v0.1.12/mysql_random_data_load_0.1.12_Linux_x86_64.tar.gz
 # tar -xvf  mysql_random_data_load_*
 mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'hello@123';;FLUSH PRIVILEGES;"
-./mysql_random_data_load metastable_test_db large_test_table $DB_ENTRIES --user=root --password=hello@123
+
+for i in {1..10}; do
+    ./mysql_random_data_load metastable_test_db large_test_table $(($DB_ENTRIES/10)) --user=root --password=hello@123 &
+done
+
+while pgrep -f mysql_random_data_load > /dev/null; do
+    echo "Waiting for mysql_random_data_load processes to complete..."
+    sleep 5
+done
 
 cp linearize_column_data.sql.template linearize_column_data.sql
 sed -i "/SET @a:=/c\SET @a:= $DB_ENTRIES;" linearize_column_data.sql
-mysql -u root -phello@123 < linearize_column_data.sql
+mysql -u root -phello@123 < linearize_column_data.sql # takes about 1 hour
 
 echo "Done executing setup_mysql.sh"

@@ -1,4 +1,7 @@
 use metastable_test_db;
+-- SELECT @@innodb_buffer_pool_size;
+-- SET GLOBAL innodb_buffer_pool_size = 134217728;
+SET GLOBAL innodb_buffer_pool_size = 2147483648;
 UPDATE large_test_table SET tcol07 = 1;
-SET @a:=  1504000;
+SET @a:=  34600000;
 UPDATE large_test_table SET tcol04=@a:=@a-1;

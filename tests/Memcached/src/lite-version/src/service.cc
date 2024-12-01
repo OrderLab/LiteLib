@@ -42,11 +42,16 @@ void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
         .value = packet.value, .flags = packet.extra, .CAS = packet.header.CAS};
     switch (opcode) {
       case Header::Opcode::kSet:
+        if (!cache->Set(*packet.key, entry))
+          LOG(ERROR) << "NormalUpdate: set failed" << std::endl;
+        break;
       case Header::Opcode::kAdd:
-        cache->Add(*packet.key, entry);
+        if (!cache->Add(*packet.key, entry))
+          LOG(ERROR) << "NormalUpdate: add failed" << std::endl;
         break;
       case Header::Opcode::kReplace:
-        cache->Replace(*packet.key, entry);
+        if (!cache->Replace(*packet.key, entry))
+          LOG(ERROR) << "NormalUpdate: replace failed" << std::endl;
         break;
       case Header::Opcode::kQuit:
       case Header::Opcode::kGet:

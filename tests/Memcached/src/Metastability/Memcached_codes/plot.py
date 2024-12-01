@@ -348,9 +348,9 @@ if __name__ == "__main__":
             new_hit_throughput,
             new_p99_latency,
             new_avg_latency,
-        ) = read_log_and_write_to_summary(f"result_{new_file_prefix}.txt", f"summary_{new_file_prefix}.txt")
+        ) = read_log_and_write_to_summary(f"./result_stats/result_{new_file_prefix}.txt", f"./result_stats/summary_{new_file_prefix}.txt")
         new_process_usages = read_monitor_log(
-            f"monitor_{new_file_prefix}.txt", new_num_seconds
+            f"./result_stats/monitor_{new_file_prefix}.txt", new_num_seconds
         )
         file_prefix.append(new_file_prefix)
         num_seconds.append(new_num_seconds)
@@ -375,10 +375,13 @@ if __name__ == "__main__":
     max_mem = max([max([max(process_usages[i][process]["mem"]) for process in process_usages[i]]) for i in range(prefix_number)])
 
     for i in range(prefix_number):
-        axs[0, i].set_title(f"{file_prefix[i]}", y=1.2)
+        if prefix_number > 1:
+            axs[0, i].set_title(f"{file_prefix[i]}", y=1.2)
+        else:
+            axs[0].set_title(f"{file_prefix[i]}", y=1.2)
         plot_performance(
             # "{left_file_prefix}.png",
-            axs[0, i],
+            axs[0, i] if prefix_number > 1 else axs[0],
             time[i],
             throughput_ylim,
             latency_ylim,
@@ -392,7 +395,7 @@ if __name__ == "__main__":
         )
         cpus_ylim = max_cpu * 1.1
         plot_resources(
-            axs[1, i],
+            axs[1, i] if prefix_number > 1 else axs[1],
             time[i],
             cpus_ylim,
             "cpu",
@@ -402,34 +405,36 @@ if __name__ == "__main__":
         )
         mems_ylim = max_mem * 1.1
         plot_resources(
-            axs[2, i],
+            axs[2, i] if prefix_number > 1 else axs[2],
             time[i],
             mems_ylim,
             "mem",
             process_usages[i],
         )
 
-    plt.savefig(f"comparison.png", bbox_inches="tight")
+    plt.savefig(f"./result_plot/{new_file_prefix}.png", bbox_inches="tight")
 
     for i in range(prefix_number):
-        print(f"{file_prefix[i]}: hit throughput avg before trigger {np.mean(hit_throughput[i][:trigger_time])}, after trigger {np.mean(hit_throughput[i][trigger_time:])}")
-        print(f"{file_prefix[i]}: min hit throughput after 2s {min(hit_throughput[i][2:])}")
-        print(f"{file_prefix[i]}: avg latency after 2s {np.mean(avg_latency[i][2:])}")
+        prefix = file_prefix[i] if prefix_number > 1 else ""
+        print(f"{prefix}: hit throughput avg before trigger {np.mean(hit_throughput[i][:trigger_time])}, after trigger {np.mean(hit_throughput[i][trigger_time:])}")
+        print(f"{prefix}: min hit throughput after 2s {min(hit_throughput[i][2:])}")
+        print(f"{prefix}: avg latency after 2s {np.mean(avg_latency[i][2:])}")
 
         def rolling_average(a, n):
             ret = np.cumsum(a, dtype=float)
             ret[n:] = ret[n:] - ret[:-n]
             return ret[n - 1:] / n
+            
         rolling_avg = rolling_average(hit_throughput[i] / arrival_rate, 5)[trigger_time+1:]
         if np.max(rolling_avg) < 0.9:
-            print(f"{file_prefix[i]}: hit throughput never reaches 90% of arrival rate")
+            print(f"{prefix}: hit throughput never reaches 90% of arrival rate")
         else:
             first_time = np.argmax(rolling_avg > 0.9) + trigger_time + 1
-            print(f"{file_prefix[i]}: time to reach 90% of arrival rate: {first_time}s")
+            print(f"{prefix}: time to reach 90% of arrival rate: {first_time}s")
 
         for process in process_usages[i]:
-            print(f"{file_prefix[i]}({process}): CPU Avg before trigger {np.mean(process_usages[i][process]['cpu'][:trigger_time])}, after trigger {np.mean(process_usages[i][process]['cpu'][trigger_time:])}")
-            print(f"{file_prefix[i]}({process}): Mem Avg before trigger {np.mean(process_usages[i][process]['mem'][:trigger_time])}, after trigger {np.mean(process_usages[i][process]['mem'][trigger_time:])}")
+            print(f"{prefix}({process}): CPU Avg before trigger {np.mean(process_usages[i][process]['cpu'][:trigger_time])}, after trigger {np.mean(process_usages[i][process]['cpu'][trigger_time:])}")
+            print(f"{prefix}({process}): Mem Avg before trigger {np.mean(process_usages[i][process]['mem'][:trigger_time])}, after trigger {np.mean(process_usages[i][process]['mem'][trigger_time:])}")
 
     
 
