@@ -52,12 +52,13 @@ time.sleep(1)
 
 if exp_type == 'lite':
   boot_command = ["memcached", "-s", "/tmp/memcached.sock", "-d", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32"]
+  # boot_command = ["memcached", "-l", "0.0.0.0", "-p", "60000", "-d", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32"]
   StartBackgroundProcess(boot_command, "/tmp/memcached.log")
 
   path = os.path.expanduser('~/LiteMemcached')
   boot_command = [path, '-t', '4', '-s', f"{LITE_SIZE}"]
   StartBackgroundProcess(boot_command, "/tmp/lite_memcached.log", env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"})
-elif exp_type == 'full':
+elif exp_type == 'full' or exp_type == 'checkpoint':
   boot_command = ["memcached", "-d", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32", "-l", "0.0.0.0"]
   StartBackgroundProcess(boot_command, "/tmp/memcached.log")
 else:

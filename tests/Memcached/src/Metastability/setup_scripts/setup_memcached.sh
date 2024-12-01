@@ -37,6 +37,37 @@ sudo systemctl disable memcached
 # memcached -d -u root -l 0.0.0.0 --enable-shutdown -m $CACHE_MEM_SIZE
 pip3 install pymemcache python-binary-memcached psutil
 
+
+sudo apt-get install -y --no-install-recommends \
+  libprotobuf-dev \
+  libprotobuf-c-dev \
+  protobuf-c-compiler \
+  protobuf-compiler \
+  python3-protobuf \
+  pkg-config \
+  libbsd-dev \
+  iproute2 \
+  libnftables-dev \
+  libcap-dev \
+  libnl-3-dev \
+  libnet-dev \
+  libaio-dev \
+  libgnutls28-dev \
+  python3-future \
+  asciidoctor
+
+CURRENT_DIR=$(pwd)
+sudo chown -R $(whoami):$(id -gn) ${HOME}/dependencies
+mkdir -p ${HOME}/dependencies/criu
+cd ${HOME}/dependencies/criu
+wget http://github.com/checkpoint-restore/criu/archive/v4.0/criu-4.0.tar.gz
+tar -xazf criu-4.0.tar.gz
+cd criu-4.0
+make -j16
+sudo make install
+
+cd $CURRENT_DIR
+
 cp ../Memcached_codes/warm_up_cache.py.template ../Memcached_codes/warm_up_cache.py
 sed -i "/warm_up_size =/c\warm_up_size = $WARM_UP_SIZE" ../Memcached_codes/warm_up_cache.py
 ln -s "`pwd`/../Memcached_codes/warm_up_cache.py" ~/warm_up_cache.py
