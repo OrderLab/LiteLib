@@ -17,7 +17,7 @@ $request_type = $_GET['request_type'];
 //$arrival_time = $_GET['arrival_time'];
 //$retry_policy = $_GET['retry_policy']; 
 $request_index = $_GET['request_index'];     
-$pool_size = 1 // connections number / core number
+$pool_size = 1; // connections number / core number
 $persistent_id = rand(1, $pool_size);
 $mem_var = new Memcached($persistent_id);
 // $mem_var = new Memcached();
@@ -70,10 +70,12 @@ if ($memcached_response && $request_type == 0) {
 
     #echo "Data was found in memcached\r\n";
     //echo $memcached_response;  
-   echo 1; 
+   echo 1;
+   echo " ";
+   $fields = explode("+", $memcached_response);
+   echo $fields[14];
 } else
 {  
-
       // $end_time = microtime(true);
       // $execution_time = ($end_time - $start_time) * 1000000;
       // ob_start();
@@ -212,14 +214,19 @@ if ($memcached_response && $request_type == 0) {
               var_dump($mem_var->getResultCode());
               error_log(ob_get_clean());
             }
-            // echo -97;
-            // exit();
+            echo -97;
+            exit();
             }
           }
 
+      if (!$connected && $request_type == 1) {
+        echo -97;
+        exit();
+      }
 
       echo 2;   
-
+      echo " ";
+      echo $data_array[7];
   }
           
  ?>
