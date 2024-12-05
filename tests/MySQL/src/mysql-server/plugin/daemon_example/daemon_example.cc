@@ -35,18 +35,18 @@ PSI_memory_key key_memory_mysql_heartbeat_context;
 
 #ifdef HAVE_PSI_INTERFACE
 
-static PSI_memory_info all_deamon_example_memory[]=
+static PSI_memory_info all_daemon_example_memory[]=
 {
   {&key_memory_mysql_heartbeat_context, "mysql_heartbeat_context", 0}
 };
 
-static void init_deamon_example_psi_keys()
+static void init_daemon_example_psi_keys()
 {
-  const char* category= "deamon_example";
+  const char* category= "daemon_example";
   int count;
 
-  count= array_elements(all_deamon_example_memory);
-  mysql_memory_register(category, all_deamon_example_memory, count);
+  count= array_elements(all_daemon_example_memory);
+  mysql_memory_register(category, all_daemon_example_memory, count);
 };
 #endif /* HAVE_PSI_INTERFACE */
 
@@ -105,7 +105,7 @@ static int daemon_example_plugin_init(void *p)
   DBUG_ENTER("daemon_example_plugin_init");
 
 #ifdef HAVE_PSI_INTERFACE
-  init_deamon_example_psi_keys();
+  init_daemon_example_psi_keys();
 #endif
 
   struct mysql_heartbeat_context *con;

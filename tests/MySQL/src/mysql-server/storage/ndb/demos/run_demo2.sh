@@ -40,7 +40,7 @@ sed -e s,"WRITE_PATH_TO_FILESYSTEM_2_HERE",$ndb_demo/2-node/2-db-2/filesystem,g 
     -e s,"WRITE_PATH_TO_FILESYSTEM_3_HERE",$ndb_demo/2-node/2-db-3/filesystem,g \
     < template_config.ini > config.ini
 
-# Start management server as deamon
+# Start management server as daemon
 
 cd $ndb_demo/2-node/2-mgm-1
 if mgmtsrvr -d -c config.ini ; then :; else

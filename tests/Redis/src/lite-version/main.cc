@@ -20,7 +20,7 @@ void PrintHelp() {
 int main(int argc, char *argv[]) {
   try {
     // size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
-    size_t thread_pool_size = 1;
+    size_t thread_pool_size = 2;
     size_t cache_size(1024);
     const char *port = "6479";
     const char *address = "127.0.0.1";
@@ -53,8 +53,8 @@ int main(int argc, char *argv[]) {
 
     // Initialise the server.
     // TODO: make address and port configurable.
-    std::string backend_addr = "172.16.0.2";
-    std::string backend_port = "6379";
+    std::string backend_addr = "";
+    std::string backend_port = "/tmp/redis.sock";
     Redis redis;
     lite::LiteServer<Redis, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>

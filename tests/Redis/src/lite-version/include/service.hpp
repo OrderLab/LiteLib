@@ -162,5 +162,10 @@ class Redis {
       std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache,
       Logger *logger, bool flow_control, const bool in_transaction = false);
 
+  std::pair<RESPType *, bool> HandleUpdate(std::shared_ptr<Packet> req,
+                                           ConnectionInfo &conn, Cache *cache,
+                                           Logger *logger, bool flow_control,
+                                           const bool in_transaction = false, const bool in_emergency = false);
+
   static std::shared_ptr<Packet> abort_req_;
 };

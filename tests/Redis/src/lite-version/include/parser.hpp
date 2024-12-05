@@ -198,56 +198,56 @@ class RESPArrayParser : public RESPTypeParser {
 //   }
 // };
 
-// class RESPMapParser : public RESPTypeParser {
-//   enum State {
-//     kLength,
-//     kData,
-//   } state_ = kLength;
-//   RESPIntegerParser length_parser_;
-//   RESPInteger length_;
-//   std::unique_ptr<RESPTypeParser> key_parser_ =
-//       std::make_unique<RESPTypeParser>();
-//   std::unique_ptr<RESPTypeParser> value_parser_ =
-//       std::make_unique<RESPTypeParser>();
+class RESPMapParser : public RESPTypeParser {
+  enum State {
+    kLength,
+    kData,
+  } state_ = kLength;
+  RESPIntegerParser length_parser_;
+  RESPInteger length_;
+  std::unique_ptr<RESPTypeParser> key_parser_ =
+      std::make_unique<RESPTypeParser>();
+  std::unique_ptr<RESPTypeParser> value_parser_ =
+      std::make_unique<RESPTypeParser>();
 
-//  public:
-//   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end,
-//                                       RESPType &value) override {
-//     RESPMap &typed_value = dynamic_cast<RESPMap &>(value);
-//     switch (state_) {
-//       case kLength: {
-//         const auto result = length_parser_.Deserialize(begin, end, length_);
-//         if (result == lite::kGood) {
-//           state_ = kData;
-//         } else {
-//           return result;
-//         }
-//       }
-//       case kData: {
-//         while (begin != end && length_.value) {
-//           key_parser_ = std::make_unique<RESPTypeParser>();
-//           value_parser_ = std::make_unique<RESPTypeParser>();
-//           const auto key_result = key_parser_->Deserialize(begin, end);
-//           if (key_result == lite::kGood) {
-//             const auto value_result = value_parser_->Deserialize(begin, end);
-//             if (value_result == lite::kGood) {
-//               length_.value--;
-//               (*typed_value.value)
-//                   .insert(std::make_pair(std::move(key_parser_->value_),
-//                                          std::move(value_parser_->value_)));
-//             } else {
-//               return value_result;
-//             }
-//           } else {
-//             return key_result;
-//           }
-//         }
-//         if (length_.value) return lite::kIndeterminate;
-//         return lite::kGood;
-//       }
-//     }
-//   }
-// };
+ public:
+  lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end,
+                                      RESPType &value) override {
+    RESPMap &typed_value = dynamic_cast<RESPMap &>(value);
+    switch (state_) {
+      case kLength: {
+        const auto result = length_parser_.Deserialize(begin, end, length_);
+        if (result == lite::kGood) {
+          state_ = kData;
+        } else {
+          return result;
+        }
+      }
+      case kData: {
+        while (begin != end && length_.value) {
+          key_parser_ = std::make_unique<RESPTypeParser>();
+          value_parser_ = std::make_unique<RESPTypeParser>();
+          const auto key_result = key_parser_->Deserialize(begin, end);
+          if (key_result == lite::kGood) {
+            const auto value_result = value_parser_->Deserialize(begin, end);
+            if (value_result == lite::kGood) {
+              length_.value--;
+              (*typed_value.value)
+                  .insert(std::make_pair(std::move(key_parser_->value_),
+                                         std::move(value_parser_->value_)));
+            } else {
+              return value_result;
+            }
+          } else {
+            return key_result;
+          }
+        }
+        if (length_.value) return lite::kIndeterminate;
+        return lite::kGood;
+      }
+    }
+  }
+};
 
 // class RESPSetParser : public RESPTypeParser {
 //   enum State {

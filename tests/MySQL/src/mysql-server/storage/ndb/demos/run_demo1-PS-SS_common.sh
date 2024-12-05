@@ -36,7 +36,7 @@ sed -e s,"WRITE_PATH_TO_FILESYSTEM_2_HERE",$NDB_DEMO/filesystem,g \
     -e s,"CHOOSE_EXTREP_ID",$NDB_EXTREP_ID,g\
     < ../config-templates/config_template-1-REP.ini > config.ini
 
-# Start management server as deamon
+# Start management server as daemon
 
 NDB_ID="1"
 NDB_CONNECTSTRING=$NDB_CONNECTSTRING_BASE$NDB_ID

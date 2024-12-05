@@ -58,7 +58,7 @@ extern "C" {
     } extension_type_t;
 
     /**
-     * Deamon extensions should provide the following descriptor when
+     * Daemon extensions should provide the following descriptor when
      * they register themselves.
      */
     typedef struct extension_daemon_descriptor {
@@ -69,7 +69,7 @@ extern "C" {
         const char* (*get_name)(void);
 
         /**
-         * Deamon descriptors are stored in a linked list in the memcached
+         * Daemon descriptors are stored in a linked list in the memcached
          * core by using this pointer. Please do not modify this pointer
          * by yourself until you have unregistered the descriptor.
          * The <b>only</b> time it is safe for an extension to walk this
@@ -205,7 +205,7 @@ extern "C" {
         const void *cookie;
 
         /**
-         * Deamon descriptors are stored in a linked list in the memcached
+         * Daemon descriptors are stored in a linked list in the memcached
          * core by using this pointer. Please do not modify this pointer
          * by yourself until you have unregistered the descriptor.
          * The <b>only</b> time it is safe for an extension to walk this
@@ -243,7 +243,7 @@ extern "C" {
                                   BINARY_COMMAND_CALLBACK new_handler));
 
         /**
-         * Deamon descriptors are stored in a linked list in the memcached
+         * Daemon descriptors are stored in a linked list in the memcached
          * core by using this pointer. Please do not modify this pointer
          * by yourself until you have unregistered the descriptor.
          * The <b>only</b> time it is safe for an extension to walk this
