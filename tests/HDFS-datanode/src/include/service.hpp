@@ -22,7 +22,10 @@ namespace std {
     };
 }
 
-struct ConnectionInfo {};
+struct ConnectionInfo {
+  evutil_socket_t client_fd;
+  ConnectionInfo() : client_fd(-1) {}
+};
 
 struct CacheEntry {
   std::shared_ptr<Packet> ToRequest(const std::string &key) const {
