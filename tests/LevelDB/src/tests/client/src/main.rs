@@ -6,7 +6,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use rand::distributions::{Alphanumeric, Distribution};
 use rand::Rng;
 use std::process::Command;
-use std::sync::Arc;
+use std::sync::{atomic::AtomicBool, Arc};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::{sleep, sleep_until, Duration, Instant};
 
@@ -110,6 +110,10 @@ fn get_last_n_char(string: &str, n: usize) -> &str {
     &string[len - n..]
 }
 
+fn get_suffix_from_value(value: &str) -> usize {
+    value.split('_').last().unwrap().parse().unwrap_or(0)
+}
+
 macro_rules! update_conn_if_not_established {
     ($conn:expr, $timeout:expr) => {
         if $conn.conn.is_none() {
@@ -130,8 +134,10 @@ async fn do_query(
     old_suffix_expected: &mut usize,
     is_write: bool,
     timeout: Duration,
+    stale: Arc<AtomicBool>,
 ) -> QueryRecord {
     let new_suffix_expected = *old_suffix_expected + is_write as usize;
+    let old_value_expected = format!("{}_{}_{}", base_value, key_index, *old_suffix_expected);
     let new_value_expected = format!("{}_{}_{}", base_value, key_index, new_suffix_expected);
     let request_time = SystemTime::now();
     update_conn_if_not_established!(conn, timeout);
@@ -142,14 +148,10 @@ async fn do_query(
             conn.set_write_timeout(Some(timeout - request_time.elapsed().unwrap()))
                 .expect("set_write_timeout failed");
             match is_write {
-                true => match cmd("SET")
+                true => cmd("GETSET")
                     .arg(&key)
                     .arg(&new_value_expected)
-                    .query::<String>(conn)
-                {
-                    Ok(_) => Ok(Some(new_value_expected.clone())),
-                    Err(e) => Err(e),
-                },
+                    .query::<Option<String>>(conn),
                 false => cmd("GET").arg(&key).query::<Option<String>>(conn),
             }
         }
@@ -166,31 +168,56 @@ async fn do_query(
         .expect("Time went backwards");
     match result {
         Ok(new_value) => {
-            let mut status = Status::Success;
-            match new_value {
-                Some(new_value) => {
-                    if new_value != new_value_expected {
-                        eprintln!(
-                            "\ni: {}, key: {}, expected value: {:?}, actual value: {:?}\n",
-                            i,
-                            key,
-                            get_last_n_char(&new_value_expected, 10),
-                            get_last_n_char(&new_value, 10)
-                        );
-                        status = Status::Error;
-                    } else {
-                        *old_suffix_expected = new_suffix_expected;
+            match stale.load(std::sync::atomic::Ordering::SeqCst) {
+                false => {
+                    let mut status = Status::Success;
+                    match new_value {
+                        Some(new_value) => {
+                            if new_value != old_value_expected {
+                                let actual_suffix = get_suffix_from_value(&new_value);
+                                if actual_suffix < *old_suffix_expected {
+                                    eprintln!(
+                                        "\ni: {}, key: {}, expected value: {:?}, actual value: {:?}\n",
+                                        i,
+                                        key,
+                                        get_last_n_char(&old_value_expected, 10),
+                                        get_last_n_char(&new_value, 10)
+                                    );
+                                    status = Status::Error;
+                                    stale.store(true, std::sync::atomic::Ordering::SeqCst);
+                                } else {
+                                    // timeout comes after the response is sent
+                                    *old_suffix_expected = actual_suffix;
+                                    eprintln!(
+                                        "\ni: {}, key: {}, expected value: {:?}, actual value: {:?}, update expected value\n",
+                                        i,
+                                        key,
+                                        get_last_n_char(&old_value_expected, 10),
+                                        get_last_n_char(&new_value, 10)
+                                    );
+                                }
+                            } else {
+                                *old_suffix_expected = new_suffix_expected;
+                            }
+                        }
+                        None => {
+                            eprintln!("\ni: {}, key: {} can't get value\n", i, key);
+                            status = Status::Miss;
+                        }
+                    };
+                    QueryRecord {
+                        status,
+                        request: request_time,
+                        response: response_time,
                     }
                 }
-                None => {
-                    eprintln!("\ni: {}, key: {} can't get value\n", i, key);
-                    status = Status::Miss;
+                true => {
+                    QueryRecord {
+                        status: Status::Error, // modification based on stale value is also stale
+                        request: request_time,
+                        response: response_time,
+                    }
                 }
-            };
-            QueryRecord {
-                status,
-                request: request_time,
-                response: response_time,
             }
         }
         Err(e) => {
@@ -282,8 +309,10 @@ async fn main() {
 
     // -------------------------- Init the database ---------------------------
     let mut values = Vec::new();
+    let mut stales = Vec::new(); // shared the same lock with values
     for _ in 0..cfg.benchmark.num_keys + 1 {
         values.push(Arc::new(Mutex::new(0 as usize)));
+        stales.push(Arc::new(AtomicBool::new(false)));
     }
     for iter in 0..cfg.benchmark.inital_iter_count {
         println!("Initializing database for the {}th time", iter);
@@ -431,6 +460,7 @@ async fn main() {
         let key = idx[i];
         let is_write = is_write[i];
         let value = values[idx[i]].clone();
+        let stale = stales[idx[i]].clone();
         let base_value = base_value.clone();
         let records = Arc::clone(&records);
         let bar = bar.clone();
@@ -445,13 +475,14 @@ async fn main() {
                 let mut pool_conn: deadpool_redis::Connection;
                 let mut redis_conn: RedisConnection;
                 let mut redis_conn_mut: &mut RedisConnection;
+                let stale = stale.clone();
                 if cfg.benchmark.enable_connection_pool {
                     match pool.get().await {
                         Ok(conn) => {
                             pool_conn = conn;
                             redis_conn_mut = pool_conn.as_mut();
                         }
-                        Err(e) => {
+                        Err(_) => {
                             // eprintln!("\npool error i: {}, key: {}, error: {}\n", i, key, e);
                             let now_time = SystemTime::now()
                                 .duration_since(UNIX_EPOCH)
@@ -466,7 +497,8 @@ async fn main() {
                         }
                     }
                 } else {
-                    redis_conn = RedisConnection::new(redis::Client::open(conn_info.clone()).unwrap());
+                    redis_conn =
+                        RedisConnection::new(redis::Client::open(conn_info.clone()).unwrap());
                     redis_conn_mut = &mut redis_conn;
                 }
                 let mut value_guard = value.lock().await;
@@ -480,6 +512,7 @@ async fn main() {
                     &mut old_suffix_expected,
                     is_write,
                     cfg.benchmark.timeout,
+                    stale,
                 )
                 .await;
                 let finished = query_record.status != Status::Timeout;

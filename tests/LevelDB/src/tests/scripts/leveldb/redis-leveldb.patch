@@ -8,6 +8,16 @@ index 1b34a3e..0049efd 100644
  *~
 +*.txt
 \ No newline at end of file
+diff --git a/src/Makefile b/src/Makefile
+index be3a690..1d35574 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -49,4 +49,4 @@ distclean: clean
+ 	cd ../vendor/leveldb; make clean
+ 
+ ../vendor/libleveldb.a:
+-	cd ../vendor/leveldb; make && cp out-static/libleveldb.a ..
++	cd ../vendor/leveldb; mkdir -p build && cd build; cmake -DCMAKE_BUILD_TYPE=Release .. && cmake --build .; cp libleveldb.a ../..
 diff --git a/src/rl.cpp b/src/rl.cpp
 index 72d9685..c0a8fd7 100644
 --- a/src/rl.cpp
@@ -189,8 +199,45 @@ index 4e63d4a..fbc2beb 100644
      void start();
      size_t get_int();
      int  do_read();
+diff --git a/src/rl_kv.cpp b/src/rl_kv.cpp
+index 9d4c5c4..e50d15c 100644
+--- a/src/rl_kv.cpp
++++ b/src/rl_kv.cpp
+@@ -164,6 +164,32 @@ void RLRequest::rl_set(){
+     }
+ }
+ 
++void RLRequest::rl_getset(){
++    if(args.size()!=2){
++        connection->write_error("ERR wrong number of arguments for 'set' command");
++        return;
++    }
++
++    std::string out;
++    leveldb::Status status_get;
++    status_get = connection->server->db[connection->db_index]->Get(connection->server->read_options,
++             args[0], &out);
++
++    leveldb::Status status_set;
++    status_set = connection->server->db[connection->db_index]->Put(connection->server->write_options,
++             args[0], args[1]);
++
++    if(!status_get.ok() && !status_get.IsNotFound()) {
++        connection->write_error("GETSET ERROR 1");
++    } else if(!status_set.ok()) {
++        connection->write_error("GETSET ERROR 2");
++    } else if(status_get.IsNotFound()) {
++        connection->write_nil();
++    } else if(status_get.ok()) {
++        connection->write_bulk(out);
++    }
++}
++
+ void RLRequest::rl_del(){
+ 
+     if(args.size()!=1){
 diff --git a/src/rl_request.cpp b/src/rl_request.cpp
-index b9007a7..c07579f 100644
+index b9007a7..8069af2 100644
 --- a/src/rl_request.cpp
 +++ b/src/rl_request.cpp
 @@ -37,6 +37,7 @@ void RLRequest::init_cmd_map()
@@ -201,7 +248,15 @@ index b9007a7..c07579f 100644
      RLRequest::cmd_map["multi"]      = &RLRequest::rl_multi;
      RLRequest::cmd_map["exec"]       = &RLRequest::rl_exec;
      RLRequest::cmd_map["discard"]    = &RLRequest::rl_discard;
-@@ -171,7 +172,7 @@ void RLRequest::rl_select(){
+@@ -47,6 +48,7 @@ void RLRequest::init_cmd_map()
+     RLRequest::cmd_map["get"]        = &RLRequest::rl_get;
+     RLRequest::cmd_map["set"]        = &RLRequest::rl_set;
+     RLRequest::cmd_map["del"]        = &RLRequest::rl_del;
++    RLRequest::cmd_map["getset"]     = &RLRequest::rl_getset;
+     RLRequest::cmd_map["mget"]       = &RLRequest::rl_mget;
+     RLRequest::cmd_map["mset"]       = &RLRequest::rl_mset;
+ 
+@@ -171,7 +173,7 @@ void RLRequest::rl_select(){
      connection->write_status("OK");
  }
  
@@ -210,7 +265,7 @@ index b9007a7..c07579f 100644
      if(connection->transaction){
          connection->write_error("ERR MULTI calls can not be nested");
          return;
-@@ -304,3 +305,13 @@ void RLRequest::rl_shutdown(){
+@@ -304,3 +306,13 @@ void RLRequest::rl_shutdown(){
      fprintf(stderr, "SHUTDOWN by client\n");
      exit(0);
  }
@@ -225,7 +280,7 @@ index b9007a7..c07579f 100644
 +    }
 +}
 diff --git a/src/rl_request.h b/src/rl_request.h
-index fb93138..8a61129 100644
+index fb93138..1b36a5b 100644
 --- a/src/rl_request.h
 +++ b/src/rl_request.h
 @@ -42,6 +42,7 @@ public:
@@ -236,6 +291,14 @@ index fb93138..8a61129 100644
  
      void rl_multi();
      void rl_exec();
+@@ -51,6 +52,7 @@ public:
+     void rl_get();
+     void rl_set();
+     void rl_del();
++    void rl_getset();
+ 
+     void rl_mget();
+     void rl_mset();
 diff --git a/src/rl_server.cpp b/src/rl_server.cpp
 index 65c97ab..663b036 100644
 --- a/src/rl_server.cpp
@@ -559,3 +622,10 @@ index 341099f..8295608 100644
      qx($stop_cmd) and die "# server stop error!";
      qx(rm -fr $self->{option}{data_dir});
  }
+diff --git a/vendor/leveldb b/vendor/leveldb
+index a7bff69..99b3c03 160000
+--- a/vendor/leveldb
++++ b/vendor/leveldb
+@@ -1 +1 @@
+-Subproject commit a7bff697baa062c8f6b8fb760eacf658712b611a
++Subproject commit 99b3c03b3284f5886f9ef9a4ef703d57373e61be

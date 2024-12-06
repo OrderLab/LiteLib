@@ -54,6 +54,7 @@ pub struct CustomRedisConnection {
 }
 
 impl CustomRedisConnection {
+    /// Creates a new [`CustomRedisConnection`] from the given `client`.
     pub fn new(client: Client) -> Self {
         Self {
             client,
