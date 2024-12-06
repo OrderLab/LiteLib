@@ -6,7 +6,7 @@ set -x
 NGINX_SERVER_IP=${1:-"node0"}
 MEMCACHED_SERVER_IP=${2:-"node1"}
 MYSQL_SERVER_IP=${3:-"node2"}
-DB_ENTRIES=${4:-"140000"}
+DB_ENTRIES=${4:-"1400000"}
 
 if [ "$(id -u)" -eq 0 ]; then
   echo "This script should not be run as root. Please run as a regular user."

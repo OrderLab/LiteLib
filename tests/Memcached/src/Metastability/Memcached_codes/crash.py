@@ -88,7 +88,7 @@ crash_time = int(sys.argv[1:][0])
 duration = int(sys.argv[1:][1])
 exp_type = sys.argv[1:][2]
 CACHE_MEM_SIZE = 4096000
-CHECKPOINT_INTERVAL = 10
+CHECKPOINT_INTERVAL = 30
 
 memcached_pid = get_pid_by_name("memcached")
 checkpoint_lock = threading.Lock()
@@ -97,7 +97,7 @@ checkpoint_thread = None
 if exp_type == 'checkpoint':
   os.system(r'sudo rm -rf /tmp/checkpoint-data')
   os.system(r'sudo mkdir -p /tmp/checkpoint-data')
-  target_checkpoint_time = crash_time - CHECKPOINT_INTERVAL / 2
+  target_checkpoint_time = crash_time - CHECKPOINT_INTERVAL / 2 - 8
   checkpoint_start_time = target_checkpoint_time - target_checkpoint_time // CHECKPOINT_INTERVAL * CHECKPOINT_INTERVAL
   print(f"Checkpoint start time: {checkpoint_start_time}")
   checkpoint_thread = threading.Thread(
