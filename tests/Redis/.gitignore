@@ -1,0 +1,4 @@
+*.rdb
+__pycache__
+*/logs
+*/data

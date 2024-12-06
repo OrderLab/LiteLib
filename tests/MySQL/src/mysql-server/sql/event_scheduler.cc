@@ -710,7 +710,7 @@ Event_scheduler::stop()
                         "workers count=%d", scheduler_states_names[state].str,
                         workers_count()));
     /*
-      NOTE: We don't use kill_one_thread() because it can't kill COM_DEAMON
+      NOTE: We don't use kill_one_thread() because it can't kill COM_DAEMON
       threads. In addition, kill_one_thread() requires THD but during shutdown
       current_thd is NULL. Hence, if kill_one_thread should be used it has to
       be modified to kill also daemons, by adding a flag, and also we have to
