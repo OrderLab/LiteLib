@@ -98,7 +98,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     if (bytes_transferred == 0)
       ;  // LOG(INFO) << "Client disconnected: " << fd << std::endl;
     else
-      PLOG(ERROR) << "read from client";
+      ;//   PLOG(ERROR) << "read from client";
     delete conn;
     // TODO: how to properly handle the case when the client disconnects as
     // expected? (e.g. quit command in Memcached)
