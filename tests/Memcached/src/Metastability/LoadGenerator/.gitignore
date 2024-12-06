@@ -10,4 +10,4 @@ trigger_size_k.py
 TraceFileGenerator.py
 *.d
 *.o
-bak/
+bak*/

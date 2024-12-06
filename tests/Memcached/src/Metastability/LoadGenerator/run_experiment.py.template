@@ -20,7 +20,7 @@ sleep_period_before_trigger=int(sys.argv[1:][5])
 timeout=int(sys.argv[1:][7]) # not used in this experiment
 read_write_ratio=float(sys.argv[1:][8])
 exp_type = sys.argv[1:][9]
-row_nums_in_db = 140000
+row_nums_in_db = 1400000
 
 if(sys.argv[1:][6] == "False"):
     closed_loop_test= False
@@ -119,7 +119,7 @@ os.system(generate_trace_command)
 # step 3: start tracing and run the TraceReplay (using & making the process non blocking) 
 today_date_time = datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
 
-trace_file_name = "traces/trace_file_" + str(float(_lambda)) + "_" + str(float(zipf_parameter)) + "_" + str(float(duration_of_test)) + "_" + str(read_write_ratio) + ".txt"
+trace_file_name = "traces/trace_file_" + str(float(_lambda)) + "_" + str(float(zipf_parameter)) + "_" + str(float(duration_of_test)) + "_" + str(read_write_ratio) + "_" + str(row_nums_in_db) + ".txt"
 results_directory = "result_stats/" 
 result_file_name = f"result_ARV_RATE_{str(float(_lambda))}_ALPHA_{str(float(zipf_parameter))}_DUR_{str(duration_of_test)}_RW_RATIO_{str(read_write_ratio)}_TRIGGER_{str(trigger_time)}_DATE_TIME_{today_date_time}_TMOUT_{str(timeout)}_EXP_{exp_type}.txt"
 result_file_path = results_directory + result_file_name
