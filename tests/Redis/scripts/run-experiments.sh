@@ -46,9 +46,11 @@ get_master_info() {
         MASTER_INFO=$(redis-cli -h $SENTINEL_HOST -p $SENTINEL_PORT SENTINEL get-master-addr-by-name $MASTER_NAME)
         MASTER_HOST=$(echo $MASTER_INFO | awk '{print $1}')
         MASTER_PORT=$(echo $MASTER_INFO | awk '{print $2}')
+    elif [ "$MODE" == "vanilla" ]; then
+        MASTER_HOST=$LITE_HOST
+        MASTER_PORT=$VANILLA_PORT
     fi
 }
-
 
 # Function to handle the killing of the vanilla server and recovery
 kill_vanilla_server() {
@@ -59,25 +61,24 @@ kill_vanilla_server() {
     if [ "$MODE" == "lite" ]; then
         $LITE_DIR/Lite/lite_cli -t /tmp/lite_Redis -p /tmp/redis.sock -m 1
         echo "Entered emergency mode"
-		while redis-cli -h $MASTER_HOST -p $VANILLA_PORT ping | grep -q PONG; do
-			sleep 0.2
-		done
-		echo "Vanilla server killed after $CRASH_TIME seconds"
+        while redis-cli -h $MASTER_HOST -p $VANILLA_PORT ping | grep -q PONG; do
+            sleep 0.2
+        done
+        echo "Vanilla server killed after $CRASH_TIME seconds"
         
         # Reboot the vanilla server
+		redis-server $SCRIPT_DIR/config/vanilla-running.conf
         while ! redis-cli -h $MASTER_HOST -p $VANILLA_PORT ping | grep -q PONG; do
-            redis-server $SCRIPT_DIR/config/vanilla-running.conf
-            echo "Waiting for vanilla server to start"
-            sleep 0.5
+            sleep 0.2
         done
         $LITE_DIR/Lite/lite_cli -t /tmp/lite_Redis -p /tmp/redis.sock -m 0
         echo "Vanilla server is back up and running"
         
     elif [ "$MODE" == "replica" ]; then
-		while redis-cli -h $MASTER_HOST -p $VANILLA_PORT ping | grep -q PONG; do
-			sleep 0.2
-		done
-		echo "Vanilla server killed after $CRASH_TIME seconds"
+        while redis-cli -h $MASTER_HOST -p $VANILLA_PORT ping | grep -q PONG; do
+            sleep 0.2
+        done
+        echo "Vanilla server killed after $CRASH_TIME seconds"
         while true; do
             NEW_MASTER_INFO=$(redis-cli -h $SENTINEL_HOST -p $SENTINEL_PORT SENTINEL get-master-addr-by-name $MASTER_NAME)
             NEW_MASTER_HOST=$(echo $NEW_MASTER_INFO | awk '{print $1}')
@@ -89,6 +90,15 @@ kill_vanilla_server() {
             fi
             sleep 1
         done
+    elif [ "$MODE" == "vanilla" ]; then
+        while redis-cli -h $MASTER_HOST -p $VANILLA_PORT ping | grep -q PONG; do
+            sleep 0.2
+        done
+		rm -f $SCRIPT_DIR/*.rdb
+        echo "Vanilla server killed after $CRASH_TIME seconds"
+        # Reboot the vanilla server without RDB
+        $SCRIPT_DIR/start-redis.sh
+        echo "Vanilla server is back up and running"
     fi
 }
 
@@ -103,6 +113,8 @@ elif [ "$MODE" == "replica" ]; then
     python -u $SCRIPT_DIR/vanilla-monitor.py > $SCRIPT_DIR/logs/vanilla-monitor.log 2>&1 &
     ssh $REPLICA_HOST "python -u $DEST_DIR/repl-monitor.py" > $SCRIPT_DIR/logs/repl-monitor.log 2>&1 &
     ssh $SENTINEL_HOST "python -u $DEST_DIR/sentinel-monitor.py" > $SCRIPT_DIR/logs/sentinel-monitor.log 2>&1 &
+elif [ "$MODE" == "vanilla" ]; then
+	python -u $SCRIPT_DIR/vanilla-monitor.py > $SCRIPT_DIR/logs/vanilla-monitor.log 2>&1 &
 fi
 echo "Monitoring started"
 
@@ -116,7 +128,9 @@ echo "Master host: $MASTER_HOST, Master port: $MASTER_PORT"
 if [ "$MODE" == "lite" ]; then
     ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" > $SCRIPT_DIR/logs/benchmark.log 2>&1
 elif [ "$MODE" == "replica" ]; then
-	ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" > $SCRIPT_DIR/logs/benchmark.log 2>&1
+    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" > $SCRIPT_DIR/logs/benchmark.log 2>&1
+elif [ "$MODE" == "vanilla" ]; then
+    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" > $SCRIPT_DIR/logs/benchmark.log 2>&1
 fi
 
 # Kill vanilla server after the crash time
@@ -132,6 +146,8 @@ while true; do
     if [ "$MODE" == "replica" ]; then
         ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" >> $SCRIPT_DIR/logs/benchmark.log 2>&1
     elif [ "$MODE" == "lite" ]; then
+        ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" >> $SCRIPT_DIR/logs/benchmark.log 2>&1
+    elif [ "$MODE" == "vanilla" ]; then
         ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" >> $SCRIPT_DIR/logs/benchmark.log 2>&1
     fi
     STATUS=$?

@@ -39,7 +39,7 @@ def get_cpu_mem_usage(csv_file, duration):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Monitor CPU and memory usage of Vanilla.')
-    parser.add_argument('-t', '--time', type=int, default=180, help='Duration to monitor in seconds (default: 180)')
+    parser.add_argument('-t', '--time', type=int, default=300, help='Duration to monitor in seconds (default: 300)')
     args = parser.parse_args()
 
     get_cpu_mem_usage("data/vanilla_cpu_mem.csv", args.time)

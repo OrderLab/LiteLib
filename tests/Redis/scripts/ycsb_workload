@@ -30,9 +30,9 @@ status.interval=1
 
 readallfields=true
 
-threadcount=10
-readproportion=0.5
-updateproportion=0.5
+threadcount=20
+readproportion=0.8
+updateproportion=0.2
 scanproportion=0
 insertproportion=0
 

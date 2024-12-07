@@ -15,7 +15,7 @@ if [ ! -f "$SCRIPT_DIR/../src/lite-version/build/redis-lite" ]; then
     echo "Created soft link to src directory: $SCRIPT_DIR/../src/lite-version/Lite"
   fi
   mkdir "$SCRIPT_DIR/../src/lite-version/build"
-  cd "$SCRIPT_DIR/../src/lite-version/build" && cmake .. && make
+  cd "$SCRIPT_DIR/../src/lite-version/build" && cmake -DCMAKE_BUILD_TYPE=Release .. && make
 fi
 
 if [ ! -d "$SCRIPT_DIR/logs" ]; then

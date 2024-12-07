@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
   try {
     // size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t thread_pool_size = 1;
-    size_t cache_size(65536);
+    size_t cache_size(131072);
     const char *port = "6479";
     const char *address = "127.0.0.1";
     const char *const short_opts = "p:h:H";
@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
                                 {"address", required_argument, nullptr, 'h'},
                                 {"help", no_argument, nullptr, 'H'},
 								{"size", required_argument, nullptr, 's'},
+								{"thread", required_argument, nullptr, 't'},
                                 {0, 0, 0, 0}};
     int opt;
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, nullptr)) !=
@@ -41,6 +42,9 @@ int main(int argc, char *argv[]) {
           break;
 		case 's':
 		  cache_size = boost::lexical_cast<size_t>(optarg);
+		  break;
+		case 't':
+		  thread_pool_size = boost::lexical_cast<size_t>(optarg);
 		  break;
         case 'h':
           address = optarg;

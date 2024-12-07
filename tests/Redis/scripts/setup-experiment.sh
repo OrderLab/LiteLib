@@ -15,4 +15,10 @@ if [ "$MODE" == "lite" ]; then
 elif [ "$MODE" == "replica" ]; then
   echo "Starting Redis Replica"
   $SCRIPT_DIR/start-all.sh replica
+elif [ "$MODE" == "vanilla" ]; then
+  echo "Starting Redis Vanilla"
+  $SCRIPT_DIR/start-all.sh vanilla
+else
+  echo "Invalid mode"
+  exit 1
 fi
