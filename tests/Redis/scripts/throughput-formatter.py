@@ -54,3 +54,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     parse_log(args.log_file, args.csv_file)
+    
+    # python throughput-formatter.py logs/benchmark.log data/throughput.csv

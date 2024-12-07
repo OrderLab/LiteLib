@@ -29,14 +29,14 @@ def plot_throughput(df, start_time, crash_time, output):
     ax.plot(df['timestamp'], df['normal'] + df['non_success'], color='red', label='Non-Successful Operations', linewidth=0.5)
     ax.fill_between(df['timestamp'], df['normal'], df['normal'] + df['non_success'], color='red', alpha=0.5,  linewidth=0)
 
-    ax.axvline(x=crash_time - start_time, color='black', linestyle='--', label='Crash Time')
+    ax.axvline(x=crash_time - start_time, color='red', linestyle='--', label='Crash Time')
 
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Operations')
     ax.set_title('Throughput Over Time')
 
     # ax.set_xlim(0, df['timestamp'].max())
-    ax.set_ylim(0, df['normal'].max() + df['non_success'].max())
+    ax.set_ylim(0, df['normal'].max())
 
     if output:
         plt.savefig(output)
@@ -50,3 +50,5 @@ if __name__ == '__main__':
     
     df = pd.read_csv(args.input)
     plot_throughput(df, args.start_time, args.crash_time, args.output)
+    
+    # python plot.py data/tp.csv -t 0 -c -o tp.png

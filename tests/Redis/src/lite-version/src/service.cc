@@ -1,4 +1,5 @@
 #include "service.hpp"
+#include <unordered_set>
 
 std::shared_ptr<Packet> Redis::abort_req_ = nullptr;
 
@@ -52,14 +53,12 @@ Redis::Match(const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
     return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
                           is_not_replay);
   }
-  if (*opcode == "set" || *opcode == "get" || *opcode == "ping" ||
-      *opcode == "incr" || *opcode == "lpush" || *opcode == "rpush" ||
-      *opcode == "lpop" || *opcode == "rpop" || *opcode == "sadd" ||
-      *opcode == "spop" || *opcode == "zadd" || *opcode == "zpop" ||
-      *opcode == "zpopmin" || *opcode == "hset" || *opcode == "hget" ||
-      *opcode == "hgetall" || *opcode == "hmset" || *opcode == "quit") {
-    return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
-                          is_not_replay);
+  static const std::unordered_set<std::string> valid_opcodes = {
+      "set",     "get",  "ping", "incr",    "lpush", "rpush",
+      "lpop",    "rpop", "sadd", "spop",    "zadd",  "zpop",
+      "zpopmin", "hset", "hget", "hgetall", "hmset", "quit"};
+  if (valid_opcodes.find(*opcode) != valid_opcodes.end()) {
+    return {{req}, is_not_replay};
   }
   LOG(ERROR) << "Unknown opcode: " << *opcode << std::endl;
   return std::make_pair(std::vector<std::shared_ptr<Packet>>(), is_not_replay);
@@ -217,8 +216,8 @@ Redis::HandleUpdate(std::shared_ptr<Packet> req, ConnectionInfo &conn,
                 std::make_shared<std::string>("ERR flow control enabled")),
             false};
   if (opcode == "set") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    const auto value = dynamic_cast<RESPString *>(req->GetArg(1));
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
+    const auto value = static_cast<RESPString *>(req->GetArg(1));
     entry.value = value->value;
     entry.type = CacheEntryType::STRING;
     if (cache->Set(*(key->value), entry, in_transaction))
@@ -232,255 +231,15 @@ Redis::HandleUpdate(std::shared_ptr<Packet> req, ConnectionInfo &conn,
             false};
   } else if (opcode == "get") {
     if (in_emergency) {
-      const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+      const auto key = static_cast<RESPString *>(req->GetArg(0));
       if (cache->Get(*(key->value), entry, in_transaction))
         return {new RESPBulkString(entry.value), false};
       else
         return {new RESPBulkString(nullptr), false};
     } else
       return std::make_pair(nullptr, false);
-  } else if (opcode == "ping") {
-    if (in_emergency) {
-      if (req->GetArgNum() == 0)
-        return {new RESPSimpleString(std::make_shared<std::string>("PONG")),
-                false};
-      else if (req->GetArgNum() == 1) {
-        const auto arg = dynamic_cast<RESPString *>(req->GetArg(0));
-        return {new RESPBulkString(arg->value), false};
-      }
-    }
-    return {new RESPError(
-                std::make_shared<std::string>("ERR wrong number of arguments")),
-            false};
-  } else if (opcode == "multi") {
-    if (in_emergency) {
-      if (flow_control)
-        return {new RESPError(
-                    std::make_shared<std::string>("ERR flow control enabled")),
-                true};
-      conn.is_in_transaction_ = true;
-      logger->Log(req);
-      return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
-    }
-  } else if (opcode == "incr") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    if (cache->Get(*(key->value), entry, in_transaction))
-      *entry.value = std::to_string(std::stoll(*entry.value) + 1);
-    else
-      entry.value = std::make_shared<std::string>("1");
-    entry.type = CacheEntryType::STRING;
-    if (cache->Set(*(key->value), entry, in_transaction))
-      return {new RESPInteger(entry.value), false};
-  } else if (opcode == "hset") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    const auto field = dynamic_cast<RESPString *>(req->GetArg(1));
-    const auto value = dynamic_cast<RESPString *>(req->GetArg(2));
-    if (cache->Get(*(key->value), entry, in_transaction)) {
-      auto map = entry.map_value
-                     ? entry.map_value
-                     : std::make_shared<std::map<std::string, std::string>>();
-      (*map)[*field->value] = *value->value;
-      entry.map_value = map;
-    } else {
-      auto map = std::make_shared<std::map<std::string, std::string>>();
-      (*map)[*field->value] = *value->value;
-      entry.map_value = map;
-    }
-    entry.type = CacheEntryType::MAP;
-    if (cache->Set(*(key->value), entry, in_transaction))
-      return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
-    return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
-            false};
-  } else if (opcode == "hget") {
-    if (in_emergency) {
-      const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-      const auto field = dynamic_cast<RESPString *>(req->GetArg(1));
-      if (cache->Get(*(key->value), entry, in_transaction)) {
-        if (entry.map_value) {
-          auto it = entry.map_value->find(*field->value);
-          if (it != entry.map_value->end())
-            return {
-                new RESPBulkString(std::make_shared<std::string>(it->second)),
-                false};
-        }
-      }
-      return {new RESPBulkString(nullptr), false};
-    }
-  } else if (opcode == "lpush") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    auto list = std::make_shared<std::list<std::string>>();
-    if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.list_value)
-        list = entry.list_value;
-      for (size_t i = 1; i < req->GetArgNum(); i++) {
-        const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
-        list->push_front(*value->value);
-      }
-    } else {
-      for (size_t i = 1; i < req->GetArgNum(); i++) {
-        const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
-        list->push_front(*value->value);
-      }
-    }
-    entry.list_value = list;
-    entry.type = CacheEntryType::LIST;
-    if (cache->Set(*(key->value), entry, in_transaction))
-      return {new RESPInteger(
-                  std::make_shared<std::string>(std::to_string(list->size()))),
-              false};
-  } else if (opcode == "rpush") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    auto list = std::make_shared<std::list<std::string>>();
-    if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.list_value)
-        list = entry.list_value;
-      for (size_t i = 1; i < req->GetArgNum(); i++) {
-        const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
-        list->push_back(*value->value);
-      }
-    } else {
-      for (size_t i = 1; i < req->GetArgNum(); i++) {
-        const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
-        list->push_back(*value->value);
-      }
-    }
-    entry.list_value = list;
-    entry.type = CacheEntryType::LIST;
-    if (cache->Set(*(key->value), entry, in_transaction))
-      return {new RESPInteger(
-                  std::make_shared<std::string>(std::to_string(list->size()))),
-              false};
-  } else if (opcode == "lpop") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    auto list = std::make_shared<std::list<std::string>>();
-    if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.list_value != nullptr)
-        list = entry.list_value;
-      if (list->empty())
-        return {new RESPBulkString(nullptr), false};
-      auto value = list->front();
-      list->pop_front();
-      if (cache->Set(*(key->value), entry, in_transaction))
-        return {new RESPBulkString(std::make_shared<std::string>(value)),
-                false};
-      return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
-              false};
-    }
-    return {new RESPBulkString(nullptr), false};
-  } else if (opcode == "rpop") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    auto list = std::make_shared<std::list<std::string>>();
-    if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.list_value != nullptr)
-        list = entry.list_value;
-      if (list->empty())
-        return {new RESPBulkString(nullptr), false};
-      auto value = list->back();
-      list->pop_back();
-      if (cache->Set(*(key->value), entry, in_transaction))
-        return {new RESPBulkString(std::make_shared<std::string>(value)),
-                false};
-      return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
-              false};
-    }
-    return {new RESPBulkString(nullptr), false};
-  } else if (opcode == "sadd") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    auto set = std::make_shared<std::set<std::string>>();
-    if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.set_value != nullptr)
-        set = entry.set_value;
-      for (size_t i = 1; i < req->GetArgNum(); i++) {
-        const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
-        set->insert(*value->value);
-      }
-    } else {
-      for (size_t i = 1; i < req->GetArgNum(); i++) {
-        const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
-        set->insert(*value->value);
-      }
-      entry.set_value = set;
-    }
-    entry.type = CacheEntryType::SET;
-    if (cache->Set(*(key->value), entry, in_transaction))
-      return {new RESPInteger(set->size()), false};
-    return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
-            false};
-  } else if (opcode == "spop") {
-    if (in_emergency) {
-      const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-      auto set = std::make_shared<std::set<std::string>>();
-      if (cache->Get(*(key->value), entry, in_transaction)) {
-        if (entry.set_value != nullptr)
-          set = entry.set_value;
-        if (set->empty()) {
-          return {new RESPBulkString(nullptr), false};
-        }
-        auto it = set->begin();
-        std::advance(it, rand() % set->size());
-        auto value = *it;
-        set->erase(it);
-        if (cache->Set(*(key->value), entry, in_transaction))
-          return {new RESPBulkString(std::make_shared<std::string>(value)),
-                  false};
-        return {
-            new RESPError(std::make_shared<std::string>("ERR failed to set")),
-            false};
-      }
-    }
-    // TODO: update cache according to response of spop in normal mode
-    return {new RESPBulkString(nullptr), false};
-  } else if (opcode == "zadd") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.sorted_set_value == nullptr)
-        entry.sorted_set_value =
-            std::make_shared<std::map<double, std::string>>();
-      for (size_t i = 1; i < req->GetArgNum(); i += 2) {
-        const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
-        const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
-        if (member == nullptr || score == nullptr)
-          return {new RESPError(std::make_shared<std::string>(
-                      "ERR wrong type of arguments")),
-                  false};
-        entry.sorted_set_value->insert(
-            std::make_pair(std::stod(*score->value), *member->value));
-      }
-    } else {
-      entry.type = CacheEntryType::ZSET;
-      entry.sorted_set_value =
-          std::make_shared<std::map<double, std::string>>();
-      for (size_t i = 1; i < req->GetArgNum(); i += 2) {
-        const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
-        const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
-        entry.sorted_set_value->insert(
-            std::make_pair(std::stod(*score->value), *member->value));
-      }
-    }
-    if (cache->Set(*(key->value), entry, in_transaction))
-      return {new RESPInteger(entry.sorted_set_value->size()), false};
-    return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
-            false};
-  } else if (opcode == "zpopmin") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
-    auto zset = std::make_shared<std::map<double, std::string>>();
-    if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.sorted_set_value != nullptr)
-        zset = entry.sorted_set_value;
-      if (zset->empty())
-        return {new RESPBulkString(nullptr), false};
-      auto it = zset->begin();
-      auto value = it->second;
-      zset->erase(it);
-      if (cache->Set(*(key->value), entry, in_transaction))
-        return {new RESPBulkString(std::make_shared<std::string>(value)),
-                false};
-      return {new RESPError(std::make_shared<std::string>("ERR failed to pop")),
-              false};
-    }
-    return {new RESPBulkString(nullptr), false};
   } else if (opcode == "hmset") {
-    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
     auto map = std::make_shared<std::map<std::string, std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
       map = entry.map_value
@@ -488,8 +247,8 @@ Redis::HandleUpdate(std::shared_ptr<Packet> req, ConnectionInfo &conn,
                 : std::make_shared<std::map<std::string, std::string>>();
     }
     for (size_t i = 1; i < req->GetArgNum(); i += 2) {
-      const auto field = dynamic_cast<RESPString *>(req->GetArg(i));
-      const auto value = dynamic_cast<RESPString *>(req->GetArg(i + 1));
+      const auto field = static_cast<RESPString *>(req->GetArg(i));
+      const auto value = static_cast<RESPString *>(req->GetArg(i + 1));
       (*map)[*field->value] = *value->value;
     }
     entry.type = CacheEntryType::MAP;
@@ -504,7 +263,7 @@ Redis::HandleUpdate(std::shared_ptr<Packet> req, ConnectionInfo &conn,
             false};
   } else if (opcode == "hgetall") {
     if (in_emergency) {
-      const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+      const auto key = static_cast<RESPString *>(req->GetArg(0));
       if (cache->Get(*(key->value), entry, in_transaction)) {
         if (entry.map_value) {
           auto result = std::make_shared<
@@ -527,6 +286,246 @@ Redis::HandleUpdate(std::shared_ptr<Packet> req, ConnectionInfo &conn,
       return {new RESPSimpleString(std::make_shared<std::string>("OK")), true};
     else
       return {nullptr, true};
+  } else if (opcode == "ping") {
+    if (in_emergency) {
+      if (req->GetArgNum() == 0)
+        return {new RESPSimpleString(std::make_shared<std::string>("PONG")),
+                false};
+      else if (req->GetArgNum() == 1) {
+        const auto arg = static_cast<RESPString *>(req->GetArg(0));
+        return {new RESPBulkString(arg->value), false};
+      }
+    }
+    return {new RESPError(
+                std::make_shared<std::string>("ERR wrong number of arguments")),
+            false};
+  } else if (opcode == "multi") {
+    if (in_emergency) {
+      if (flow_control)
+        return {new RESPError(
+                    std::make_shared<std::string>("ERR flow control enabled")),
+                true};
+      conn.is_in_transaction_ = true;
+      logger->Log(req);
+      return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
+    }
+  } else if (opcode == "incr") {
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
+    if (cache->Get(*(key->value), entry, in_transaction))
+      *entry.value = std::to_string(std::stoll(*entry.value) + 1);
+    else
+      entry.value = std::make_shared<std::string>("1");
+    entry.type = CacheEntryType::STRING;
+    if (cache->Set(*(key->value), entry, in_transaction))
+      return {new RESPInteger(entry.value), false};
+  } else if (opcode == "hset") {
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
+    const auto field = static_cast<RESPString *>(req->GetArg(1));
+    const auto value = static_cast<RESPString *>(req->GetArg(2));
+    if (cache->Get(*(key->value), entry, in_transaction)) {
+      auto map = entry.map_value
+                     ? entry.map_value
+                     : std::make_shared<std::map<std::string, std::string>>();
+      (*map)[*field->value] = *value->value;
+      entry.map_value = map;
+    } else {
+      auto map = std::make_shared<std::map<std::string, std::string>>();
+      (*map)[*field->value] = *value->value;
+      entry.map_value = map;
+    }
+    entry.type = CacheEntryType::MAP;
+    if (cache->Set(*(key->value), entry, in_transaction))
+      return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
+    return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
+            false};
+  } else if (opcode == "hget") {
+    if (in_emergency) {
+      const auto key = static_cast<RESPString *>(req->GetArg(0));
+      const auto field = static_cast<RESPString *>(req->GetArg(1));
+      if (cache->Get(*(key->value), entry, in_transaction)) {
+        if (entry.map_value) {
+          auto it = entry.map_value->find(*field->value);
+          if (it != entry.map_value->end())
+            return {
+                new RESPBulkString(std::make_shared<std::string>(it->second)),
+                false};
+        }
+      }
+      return {new RESPBulkString(nullptr), false};
+    }
+  } else if (opcode == "lpush") {
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
+    auto list = std::make_shared<std::list<std::string>>();
+    if (cache->Get(*(key->value), entry, in_transaction)) {
+      if (entry.list_value)
+        list = entry.list_value;
+      for (size_t i = 1; i < req->GetArgNum(); i++) {
+        const auto value = static_cast<RESPString *>(req->GetArg(i));
+        list->push_front(*value->value);
+      }
+    } else {
+      for (size_t i = 1; i < req->GetArgNum(); i++) {
+        const auto value = static_cast<RESPString *>(req->GetArg(i));
+        list->push_front(*value->value);
+      }
+    }
+    entry.list_value = list;
+    entry.type = CacheEntryType::LIST;
+    if (cache->Set(*(key->value), entry, in_transaction))
+      return {new RESPInteger(
+                  std::make_shared<std::string>(std::to_string(list->size()))),
+              false};
+  } else if (opcode == "rpush") {
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
+    auto list = std::make_shared<std::list<std::string>>();
+    if (cache->Get(*(key->value), entry, in_transaction)) {
+      if (entry.list_value)
+        list = entry.list_value;
+      for (size_t i = 1; i < req->GetArgNum(); i++) {
+        const auto value = static_cast<RESPString *>(req->GetArg(i));
+        list->push_back(*value->value);
+      }
+    } else {
+      for (size_t i = 1; i < req->GetArgNum(); i++) {
+        const auto value = static_cast<RESPString *>(req->GetArg(i));
+        list->push_back(*value->value);
+      }
+    }
+    entry.list_value = list;
+    entry.type = CacheEntryType::LIST;
+    if (cache->Set(*(key->value), entry, in_transaction))
+      return {new RESPInteger(
+                  std::make_shared<std::string>(std::to_string(list->size()))),
+              false};
+  } else if (opcode == "lpop") {
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
+    auto list = std::make_shared<std::list<std::string>>();
+    if (cache->Get(*(key->value), entry, in_transaction)) {
+      if (entry.list_value != nullptr)
+        list = entry.list_value;
+      if (list->empty())
+        return {new RESPBulkString(nullptr), false};
+      auto value = list->front();
+      list->pop_front();
+      if (cache->Set(*(key->value), entry, in_transaction))
+        return {new RESPBulkString(std::make_shared<std::string>(value)),
+                false};
+      return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
+              false};
+    }
+    return {new RESPBulkString(nullptr), false};
+  } else if (opcode == "rpop") {
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
+    auto list = std::make_shared<std::list<std::string>>();
+    if (cache->Get(*(key->value), entry, in_transaction)) {
+      if (entry.list_value != nullptr)
+        list = entry.list_value;
+      if (list->empty())
+        return {new RESPBulkString(nullptr), false};
+      auto value = list->back();
+      list->pop_back();
+      if (cache->Set(*(key->value), entry, in_transaction))
+        return {new RESPBulkString(std::make_shared<std::string>(value)),
+                false};
+      return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
+              false};
+    }
+    return {new RESPBulkString(nullptr), false};
+  } else if (opcode == "sadd") {
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
+    auto set = std::make_shared<std::set<std::string>>();
+    if (cache->Get(*(key->value), entry, in_transaction)) {
+      if (entry.set_value != nullptr)
+        set = entry.set_value;
+      for (size_t i = 1; i < req->GetArgNum(); i++) {
+        const auto value = static_cast<RESPString *>(req->GetArg(i));
+        set->insert(*value->value);
+      }
+    } else {
+      for (size_t i = 1; i < req->GetArgNum(); i++) {
+        const auto value = static_cast<RESPString *>(req->GetArg(i));
+        set->insert(*value->value);
+      }
+      entry.set_value = set;
+    }
+    entry.type = CacheEntryType::SET;
+    if (cache->Set(*(key->value), entry, in_transaction))
+      return {new RESPInteger(set->size()), false};
+    return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
+            false};
+  } else if (opcode == "spop") {
+    if (in_emergency) {
+      const auto key = static_cast<RESPString *>(req->GetArg(0));
+      auto set = std::make_shared<std::set<std::string>>();
+      if (cache->Get(*(key->value), entry, in_transaction)) {
+        if (entry.set_value != nullptr)
+          set = entry.set_value;
+        if (set->empty()) {
+          return {new RESPBulkString(nullptr), false};
+        }
+        auto it = set->begin();
+        std::advance(it, rand() % set->size());
+        auto value = *it;
+        set->erase(it);
+        if (cache->Set(*(key->value), entry, in_transaction))
+          return {new RESPBulkString(std::make_shared<std::string>(value)),
+                  false};
+        return {
+            new RESPError(std::make_shared<std::string>("ERR failed to set")),
+            false};
+      }
+    }
+    // TODO: update cache according to response of spop in normal mode
+    return {new RESPBulkString(nullptr), false};
+  } else if (opcode == "zadd") {
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
+    if (cache->Get(*(key->value), entry, in_transaction)) {
+      if (entry.sorted_set_value == nullptr)
+        entry.sorted_set_value =
+            std::make_shared<std::map<double, std::string>>();
+      for (size_t i = 1; i < req->GetArgNum(); i += 2) {
+        const auto score = static_cast<RESPString *>(req->GetArg(i));
+        const auto member = static_cast<RESPString *>(req->GetArg(i + 1));
+        if (member == nullptr || score == nullptr)
+          return {new RESPError(std::make_shared<std::string>(
+                      "ERR wrong type of arguments")),
+                  false};
+        entry.sorted_set_value->insert(
+            std::make_pair(std::stod(*score->value), *member->value));
+      }
+    } else {
+      entry.type = CacheEntryType::ZSET;
+      entry.sorted_set_value =
+          std::make_shared<std::map<double, std::string>>();
+      for (size_t i = 1; i < req->GetArgNum(); i += 2) {
+        const auto score = static_cast<RESPString *>(req->GetArg(i));
+        const auto member = static_cast<RESPString *>(req->GetArg(i + 1));
+        entry.sorted_set_value->insert(
+            std::make_pair(std::stod(*score->value), *member->value));
+      }
+    }
+    if (cache->Set(*(key->value), entry, in_transaction))
+      return {new RESPInteger(entry.sorted_set_value->size()), false};
+    return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
+            false};
+  } else if (opcode == "zpopmin") {
+    const auto key = static_cast<RESPString *>(req->GetArg(0));
+    auto zset = std::make_shared<std::map<double, std::string>>();
+    if (cache->Get(*(key->value), entry, in_transaction)) {
+      if (entry.sorted_set_value != nullptr)
+        zset = entry.sorted_set_value;
+      if (zset->empty())
+        return {new RESPBulkString(nullptr), false};
+      auto it = zset->begin();
+      auto value = it->second;
+      zset->erase(it);
+      if (cache->Set(*(key->value), entry, in_transaction))
+        return {new RESPBulkString(std::make_shared<std::string>(value)),
+                false};
+      return {new RESPError(std::make_shared<std::string>("ERR failed to pop")),
+              false};
+    }
+    return {new RESPBulkString(nullptr), false};
   }
   LOG(ERROR) << "Unknown opcode1: " << opcode << std::endl;
   if (in_emergency)
