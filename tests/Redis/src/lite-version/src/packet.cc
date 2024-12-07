@@ -61,14 +61,24 @@ void RESPNull::AppendToBuffer(std::vector<uint8_t> &buffer) {
 }
 
 void RESPMap::AppendToBuffer(std::vector<uint8_t> &buffer) {
-  auto len = std::to_string((*value).size());
-  buffer.push_back('%');
+  // in resp2, maps are represented as arrays of bulk strings
+  //   auto len = std::to_string((*value).size());
+  //   buffer.push_back('%');
+  //   buffer.insert(buffer.end(), len.begin(), len.end());
+  //   buffer.push_back('\r');
+  //   buffer.push_back('\n');
+  //   for (auto &pair : (*value)) {
+  //     pair.first->AppendToBuffer(buffer);
+  //     pair.second->AppendToBuffer(buffer);
+  //   }
+  auto len = std::to_string((*value).size() * 2);
+  buffer.push_back('*');
   buffer.insert(buffer.end(), len.begin(), len.end());
   buffer.push_back('\r');
   buffer.push_back('\n');
   for (auto &pair : (*value)) {
-    pair.first->AppendToBuffer(buffer);
-    pair.second->AppendToBuffer(buffer);
+	pair.first->AppendToBuffer(buffer);
+	pair.second->AppendToBuffer(buffer);
   }
 }
 

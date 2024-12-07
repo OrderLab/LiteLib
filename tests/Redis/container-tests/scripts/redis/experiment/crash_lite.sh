@@ -6,7 +6,7 @@ is_redis_running() {
 }
 
 if is_redis_running; then
-  pkill -2 redis-server
+  pkill -9 redis-server
   echo "Existing redis-server process killed."
   while is_redis_running; do
     echo "Waiting for redis-server process to terminate..."

@@ -8,7 +8,7 @@ kill_process_by_port() {
   local port=$1
   local pids=$(lsof -t -i:$port)
   if [ -n "$pids" ]; then
-    kill $pids
+    kill -9 $pids
     echo "Killed processes on port $port: $pids"
   else
     echo "No processes found on port $port"

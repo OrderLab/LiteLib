@@ -3,7 +3,8 @@
 std::shared_ptr<Packet> Redis::abort_req_ = nullptr;
 
 Redis::Redis() {
-  if (abort_req_) return;
+  if (abort_req_)
+    return;
   abort_req_ = std::make_shared<Packet>();
   auto discard_comm = std::make_unique<RESPArray>();
   discard_comm->value.emplace_back(std::make_unique<RESPBulkString>(
@@ -11,10 +12,10 @@ Redis::Redis() {
   abort_req_->command = std::move(discard_comm);
 }
 
-std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
-    const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-    lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
-        &pending_requests) const {
+std::pair<std::vector<std::shared_ptr<Packet>>, bool>
+Redis::Match(const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
+             lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
+                 &pending_requests) const {
   auto [req, is_not_replay] = pending_requests.pop_front();
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
@@ -35,7 +36,8 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
   const bool is_error = dynamic_cast<RESPError *>(resp->command.get());
 
   if (*opcode == "multi") {
-    if (!is_error) conn.is_in_transaction_ = true;
+    if (!is_error)
+      conn.is_in_transaction_ = true;
     return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
                           is_not_replay);
   } else if (*opcode == "exec") {
@@ -45,8 +47,8 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
   if (conn.is_in_transaction_) {
     if (!is_error) {
       conn.transactions_.push_back(req);
-    }  // TODO: do we need to abort the transaction if it's an illegal command
-       // or if there are other kinds of errors here?
+    } // TODO: do we need to abort the transaction if it's an illegal command
+      // or if there are other kinds of errors here?
     return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
                           is_not_replay);
   }
@@ -55,7 +57,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
       *opcode == "lpop" || *opcode == "rpop" || *opcode == "sadd" ||
       *opcode == "spop" || *opcode == "zadd" || *opcode == "zpop" ||
       *opcode == "zpopmin" || *opcode == "hset" || *opcode == "hget" ||
-      *opcode == "hgetall" || *opcode == "hmset") {
+      *opcode == "hgetall" || *opcode == "hmset" || *opcode == "quit") {
     return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
                           is_not_replay);
   }
@@ -66,13 +68,15 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
 void Redis::NormalUpdate(const std::shared_ptr<Packet> &resp,
                          std::vector<std::shared_ptr<Packet>> requests,
                          ConnectionInfo &conn, Cache *cache) {
-  if (requests.empty()) return;
+  if (requests.empty())
+    return;
   if (conn.is_in_transaction_) {
     RESPArray *responses_resp = dynamic_cast<RESPArray *>(resp->command.get());
     if (responses_resp == nullptr) {
       LOG(ERROR) << "Invalid response for EXEC:";
       auto response_buffer = resp->Serialize();
-      for (const auto &c : *response_buffer) LOG(ERROR) << c;
+      for (const auto &c : *response_buffer)
+        LOG(ERROR) << c;
       LOG(ERROR) << std::endl;
 #ifndef NDEBUG
       throw std::runtime_error("Invalid response for EXEC");
@@ -117,7 +121,7 @@ void Redis::HandleReplayResponse(const std::shared_ptr<Packet> &resp,
   if (error_msg) {
     LOG(ERROR) << "Received error msg from full during replay: "
                << *error_msg->value << std::endl;
-    exit(1);  // TODO: handle error
+    exit(1); // TODO: handle error
   }
   return;
 }
@@ -185,26 +189,26 @@ std::pair<Packet, bool> Redis::EmergencyServe(std::shared_ptr<Packet> req,
   return {Packet(std::unique_ptr<RESPType>(response)), shutdown};
 }
 
-std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
-    std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache,
-    Logger *logger, bool flow_control, const bool in_transaction) {
+std::pair<RESPType *, bool>
+Redis::EmergencyServeImpl(std::shared_ptr<Packet> req, ConnectionInfo &conn,
+                          Cache *cache, Logger *logger, bool flow_control,
+                          const bool in_transaction) {
   return HandleUpdate(req, conn, cache, logger, flow_control, in_transaction,
                       true);
 }
 
-std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
-                                                ConnectionInfo &conn,
-                                                Cache *cache, Logger *logger,
-                                                bool flow_control,
-                                                const bool in_transaction,
-                                                const bool in_emergency) {
+std::pair<RESPType *, bool>
+Redis::HandleUpdate(std::shared_ptr<Packet> req, ConnectionInfo &conn,
+                    Cache *cache, Logger *logger, bool flow_control,
+                    const bool in_transaction, const bool in_emergency) {
   std::string_view opcode;
   try {
     opcode = req->GetOpcode();
   } catch (const std::exception &e) {
     const auto buffer = req->Serialize();
     LOG(ERROR) << "Unknown opcode: ";
-    for (const auto &c : *buffer) LOG(ERROR) << c;
+    for (const auto &c : *buffer)
+      LOG(ERROR) << c;
     LOG(ERROR) << std::endl;
   }
   CacheEntry entry;
@@ -218,7 +222,12 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     entry.value = value->value;
     entry.type = CacheEntryType::STRING;
     if (cache->Set(*(key->value), entry, in_transaction))
-      return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
+      if (in_emergency)
+        return {new RESPSimpleString(std::make_shared<std::string>("OK")),
+                false};
+      else
+        return {nullptr, false};
+
     return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
             false};
   } else if (opcode == "get") {
@@ -301,7 +310,8 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     auto list = std::make_shared<std::list<std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.list_value) list = entry.list_value;
+      if (entry.list_value)
+        list = entry.list_value;
       for (size_t i = 1; i < req->GetArgNum(); i++) {
         const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
         list->push_front(*value->value);
@@ -322,7 +332,8 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     auto list = std::make_shared<std::list<std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.list_value) list = entry.list_value;
+      if (entry.list_value)
+        list = entry.list_value;
       for (size_t i = 1; i < req->GetArgNum(); i++) {
         const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
         list->push_back(*value->value);
@@ -343,8 +354,10 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     auto list = std::make_shared<std::list<std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.list_value != nullptr) list = entry.list_value;
-      if (list->empty()) return {new RESPBulkString(nullptr), false};
+      if (entry.list_value != nullptr)
+        list = entry.list_value;
+      if (list->empty())
+        return {new RESPBulkString(nullptr), false};
       auto value = list->front();
       list->pop_front();
       if (cache->Set(*(key->value), entry, in_transaction))
@@ -358,8 +371,10 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     auto list = std::make_shared<std::list<std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.list_value != nullptr) list = entry.list_value;
-      if (list->empty()) return {new RESPBulkString(nullptr), false};
+      if (entry.list_value != nullptr)
+        list = entry.list_value;
+      if (list->empty())
+        return {new RESPBulkString(nullptr), false};
       auto value = list->back();
       list->pop_back();
       if (cache->Set(*(key->value), entry, in_transaction))
@@ -373,7 +388,8 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     auto set = std::make_shared<std::set<std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.set_value != nullptr) set = entry.set_value;
+      if (entry.set_value != nullptr)
+        set = entry.set_value;
       for (size_t i = 1; i < req->GetArgNum(); i++) {
         const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
         set->insert(*value->value);
@@ -395,7 +411,8 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
       const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
       auto set = std::make_shared<std::set<std::string>>();
       if (cache->Get(*(key->value), entry, in_transaction)) {
-        if (entry.set_value != nullptr) set = entry.set_value;
+        if (entry.set_value != nullptr)
+          set = entry.set_value;
         if (set->empty()) {
           return {new RESPBulkString(nullptr), false};
         }
@@ -448,8 +465,10 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
     auto zset = std::make_shared<std::map<double, std::string>>();
     if (cache->Get(*(key->value), entry, in_transaction)) {
-      if (entry.sorted_set_value != nullptr) zset = entry.sorted_set_value;
-      if (zset->empty()) return {new RESPBulkString(nullptr), false};
+      if (entry.sorted_set_value != nullptr)
+        zset = entry.sorted_set_value;
+      if (zset->empty())
+        return {new RESPBulkString(nullptr), false};
       auto it = zset->begin();
       auto value = it->second;
       zset->erase(it);
@@ -476,7 +495,11 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     entry.type = CacheEntryType::MAP;
     entry.map_value = map;
     if (cache->Set(*(key->value), entry, in_transaction))
-      return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
+      if (in_emergency)
+        return {new RESPSimpleString(std::make_shared<std::string>("OK")),
+                false};
+      else
+        return {nullptr, false};
     return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
             false};
   } else if (opcode == "hgetall") {
@@ -499,8 +522,15 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
       return {new RESPMap(), false};
     }
     return std::make_pair(nullptr, false);
+  } else if (opcode == "quit") {
+    if (in_emergency)
+      return {new RESPSimpleString(std::make_shared<std::string>("OK")), true};
+    else
+      return {nullptr, true};
   }
   LOG(ERROR) << "Unknown opcode1: " << opcode << std::endl;
-  return {new RESPError(std::make_shared<std::string>("ERR unknown command")),
-          false};
+  if (in_emergency)
+    return {new RESPError(std::make_shared<std::string>("ERR unknown opcode")),
+            false};
+  return {nullptr, false};
 }

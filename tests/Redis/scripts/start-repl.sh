@@ -19,6 +19,7 @@ scp "$SCRIPT_DIR/repl-monitor.py" "$REPLICA_HOST:$DEST_DIR/repl-monitor.py"
 scp "$SCRIPT_DIR/config/replica.conf" "$REPLICA_HOST:$DEST_DIR/config/replica.conf"
 
 ssh "$REPLICA_HOST" "
+  rm -f *.rdb
   sed -i \"s|logfile .*|logfile \\\"$DEST_DIR/logs/redis-replica.log\\\"|\" \"$DEST_DIR/config/replica.conf\"
   redis-server \"$DEST_DIR/config/replica.conf\"
 "

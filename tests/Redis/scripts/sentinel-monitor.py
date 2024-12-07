@@ -1,6 +1,7 @@
 import psutil
 import csv
 import time
+import argparse
 from datetime import datetime
 
 def get_redis_sentinels(ports):
@@ -30,8 +31,12 @@ def get_cpu_mem_usage(csv_file, duration):
                 sentinel_data.append(sentinel.memory_info().rss)
             
             writer.writerow([timestamp] + sentinel_data)
-            print(f"{timestamp}: sentinel_26479_cpu={sentinel_data[0]}, sentinel_26479_mem={sentinel_data[1]}, sentinel_26480_cpu={sentinel_data[2]}, sentinel_26480_mem={sentinel_data[3]}, sentinel_26481_cpu={sentinel_data[4]}, sentinel_26481_mem={sentinel_data[5]}")
+            print(f"{timestamp},{','.join(map(str, sentinel_data))}")
             time.sleep(0.5)
 
 if __name__ == '__main__':
-    get_cpu_mem_usage("litesys/redis/sentinel_cpu_mem.csv", 60)
+    parser = argparse.ArgumentParser(description='Monitor CPU and memory usage of processes.')
+    parser.add_argument('-t', '--time', type=int, default=180, help='Duration to monitor in seconds (default: 180)')
+    args = parser.parse_args()
+    
+    get_cpu_mem_usage("litesys/redis/sentinel_cpu_mem.csv", args.time)

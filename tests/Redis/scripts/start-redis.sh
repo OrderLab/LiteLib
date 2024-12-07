@@ -2,8 +2,6 @@
 
 SCRIPT_DIR=$(dirname "$0")
 
-rm "$SCRIPT_DIR/dump_full.rdb"	
-
 if [ ! -d "$SCRIPT_DIR/logs" ]; then
   mkdir "$SCRIPT_DIR/logs"
 fi

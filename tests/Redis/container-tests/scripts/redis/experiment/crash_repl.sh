@@ -18,7 +18,7 @@ if [ -z "$pid" ]; then
 fi
 
 echo "Killing Redis server process $pid"
-kill -2 $pid
+kill -9 $pid
 
 new_master_info=$(get_master_info)
 new_master_ip=$(echo $new_master_info | awk '{print $1}')
