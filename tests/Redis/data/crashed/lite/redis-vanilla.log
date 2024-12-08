@@ -1,0 +1,68 @@
+2757457:C 08 Dec 2024 01:32:49.199 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+2757457:C 08 Dec 2024 01:32:49.199 * Redis version=7.4.1, bits=64, commit=00000000, modified=0, pid=2757457, just started
+2757457:C 08 Dec 2024 01:32:49.200 * Configuration loaded
+2757457:M 08 Dec 2024 01:32:49.202 * monotonic clock: POSIX clock_gettime
+2757457:M 08 Dec 2024 01:32:49.207 # Failed to write PID file: Permission denied
+                _._                                                  
+           _.-``__ ''-._                                             
+      _.-``    `.  `_.  ''-._           Redis Community Edition      
+  .-`` .-```.  ```\/    _.,_ ''-._     7.4.1 (00000000/0) 64 bit
+ (    '      ,       .-`  | `,    )     Running in standalone mode
+ |`-._`-...-` __...-.``-._|'` _.-'|     Port: 16379
+ |    `-._   `._    /     _.-'    |     PID: 2757457
+  `-._    `-._  `-./  _.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |           https://redis.io       
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |                                  
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+      `-._    `-.__.-'    _.-'                                       
+          `-._        _.-'                                           
+              `-.__.-'                                               
+
+2757457:M 08 Dec 2024 01:32:49.208 * Server initialized
+2757457:M 08 Dec 2024 01:32:49.209 * Ready to accept connections tcp
+2757457:M 08 Dec 2024 01:32:49.209 * Ready to accept connections unix
+2757457:M 08 Dec 2024 01:33:32.824 * User requested shutdown...
+2757457:M 08 Dec 2024 01:33:32.824 * Saving the final RDB snapshot before exiting.
+2757457:M 08 Dec 2024 01:33:45.210 * DB saved on disk
+2757457:M 08 Dec 2024 01:33:45.210 * Removing the pid file.
+2757457:M 08 Dec 2024 01:33:45.210 * Removing the unix socket file.
+2757457:M 08 Dec 2024 01:33:45.210 # Redis is now ready to exit, bye bye...
+2758853:C 08 Dec 2024 01:33:46.022 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+2758853:C 08 Dec 2024 01:33:46.023 * Redis version=7.4.1, bits=64, commit=00000000, modified=0, pid=2758853, just started
+2758853:C 08 Dec 2024 01:33:46.023 * Configuration loaded
+2758853:M 08 Dec 2024 01:33:46.025 * monotonic clock: POSIX clock_gettime
+2758853:M 08 Dec 2024 01:33:46.030 # Failed to write PID file: Permission denied
+                _._                                                  
+           _.-``__ ''-._                                             
+      _.-``    `.  `_.  ''-._           Redis Community Edition      
+  .-`` .-```.  ```\/    _.,_ ''-._     7.4.1 (00000000/0) 64 bit
+ (    '      ,       .-`  | `,    )     Running in standalone mode
+ |`-._`-...-` __...-.``-._|'` _.-'|     Port: 16379
+ |    `-._   `._    /     _.-'    |     PID: 2758853
+  `-._    `-._  `-./  _.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |           https://redis.io       
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |                                  
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+      `-._    `-.__.-'    _.-'                                       
+          `-._        _.-'                                           
+              `-.__.-'                                               
+
+2758853:M 08 Dec 2024 01:33:46.032 * Server initialized
+2758853:M 08 Dec 2024 01:33:46.032 * Loading RDB produced by version 7.4.1
+2758853:M 08 Dec 2024 01:33:46.032 * RDB age 14 seconds
+2758853:M 08 Dec 2024 01:33:46.032 * RDB memory usage when created 849.20 Mb
+2758853:M 08 Dec 2024 01:33:53.066 * Done loading RDB, keys loaded: 500000, keys expired: 0.
+2758853:M 08 Dec 2024 01:33:53.067 * DB loaded from disk: 7.035 seconds
+2758853:M 08 Dec 2024 01:33:53.067 * Ready to accept connections tcp
+2758853:M 08 Dec 2024 01:33:53.067 * Ready to accept connections unix
+2758853:M 08 Dec 2024 01:48:47.088 * 1 changes in 900 seconds. Saving...
+2758853:M 08 Dec 2024 01:48:47.112 * Background saving started by pid 2775840
+2775840:C 08 Dec 2024 01:49:00.077 * DB saved on disk
+2775840:C 08 Dec 2024 01:49:00.106 * Fork CoW for RDB: current 1 MB, peak 1 MB, average 1 MB
+2758853:M 08 Dec 2024 01:49:00.137 * Background saving terminated with success

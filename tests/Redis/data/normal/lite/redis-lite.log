@@ -1,0 +1,5 @@
+LiteRedis starts
+	listening on address: 127.0.0.1
+	listening on port: 6479
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+I20241208 02:51:55.928937 140400581648000 daemon.cc:50] Daemon listening on /tmp/lite_Redis

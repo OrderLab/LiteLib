@@ -1,0 +1,111 @@
+3098850:C 08 Dec 2024 02:03:01.779 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+3098850:C 08 Dec 2024 02:03:01.780 * Redis version=7.4.1, bits=64, commit=00000000, modified=0, pid=3098850, just started
+3098850:C 08 Dec 2024 02:03:01.780 * Configuration loaded
+3098850:S 08 Dec 2024 02:03:01.782 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+3098850:S 08 Dec 2024 02:03:01.782 * monotonic clock: POSIX clock_gettime
+3098850:S 08 Dec 2024 02:03:01.787 # Failed to write PID file: Permission denied
+                _._                                                  
+           _.-``__ ''-._                                             
+      _.-``    `.  `_.  ''-._           Redis Community Edition      
+  .-`` .-```.  ```\/    _.,_ ''-._     7.4.1 (00000000/0) 64 bit
+ (    '      ,       .-`  | `,    )     Running in standalone mode
+ |`-._`-...-` __...-.``-._|'` _.-'|     Port: 16379
+ |    `-._   `._    /     _.-'    |     PID: 3098850
+  `-._    `-._  `-./  _.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |           https://redis.io       
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |                                  
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+      `-._    `-.__.-'    _.-'                                       
+          `-._        _.-'                                           
+              `-.__.-'                                               
+
+3098850:S 08 Dec 2024 02:03:01.788 * Server initialized
+3098850:S 08 Dec 2024 02:03:01.789 * Ready to accept connections tcp
+3098850:S 08 Dec 2024 02:03:01.790 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:03:01.790 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:03:01.790 * Non blocking connect for SYNC fired the event.
+3098850:S 08 Dec 2024 02:03:01.791 * Master replied to PING, replication can continue...
+3098850:S 08 Dec 2024 02:03:01.791 * Partial resynchronization not possible (no cached master)
+3098850:S 08 Dec 2024 02:03:01.793 * Full resync from master: 248d629467989db524d6ad56f047e7664010d437:0
+3098850:S 08 Dec 2024 02:03:01.814 * MASTER <-> REPLICA sync: receiving 171 bytes from master to disk
+3098850:S 08 Dec 2024 02:03:01.814 * MASTER <-> REPLICA sync: Flushing old data
+3098850:S 08 Dec 2024 02:03:01.815 * MASTER <-> REPLICA sync: Loading DB in memory
+3098850:S 08 Dec 2024 02:03:01.817 * Loading RDB produced by version 7.4.1
+3098850:S 08 Dec 2024 02:03:01.817 * RDB age 0 seconds
+3098850:S 08 Dec 2024 02:03:01.818 * RDB memory usage when created 0.99 Mb
+3098850:S 08 Dec 2024 02:03:01.818 * Done loading RDB, keys loaded: 0, keys expired: 0.
+3098850:S 08 Dec 2024 02:03:01.818 * MASTER <-> REPLICA sync: Finished with success
+3098850:S 08 Dec 2024 02:04:02.167 * Connection with master lost.
+3098850:S 08 Dec 2024 02:04:02.167 * Caching the disconnected master state.
+3098850:S 08 Dec 2024 02:04:02.168 * Reconnecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:02.168 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:02.168 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:02.845 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:02.845 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:02.846 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:03.864 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:03.864 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:03.864 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:04.884 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:04.884 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:04.884 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:05.903 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:05.903 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:05.903 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:06.923 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:06.923 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:06.923 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:07.943 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:07.943 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:07.943 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:08.963 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:08.963 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:08.963 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:09.982 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:09.982 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:09.982 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:11.003 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:11.003 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:11.003 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:12.023 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:12.023 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:12.024 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:13.044 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:13.044 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:13.044 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:14.062 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:14.063 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:14.063 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:15.082 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:15.082 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:15.082 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:16.102 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:16.102 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:16.102 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:17.122 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:17.122 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:17.122 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:18.140 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:18.141 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:18.141 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:19.161 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:19.161 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:19.161 # Error condition on socket for SYNC: Connection refused
+3098850:S 08 Dec 2024 02:04:20.181 * Connecting to MASTER 10.10.1.2:16379
+3098850:S 08 Dec 2024 02:04:20.181 * MASTER <-> REPLICA sync started
+3098850:S 08 Dec 2024 02:04:20.181 # Error condition on socket for SYNC: Connection refused
+3098850:M 08 Dec 2024 02:04:20.795 * Discarding previously cached master state.
+3098850:M 08 Dec 2024 02:04:20.795 * Setting secondary replication ID to 248d629467989db524d6ad56f047e7664010d437, valid up to offset: 693215195. New replication ID is 0842080f7995331204fc9a05ca2040aaf24c36fa
+3098850:M 08 Dec 2024 02:04:20.796 * MASTER MODE enabled (user request from 'id=7 addr=10.10.1.4:43702 laddr=10.10.1.3:16379 fd=14 name=sentinel-928c86ce-cmd age=77 idle=0 flags=x db=0 sub=0 psub=0 ssub=0 multi=4 watch=0 qbuf=188 qbuf-free=20286 argv-mem=4 multi-mem=169 rbs=8192 rbp=6027 obl=45 oll=0 omem=0 tot-mem=29861 events=r cmd=exec user=default redir=-1 resp=2 lib-name= lib-ver=')
+3098850:M 08 Dec 2024 02:04:20.808 * CONFIG REWRITE executed with success.
+3098850:M 08 Dec 2024 02:04:32.701 * Replica 10.10.1.2:16379 asks for synchronization
+3098850:M 08 Dec 2024 02:04:32.701 * Partial resynchronization not accepted: Replication ID mismatch (Replica asked for 'fe52a0a1d45deb8c6fca52043c686e71dfdbebb0', my replication IDs are '0842080f7995331204fc9a05ca2040aaf24c36fa' and '248d629467989db524d6ad56f047e7664010d437')
+3098850:M 08 Dec 2024 02:04:32.701 * Starting BGSAVE for SYNC with target: disk
+3098850:M 08 Dec 2024 02:04:32.718 * Background saving started by pid 3099036
+3099036:C 08 Dec 2024 02:04:45.188 * DB saved on disk
+3099036:C 08 Dec 2024 02:04:45.205 * Fork CoW for RDB: current 732 MB, peak 732 MB, average 541 MB
+3098850:M 08 Dec 2024 02:04:45.281 * Background saving terminated with success
+3098850:M 08 Dec 2024 02:04:52.387 * Synchronization with replica 10.10.1.2:16379 succeeded

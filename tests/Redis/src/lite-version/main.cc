@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
   try {
     // size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t thread_pool_size = 3;
-    size_t cache_size(131072);
+    size_t cache_size(16384);
     const char *port = "6479";
     const char *address = "127.0.0.1";
     const char *const short_opts = "p:h:H";
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     lite::LiteServer<Redis, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s(thread_pool_size, cache_size, redis, backend_addr, backend_port,
-          1000ms, 20000, 0.9, 4,"/tmp/lite_Redis");
+          1000ms, 80000, 0.9, 2,"/tmp/lite_Redis");
     // Run the server until stopped.
     s.Run(port);
   } catch (std::exception &e) {

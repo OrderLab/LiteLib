@@ -17,15 +17,11 @@ def parse_log(log_file, csv_file):
             continue
 
         if run_started:
-            match = re.match(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}:\d{3}) \d+ sec: \d+ operations; \d+ current ops/sec; est completion in \d+ (seconds?|minutes?) \[(.*)\]', line)
+            match = re.match(r'.* (\d+) sec: \d+ operations; \d+(\.\d+)? current ops/sec; est completion in \d+ (seconds?|minutes?) \[(.*)\]', line)
             if match and 'INSERT' not in line:
-                timestamp_str = match.group(1)
-                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S:%f')
-                if start_time is None:
-                    start_time = timestamp
-                elapsed_time = int((timestamp - start_time).total_seconds())
+                timestamp = float(match.group(1))
                 
-                metrics_str = match.group(3)
+                metrics_str = match.group(4)
                 metrics = metrics_str.split('] [')
                 read, update, read_failed, update_failed, read_missed = 0, 0, 0, 0, 0
                 for metric in metrics:
@@ -40,7 +36,7 @@ def parse_log(log_file, csv_file):
                     elif metric.startswith('UPDATE:'):
                         update = int(re.search(r'Count=(\d+)', metric).group(1))
 
-                data.append([elapsed_time, read, update, read_failed, update_failed, read_missed])
+                data.append([timestamp, read, update, read_failed, update_failed, read_missed])
 
     with open(csv_file, 'w', newline='') as file:
         writer = csv.writer(file)

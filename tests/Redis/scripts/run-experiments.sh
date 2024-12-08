@@ -65,9 +65,9 @@ alive_on_port() {
 # Function to handle the killing of the vanilla server and recovery
 kill_vanilla_server() {
     sleep $CRASH_TIME
-	redis-cli -h $MASTER_HOST -p $VANILLA_PORT shutdown &
-    echo "Attempting to kill vanilla server on port $VANILLA_PORT"
-
+	
+	redis-cli -h $MASTER_HOST -p $VANILLA_PORT shutdown save &
+	echo "Attempting to kill vanilla server on port $VANILLA_PORT"
     if [ "$MODE" == "lite" ]; then
         $LITE_DIR/Lite/lite_cli -t /tmp/lite_Redis -p /tmp/redis.sock -m 1
         echo "Entered emergency mode"
@@ -100,6 +100,7 @@ kill_vanilla_server() {
             fi
             sleep 0.1
         done
+		echo "" >> /dev/null
     elif [ "$MODE" == "vanilla" ]; then
         while alive_on_port $VANILLA_PORT; do
             sleep 0.1
@@ -141,11 +142,9 @@ elif [ "$MODE" == "vanilla" ]; then
     ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" > $SCRIPT_DIR/logs/benchmark.log 2>&1
 fi
 
-redis-cli -h $MASTER_HOST -p $MASTER_PORT save
-
 # Kill vanilla server after the crash time
-kill_vanilla_server &
-echo "Vanilla server will be killed in $CRASH_TIME seconds"
+# kill_vanilla_server &
+# echo "Vanilla server will be killed in $CRASH_TIME seconds"
 
 # Run benchmarks in a loop
 while true; do

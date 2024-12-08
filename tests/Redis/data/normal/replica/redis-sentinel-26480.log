@@ -1,0 +1,15 @@
+1698262:X 08 Dec 2024 08:37:55.019 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+1698262:X 08 Dec 2024 08:37:55.019 * Redis version=7.4.1, bits=64, commit=00000000, modified=0, pid=1698262, just started
+1698262:X 08 Dec 2024 08:37:55.019 * Configuration loaded
+1698262:X 08 Dec 2024 08:37:55.021 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+1698262:X 08 Dec 2024 08:37:55.021 * monotonic clock: POSIX clock_gettime
+1698262:X 08 Dec 2024 08:37:55.024 * Running mode=sentinel, port=26480.
+1698262:X 08 Dec 2024 08:37:55.027 * Sentinel new configuration saved on disk
+1698262:X 08 Dec 2024 08:37:55.027 * Sentinel ID is 0f137fc55397ade6180ddf1bd3343ed166cc9072
+1698262:X 08 Dec 2024 08:37:55.027 # +monitor master vanilla_redis 10.10.1.2 16379 quorum 2
+1698262:X 08 Dec 2024 08:37:55.029 * +slave slave 10.10.1.3:16379 10.10.1.3 16379 @ vanilla_redis 10.10.1.2 16379
+1698262:X 08 Dec 2024 08:37:55.031 * Sentinel new configuration saved on disk
+1698262:X 08 Dec 2024 08:37:56.699 * +sentinel sentinel 571c364bf74ca5269e6a1d487fee7695cb348931 10.10.1.4 26479 @ vanilla_redis 10.10.1.2 16379
+1698262:X 08 Dec 2024 08:37:56.701 * Sentinel new configuration saved on disk
+1698262:X 08 Dec 2024 08:37:57.380 * +sentinel sentinel 25ec904f81b4d826c7228cb76ad64f26bbd79c07 10.10.1.4 26481 @ vanilla_redis 10.10.1.2 16379
+1698262:X 08 Dec 2024 08:37:57.383 * Sentinel new configuration saved on disk

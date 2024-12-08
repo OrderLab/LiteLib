@@ -20,6 +20,7 @@ scp "$SCRIPT_DIR/config/replica.conf" "$REPLICA_HOST:$DEST_DIR/config/replica.co
 
 ssh "$REPLICA_HOST" "
   rm -f *.rdb
+  rm -f $DEST_DIR/logs/*.log
   sed -i \"s|logfile .*|logfile \\\"$DEST_DIR/logs/redis-replica.log\\\"|\" \"$DEST_DIR/config/replica.conf\"
   redis-server \"$DEST_DIR/config/replica.conf\"
 "
