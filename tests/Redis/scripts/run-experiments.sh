@@ -117,18 +117,18 @@ rm -f $SCRIPT_DIR/logs/*-monitor.log
 
 # Start relevant monitoring processes
 if [ "$MODE" == "lite" ]; then
-    python -u $SCRIPT_DIR/lite-monitor.py > $SCRIPT_DIR/logs/lite-monitor.log 2>&1 &
+    python -u $SCRIPT_DIR/monitor/lite-monitor.py > $SCRIPT_DIR/logs/lite-monitor.log 2>&1 &
 elif [ "$MODE" == "replica" ]; then
-    python -u $SCRIPT_DIR/vanilla-monitor.py > $SCRIPT_DIR/logs/vanilla-monitor.log 2>&1 &
+    python -u $SCRIPT_DIR/monitor/vanilla-monitor.py > $SCRIPT_DIR/logs/vanilla-monitor.log 2>&1 &
     ssh $REPLICA_HOST "python -u $DEST_DIR/repl-monitor.py" > $SCRIPT_DIR/logs/repl-monitor.log 2>&1 &
     ssh $SENTINEL_HOST "python -u $DEST_DIR/sentinel-monitor.py" > $SCRIPT_DIR/logs/sentinel-monitor.log 2>&1 &
 elif [ "$MODE" == "vanilla" ]; then
-	python -u $SCRIPT_DIR/vanilla-monitor.py > $SCRIPT_DIR/logs/vanilla-monitor.log 2>&1 &
+	python -u $SCRIPT_DIR/monitor/vanilla-monitor.py > $SCRIPT_DIR/logs/vanilla-monitor.log 2>&1 &
 fi
 echo "Monitoring started"
 
 # Copy workload file to client host
-scp $SCRIPT_DIR/ycsb_workload $CLIENT_HOST:$YCSB_DIR/workloads/ycsb_workload
+scp $SCRIPT_DIR/config/ycsb_workload $CLIENT_HOST:$YCSB_DIR/workloads/ycsb_workload
 
 # Get master node info and print it
 get_master_info
@@ -143,8 +143,8 @@ elif [ "$MODE" == "vanilla" ]; then
 fi
 
 # Kill vanilla server after the crash time
-# kill_vanilla_server &
-# echo "Vanilla server will be killed in $CRASH_TIME seconds"
+kill_vanilla_server &
+echo "Vanilla server will be killed in $CRASH_TIME seconds"
 
 # Run benchmarks in a loop
 while true; do

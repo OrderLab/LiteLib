@@ -15,7 +15,7 @@ ssh "$REPLICA_HOST" "
   fi
 "
 
-scp "$SCRIPT_DIR/repl-monitor.py" "$REPLICA_HOST:$DEST_DIR/repl-monitor.py"
+scp "$SCRIPT_DIR/monitor/repl-monitor.py" "$REPLICA_HOST:$DEST_DIR/repl-monitor.py"
 scp "$SCRIPT_DIR/config/replica.conf" "$REPLICA_HOST:$DEST_DIR/config/replica.conf"
 
 ssh "$REPLICA_HOST" "
@@ -38,7 +38,7 @@ ssh "$SENTINEL_HOST" "
 	fi
 "
 
-scp "$SCRIPT_DIR/sentinel-monitor.py" "$SENTINEL_HOST:$DEST_DIR/sentinel-monitor.py"
+scp "$SCRIPT_DIR/monitor/sentinel-monitor.py" "$SENTINEL_HOST:$DEST_DIR/sentinel-monitor.py"
 scp "$SCRIPT_DIR/config/sentinel.conf" "$SENTINEL_HOST:$DEST_DIR/config/sentinel.conf"
 
 for port in 26479 26480 26481; do
