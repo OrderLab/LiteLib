@@ -36,7 +36,9 @@ install_dependencies() {
     rsync \
     iptables \
     tcpdump \
-    cgroup-tools
+    cgroup-tools \
+    google-perftools \
+    libgoogle-perftools-dev
 }
 
 install_boost() {
