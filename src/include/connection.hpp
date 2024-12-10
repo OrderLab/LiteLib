@@ -83,7 +83,6 @@ class Connection {
 
   LoggerInstance logger_;
 
- private:
   /// Corresponding worker's event_base
   struct event_base* const base_;
 

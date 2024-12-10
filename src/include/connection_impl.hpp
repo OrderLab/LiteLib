@@ -2,8 +2,20 @@
 
 #include <event.h>
 #include <netinet/tcp.h>
+#include <sys/types.h>
+#include <linux/if_packet.h>
+#include <linux/if_ether.h>
+#include <arpa/inet.h>
+#include <net/ethernet.h>
+#include <netinet/ip.h>
+#include <ctype.h>
 
 #include "connection.hpp"
+
+#define SO_ATTACH_BPF 50
+#define SO_DETACH_BPF 27
+#define BUFFER_SIZE 65536
+#define SERVER_PORT 16379
 
 namespace lite {
 
@@ -31,7 +43,7 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       logger_(lite_core.logger_inner_, log_head_),
       worker_ptr_(worker_ptr) {
   if (sfd) {
-    event_set(&client_event_, sfd, event_flags, event_handler,
+    event_set(&client_event_, sfd, event_flags, Connection::BPFHandler,
               static_cast<void*>(this));
     event_base_set(base, &client_event_);
     if (event_add(&client_event_, 0) == -1) {
@@ -44,9 +56,9 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 
   memset(&backend_event_, 0, sizeof(backend_event_));
 
-  if (is_client_connection &&
-      (!lite_core_.emergency_mode_ && !lite_core_.is_replaying_))
-    ConnectBackend();
+  // if (is_client_connection &&
+  //     (!lite_core_.emergency_mode_ && !lite_core_.is_replaying_))
+  //   ConnectBackend();
 
   if (lite_core_.emergency_mode_) {
     std::optional<Response> greeting_msg =
@@ -79,6 +91,109 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   lite_core_.dead_connection_log_heads_.push_back(log_head_);
   // LOG(INFO) << "connection closed" << std::endl;
 }
+
+struct parse_result{
+    unsigned char* payload;
+    int len;
+    bool request_dir;
+    // connection
+};
+
+uint16_t htons_custom(uint16_t i) {
+    return (i << 8) | (i >> 8);
+} 
+
+bool check_dir(char* src_ip, uint16_t sport , char* dst_ip,uint16_t dport ){
+    if(sport==SERVER_PORT) return false;
+    else if(dport==SERVER_PORT) return true;
+    return false;
+
+}
+
+struct parse_result parse_tcp_data(unsigned char *buffer, int size) {
+    struct ethhdr *eth = (struct ethhdr *)buffer;
+    struct parse_result result = {0};
+    if (ntohs(eth->h_proto) != ETH_P_IP)
+        return result;
+
+    struct iphdr *ip = (struct iphdr *)(buffer + sizeof(struct ethhdr));
+    if (ip->protocol != IPPROTO_TCP)
+        return result;
+
+    struct tcphdr *tcp = (struct tcphdr *)(buffer + sizeof(struct ethhdr) + 
+                                         (ip->ihl * 4));
+
+    char src_ip[INET_ADDRSTRLEN];
+    char dst_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(ip->saddr), src_ip, INET_ADDRSTRLEN);
+    inet_ntop(AF_INET, &(ip->daddr), dst_ip, INET_ADDRSTRLEN);
+
+    
+    int ip_header_len = ip->ihl * 4;   // Length of IP header in bytes
+    int tcp_header_len = tcp->doff * 4; // Length of TCP header in bytes
+    int headers_total_len = sizeof(struct ethhdr) + ip_header_len + tcp_header_len;
+
+    if (size > headers_total_len) {
+        int payload_size = size - headers_total_len;
+        unsigned char *payload = buffer + headers_total_len;
+        printf("new tcp data, %s:%d -> %s:%d\n", 
+           src_ip, ntohs(tcp->source),
+           dst_ip, ntohs(tcp->dest));
+        result.request_dir = check_dir(src_ip, ntohs(tcp->source), dst_ip, ntohs(tcp->dest));
+        result.payload = payload;
+        result.len = payload_size;
+        fwrite(payload, sizeof(char), payload_size, stdout);
+        printf("\n");
+        return result;
+    } 
+    return result;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::BPFHandler(evutil_socket_t fd, short what, void* arg_conn) {
+    unsigned char buffer[BUFFER_SIZE];
+    ConnectionInstance* conn = static_cast<ConnectionInstance*>(arg_conn);
+    struct sockaddr_in sender_addr;
+    socklen_t addr_len = sizeof(sender_addr);
+
+    ssize_t n = recvfrom(fd, buffer, sizeof(buffer) - 1, 0, 
+                         (struct sockaddr *)&sender_addr, &addr_len);
+
+    if (n > 0) {
+        struct parse_result result = parse_tcp_data(buffer, n);
+        if (result.request_dir){
+            //handle request
+            printf("Handle request\n");
+            const auto res = conn->request_->Deserialize(result.payload, result.payload + result.len);
+            if (!conn->lite_core_.HandleRequest(
+                    std::move(conn->request_), conn->extra_app_info_,
+                    conn->pending_requests_, conn->client_fd_, conn->backend_fd_,
+                    &conn->cache_, &conn->logger_, true)) {
+                delete conn;
+                return;
+            }
+        } else{
+            //handle response
+            printf("Handle response\n");
+            const auto res = conn->response_->Deserialize(result.payload, result.payload + result.len);
+            if (!conn->lite_core_.HandleResponse(
+                    std::move(conn->response_), conn->extra_app_info_,
+                    conn->pending_requests_, conn->client_fd_, &conn->cache_,
+                    true)) {
+                delete conn;
+                return;
+            }
+        }
+    } else if (n == 0) {
+        printf("Connection closed by peer\n");
+        // event_base_loopbreak((struct event_base *)arg); // Break the event loop
+    } else {
+        perror("recvfrom error");
+    }
+}
+
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -215,13 +330,13 @@ bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   if (backend_event_.ev_base) event_del(&backend_event_);
 
   // Add an event that listens to the backend server's messages
-  event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
-            Connection::BackendHandler, static_cast<void*>(this));
-  event_base_set(base_, &backend_event_);
-  if (event_add(&backend_event_, 0) == -1) {
-    PLOG(ERROR) << "backend event_add";
-    throw std::runtime_error("backend event_add");
-  }
+  // event_set(&backend_event_, backend_fd_, EV_READ | EV_PERSIST,
+  //           Connection::BackendHandler, static_cast<void*>(this));
+  // event_base_set(base_, &backend_event_);
+  // if (event_add(&backend_event_, 0) == -1) {
+  //   PLOG(ERROR) << "backend event_add";
+  //   throw std::runtime_error("backend event_add");
+  // }
 
   return true;
 }
