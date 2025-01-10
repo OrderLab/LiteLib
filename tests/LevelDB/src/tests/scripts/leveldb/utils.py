@@ -22,3 +22,4 @@ def StartBackgroundProcess(boot_command, log_file, append=False, env=dict()):
         exit(1)
     else:
         print("The process is still running")
+    return process

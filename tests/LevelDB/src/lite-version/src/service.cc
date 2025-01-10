@@ -50,7 +50,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
     return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
                           is_not_replay);
   }
-  if (*opcode == "set" || *opcode == "get") {
+  if (*opcode == "set" || *opcode == "get" || *opcode == "getset") {
     return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
                           is_not_replay);
   } else if (*opcode == "ping") {
@@ -114,7 +114,7 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
     LOG(ERROR) << std::endl;
   }
   CacheEntry entry;
-  if (opcode == "set") {
+  if (opcode == "set" || opcode == "getset") {
     if (req->GetArgNum() != 2) {
       LOG(ERROR) << "Invalid number of arguments for set\n";
       return;
@@ -226,7 +226,7 @@ std::pair<RESPType *, bool> LevelDB::EmergencyServeImpl(
     LOG(ERROR) << std::endl;
   }
   CacheEntry entry;
-  if (opcode == "set") {
+  if (opcode == "set" || opcode == "getset") {
     if (req->GetArgNum() != 2) {
       LOG(ERROR) << "Invalid number of arguments for set" << std::endl;
       return {new RESPError(std::make_shared<std::string>(
@@ -254,8 +254,20 @@ std::pair<RESPType *, bool> LevelDB::EmergencyServeImpl(
                        // can reuse it in the future
     }
     entry.value = value->value;
-    if (cache->Set(*(key->value), entry, in_transaction))
+    CacheEntry old_entry;
+    bool found = false;
+    if (opcode == "getset") {
+      found = cache->Get(*(key->value), old_entry, in_transaction);
+    }
+    if (cache->Set(*(key->value), entry, in_transaction)) {
+      if (opcode == "getset") {
+        if (found)
+          return {new RESPBulkString(old_entry.value), false};
+        else
+          return {new RESPBulkString(nullptr), false};
+      }
       return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
+    }
   } else if (opcode == "get") {
     if (req->GetArgNum() != 1) {
       LOG(ERROR) << "Invalid number of arguments for get" << std::endl;

@@ -27,7 +27,11 @@ parser.add_argument(
     "-f", "--file_prefix", type=str, required=True, help="The file prefix"
 )
 parser.add_argument(
-    "-r", "--root_dir", type=str, required=True, help="The root directory of the repository"
+    "-r",
+    "--root_dir",
+    type=str,
+    required=True,
+    help="The root directory of the repository",
 )
 parser.add_argument(
     "-w", "--work_dir", type=str, required=True, help="The working directory"
@@ -35,19 +39,30 @@ parser.add_argument(
 args = parser.parse_args()
 
 os.system(r"mkdir -p " + args.work_dir)
+os.system(r"chmod 777 " + args.work_dir)
 
 os.system(r'pgrep "redis-leveldb" | xargs kill -9')
 os.system(r'pgrep "LiteLevelDB" | xargs kill -9')
 os.system(r'pgrep "lite_cli" | xargs kill -9')
 os.system(r'pgrep "redis-server" | xargs kill -9')
 os.system(r"rm dump.rdb")
+os.system(r"rm -rf /tmp/lite_LevelDB")
+os.system(r"rm -rf /tmp/redis-leveldb.sock")
 time.sleep(1)
+
+os.system(r'cgdelete -g cpu:/cpulimited')
+os.system(r'cgcreate -g cpu:/cpulimited')
+os.system(r'cgset -r cpu.max="4000000 100000" cpulimited') # 40 cores
+os.system(r'cgget -g cpu:cpulimited')
 
 if args.experiment_type == "Full":
     os.system(r"rm -rf " + args.work_dir + "/full-data")
     os.system(r"mkdir -p " + args.work_dir + "/full-data")
     # boot_command = ["redis-server", "--port", "6379", "--protected-mode", "no"]
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
         "-D",
         args.work_dir + "/full-data",
@@ -66,6 +81,9 @@ elif args.experiment_type == "Checkpoint":
     os.system(r"mkdir -p " + args.work_dir + "/checkpoint-data/foo_before_restore")
 
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
         "-D",
         args.work_dir + "/checkpoint-data/foo",
@@ -75,18 +93,22 @@ elif args.experiment_type == "Checkpoint":
         str(args.write_buffer_size),
     ]
     utils.StartBackgroundProcess(
-        boot_command, args.work_dir + "/checkpoint-data/foo/" + args.file_prefix + ".log"
+        boot_command,
+        args.work_dir + "/checkpoint-data/foo/" + args.file_prefix + ".log",
     )
 elif args.experiment_type == "Lite":
     os.system(r"rm -rf " + args.work_dir + "/lite-data")
     os.system(r"mkdir -p " + args.work_dir + "/lite-data")
     # boot_command = ["redis-server", "--port", "60000", "--protected-mode", "no"]
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
         "-D",
         args.work_dir + "/lite-data",
         "-P",
-        "60000",
+        "8323",
         "-B",
         str(args.write_buffer_size),
     ]
@@ -95,6 +117,9 @@ elif args.experiment_type == "Lite":
     )
 
     boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
         "-t",
         str(args.num_threads),
