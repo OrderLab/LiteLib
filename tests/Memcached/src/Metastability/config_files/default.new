@@ -14,10 +14,6 @@ server {
     # Security - Hide nginx version number in error pages and Server header
     server_tokens off;
 
-    # Add stdout logging
-    error_log /dev/stdout info;
-    access_log /dev/stdout;
-
     # reduce the data that needs to be sent over network
     gzip on;
     gzip_min_length 10240;
@@ -48,7 +44,7 @@ server {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_path_info;
-        fastcgi_read_timeout 1;
+        fastcgi_read_timeout 60s;
     }
 
         location ~* \.(jpg|jpeg|gif|png|css|js|ico|xml)$ {

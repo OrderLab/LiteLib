@@ -39,14 +39,14 @@ cd /workspace/LoadGenerator
 curl web?request_index=1
 python3 run_experiment.py 1500 0 300 1.00001 12 10 False 1 full
 # cp ./result_stats/monitor_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run1.monitor.txt
-# cp ./results_warm_cache/result_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run1.result.txt
+# cp ./result_stats/result_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run1.result.txt
 python3 run_experiment.py 1500 0 300 1.00001 12 10 False 1 new_lite
 python3 run_experiment.py 1500 0 300 1.00001 12 10 False 1 lite
 # cp ./result_stats/monitor_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run2.monitor.txt
-# cp ./results_warm_cache/result_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run2.result.txt
+# cp ./result_stats/result_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run2.result.txt
 python3 run_experiment.py 1500 0 300 1.00001 12 10 False 1 replica
 # cp ./result_stats/monitor_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run3.monitor.txt
-# cp ./results_warm_cache/result_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run3.result.txt
+# cp ./result_stats/result_1500.0_1.00001_DUR_300_TRIGGER_0_TMOUT_1.txt ../Memcached_codes/run3.result.txt
 cd ../Memcached_codes
 python3 plot.py 1500 300 5 3 run1 run2 run3
 ```

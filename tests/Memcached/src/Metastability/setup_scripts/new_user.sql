@@ -1,4 +1,0 @@
-CREATE USER 'metastable'@'%' IDENTIFIED BY 'hello@123';
-GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT, REFERENCES, RELOAD on *.* TO 'metastable'@'%' WITH GRANT OPTION;
-ALTER USER 'metastable'@'%' IDENTIFIED WITH mysql_native_password BY 'hello@123';
-FLUSH PRIVILEGES;
