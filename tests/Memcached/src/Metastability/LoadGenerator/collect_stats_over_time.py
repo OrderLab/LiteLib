@@ -74,7 +74,7 @@ def plot_multiple_data( x_points, y_points1, y_points2, y_points3, file_with_ima
     plt.savefig( image_file_path, bbox_inches='tight')
 
 
-def plot_multiple_data2( x_points, y_points1, y_points2, y_points3,
+def plot_multiple_data2( x_points, y_points1, y_points2, y_points2_2, y_points3,
                          y_points4, y_points5, file_with_image_extension, arrival_rate,
                          cpu_points, mem_points):
    # f, ax = plt.subplots()
@@ -90,8 +90,11 @@ def plot_multiple_data2( x_points, y_points1, y_points2, y_points3,
     ax1.tick_params(axis='y', labelcolor='black')
     ax1.fill_between(x_points, y_points1, y_points2, color=color, alpha=0.2, label = "MySQL")
     color = 'tab:blue'
+    ax1.plot(x_points, y_points2_2, color=color, linewidth = 0, alpha= 0.6)
+    ax1.fill_between(x_points, y_points2_2, 0, color=color, alpha=0.2, label = "Memcached")
+    color = 'tab:purple'
     ax1.plot(x_points, y_points2, color=color, linewidth = 0, alpha= 0.6)
-    ax1.fill_between(x_points, y_points2, 0, color=color, alpha=0.2, label = "Memcached")
+    ax1.fill_between(x_points, y_points2, y_points2_2, color=color, alpha=0.2, label = "Stale Memcached")
     color = 'tab:red'
     ax1.plot(x_points, y_points3, color=color, linewidth = 0, alpha= 0.6)
     ax1.fill_between(x_points, y_points3, y_points1, color=color, alpha=0.2, label = "Error")
@@ -105,17 +108,17 @@ def plot_multiple_data2( x_points, y_points1, y_points2, y_points3,
     # ax2.plot(x_points, y_points6, '--', color='tab:brown', linewidth = 2, alpha= 1, label = "p99 latency")
     ax2.set_ylim(ymin = 0)
 
-    ax3 = ax1.twinx()
-    ax3.spines["right"].set_position(("outward", 40))
-    ax3.set_ylabel('cpu usage (%)', color='black')  # we already handled the x-label with ax1
-    ax3.set_ylim(ymin = 0, ymax = max(cpu_points) + 0.1)
-    ax3.plot(x_points, cpu_points, '-', color='tab:green', linewidth = 2, alpha= 1, label = "cpu")
+    # ax3 = ax1.twinx()
+    # ax3.spines["right"].set_position(("outward", 40))
+    # ax3.set_ylabel('cpu usage (%)', color='black')  # we already handled the x-label with ax1
+    # ax3.set_ylim(ymin = 0, ymax = max(cpu_points) + 0.1)
+    # ax3.plot(x_points, cpu_points, '-', color='tab:green', linewidth = 2, alpha= 1, label = "cpu")
 
-    ax4 = ax1.twinx()
-    ax4.spines["right"].set_position(("outward", 100))
-    ax4.set_ylim(ymin = 0, ymax = max(mem_points) + 0.1)
-    ax4.set_ylabel('memory usage (%)', color='black')  # we already handled the x-label with ax1
-    ax4.plot(x_points, mem_points, '-', color='tab:olive', linewidth = 2, alpha= 1, label = "mem")
+    # ax4 = ax1.twinx()
+    # ax4.spines["right"].set_position(("outward", 100))
+    # ax4.set_ylim(ymin = 0, ymax = max(mem_points) + 0.1)
+    # ax4.set_ylabel('memory usage (%)', color='black')  # we already handled the x-label with ax1
+    # ax4.plot(x_points, mem_points, '-', color='tab:olive', linewidth = 2, alpha= 1, label = "mem")
 
     fig.legend(bbox_to_anchor=(0,1.02,1,0.2), loc="lower left",
                 mode="expand", borderaxespad=0, ncol=3)
@@ -130,6 +133,7 @@ def plot_multiple_data2( x_points, y_points1, y_points2, y_points3,
 
     image_file_path = join(image_directory, file_with_image_extension) # combining file name with directory
     plt.savefig( image_file_path, bbox_inches='tight')
+    plt.savefig( image_file_path[:-4] + ".pdf", bbox_inches='tight')
 
 ## helper functions end
 
@@ -139,8 +143,8 @@ def plot_multiple_data2( x_points, y_points1, y_points2, y_points3,
 
 args_len = len(sys.argv[1:])
 
-if(args_len != 6):        
-        print("enter valid parameter, provide absolute file path for resultFile from TraceReplay, arrival_rate, trigger_size, test_duration")
+if(args_len != 9):        
+        print("enter valid parameter, provide absolute file path for resultFile from TraceReplay, arrival_rate, alpha, trigger_size, test_duration, monitor_file, exp_type, today_date_time, read_write_ratio")
         exit()
     
 file_name = sys.argv[1:][0]
@@ -149,11 +153,14 @@ alpha = sys.argv[1:][2]
 trigger_size = sys.argv[1:][3]
 test_duration = sys.argv[1:][4]
 monitor_file = sys.argv[1:][5]
-
+exp_type = sys.argv[1:][6]
+today_date_time = sys.argv[1:][7]
+read_write_ratio = sys.argv[1:][8]
 ns_in_a_sec = 1000000000  
 num_seconds = -1
 hit_rates = [0] * 100000 # upper bound , assuuming experiment goes on for 1000 seconds
 error_rates = [0] * 100000
+stale_rates = [0] * 100000
 job_completions = [0] * 100000
 latency_per_second = [0] * 100000
 successful_latency = []
@@ -174,7 +181,8 @@ with open(file_name) as file:
         t_th_second = math.ceil(end_time/ns_in_a_sec)
         num_seconds = max( num_seconds , t_th_second) 
         hit_rates[ t_th_second ] += cache_hits # cache_hits will be either 0 or 1
-        error_rates[ t_th_second ] += errors # error will be either 0 or 1
+        error_rates[ t_th_second ] += (errors == 1)
+        stale_rates[ t_th_second ] += (errors == 2)
         job_completions[ t_th_second ]+= 1 # as each entry correspond to a job completion     
         latency_per_second[t_th_second]+=duration
         if (errors == 0):
@@ -187,6 +195,7 @@ while (len(successful_latency) < num_seconds + 2):
 
 hit_rates = hit_rates[0: num_seconds+1]
 error_rates = error_rates[0: num_seconds+1]
+stale_rates = stale_rates[0: num_seconds+1]
 latency_per_second = latency_per_second[0: num_seconds +1]
 job_completions = job_completions[0: num_seconds +1]
 successful_latency = successful_latency[0: num_seconds +1]
@@ -200,18 +209,19 @@ final_stats_directory = os.path.join(current_directory, r'result_stats')
 
 if not os.path.exists(final_stats_directory):
    os.makedirs(final_stats_directory)
-stats_file_name = "STATS_ARV_RATE_{}_ALPHA_{}_TRIGGER_{}_DUR_{}.txt".format(arrival_rate, alpha, trigger_size, test_duration) 
+stats_file_name = "stats_ARV_RATE_{}_ALPHA_{}_DUR_{}_RW_RATIO_{}_TRIGGER_{}_DATE_TIME_{}_TMOUT_{}_EXP_{}.txt".format(arrival_rate, alpha, test_duration, read_write_ratio, trigger_size, today_date_time, kill_timeout_for_php, exp_type) 
 stats_file_path = os.path.join( final_stats_directory, stats_file_name)
 
 stats_file = open(stats_file_path, "w") 
 for k in range(0, num_seconds + 1):
-    stats_file.write( str(job_completions[k]) + " " +  str(hit_rates[k]) + " " + str(error_rates[k]) + "\n")
+    stats_file.write( str(job_completions[k]) + " " +  str(hit_rates[k]) + " " + str(error_rates[k]) + " " + str(stale_rates[k]) + "\n")
 
 
 for j in range (0, num_seconds+1): 
     if(job_completions[j]!= 0):
         hit_rates[j]/= job_completions[j]
         error_rates[j]/= job_completions[j]
+        stale_rates[j]/= job_completions[j]
         latency_per_second[j]/= job_completions[j]
     time_points[j] = j 
 
@@ -221,14 +231,14 @@ for j in range (0, num_seconds+1):
 
 hit_rate_points  = np.array( hit_rates)
 error_rate_points = np.array( error_rates)
+stale_rate_points = np.array( stale_rates)
 time_points = np.array(time_points)
 latency_points = np.array(latency_per_second)
-today_date_time = datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
-A_file_with_image_extension =  f"A_IMG_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_TRIGGER_{trigger_size}_DUR_{test_duration}_{today_date_time}_TO_{kill_timeout_for_php}.png"   
-H_file_with_image_extension =  f"H_IMG_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_TRIGGER_{trigger_size}_DUR_{test_duration}_{today_date_time}_TO_{kill_timeout_for_php}.png"   
-L_file_with_image_extension =  f"L_IMG_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_TRIGGER_{trigger_size}_DUR_{test_duration}_{today_date_time}_TO_{kill_timeout_for_php}.png"   
-E_file_with_image_extension =  f"E_IMG_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_TRIGGER_{trigger_size}_DUR_{test_duration}_{today_date_time}_TO_{kill_timeout_for_php}.png"   
-C_file_with_image_extension = f"C_IMG_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_TRIGGER_{trigger_size}_DUR_{test_duration}_{today_date_time}_TO_{kill_timeout_for_php}.png"
+A_file_with_image_extension =  f"a_img_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_DUR_{test_duration}_RW_RATIO_{read_write_ratio}_TRIGGER_{trigger_size}_DATE_TIME_{today_date_time}_TMOUT_{kill_timeout_for_php}_EXP_{exp_type}.png"   
+H_file_with_image_extension =  f"h_img_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_DUR_{test_duration}_RW_RATIO_{read_write_ratio}_TRIGGER_{trigger_size}_DATE_TIME_{today_date_time}_TMOUT_{kill_timeout_for_php}_EXP_{exp_type}.png"   
+L_file_with_image_extension =  f"l_img_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_DUR_{test_duration}_RW_RATIO_{read_write_ratio}_TRIGGER_{trigger_size}_DATE_TIME_{today_date_time}_TMOUT_{kill_timeout_for_php}_EXP_{exp_type}.png"   
+E_file_with_image_extension =  f"e_img_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_DUR_{test_duration}_RW_RATIO_{read_write_ratio}_TRIGGER_{trigger_size}_DATE_TIME_{today_date_time}_TMOUT_{kill_timeout_for_php}_EXP_{exp_type}.png"   
+C_file_with_image_extension = f"c_img_ARV_RATE_{arrival_rate}_ALPHA_{alpha}_DUR_{test_duration}_RW_RATIO_{read_write_ratio}_TRIGGER_{trigger_size}_DATE_TIME_{today_date_time}_TMOUT_{kill_timeout_for_php}_EXP_{exp_type}.png"
 plot_data(time_points, hit_rate_points, H_file_with_image_extension)
 plot_data(time_points, error_rate_points, E_file_with_image_extension)
 plot_data(time_points, latency_points, L_file_with_image_extension)
@@ -248,6 +258,7 @@ cpus = cpus[0: num_seconds+1]
 mems = mems[0: num_seconds+1]
 job_completitions_points = np.array(job_completions)
 successful_throughput_points = job_completitions_points * (1 - error_rate_points)
+true_hit_throughput_points = job_completitions_points * (hit_rate_points - stale_rate_points)
 hit_throughput_points = job_completitions_points * hit_rate_points
 # error_throughput_points = job_completitions_points * error_rate_points
 # print(successful_latency)
@@ -257,7 +268,7 @@ avg_latency_points = [(np.mean(successful_latency[x]) if len(successful_latency[
 print(f"max mysql throughput: {max(successful_throughput_points - hit_throughput_points)}")
 print(f"avg mysql throughput: {np.mean(successful_throughput_points - hit_throughput_points)}")
 print(f"min mysql throughput: {min(successful_throughput_points - hit_throughput_points)}")
-plot_multiple_data2(time_points, successful_throughput_points, hit_throughput_points, job_completitions_points,
+plot_multiple_data2(time_points, successful_throughput_points, hit_throughput_points, true_hit_throughput_points, job_completitions_points,
                     avg_latency_points, p99_latency_points, A_file_with_image_extension, arrival_rate, np.array(cpus), np.array(mems))
 # store completions cache_hit_rate error_rate
 
