@@ -25,15 +25,12 @@
 pub mod cluster;
 mod config;
 
-use std::{
-    ops::{Deref, DerefMut},
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::ops::{Deref, DerefMut};
 
 use tokio::time::{sleep, Duration};
 
 use deadpool::{async_trait, managed};
-use redis::{Client, Connection as RedisConnection, IntoConnectionInfo, RedisError, RedisResult};
+use redis::{Client, Connection as RedisConnection, IntoConnectionInfo, RedisError, RedisResult, ConnectionLike};
 
 pub use redis;
 
@@ -44,6 +41,28 @@ deadpool::managed_reexports!("redis", Manager, Connection, RedisError, ConfigErr
 
 /// Type alias for using [`deadpool::managed::RecycleResult`] with [`redis`].
 type RecycleResult = managed::RecycleResult<RedisError>;
+
+/// Custom connection wrapper that includes connection status
+#[allow(missing_debug_implementations)]
+pub struct CustomRedisConnection {
+    /// The underlying Redis client
+    pub client: Client,
+    /// The underlying Redis connection
+    pub conn: Option<RedisConnection>,
+    /// Indicates whether the connection is currently valid and usable
+    pub is_valid: bool,
+}
+
+impl CustomRedisConnection {
+    /// Creates a new [`CustomRedisConnection`] from the given `client`.
+    pub fn new(client: Client) -> Self {
+        Self {
+            client,
+            conn: None,
+            is_valid: true,
+        }
+    }
+}
 
 /// Wrapper around [`redis::aio::Connection`].
 ///
@@ -59,7 +78,7 @@ impl Connection {
     ///
     /// This reduces the size of the [`Pool`].
     #[must_use]
-    pub fn take(this: Self) -> RedisConnection {
+    pub fn take(this: Self) -> CustomRedisConnection {
         Object::take(this.conn)
     }
 }
@@ -71,27 +90,27 @@ impl From<Object> for Connection {
 }
 
 impl Deref for Connection {
-    type Target = RedisConnection;
+    type Target = CustomRedisConnection;
 
-    fn deref(&self) -> &RedisConnection {
+    fn deref(&self) -> &CustomRedisConnection {
         &self.conn
     }
 }
 
 impl DerefMut for Connection {
-    fn deref_mut(&mut self) -> &mut RedisConnection {
+    fn deref_mut(&mut self) -> &mut CustomRedisConnection {
         &mut self.conn
     }
 }
 
-impl AsRef<RedisConnection> for Connection {
-    fn as_ref(&self) -> &RedisConnection {
+impl AsRef<CustomRedisConnection> for Connection {
+    fn as_ref(&self) -> &CustomRedisConnection {
         &self.conn
     }
 }
 
-impl AsMut<RedisConnection> for Connection {
-    fn as_mut(&mut self) -> &mut RedisConnection {
+impl AsMut<CustomRedisConnection> for Connection {
+    fn as_mut(&mut self) -> &mut CustomRedisConnection {
         &mut self.conn
     }
 }
@@ -101,8 +120,7 @@ impl AsMut<RedisConnection> for Connection {
 /// [`Manager`]: managed::Manager
 #[derive(Debug)]
 pub struct Manager {
-    client: Client,
-    ping_number: AtomicUsize,
+    client: Client
 }
 
 impl Manager {
@@ -114,31 +132,30 @@ impl Manager {
     pub fn new<T: IntoConnectionInfo>(params: T) -> RedisResult<Self> {
         Ok(Self {
             client: Client::open(params)?,
-            ping_number: AtomicUsize::new(0),
         })
     }
 }
 
 #[async_trait]
 impl managed::Manager for Manager {
-    type Type = RedisConnection;
+    type Type = CustomRedisConnection;
     type Error = RedisError;
 
-    async fn create(&self) -> Result<RedisConnection, RedisError> {
-        let conn = self.client.get_connection()?;
-        Ok(conn)
+    async fn create(&self) -> Result<CustomRedisConnection, RedisError> {
+        Ok(CustomRedisConnection::new(self.client.clone()))
     }
 
-    async fn recycle(&self, conn: &mut RedisConnection, _: &Metrics) -> RecycleResult {
-        let ping_number = self.ping_number.fetch_add(1, Ordering::Relaxed).to_string();
-        let n = redis::cmd("PING").arg(&ping_number).query::<String>(conn)?;
-        if n == ping_number {
+    async fn recycle(&self, conn: &mut CustomRedisConnection, _: &Metrics) -> RecycleResult {
+        if conn.is_valid && conn.conn.as_ref().unwrap().is_open() {
             Ok(())
         } else {
-            sleep(Duration::from_millis(100)).await; // backoff
-            println!("Broken connection or the async bug of redis-rs was triggered");
+            sleep(Duration::from_millis(100)).await;
+            match conn.is_valid {
+                true => println!("Broken connection"),
+                false => println!("Timeout connection"),
+            }
             Err(managed::RecycleError::StaticMessage(
-                "Invalid PING response",
+                "Connection is closed",
             ))
         }
     }

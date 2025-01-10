@@ -56,6 +56,8 @@ main() {
   resize_filesystem
   update_fstab
   display_status
+
+  echo "Root filesystem resized successfully."
 }
 
 main

@@ -35,7 +35,10 @@ install_dependencies() {
     cmake \
     rsync \
     iptables \
-    tcpdump
+    tcpdump \
+    cgroup-tools \
+    google-perftools \
+    libgoogle-perftools-dev
 }
 
 install_boost() {
@@ -75,6 +78,8 @@ main() {
   install_boost
   install_libevent
   configure_ssh
+
+  echo "Dependencies installed successfully!"
 }
 
 main
