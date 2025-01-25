@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser(description="Init experiment")
 parser.add_argument(
     "-t",
     "--experiment_type",
-    choices=["Full", "Checkpoint", "Lite"],
+    choices=["Full", "Checkpoint", "Lite", "eBPF"],
     required=True,
     help="The type of the experiment",
 )
@@ -44,21 +44,51 @@ os.system(r"chmod 777 " + args.work_dir)
 os.system(r'pgrep "redis-leveldb" | xargs kill -9')
 os.system(r'pgrep "LiteLevelDB" | xargs kill -9')
 os.system(r'pgrep "lite_cli" | xargs kill -9')
+os.system(r'pgrep "socket" | xargs kill -9')
 os.system(r'pgrep "redis-server" | xargs kill -9')
 os.system(r"rm dump.rdb")
 os.system(r"rm -rf /tmp/lite_LevelDB")
 os.system(r"rm -rf /tmp/redis-leveldb.sock")
 time.sleep(1)
 
-os.system(r'cgdelete -g cpu:/cpulimited')
-os.system(r'cgcreate -g cpu:/cpulimited')
+os.system(r'cgdelete -g cpu,cpuset:/cpulimited')
+os.system(r'cgcreate -g cpu,cpuset:/cpulimited')
+os.system(r'cgset -r cpuset.cpus="0-39" cpulimited') # 40 cores
 os.system(r'cgset -r cpu.max="4000000 100000" cpulimited') # 40 cores
 os.system(r'cgget -g cpu:cpulimited')
+os.system(r'cgget -g cpuset:cpulimited')
 
 if args.experiment_type == "Full":
     os.system(r"rm -rf " + args.work_dir + "/full-data")
     os.system(r"mkdir -p " + args.work_dir + "/full-data")
     # boot_command = ["redis-server", "--port", "6379", "--protected-mode", "no"]
+    boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        "-D",
+        args.work_dir + "/full-data",
+        "-P",
+        "6379",
+        "-B",
+        str(args.write_buffer_size),
+    ]
+    utils.StartBackgroundProcess(
+        boot_command, args.work_dir + "/" + args.file_prefix + ".log"
+    )
+elif args.experiment_type == "eBPF":
+    os.system(r"rm -rf " + args.work_dir + "/full-data")
+    os.system(r"mkdir -p " + args.work_dir + "/full-data")
+    boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
+        args.root_dir +"/tests/LevelDB/src/socket",
+    ]
+    utils.StartBackgroundProcess(
+        boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-1.txt"
+    )
     boot_command = [
         "cgexec",
         "-g",

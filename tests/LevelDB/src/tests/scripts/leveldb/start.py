@@ -31,7 +31,7 @@ parser.add_argument(
 parser.add_argument(
     "-t",
     "--experiment_type",
-    choices=["Full", "Checkpoint", "Lite"],
+    choices=["Full", "Checkpoint", "Lite", "eBPF"],
     required=True,
     help="The type of the experiment",
 )
@@ -65,8 +65,10 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+os.system(r'cgset -r cpuset.cpus="0-' + str(args.cpu_limit-1) + '" cpulimited')
 os.system(r'cgset -r cpu.max="' + str(args.cpu_limit) + '00000 100000" cpulimited')
 os.system(r'cgget -g cpu:cpulimited')
+os.system(r'cgget -g cpuset:cpulimited')
 
 monitor_log_file = args.work_dir + "/monitor." + args.file_prefix + ".jsonl"
 boot_command = [
@@ -78,6 +80,25 @@ boot_command = [
 ]
 utils.StartBackgroundProcess(
     boot_command, args.work_dir + "/" + args.file_prefix + "-monitor-log.txt"
+)
+
+boot_command = [
+    "perf",
+    "record",
+    "-F",
+    "99",
+    "-a",
+    "-g",
+    "-C",
+    "0-"+str(args.cpu_limit-1),
+    "-o",
+    args.work_dir + "/perf.data",
+    "--",
+    "sleep",
+    str(args.total_time - 10),
+]
+utils.StartBackgroundProcess(
+    boot_command, args.work_dir + "/" + args.file_prefix + "-perf-output.log"
 )
 
 redis_leveldb_pid = get_pid_by_name("redis-leveldb")
@@ -152,7 +173,7 @@ sleep_for(crash_time - time.time())
 
 os.system(r'pgrep "redis-leveldb" | xargs kill -2')
 
-if args.experiment_type == "Full":
+if args.experiment_type == "Full" or  args.experiment_type == "eBPF":
     boot_command = [
         "cgexec",
         "-g",
