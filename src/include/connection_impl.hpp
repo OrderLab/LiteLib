@@ -117,27 +117,27 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 
   uint8_t* begin = conn->buffer_;
   uint8_t* end = begin + bytes_transferred;
-  while (begin != end) {
-    const auto result = conn->request_->Deserialize(begin, end);
-    if (result == kGood) {
-      if (conn->backend_fd_ <= 0 && !conn->lite_core_.emergency_mode_) {
-        conn->ConnectBackend();
-      }
-      if (!conn->lite_core_.HandleRequest(
-              std::move(conn->request_), conn->extra_app_info_,
-              conn->pending_requests_, conn->client_fd_, conn->backend_fd_,
-              &conn->cache_, &conn->logger_, forwarded)) {
-        delete conn;
-        return;
-      }
-      conn->request_ = std::make_unique<Request>();
-    } else if (result == kIndeterminate) {
-      continue;
-    } else if (result == kBad) {
-      LOG(ERROR) << "failed to parse request" << std::endl;
-      return;
-    }
-  }
+  // while (begin != end) {
+  //   const auto result = conn->request_->Deserialize(begin, end);
+  //   if (result == kGood) {
+  //     if (conn->backend_fd_ <= 0 && !conn->lite_core_.emergency_mode_) {
+  //       conn->ConnectBackend();
+  //     }
+  //     if (!conn->lite_core_.HandleRequest(
+  //             std::move(conn->request_), conn->extra_app_info_,
+  //             conn->pending_requests_, conn->client_fd_, conn->backend_fd_,
+  //             &conn->cache_, &conn->logger_, forwarded)) {
+  //       delete conn;
+  //       return;
+  //     }
+  //     conn->request_ = std::make_unique<Request>();
+  //   } else if (result == kIndeterminate) {
+  //     continue;
+  //   } else if (result == kBad) {
+  //     LOG(ERROR) << "failed to parse request" << std::endl;
+  //     return;
+  //   }
+  // }
   return;
 }
 
@@ -180,24 +180,24 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 
   uint8_t* begin = conn->buffer_;
   uint8_t* end = begin + bytes_transferred;
-  while (begin != end) {
-    const auto result = conn->response_->Deserialize(begin, end);
-    if (result == kGood) {
-      if (!conn->lite_core_.HandleResponse(
-              std::move(conn->response_), conn->extra_app_info_,
-              conn->pending_requests_, conn->client_fd_, &conn->cache_,
-              forwarded)) {
-        delete conn;
-        return;
-      }
-      conn->response_ = std::make_unique<Response>();
-    } else if (result == kIndeterminate) {
-      continue;
-    } else if (result == kBad) {
-      LOG(ERROR) << "failed to parse response" << std::endl;
-      return;
-    }
-  }
+  // while (begin != end) {
+  //   const auto result = conn->response_->Deserialize(begin, end);
+  //   if (result == kGood) {
+  //     if (!conn->lite_core_.HandleResponse(
+  //             std::move(conn->response_), conn->extra_app_info_,
+  //             conn->pending_requests_, conn->client_fd_, &conn->cache_,
+  //             forwarded)) {
+  //       delete conn;
+  //       return;
+  //     }
+  //     conn->response_ = std::make_unique<Response>();
+  //   } else if (result == kIndeterminate) {
+  //     continue;
+  //   } else if (result == kBad) {
+  //     LOG(ERROR) << "failed to parse response" << std::endl;
+  //     return;
+  //   }
+  // }
   return;
 }
 
