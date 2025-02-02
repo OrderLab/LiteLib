@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/interprocess/managed_shared_memory.hpp>
+
 #include "cache_inner.hpp"
 #include "logger_inner.hpp"
 
@@ -45,8 +47,12 @@ class Cache {  // A wrapper for CacheInner
       std::function<void(const CacheKey &, const CacheEntry &)> visitor,
       bool in_transaction = false);
 
-  std::unique_lock<std::shared_mutex> TransactionLock() {
+  std::unique_lock<bip::interprocess_sharable_mutex> TransactionLock() {
     return cache_inner_.TransactionLock();
+  }
+
+  SegmentManager *GetSegmentManager() {
+    return cache_inner_.GetSegmentManager();
   }
 
  private:

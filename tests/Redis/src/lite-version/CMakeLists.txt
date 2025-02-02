@@ -17,6 +17,10 @@ find_package(Boost 1.83 REQUIRED COMPONENTS
              system thread)
 find_package(Libevent REQUIRED)
 find_package(glog 0.4.0 REQUIRED)
+find_package(PkgConfig REQUIRED)
+# sudo apt-get install google-perftools libgoogle-perftools-dev
+pkg_check_modules(TCMALLOC REQUIRED libtcmalloc)
+# pkg_check_modules(JEMALLOC REQUIRED jemalloc)
 
 add_subdirectory(Lite)
 
@@ -34,5 +38,7 @@ target_sources(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
 target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread)
 target_link_libraries(${PROJECT_NAME} PRIVATE glog::glog)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${TCMALLOC_LIBRARIES})
+# target_link_libraries(${PROJECT_NAME} PRIVATE ${JEMALLOC_LIBRARIES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

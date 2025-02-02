@@ -27,8 +27,9 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       lite_core_(lite_core),
       self_(std::make_shared<ConnectionInstance*>(this)),
       log_head_(new LogEntryInstance(nullptr, nullptr, self_)),
-      cache_(lite_core.cache_inner_, lite_core.logger_inner_, log_head_),
-      logger_(lite_core.logger_inner_, log_head_),
+      cache_(*lite_core.cache_inner_ptr_, *lite_core.logger_inner_ptr_,
+             log_head_),
+      logger_(*lite_core.logger_inner_ptr_, log_head_),
       worker_ptr_(worker_ptr) {
   if (sfd) {
     event_set(&client_event_, sfd, event_flags, event_handler,
@@ -98,7 +99,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     if (bytes_transferred == 0)
       ;  // LOG(INFO) << "Client disconnected: " << fd << std::endl;
     else
-      ;//   PLOG(ERROR) << "read from client";
+      ;  //   PLOG(ERROR) << "read from client";
     delete conn;
     // TODO: how to properly handle the case when the client disconnects as
     // expected? (e.g. quit command in Memcached)

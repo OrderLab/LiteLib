@@ -8,8 +8,9 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Logger<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Log(const std::shared_ptr<Request> &req) {
+  void *ptr = logger_inner_.segment_mgr_->allocate(sizeof(LogEntryInstance));
   auto *entry =
-      new LogEntryInstance(nullptr, req, conn_head_->backend_conn_ptr);
+      new (ptr) LogEntryInstance(nullptr, req, conn_head_->backend_conn_ptr);
   logger_inner_.Log(entry, conn_head_);
 }
 

@@ -20,7 +20,7 @@ void PrintHelp() {
 int main(int argc, char *argv[]) {
   try {
     // size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
-    size_t thread_pool_size = 3;
+    size_t thread_pool_size = 1;
     size_t cache_size(16384);
     const char *port = "6479";
     const char *address = "127.0.0.1";
@@ -28,8 +28,8 @@ int main(int argc, char *argv[]) {
     const option long_opts[] = {{"port", required_argument, nullptr, 'p'},
                                 {"address", required_argument, nullptr, 'h'},
                                 {"help", no_argument, nullptr, 'H'},
-								{"size", required_argument, nullptr, 's'},
-								{"thread", required_argument, nullptr, 't'},
+                                {"size", required_argument, nullptr, 's'},
+                                {"thread", required_argument, nullptr, 't'},
                                 {0, 0, 0, 0}};
     int opt;
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, nullptr)) !=
@@ -40,12 +40,12 @@ int main(int argc, char *argv[]) {
           break;
         case 'a':
           break;
-		case 's':
-		  cache_size = boost::lexical_cast<size_t>(optarg);
-		  break;
-		case 't':
-		  thread_pool_size = boost::lexical_cast<size_t>(optarg);
-		  break;
+        case 's':
+          cache_size = boost::lexical_cast<size_t>(optarg);
+          break;
+        case 't':
+          thread_pool_size = boost::lexical_cast<size_t>(optarg);
+          break;
         case 'h':
           address = optarg;
           break;
@@ -64,10 +64,10 @@ int main(int argc, char *argv[]) {
     std::string backend_addr = "";
     std::string backend_port = "/tmp/redis.sock";
     Redis redis;
-    lite::LiteServer<Redis, Packet, Packet, ConnectionInfo, std::string,
+    lite::LiteServer<Redis, Packet, Packet, ConnectionInfo, CacheKey,
                      CacheEntry>
         s(thread_pool_size, cache_size, redis, backend_addr, backend_port,
-          1000ms, 80000, 0.9, 2,"/tmp/lite_Redis");
+          1000ms, 80000, 0.9, 2, "/tmp/lite_Redis");
     // Run the server until stopped.
     s.Run(port);
   } catch (std::exception &e) {

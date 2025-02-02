@@ -25,9 +25,9 @@ void PrintHelp() {
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   try {
-    size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
+    size_t thread_pool_size = 1;
     size_t cache_size(1024);
-    const char* port = "6379";
+    const char* port = "59000";
 
     const char* const short_opts = "t:p:a:h";
     const option long_opts[] = {{"thread_num", required_argument, nullptr, 't'},
@@ -60,10 +60,10 @@ int main(int argc, char* argv[]) {
 
     // Initialise the server.
     // TODO: make address and port configurable.
-    std::string backend_addr = "localhost";
-    std::string backend_port = "60000";
+    std::string backend_addr = "";
+    std::string backend_port = "/tmp/redis.sock";
     Proxy level_db;
-    lite::LiteServer<Proxy, Packet, Packet, ConnectionInfo, std::string,
+    lite::LiteServer<Proxy, Packet, Packet, ConnectionInfo, CacheKey,
                      CacheEntry>
         s(thread_pool_size, cache_size, level_db, backend_addr, backend_port,
           1000ms, 20000, 0.9, 1, "/tmp/lite_Proxy");
