@@ -12,12 +12,16 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
   LogEntryInstance *dirty = nullptr;
   CacheStateInstance *state = nullptr;
   if (cache_inner_.emergency_mode_ && log) {
-    dirty =
-        new LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
+    void *ptr = cache_inner_.segment_mgr_->allocate(sizeof(LogEntryInstance));
+    dirty = new (ptr)
+        LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
   }
 
   if (!cache_inner_.Add(key, value, in_transaction, dirty, state)) {
-    delete dirty;
+    if (dirty) {
+      dirty->~LogEntryInstance();
+      cache_inner_.segment_mgr_->deallocate(dirty);
+    }
     return false;
   }
 
@@ -48,7 +52,8 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
     std::unique_lock<std::mutex> chr_lock(logger_inner_.chr_mutex_);
     dirty->Delink();
     chr_lock.unlock();
-    delete dirty;
+    dirty->~LogEntryInstance();
+    cache_inner_.segment_mgr_->deallocate(dirty);
   }
   return true;
 }
@@ -67,19 +72,22 @@ template <typename Application, typename Request, typename Response,
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Replace(const CacheKey &key, const CacheEntry &value,
                                 bool in_transaction, bool log) {
-  LogEntryInstance *old_dirty = nullptr;
   LogEntryInstance *dirty = nullptr;
   CacheStateInstance *state = nullptr;
   if (cache_inner_.emergency_mode_ && log) {
-    dirty =
-        new LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
+    void *ptr = cache_inner_.segment_mgr_->allocate(sizeof(LogEntryInstance));
+    dirty = new (ptr)
+        LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
   }
 
   if (!cache_inner_.Replace(
           key, value, in_transaction, dirty,
           cache_inner_.emergency_mode_ ? &logger_inner_.chr_mutex_ : nullptr,
           state)) {
-    delete dirty;
+    if (dirty) {
+      dirty->~LogEntryInstance();
+      cache_inner_.segment_mgr_->deallocate(dirty);
+    }
     return false;
   }
 

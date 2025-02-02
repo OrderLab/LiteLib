@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mutex>
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
 
 #include "concept.hpp"
 #include "sliding_window.hpp"
@@ -48,7 +48,10 @@ class LoggerInner {
                                     ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  LoggerInner(const std::chrono::milliseconds sliding_window_size);
+  SegmentManager *segment_mgr_;
+
+  LoggerInner(const std::chrono::milliseconds sliding_window_size,
+              SegmentManager *segment_mgr);
 
   void Log(LogEntryInstance *entry, LogEntryInstance *conn_head);
 
@@ -59,7 +62,7 @@ class LoggerInner {
 
   bool Empty();
 
-  std::mutex chr_mutex_;
+  bip::interprocess_mutex chr_mutex_;
 
   SlidingWindow inserting_rate_;
 

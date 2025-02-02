@@ -1,9 +1,12 @@
 // https://github.com/facebook/hhvm/blob/master/hphp/util/concurrent-lru-cache.h
 #pragma once
 
+#include <boost/interprocess/containers/pair.hpp>
+#include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/sync/interprocess_mutex.hpp>
+#include <boost/interprocess/sync/interprocess_sharable_mutex.hpp>
 #include <boost/unordered/concurrent_flat_map.hpp>
 #include <concepts>
-#include <mutex>
 #include <shared_mutex>
 
 #include "concept.hpp"
@@ -27,6 +30,9 @@ struct CacheState {
   CacheEntry value;
   std::conditional_t<HasGetSize<CacheEntry>, size_t, std::false_type> size;
 
+  CacheState(SegmentManager *segment_mgr)
+      : key(segment_mgr), value(segment_mgr) {}
+
   using LogEntryInstance = LogEntry<Application, Request, Response,
                                     ConnectionInfo, CacheKey, CacheEntry>;
   LogEntryInstance *dirty_node = nullptr;
@@ -41,10 +47,12 @@ class CacheInner {
                                         ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
+  SegmentManager *segment_mgr_;
+
   // If CacheEntry has GetSize method, then max_size_ is the sum of it.
   // Otherwise, max_size_ is the number of entries.
-  explicit CacheInner(const size_t &max_size,
-                      std::atomic<bool> &emergency_mode);
+  explicit CacheInner(const size_t &max_size, std::atomic<bool> &emergency_mode,
+                      SegmentManager *segment_mgr);
 
   ~CacheInner();
 
@@ -59,7 +67,8 @@ class CacheInner {
 
   bool Replace(const CacheKey &key, const CacheEntry &value,
                bool in_transaction, LogEntryInstance *dirty_node,
-               std::mutex *logger_chr_mutex, CacheStateInstance *&new_state);
+               bip::interprocess_mutex *logger_chr_mutex,
+               CacheStateInstance *&new_state);
 
   void ConstVisitAll(
       std::function<void(const CacheKey &, const CacheEntry &)> visitor,
@@ -68,9 +77,12 @@ class CacheInner {
   void VisitAllState(std::function<void(CacheStateInstance *)> visitor,
                      bool in_transaction);
 
-  std::unique_lock<std::shared_mutex> TransactionLock() {
-    return std::unique_lock<std::shared_mutex>{transaction_mutex_};
+  std::unique_lock<bip::interprocess_sharable_mutex> TransactionLock() {
+    return std::unique_lock<bip::interprocess_sharable_mutex>{
+        transaction_mutex_};
   }
+
+  SegmentManager *GetSegmentManager() { return segment_mgr_; }
 
   std::atomic<bool> &emergency_mode_;
 
@@ -102,30 +114,54 @@ class CacheInner {
   };
 
   struct MapEntry {
-    std::unique_ptr<CacheStateInstance>
-        state;  // use unique_ptr to accelerate move constructor
-
+    CacheInner *parent_;
+    CacheStateInstance *state;
     ListNode *lru_node;
 
     MapEntry(const CacheKey &key, const CacheEntry &value,
-             LogEntryInstance *dirty_node, const size_t size = 0)
-        : state(std::make_unique<CacheStateInstance>()) {
+             LogEntryInstance *dirty_node, CacheInner *parent,
+             const size_t size = 0)
+        : parent_(parent),
+          state(parent_->segment_mgr_->construct<CacheStateInstance>(
+              bip::anonymous_instance)(parent_->segment_mgr_)) {
       state->key = key;
       state->value = value;
       state->dirty_node = dirty_node;
       if constexpr (HasGetSize<CacheEntry>) {
         state->size = size;
       }
-      lru_node = new ListNode(state.get());
+      void *ptr = parent_->segment_mgr_->allocate(sizeof(ListNode));
+      lru_node = new (ptr) ListNode(state);
+    }
+
+    MapEntry(MapEntry &&other) noexcept
+        : state(other.state), lru_node(other.lru_node), parent_(other.parent_) {
+      other.state = nullptr;
+      other.lru_node = nullptr;
+    }
+
+    ~MapEntry() {
+      if (state) {
+        state->~CacheStateInstance();
+        parent_->segment_mgr_->destroy_ptr(state);
+      }
+      if (lru_node) {
+        lru_node->~ListNode();
+        parent_->segment_mgr_->deallocate(lru_node);
+      }
     }
   };
 
-  std::mutex lru_mutex_;
+  bip::interprocess_mutex lru_mutex_;
   ListNode lru_head_, lru_tail_;
 
   size_t max_size_, size;
-  std::shared_mutex transaction_mutex_;
-  boost::unordered::concurrent_flat_map<CacheKey, MapEntry> cache_;
+  bip::interprocess_sharable_mutex transaction_mutex_;
+  using MapAllocator = SharedAllocator<bip::pair<const CacheKey, MapEntry>>;
+  boost::unordered::concurrent_flat_map<CacheKey, MapEntry,
+                                        boost::hash<CacheKey>,
+                                        std::equal_to<CacheKey>, MapAllocator>
+      cache_;
 
   // WARNING: assumes that the mutex is held when calling this function.
   // TODO: how to notify application

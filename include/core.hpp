@@ -1,6 +1,7 @@
 #pragma once
 
 #include <barrier>
+#include <boost/interprocess/sync/named_mutex.hpp>
 
 #include "cache.hpp"
 #include "concept.hpp"
@@ -9,6 +10,8 @@
 #include "thread_safe_set.hpp"
 
 namespace lite {
+
+namespace bip = boost::interprocess;
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -22,7 +25,8 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
-           IsCacheEntry<Request, CacheKey, CacheEntry>
+           IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
+
 class LiteCore : public Daemon {
   using LoggerInstance = Logger<Application, Request, Response, ConnectionInfo,
                                 CacheKey, CacheEntry>;
@@ -63,15 +67,17 @@ class LiteCore : public Daemon {
                       const evutil_socket_t client_fd, CacheInstance *cache,
                       const bool forwarded);
 
+  bip::managed_shared_memory shared_memory_;
+
   std::string &backend_addr_;
 
   bool is_replaying_ = false;
 
   ThreadSafeSet<ConnectionInstance *> live_connections_;
 
-  CacheInnerInstance cache_inner_;
+  CacheInnerInstance *cache_inner_ptr_;
 
-  LoggerInnerInstance logger_inner_;
+  LoggerInnerInstance *logger_inner_ptr_;
 
   ThreadSafeQueue<LogEntryInstance *> dead_connection_log_heads_;
 

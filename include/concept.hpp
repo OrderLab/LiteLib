@@ -13,10 +13,21 @@ namespace lite {
 
 enum DeserializeResult { kGood, kBad, kIndeterminate };
 
-template <typename Request, typename CacheKey, typename CacheEntry>
-concept IsCacheEntry = requires(CacheEntry entry, CacheKey key) {
-  { entry.ToRequest(key) } -> std::convertible_to<std::shared_ptr<Request>>;
+template <typename CacheKey>
+concept IsCacheKey = requires(CacheKey key, SegmentManager *segment_mgr) {
+  {
+    CacheKey(segment_mgr)
+  };  // It must be entirely self-contained within the shared memory
 };
+
+template <typename Request, typename CacheKey, typename CacheEntry>
+concept IsCacheEntry =
+    requires(CacheEntry entry, CacheKey key, SegmentManager *segment_mgr) {
+      { entry.ToRequest(key) } -> std::convertible_to<std::shared_ptr<Request>>;
+      {
+        CacheEntry(segment_mgr)
+      };  // It must be entirely self-contained within the shared memory
+    };
 
 template <typename T1, typename T2, typename T3, typename T4, typename T5,
           typename T6>

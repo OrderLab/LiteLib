@@ -8,10 +8,13 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::LoggerInner(const std::chrono::milliseconds
-                                         sliding_window_size)
+                                         sliding_window_size,
+                                     bip::managed_shared_memory::segment_manager
+                                         *segment_mgr)
     : chr_head_(nullptr, nullptr, nullptr),
       chr_tail_(nullptr, nullptr, nullptr),
-      inserting_rate_(sliding_window_size) {
+      inserting_rate_(sliding_window_size),
+      segment_mgr_(segment_mgr) {
   chr_head_.chr_nxt = &chr_tail_;
   chr_tail_.chr_pre = &chr_head_;
 }
@@ -22,7 +25,7 @@ void LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
                  CacheEntry>::
     Log(LogEntryInstance *entry,
         LogEntryInstance *conn_head) {  // TODO: deal with capacity issues
-  std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+  std::unique_lock<bip::interprocess_mutex> chr_lock(chr_mutex_);
   ++inserting_rate_;
   entry->chr_pre = &chr_head_;
   entry->chr_nxt = chr_head_.chr_nxt;
@@ -39,7 +42,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
                  CacheEntry>::Pop(LogEntryInstance *&entry) {
-  std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+  std::unique_lock<bip::interprocess_mutex> chr_lock(chr_mutex_);
   if (chr_tail_.chr_pre == &chr_head_) return false;
   entry = chr_tail_.chr_pre;
   entry->Delink();
@@ -55,7 +58,7 @@ bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
                  CacheEntry>::EraseConnectionLogs(LogEntryInstance *conn_head,
                                                   const size_t
                                                       number_of_entries) {
-  std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+  std::unique_lock<bip::interprocess_mutex> chr_lock(chr_mutex_);
   LogEntryInstance *entry = conn_head->conn_nxt, *nxt_entry;
   for (size_t i = 0; i < number_of_entries; ++i, entry = nxt_entry) {
     if (!entry) {
@@ -73,7 +76,8 @@ bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
     nxt_entry = entry->conn_nxt;
     entry->Delink();
     --inserting_rate_;
-    delete entry;
+    entry->~LogEntryInstance();
+    segment_mgr_->deallocate(entry);
   }
   chr_lock.unlock();
   return true;
@@ -83,7 +87,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
                  CacheEntry>::Empty() {
-  std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+  std::unique_lock<bip::interprocess_mutex> chr_lock(chr_mutex_);
   return chr_tail_.chr_pre == &chr_head_;
 }
 

@@ -13,6 +13,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
+               IsCacheKey<CacheKey> &&
                IsCacheEntry<Request, CacheKey, CacheEntry>
 LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
     LiteCore(Application &app, const size_t &max_item_count,
@@ -23,18 +24,26 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              const std::chrono::milliseconds sliding_window_size,
              const size_t replay_expected_rps, const double flow_control_ratio,
              const size_t n_replay_threads, bool crash_recover)
-    : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port, 
+    : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
              pipe_path),
       app_(app),
+      shared_memory_(bip::open_or_create, "lite_shared_memory",
+                     1024 * 1024 * 64),  // 64MB
       crash_recover_(crash_recover),
-      cache_inner_(max_item_count, emergency_mode_),
-      logger_inner_(sliding_window_size),
       backend_addr_(backend_addr),
       barrier_(barrier),
       workers_(workers),
       replay_rate_(sliding_window_size),
       replay_expected_rps_(replay_expected_rps),
       flow_control_ratio_(flow_control_ratio) {
+  cache_inner_ptr_ = shared_memory_.find_or_construct<CacheInnerInstance>(
+      "cache_inner")(max_item_count, emergency_mode_,
+                     shared_memory_.get_segment_manager());
+
+  logger_inner_ptr_ =
+      shared_memory_.find_or_construct<LoggerInnerInstance>("logger_inner")(
+          sliding_window_size, shared_memory_.get_segment_manager());
+
   for (int i = 0; i < n_replay_threads; i++) {
     replay_workers_.emplace_back(new WorkerInstance(*this, barrier_));
     (**replay_workers_.rbegin()).Run("lite-replay-worker");
@@ -46,7 +55,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
-           IsCacheEntry<Request, CacheKey, CacheEntry>
+           IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
     HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
@@ -63,8 +72,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   if (emergency_mode_) {
     const bool flow_control =
-        is_replaying_ &
-        (flow_control_ratio_ * replay_rate_ < logger_inner_.inserting_rate_);
+        is_replaying_ & (flow_control_ratio_ * replay_rate_ <
+                         logger_inner_ptr_->inserting_rate_);
     // if (flow_control) {
     //   LOG(INFO) << "Flow control triggered, replay rate: " << replay_rate_
     //             << ", inserting rate: " << logger_inner_.inserting_rate_
@@ -98,7 +107,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
-           IsCacheEntry<Request, CacheKey, CacheEntry>
+           IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
     HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
@@ -131,7 +140,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
-           IsCacheEntry<Request, CacheKey, CacheEntry>
+           IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::TakeOver() {
   emergency_mode_ = true;
@@ -173,12 +182,12 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     // add all cache nodes to the log
     crash_conn_head_ = new LogEntryInstance(
         nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
-    cache_inner_.VisitAllState(
+    cache_inner_ptr_->VisitAllState(
         [&](CacheStateInstance *state) {
           if (!state->dirty_node) {
             LogEntryInstance *dirty = new LogEntryInstance(
                 state, nullptr, crash_conn_head_->backend_conn_ptr);
-            logger_inner_.Log(dirty, crash_conn_head_);
+            logger_inner_ptr_->Log(dirty, crash_conn_head_);
             state->dirty_node = dirty;
           }
         },
@@ -212,7 +221,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
-           IsCacheEntry<Request, CacheKey, CacheEntry>
+           IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::Replay() {
   const auto start_time = std::chrono::high_resolution_clock::now();
@@ -245,7 +254,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   for (int i = 0; i < 2;
        i++) {  // Double flush to process in-flight connections
     size_t log_cnt = 0, dirty_cnt = 0;
-    while (LoggerInstance::Pop(logger_inner_, entry)) {
+    while (LoggerInstance::Pop(*logger_inner_ptr_, entry)) {
       if (entry->state) {
         dirty_cnt++;
         const auto req = entry->state->value.ToRequest(entry->state->key);
