@@ -7,25 +7,33 @@
 #include <optional>
 #include <vector>
 
-#include "thread_safe_queue.hpp"
+#include "shm_thread_safe_queue.hpp"
 
 namespace lite {
 
 enum DeserializeResult { kGood, kBad, kIndeterminate };
 
 template <typename CacheKey>
-concept IsCacheKey = requires(CacheKey key, SegmentManager *segment_mgr) {
+concept IsCacheKey = requires(CacheKey key, ShmVoidAllocator allocator) {
   {
-    CacheKey(segment_mgr)
+    CacheKey(allocator)
   };  // It must be entirely self-contained within the shared memory
 };
 
 template <typename Request, typename CacheKey, typename CacheEntry>
 concept IsCacheEntry =
-    requires(CacheEntry entry, CacheKey key, SegmentManager *segment_mgr) {
+    requires(CacheEntry entry, CacheKey key, ShmVoidAllocator allocator) {
       { entry.ToRequest(key) } -> std::convertible_to<std::shared_ptr<Request>>;
       {
-        CacheEntry(segment_mgr)
+        CacheEntry(allocator)
+      };  // It must be entirely self-contained within the shared memory
+    };
+
+template <typename ConnectionInfo>
+concept IsConnectionInfo =
+    requires(ConnectionInfo conn_info, ShmVoidAllocator allocator) {
+      {
+        ConnectionInfo(allocator)
       };  // It must be entirely self-contained within the shared memory
     };
 
@@ -40,12 +48,12 @@ class Cache;
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 concept IsApplication = requires(
-    Application app, std::shared_ptr<Request> req,
-    std::shared_ptr<Response> resp, ConnectionInfo conn_info,
-    ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+    Application app, ShmSharedPtr<Request> req, ShmSharedPtr<Response> resp,
+    ConnectionInfo conn_info,
+    ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>>
         pending_requests,  // true: request forward from client, false:
                            // request generated during replay
-    std::vector<std::shared_ptr<Request>> related_requests,
+    std::vector<ShmSharedPtr<Request>> related_requests,
     Cache<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>
         *cache,
     Logger<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>
@@ -57,7 +65,7 @@ concept IsApplication = requires(
   // requests that contain information about state changes
   {
     app.Match(resp, conn_info, pending_requests)
-  } -> std::convertible_to<std::pair<std::vector<std::shared_ptr<Request>>,
+  } -> std::convertible_to<std::pair<std::vector<ShmSharedPtr<Request>>,
                                      bool>>;  // pair<related_requests,
                                               // forward response>
 
@@ -70,7 +78,7 @@ concept IsApplication = requires(
 
   // Perform any operation during emergency time
   {
-    app.EmergencyServe(std::move(req), conn_info, cache, logger, flow_control)
+    app.EmergencyServe(req, conn_info, cache, logger, flow_control)
   } -> std::convertible_to<std::pair<Response, bool>>;  // true: close the
                                                         // connection after
                                                         // sending the response
@@ -92,7 +100,7 @@ concept IsProtocolMessage =
     requires(ProtocolMessage m, uint8_t *&begin, uint8_t *end) {
       {
         m.Serialize()
-      } -> std::convertible_to<std::shared_ptr<std::vector<uint8_t>>>;
+      } -> std::convertible_to<ShmSharedPtr<ShmVector<uint8_t>>>;
 
       { m.Deserialize(begin, end) } -> std::convertible_to<DeserializeResult>;
     };

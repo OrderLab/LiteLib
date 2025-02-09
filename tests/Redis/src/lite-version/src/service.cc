@@ -15,7 +15,7 @@ Redis::Redis() {
 
 std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-    lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
+    lite::ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Packet>, bool>>
         &pending_requests) const {
   auto [req, is_not_replay] = pending_requests.pop_front();
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
@@ -216,7 +216,7 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     const auto key = static_cast<RESPString *>(req->GetArg(0));
     const auto value = static_cast<RESPString *>(req->GetArg(1));
     CacheKey cache_key(*(key->value),
-                       SharedAllocator<char>(cache->GetSegmentManager()));
+                       ShmAllocator<char>(cache->GetSegmentManager().get()));
     entry.value = *(value->value);
     entry.type = CacheEntryType::STRING;
     if (cache->Set(cache_key, entry, in_transaction))
@@ -232,7 +232,7 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     if (in_emergency) {
       const auto key = static_cast<RESPString *>(req->GetArg(0));
       CacheKey cache_key(*(key->value),
-                         SharedAllocator<char>(cache->GetSegmentManager()));
+                         ShmAllocator<char>(cache->GetSegmentManager().get()));
       if (cache->Get(cache_key, entry, in_transaction))
         return {new RESPBulkString(
                     std::make_shared<std::string>(entry.value.c_str())),

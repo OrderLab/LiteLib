@@ -7,6 +7,7 @@
 #include <boost/interprocess/sync/interprocess_sharable_mutex.hpp>
 #include <boost/unordered/concurrent_flat_map.hpp>
 #include <concepts>
+#include <mutex>
 #include <shared_mutex>
 
 #include "concept.hpp"
@@ -30,12 +31,12 @@ struct CacheState {
   CacheEntry value;
   std::conditional_t<HasGetSize<CacheEntry>, size_t, std::false_type> size;
 
-  CacheState(SegmentManager *segment_mgr)
-      : key(segment_mgr), value(segment_mgr) {}
+  CacheState(bip::offset_ptr<SegmentManager> segment_mgr)
+      : key(segment_mgr.get()), value(segment_mgr) {}
 
   using LogEntryInstance = LogEntry<Application, Request, Response,
                                     ConnectionInfo, CacheKey, CacheEntry>;
-  LogEntryInstance *dirty_node = nullptr;
+  bip::offset_ptr<LogEntryInstance> dirty_node = nullptr;
 };
 
 template <typename Application, typename Request, typename Response,
@@ -47,28 +48,30 @@ class CacheInner {
                                         ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  SegmentManager *segment_mgr_;
+  bip::offset_ptr<SegmentManager> segment_mgr_;
 
   // If CacheEntry has GetSize method, then max_size_ is the sum of it.
   // Otherwise, max_size_ is the number of entries.
   explicit CacheInner(const size_t &max_size, std::atomic<bool> &emergency_mode,
-                      SegmentManager *segment_mgr);
+                      bip::offset_ptr<SegmentManager> segment_mgr);
 
   ~CacheInner();
 
   bool Add(const CacheKey &key, const CacheEntry &value,
-           const bool in_transaction, LogEntryInstance *dirty_node,
-           CacheStateInstance *&new_state);
+           const bool in_transaction,
+           bip::offset_ptr<LogEntryInstance> dirty_node,
+           bip::offset_ptr<CacheStateInstance> &new_state);
 
   bool Get(const CacheKey &key, CacheEntry &value, bool in_transaction);
 
   bool Delete(const CacheKey &key, bool in_transaction,
-              LogEntryInstance *&dirty_node);
+              bip::offset_ptr<LogEntryInstance> &dirty_node);
 
   bool Replace(const CacheKey &key, const CacheEntry &value,
-               bool in_transaction, LogEntryInstance *dirty_node,
-               bip::interprocess_mutex *logger_chr_mutex,
-               CacheStateInstance *&new_state);
+               bool in_transaction,
+               bip::offset_ptr<LogEntryInstance> dirty_node,
+               std::mutex *logger_chr_mutex,
+               bip::offset_ptr<CacheStateInstance> &new_state);
 
   void ConstVisitAll(
       std::function<void(const CacheKey &, const CacheEntry &)> visitor,
@@ -82,7 +85,7 @@ class CacheInner {
         transaction_mutex_};
   }
 
-  SegmentManager *GetSegmentManager() { return segment_mgr_; }
+  bip::offset_ptr<SegmentManager> GetSegmentManager() { return segment_mgr_; }
 
   std::atomic<bool> &emergency_mode_;
 
@@ -114,15 +117,15 @@ class CacheInner {
   };
 
   struct MapEntry {
-    CacheInner *parent_;
-    CacheStateInstance *state;
-    ListNode *lru_node;
+    bip::offset_ptr<CacheInner> parent_;
+    bip::offset_ptr<CacheStateInstance> state;
+    bip::offset_ptr<ListNode> lru_node;
 
     MapEntry(const CacheKey &key, const CacheEntry &value,
-             LogEntryInstance *dirty_node, CacheInner *parent,
-             const size_t size = 0)
+             bip::offset_ptr<LogEntryInstance> dirty_node,
+             bip::offset_ptr<CacheInner> parent, const size_t size = 0)
         : parent_(parent),
-          state(parent_->segment_mgr_->construct<CacheStateInstance>(
+          state(parent_->segment_mgr_->template construct<CacheStateInstance>(
               bip::anonymous_instance)(parent_->segment_mgr_)) {
       state->key = key;
       state->value = value;
@@ -130,8 +133,9 @@ class CacheInner {
       if constexpr (HasGetSize<CacheEntry>) {
         state->size = size;
       }
-      void *ptr = parent_->segment_mgr_->allocate(sizeof(ListNode));
-      lru_node = new (ptr) ListNode(state);
+
+      lru_node = parent_->segment_mgr_->template construct<ListNode>(
+          bip::anonymous_instance)(state.get());
     }
 
     MapEntry(MapEntry &&other) noexcept
@@ -142,12 +146,10 @@ class CacheInner {
 
     ~MapEntry() {
       if (state) {
-        state->~CacheStateInstance();
-        parent_->segment_mgr_->destroy_ptr(state);
+        parent_->segment_mgr_->destroy_ptr(state.get());
       }
       if (lru_node) {
-        lru_node->~ListNode();
-        parent_->segment_mgr_->deallocate(lru_node);
+        parent_->segment_mgr_->destroy_ptr(lru_node.get());
       }
     }
   };
@@ -157,7 +159,7 @@ class CacheInner {
 
   size_t max_size_, size;
   bip::interprocess_sharable_mutex transaction_mutex_;
-  using MapAllocator = SharedAllocator<bip::pair<const CacheKey, MapEntry>>;
+  using MapAllocator = ShmAllocator<bip::pair<const CacheKey, MapEntry>>;
   boost::unordered::concurrent_flat_map<CacheKey, MapEntry,
                                         boost::hash<CacheKey>,
                                         std::equal_to<CacheKey>, MapAllocator>

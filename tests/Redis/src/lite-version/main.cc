@@ -68,6 +68,7 @@ int main(int argc, char *argv[]) {
                      CacheEntry>
         s(thread_pool_size, cache_size, redis, backend_addr, backend_port,
           1000ms, 80000, 0.9, 2, "/tmp/lite_Redis");
+    shm = &s.shared_memory_;
     // Run the server until stopped.
     s.Run(port);
   } catch (std::exception &e) {

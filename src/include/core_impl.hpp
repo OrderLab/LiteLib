@@ -44,6 +44,11 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
       shared_memory_.find_or_construct<LoggerInnerInstance>("logger_inner")(
           sliding_window_size, shared_memory_.get_segment_manager());
 
+  connection_state_storage_ptr_ =
+      shared_memory_.find_or_construct<ConnectionStateStorageInstance>(
+          "connection_state_storage")(cache_inner_ptr_, logger_inner_ptr_,
+                                      shared_memory_.get_segment_manager());
+
   for (int i = 0; i < n_replay_threads; i++) {
     replay_workers_.emplace_back(new WorkerInstance(*this, barrier_));
     (**replay_workers_.rbegin()).Run("lite-replay-worker");
@@ -58,8 +63,8 @@ template <typename Application, typename Request, typename Response,
            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
-    HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
-                  ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+    HandleRequest(ShmSharedPtr<Request> req, ConnectionInfo &conn_info,
+                  ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>>
                       &pending_requests,
                   const evutil_socket_t client_fd,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
@@ -79,8 +84,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     //             << ", inserting rate: " << logger_inner_.inserting_rate_
     //             << std::endl;
     // }
-    auto [packet, shutdown] = app_.EmergencyServe(std::move(req), conn_info,
-                                                  cache, logger, flow_control);
+    auto [packet, shutdown] =
+        app_.EmergencyServe(req, conn_info, cache, logger, flow_control);
     const auto buffer = packet.Serialize();
     if (!network::Write(client_fd, buffer)) {
       LOG(ERROR) << "Failed to write response to client" << std::endl;
@@ -110,8 +115,8 @@ template <typename Application, typename Request, typename Response,
            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
-    HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
-                   ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+    HandleResponse(ShmSharedPtr<Response> resp, ConnectionInfo &conn_info,
+                   ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>>
                        &pending_requests,
                    const evutil_socket_t client_fd, CacheInstance *cache,
                    const bool forwarded) {
@@ -163,7 +168,7 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       close(c->backend_fd_);
       c->backend_fd_ = -1;
     }
-    if (!c->pending_requests_.empty()) {
+    if (!c->connection_state_entry_ptr_->pending_requests_.empty()) {
       // TODO: serve them using EmergencyServe
       // Remaining issue: MULTI -> (switch to emergency) ->
       // EXEC, service.cc will inject an illegal DISCARD
@@ -224,122 +229,126 @@ template <typename Application, typename Request, typename Response,
            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::Replay() {
-  const auto start_time = std::chrono::high_resolution_clock::now();
+  // TODO: implement replay
+  // const auto start_time = std::chrono::high_resolution_clock::now();
 
-  replay_rate_.Reset(replay_expected_rps_);  // Reset the sliding window
-  is_replaying_ = true;
-  LOG(INFO) << "replay start, live connections: " << live_connections_.size()
-            << std::endl;
-  live_connections_.visit_all([&](ConnectionInstance *const &c) {
-    if (!c->ConnectBackend()) {
-      LOG(ERROR) << "Failed to connect to backend" << std::endl;
-    } else {
-      LOG(INFO) << "Connect backend " << c->backend_fd_ << " to "
-                << c->client_fd_ << std::endl;
-    }
-  });
+  // replay_rate_.Reset(replay_expected_rps_);  // Reset the sliding window
+  // is_replaying_ = true;
+  // LOG(INFO) << "replay start, live connections: " << live_connections_.size()
+  //           << std::endl;
+  // live_connections_.visit_all([&](ConnectionInstance *const &c) {
+  //   if (!c->ConnectBackend()) {
+  //     LOG(ERROR) << "Failed to connect to backend" << std::endl;
+  //   } else {
+  //     LOG(INFO) << "Connect backend " << c->backend_fd_ << " to "
+  //               << c->client_fd_ << std::endl;
+  //   }
+  // });
 
-  std::map<WorkerInstance *, ConnectionInstance *>
-      replay_worker_sync_state_conns;
+  // std::map<WorkerInstance *, ConnectionInstance *>
+  //     replay_worker_sync_state_conns;
 
-  for (auto &replay_worker_ : replay_workers_) {
-    replay_worker_->RemoveAllConnections();
-    replay_worker_sync_state_conns[replay_worker_.get()] =
-        replay_worker_->NewReplayConnection();
-  }
-  next_replay_worker_ = replay_workers_.begin();
+  // for (auto &replay_worker_ : replay_workers_) {
+  //   replay_worker_->RemoveAllConnections();
+  //   replay_worker_sync_state_conns[replay_worker_.get()] =
+  //       replay_worker_->NewReplayConnection();
+  // }
+  // next_replay_worker_ = replay_workers_.begin();
 
-  LogEntryInstance *entry;
+  // LogEntryInstance *entry;
 
-  for (int i = 0; i < 2;
-       i++) {  // Double flush to process in-flight connections
-    size_t log_cnt = 0, dirty_cnt = 0;
-    while (LoggerInstance::Pop(*logger_inner_ptr_, entry)) {
-      if (entry->state) {
-        dirty_cnt++;
-        const auto req = entry->state->value.ToRequest(entry->state->key);
-        const auto buffer = req->Serialize();
-        auto &replay_conn =
-            replay_worker_sync_state_conns[next_replay_worker_->get()];
-        replay_conn->pending_requests_.wait_for_empty();
-        SendReplayReq(replay_conn, req, buffer);
-        next_replay_worker_++;
-        if (next_replay_worker_ == replay_workers_.end())
-          next_replay_worker_ = replay_workers_.begin();
-      } else {
-        log_cnt++;
-        const auto buffer = entry->req->Serialize();
-        if (!*entry->backend_conn_ptr) {  // log belongs to a closed connection
-          auto replay_conn = (*next_replay_worker_)->NewReplayConnection();
-          *entry->backend_conn_ptr = replay_conn;
-          SendReplayReq(replay_conn, entry->req, buffer);
-          next_replay_worker_++;
-          if (next_replay_worker_ == replay_workers_.end())
-            next_replay_worker_ = replay_workers_.begin();
-        } else {
-          if (!i) {
-            (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
-          } else {
-            // TODO: how to disable the reading from client event, instead of
-            // blocking the worker. So that we can wait for the server's
-            // responses
-          }
-          SendReplayReqWithoutAssertion(*entry->backend_conn_ptr, entry->req,
-                                        buffer);
-        }
-      }
-      delete entry;
-      ++replay_rate_;
-    }
-    LOG(INFO) << "Replay i = " << i << " finished with " << log_cnt
-              << " log entries and " << dirty_cnt << " dirty entries\n";
+  // for (int i = 0; i < 2;
+  //      i++) {  // Double flush to process in-flight connections
+  //   size_t log_cnt = 0, dirty_cnt = 0;
+  //   while (LoggerInstance::Pop(*logger_inner_ptr_, entry)) {
+  //     if (entry->state) {
+  //       dirty_cnt++;
+  //       const auto req = entry->state->value.ToRequest(entry->state->key);
+  //       const auto buffer = req->Serialize();
+  //       auto &replay_conn =
+  //           replay_worker_sync_state_conns[next_replay_worker_->get()];
+  //       replay_conn->pending_requests_.wait_for_empty();
+  //       SendReplayReq(replay_conn, req, buffer);
+  //       next_replay_worker_++;
+  //       if (next_replay_worker_ == replay_workers_.end())
+  //         next_replay_worker_ = replay_workers_.begin();
+  //     } else {
+  //       log_cnt++;
+  //       const auto buffer = entry->req->Serialize();
+  //       if (!*entry->backend_conn_ptr) {  // log belongs to a closed
+  //       connection
+  //         auto replay_conn = (*next_replay_worker_)->NewReplayConnection();
+  //         *entry->backend_conn_ptr = replay_conn;
+  //         SendReplayReq(replay_conn, entry->req, buffer);
+  //         next_replay_worker_++;
+  //         if (next_replay_worker_ == replay_workers_.end())
+  //           next_replay_worker_ = replay_workers_.begin();
+  //       } else {
+  //         if (!i) {
+  //           (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
+  //         } else {
+  //           // TODO: how to disable the reading from client event, instead of
+  //           // blocking the worker. So that we can wait for the server's
+  //           // responses
+  //         }
+  //         SendReplayReqWithoutAssertion(*entry->backend_conn_ptr, entry->req,
+  //                                       buffer);
+  //       }
+  //     }
+  //     delete entry;
+  //     ++replay_rate_;
+  //   }
+  //   LOG(INFO) << "Replay i = " << i << " finished with " << log_cnt
+  //             << " log entries and " << dirty_cnt << " dirty entries\n";
 
-    if (!i) {  // Wait for all inflight connections
-      LOG(INFO) << "Replay barrier initialized" << std::endl;
-      for (auto &worker : workers_) {
-        worker->notify_queue_.push_back(
-            {.type = WorkerMessage::Type::kBarrier, .fd = 0});
-        uint64_t buf = 1;
-        PLOG_IF(ERROR, write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
-                           sizeof(uint64_t))
-            << "failed writing to worker eventfd";
-      }
-      barrier_.arrive_and_wait();
-    }
-  }
+  //   if (!i) {  // Wait for all inflight connections
+  //     LOG(INFO) << "Replay barrier initialized" << std::endl;
+  //     for (auto &worker : workers_) {
+  //       worker->notify_queue_.push_back(
+  //           {.type = WorkerMessage::Type::kBarrier, .fd = 0});
+  //       uint64_t buf = 1;
+  //       PLOG_IF(ERROR, write(worker->notify_event_fd, &buf, sizeof(uint64_t))
+  //       !=
+  //                          sizeof(uint64_t))
+  //           << "failed writing to worker eventfd";
+  //     }
+  //     barrier_.arrive_and_wait();
+  //   }
+  // }
 
-  LOG(INFO) << "Waiting for all replay connections to finish\n";
-  for (auto &replay_worker : replay_workers_) {
-    replay_worker->conns_.visit_all([&](ConnectionInstance *const &c) {
-      c->pending_requests_.wait_for_empty();
-    });
-  }
-  // TODO: wait for all live connections to receive replay responses
+  // LOG(INFO) << "Waiting for all replay connections to finish\n";
+  // for (auto &replay_worker : replay_workers_) {
+  //   replay_worker->conns_.visit_all([&](ConnectionInstance *const &c) {
+  //     c->pending_requests_.wait_for_empty();
+  //   });
+  // }
+  // // TODO: wait for all live connections to receive replay responses
 
-  is_replaying_ = false;
-  emergency_mode_ = false;
-  LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
-               << std::endl;
+  // is_replaying_ = false;
+  // emergency_mode_ = false;
+  // LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
+  //              << std::endl;
 
-  app_.EmergencyToNormalHook();
+  // app_.EmergencyToNormalHook();
 
-  barrier_.arrive_and_wait();  // unblock worker threads
+  // barrier_.arrive_and_wait();  // unblock worker threads
 
-  const auto end_time = std::chrono::high_resolution_clock::now();
-  const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            end_time - start_time)
-                            .count();
-  LOG(INFO) << "Replay took " << duration << " ms\n";
+  // const auto end_time = std::chrono::high_resolution_clock::now();
+  // const auto duration =
+  // std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                           end_time - start_time)
+  //                           .count();
+  // LOG(INFO) << "Replay took " << duration << " ms\n";
 
-  while (!dead_connection_log_heads_.empty()) {
-    delete dead_connection_log_heads_.pop_front();
-  }
+  // while (!dead_connection_log_heads_.empty()) {
+  //   delete dead_connection_log_heads_.pop_front();
+  // }
 
-  for (auto &replay_worker_ : replay_workers_) {
-    replay_worker_->RemoveAllConnections();
-  }
+  // for (auto &replay_worker_ : replay_workers_) {
+  //   replay_worker_->RemoveAllConnections();
+  // }
 
-  return true;
+  // return true;
 }
 
 }  // namespace lite

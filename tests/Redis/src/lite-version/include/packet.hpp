@@ -5,51 +5,44 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
-#include <list>
 #include <lite.hpp>
-#include <map>
-#include <memory>
-#include <set>
-#include <string>
-#include <vector>
+
+extern bip::managed_shared_memory *shm;
 
 using InputIterator = uint8_t *;
 
 struct RESPType {
-  virtual ~RESPType(){};
-
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) {};
+  virtual ~RESPType() {};
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) {};
 };
 
 struct RESPString : public RESPType {
-  std::shared_ptr<std::string> value = std::make_shared<std::string>();
+  ShmSharedPtr<ShmString> value;
 
   RESPString() = default;
-  RESPString(const std::shared_ptr<std::string> &value) : value(value) {}
-  virtual ~RESPString(){};
+  RESPString(const ShmSharedPtr<ShmString> &value) : value(value) {}
+  virtual ~RESPString() {};
 };
 struct RESPSimpleString : public RESPString {
-  virtual ~RESPSimpleString(){};
+  virtual ~RESPSimpleString() {};
   RESPSimpleString() = default;
-  RESPSimpleString(const std::shared_ptr<std::string> &value)
-      : RESPString(value) {}
+  RESPSimpleString(const ShmSharedPtr<ShmString> &value) : RESPString(value) {}
 
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
 };
 struct RESPError : public RESPString {
   RESPError() = default;
-  RESPError(const std::shared_ptr<std::string> &value) : RESPString(value) {}
-  virtual ~RESPError(){};
+  RESPError(const ShmSharedPtr<ShmString> &value) : RESPString(value) {}
+  virtual ~RESPError() {};
 
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
 };
 struct RESPBulkString : public RESPString {
   RESPBulkString() = default;
-  RESPBulkString(const std::shared_ptr<std::string> &value)
-      : RESPString(value) {}
-  virtual ~RESPBulkString(){};
+  RESPBulkString(const ShmSharedPtr<ShmString> &value) : RESPString(value) {}
+  virtual ~RESPBulkString() {};
 
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
 };
 
 struct RESPInteger : public RESPType {
@@ -57,63 +50,60 @@ struct RESPInteger : public RESPType {
 
   RESPInteger() = default;
   RESPInteger(int64_t value) : value(value) {}
-  RESPInteger(const std::shared_ptr<std::string> &value) {
-    this->value = std::stoll(*value);
+  RESPInteger(const ShmSharedPtr<ShmString> &value) {
+    this->value = std::stoll(*(value.get()));
   }
 
-  virtual ~RESPInteger(){};
+  virtual ~RESPInteger() {};
 
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
 };
 
 struct RESPArray : public RESPType {
-  std::vector<std::unique_ptr<RESPType>> value;
+  ShmVector<ShmUniquePtr<RESPType>> value;
 
-  virtual ~RESPArray(){};
+  virtual ~RESPArray() {};
 
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
 };
 
 struct RESPNull : public RESPType {
   char value = 0;
 
-  virtual ~RESPNull(){};
+  virtual ~RESPNull() {};
 
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
 };
 
 struct RESPMap : public RESPType {
-  std::shared_ptr<
-      std::map<std::unique_ptr<RESPType>, std::unique_ptr<RESPType>>>
-      value = std::make_shared<
-          std::map<std::unique_ptr<RESPType>, std::unique_ptr<RESPType>>>();
+  ShmSharedPtr<ShmMap<ShmUniquePtr<RESPType>, ShmUniquePtr<RESPType>>> value;
 
   RESPMap() = default;
-  RESPMap(const std::shared_ptr<std::map<std::unique_ptr<RESPType>,
-                                         std::unique_ptr<RESPType>>> &value)
+  RESPMap(
+      const ShmSharedPtr<ShmMap<ShmUniquePtr<RESPType>, ShmUniquePtr<RESPType>>>
+          &value)
       : value(value) {}
-  virtual ~RESPMap(){};
+  virtual ~RESPMap() {};
 
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
 };
 
 struct RESPSet : public RESPType {
-  std::shared_ptr<std::set<std::unique_ptr<RESPType>>> value =
-      std::make_shared<std::set<std::unique_ptr<RESPType>>>();
+  ShmSharedPtr<ShmSet<ShmUniquePtr<RESPType>>> value;
 
   RESPSet() = default;
-  RESPSet(const std::shared_ptr<std::set<std::unique_ptr<RESPType>>> &value)
+  RESPSet(const ShmSharedPtr<ShmSet<ShmUniquePtr<RESPType>>> &value)
       : value(value) {}
-  virtual ~RESPSet(){};
+  virtual ~RESPSet() {};
 
-  virtual void AppendToBuffer(std::vector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
 };
 
 class RESPTypeParser {
-  std::unique_ptr<RESPTypeParser> parser_ = nullptr;
+  ShmUniquePtr<RESPTypeParser> parser_;
 
  public:
-  std::unique_ptr<RESPType> value_ = nullptr;
+  ShmUniquePtr<RESPType> value_;
 
   virtual ~RESPTypeParser() = default;
   virtual lite::DeserializeResult Deserialize(InputIterator &begin,
@@ -126,19 +116,26 @@ class RESPTypeParser {
 };
 
 struct Packet {
-  std::unique_ptr<RESPType> command;
-  std::shared_ptr<RESPTypeParser> parser;
+  ShmUniquePtr<RESPType> command;
+  ShmSharedPtr<RESPTypeParser> parser;
 
-  Packet() : command(nullptr), parser(std::make_unique<RESPTypeParser>()) {}
-  Packet(std::unique_ptr<RESPType> command) : command(std::move(command)) {}
-  Packet(std::unique_ptr<RESPArray> command) : command(std::move(command)) {}
+  Packet()
+      : command(nullptr),
+        parser(
+            ShmMakeShared(shm->get_segment_manager()->construct<RESPTypeParser>(
+                              bip::anonymous_instance)(),
+                          *shm)) {}
+  Packet(ShmUniquePtr<RESPType> command) : command(boost::move(command)) {}
+  Packet(ShmUniquePtr<RESPArray> command) : command(boost::move(command)) {}
 
   lite::DeserializeResult Deserialize(InputIterator &begin, InputIterator end);
 
-  std::shared_ptr<std::vector<uint8_t>> Serialize() const {
-    std::vector<uint8_t> buffer;
+  ShmSharedPtr<ShmVector<uint8_t>> Serialize() const {
+    ShmVector<uint8_t> *buffer =
+        shm->get_segment_manager()->construct<ShmVector<uint8_t>>(
+            bip::anonymous_instance)();
     command->AppendToBuffer(buffer);
-    return std::make_shared<std::vector<uint8_t>>(buffer);
+    return ShmMakeShared(buffer, *shm);
   }
 
   std::string_view GetOpcode() const {

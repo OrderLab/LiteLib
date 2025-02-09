@@ -47,11 +47,11 @@ class LiteServer {
 
   CacheInstance* GetCacheDecoupledFromAnyConnection();
 
- private:
-  static int NewSocket(struct addrinfo* addr_info);
-
   /// The internal lite server
   LiteCoreInstance lite_core_;
+
+ private:
+  static int NewSocket(struct addrinfo* addr_info);
 
   /// The worker threads.
   std::vector<std::unique_ptr<WorkerInstance>> workers_;

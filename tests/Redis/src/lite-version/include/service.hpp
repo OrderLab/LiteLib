@@ -10,23 +10,24 @@
 
 #include "packet.hpp"
 
-using SharedString =
-    bip::basic_string<char, std::char_traits<char>, SharedAllocator<char>>;
+using ShmString =
+    bip::basic_string<char, std::char_traits<char>, ShmAllocator<char>>;
 
 enum class CacheEntryType { STRING };  // TODO: support more types
 // enum class CacheEntryType { STRING, LIST, SET, MAP, ZSET };
 
-using CacheKey = SharedString;
+using CacheKey = ShmString;
 
 struct CacheEntry {
   CacheEntryType type = CacheEntryType::STRING;
-  SharedString value;  // TODO: use offset_ptr and shared_ptr
+  ShmString value;  // TODO: use offset_ptr and shared_ptr
   // std::shared_ptr<std::list<std::string>> list_value = nullptr;
   // std::shared_ptr<std::set<std::string>> set_value = nullptr;
   // std::shared_ptr<std::map<std::string, std::string>> map_value = nullptr;
   // std::shared_ptr<std::map<double, std::string>> sorted_set_value = nullptr;
 
-  CacheEntry(SegmentManager *segment_mgr) : value(segment_mgr) {}
+  CacheEntry(bip::offset_ptr<SegmentManager> segment_mgr)
+      : value(segment_mgr.get()) {}
 
   size_t GetSize() const {
     switch (type) {
@@ -140,7 +141,7 @@ class Redis {
 
   std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
       const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-      lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
+      lite::ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Packet>, bool>>
           &pending_requests) const;
 
   void NormalUpdate(const std::shared_ptr<Packet> &resp,

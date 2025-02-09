@@ -22,6 +22,8 @@ void PrintHelp() {
   LOG(INFO) << "  LiteProxy --thread_num=4\n";
 }
 
+SharedMemory* shm;
+
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   try {
@@ -67,6 +69,8 @@ int main(int argc, char* argv[]) {
                      CacheEntry>
         s(thread_pool_size, cache_size, level_db, backend_addr, backend_port,
           1000ms, 20000, 0.9, 1, "/tmp/lite_Proxy");
+
+    shm = &s.lite_core_.shared_memory_;
 
     // Run the server until stopped.
     if (!s.Run(port)) {

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "connection_state.hpp"
 #include "core.hpp"
 #include "logger.hpp"
 #include "network_utils.hpp"
@@ -16,6 +17,9 @@ template <typename Application, typename Request, typename Response,
 class Connection {
   using ConnectionInstance = Connection<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>;
+  using ConnectionStateInstance =
+      ConnectionState<Application, Request, Response, ConnectionInfo, CacheKey,
+                      CacheEntry>;
   using LiteCoreInstance = LiteCore<Application, Request, Response,
                                     ConnectionInfo, CacheKey, CacheEntry>;
   using LoggerInstance = Logger<Application, Request, Response, ConnectionInfo,
@@ -39,7 +43,8 @@ class Connection {
   explicit Connection(const evutil_socket_t sfd, const int event_flags,
                       struct event_base* base, EventHandler event_handler,
                       void* lite_server, LiteCoreInstance& lite_core,
-                      bool is_client_connection, WorkerInstance* worker_ptr);
+                      bool is_client_connection, WorkerInstance* worker_ptr,
+                      ConnectionStateInstance* connection_state_ptr = nullptr);
 
   ~Connection();
 
@@ -60,13 +65,8 @@ class Connection {
   /// Try to connect to the backend and set event
   bool ConnectBackend();
 
-  ConnectionInfo extra_app_info_;
-
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;
-
-  /// The pending requests
-  ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> pending_requests_;
 
   void* lite_server_;
 
@@ -76,12 +76,8 @@ class Connection {
  private:  // ensure the order of initialization
   std::shared_ptr<ConnectionInstance*> self_;
 
-  LogEntryInstance* log_head_;
-
  public:
-  CacheInstance cache_;
-
-  LoggerInstance logger_;
+  ConnectionStateInstance* connection_state_entry_ptr_;
 
  private:
   /// Corresponding worker's event_base
@@ -96,10 +92,10 @@ class Connection {
   alignas(16) uint8_t buffer_[131072];
 
   /// The incoming request.
-  std::shared_ptr<Request> request_;
+  ShmSharedPtr<Request> request_;
 
   /// The outgoing response.
-  std::shared_ptr<Response> response_;
+  ShmSharedPtr<Response> response_;
 };
 
 }  // namespace lite

@@ -15,8 +15,9 @@ class Logger {
                                         ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  Logger(LoggerInnerInstance &logger_inner, LogEntryInstance *const conn_head)
-      : logger_inner_(logger_inner), conn_head_(conn_head) {}
+  Logger(bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr,
+         bip::offset_ptr<LogEntryInstance> conn_head)
+      : logger_inner_ptr_(logger_inner_ptr), conn_head_(conn_head) {}
 
   void Log(const std::shared_ptr<Request> &req);
 
@@ -27,9 +28,9 @@ class Logger {
   bool Empty();
 
  private:
-  LoggerInnerInstance &logger_inner_;
+  bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr_;
 
-  LogEntryInstance *const conn_head_;
+  bip::offset_ptr<LogEntryInstance> conn_head_;
 };
 
 }  // namespace lite

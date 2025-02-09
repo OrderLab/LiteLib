@@ -21,9 +21,12 @@ class LogEntry {
                                         ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
+  // NOTE: LogEntry is only used in the lite process, so we can use raw pointer
+  // here
   CacheStateInstance *state;  // Cache::State *
   std::shared_ptr<Request> req;
-  std::shared_ptr<ConnectionInstance *> backend_conn_ptr;
+  std::shared_ptr<ConnectionInstance *>
+      backend_conn_ptr;  // TODO: this is not needed
   LogEntry *chr_pre = nullptr,
            *chr_nxt = nullptr;  // global linked list in chronological order
   LogEntry *conn_pre = nullptr,
@@ -48,10 +51,8 @@ class LoggerInner {
                                     ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  SegmentManager *segment_mgr_;
-
   LoggerInner(const std::chrono::milliseconds sliding_window_size,
-              SegmentManager *segment_mgr);
+              bip::offset_ptr<SegmentManager> segment_mgr);
 
   void Log(LogEntryInstance *entry, LogEntryInstance *conn_head);
 
@@ -62,7 +63,9 @@ class LoggerInner {
 
   bool Empty();
 
-  bip::interprocess_mutex chr_mutex_;
+  bip::offset_ptr<SegmentManager> segment_mgr_;
+
+  std::mutex chr_mutex_;
 
   SlidingWindow inserting_rate_;
 

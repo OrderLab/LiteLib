@@ -20,11 +20,11 @@ class Cache {  // A wrapper for CacheInner
                                         ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  explicit Cache(CacheInnerInstance &cache_inner,
-                 LoggerInnerInstance &logger_inner,
-                 LogEntryInstance *const conn_head)
-      : cache_inner_(cache_inner),
-        logger_inner_(logger_inner),
+  explicit Cache(bip::offset_ptr<CacheInnerInstance> cache_inner_ptr,
+                 bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr,
+                 bip::offset_ptr<LogEntryInstance> conn_head)
+      : cache_inner_ptr_(cache_inner_ptr),
+        logger_inner_ptr_(logger_inner_ptr),
         conn_head_(conn_head) {}
 
   ~Cache() {}
@@ -48,18 +48,18 @@ class Cache {  // A wrapper for CacheInner
       bool in_transaction = false);
 
   std::unique_lock<bip::interprocess_sharable_mutex> TransactionLock() {
-    return cache_inner_.TransactionLock();
+    return cache_inner_ptr_->TransactionLock();
   }
 
-  SegmentManager *GetSegmentManager() {
-    return cache_inner_.GetSegmentManager();
+  bip::offset_ptr<SegmentManager> GetSegmentManager() {
+    return cache_inner_ptr_->GetSegmentManager();
   }
 
  private:
-  CacheInnerInstance &cache_inner_;
-  LoggerInnerInstance &logger_inner_;
+  bip::offset_ptr<CacheInnerInstance> cache_inner_ptr_;
+  bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr_;
 
-  LogEntryInstance *const conn_head_;
+  bip::offset_ptr<LogEntryInstance> conn_head_;
 };
 
 }  // namespace lite

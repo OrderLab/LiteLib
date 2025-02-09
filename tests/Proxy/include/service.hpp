@@ -4,20 +4,23 @@
 
 #include "packet.hpp"
 
-struct ConnectionInfo {};
+extern SharedMemory *shm;
 
-using SharedString =
-    bip::basic_string<char, std::char_traits<char>, SharedAllocator<char>>;
-using CacheKey = SharedString;
+struct ConnectionInfo {
+  ConnectionInfo(ShmVoidAllocator allocator) {}
+};
+
+using CacheKey = ShmString;
 
 struct CacheEntry {
-  SharedString value;
+  ShmString value;
 
-  CacheEntry(SegmentManager *segment_mgr) : value(segment_mgr) {}
+  CacheEntry(ShmVoidAllocator allocator) : value(allocator) {}
 
   size_t GetSize() const { return 1; }
   std::shared_ptr<Packet> ToRequest(const std::string &key) const {
-    return std::make_shared<Packet>();
+    return std::make_shared<Packet>(
+        shm->get_segment_manager()->get_allocator<uint8_t>());
   }
 };
 
@@ -28,35 +31,38 @@ class Proxy {
       lite::Logger<Proxy, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
-      const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
-      lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
+  std::pair<std::vector<ShmSharedPtr<Packet>>, bool> Match(
+      const ShmSharedPtr<Packet> &resp, ConnectionInfo &conn,
+      lite::ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Packet>, bool>>
           &pending_requests) {
     pending_requests.clear();
-    return {std::vector<std::shared_ptr<Packet>>{}, true};
+    return {std::vector<ShmSharedPtr<Packet>>{}, true};
   }
 
-  void NormalUpdate(const std::shared_ptr<Packet> &resp,
-                    std::vector<std::shared_ptr<Packet>> requests,
+  void NormalUpdate(const ShmSharedPtr<Packet> &resp,
+                    std::vector<ShmSharedPtr<Packet>> requests,
                     ConnectionInfo &conn, Cache *cache) {
     return;
   }
 
-  void HandleReplayResponse(const std::shared_ptr<Packet> &resp,
-                            std::vector<std::shared_ptr<Packet>> requests,
+  void HandleReplayResponse(const ShmSharedPtr<Packet> &resp,
+                            std::vector<ShmSharedPtr<Packet>> requests,
                             ConnectionInfo &conn, Cache *cache) {
     return;
   }
 
-  std::pair<Packet, bool> EmergencyServe(std::shared_ptr<Packet> req,
+  std::pair<Packet, bool> EmergencyServe(ShmSharedPtr<Packet> req,
                                          ConnectionInfo &conn, Cache *cache,
                                          Logger *logger, bool flow_control) {
-    return {Packet{}, true};  // close the connection directly
+    return {Packet{shm->get_segment_manager()->get_allocator<uint8_t>()},
+            true};  // close the connection directly
   }
 
   void NormalToEmergencyHook() {}
 
   void EmergencyToNormalHook() {}
 
-  Packet EmergencyConnectionEstablishHook(ConnectionInfo _) {}
+  Packet EmergencyConnectionEstablishHook(ConnectionInfo _) {
+    return Packet{shm->get_segment_manager()->get_allocator<uint8_t>()};
+  }
 };
