@@ -1,5 +1,6 @@
 #include "network_utils.hpp"
 
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
 #include <sys/un.h>
@@ -73,7 +74,7 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
 
     // LOG(INFO) << "Backend connected, fd: " << backend_fd << std::endl;
     return backend_fd;
-  } else { // tcp
+  } else {  // tcp
     evutil_socket_t backend_fd;
     struct addrinfo hints, *res;
 
@@ -197,6 +198,33 @@ bool Write(const evutil_socket_t fd,
 bool Write(const evutil_socket_t fd,
            const std::shared_ptr<std::vector<uint8_t>> buffer) {
   return Write(fd, buffer->data(), buffer->size());
+}
+
+bool Write(const evutil_socket_t fd,
+           const ShmSharedPtr<ShmVector<uint8_t>> buffer) {
+  return Write(fd, buffer->data(), buffer->size());
+}
+
+TCPID GetTCPID(const evutil_socket_t fd) {
+  struct sockaddr_in local_addr;
+  socklen_t local_len = sizeof(local_addr);
+  if (getsockname(fd, (struct sockaddr*)&local_addr, &local_len) < 0) {
+    PLOG(ERROR) << "Failed to get local address";
+  }
+
+  struct sockaddr_in peer_addr;
+  socklen_t peer_len = sizeof(peer_addr);
+  if (getpeername(fd, (struct sockaddr*)&peer_addr, &peer_len) < 0) {
+    PLOG(ERROR) << "Failed to get peer address";
+  }
+
+  TCPID ret;
+  ret.src_ip = ntohl(local_addr.sin_addr.s_addr);
+  ret.src_port = ntohs(local_addr.sin_port);
+  ret.dst_ip = ntohl(peer_addr.sin_addr.s_addr);
+  ret.dst_port = ntohs(peer_addr.sin_port);
+
+  return ret;
 }
 
 }  // namespace network

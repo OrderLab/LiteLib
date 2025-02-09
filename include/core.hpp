@@ -7,6 +7,7 @@
 #include "concept.hpp"
 #include "daemon.hpp"
 #include "logger.hpp"
+#include "thread_safe_queue.hpp"
 #include "thread_safe_set.hpp"
 
 namespace lite {
@@ -44,6 +45,9 @@ class LiteCore : public Daemon {
                                 CacheKey, CacheEntry>;
   using CacheStateInstance = CacheState<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>;
+  using ConnectionStateStorageInstance =
+      ConnectionStateStorage<Application, Request, Response, ConnectionInfo,
+                             CacheKey, CacheEntry>;
 
  public:
   LiteCore(Application &app, const size_t &max_item_count,
@@ -54,15 +58,15 @@ class LiteCore : public Daemon {
            const size_t replay_expected_rps, const double flow_control_ratio,
            const size_t n_replay_threads, bool crash_recover = true);
 
-  bool HandleRequest(std::shared_ptr<Request> req, ConnectionInfo &conn_info,
-                     ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+  bool HandleRequest(ShmSharedPtr<Request> req, ConnectionInfo &conn_info,
+                     ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>>
                          &pending_requests,
                      const evutil_socket_t client_fd,
                      const evutil_socket_t backend_fd, CacheInstance *cache,
                      LoggerInstance *logger, const bool forwarded);
 
-  bool HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
-                      ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
+  bool HandleResponse(ShmSharedPtr<Response> resp, ConnectionInfo &conn_info,
+                      ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>>
                           &pending_requests,
                       const evutil_socket_t client_fd, CacheInstance *cache,
                       const bool forwarded);
@@ -79,7 +83,10 @@ class LiteCore : public Daemon {
 
   LoggerInnerInstance *logger_inner_ptr_;
 
-  ThreadSafeQueue<LogEntryInstance *> dead_connection_log_heads_;
+  ConnectionStateStorageInstance *connection_state_storage_ptr_;
+
+  ThreadSafeQueue<LogEntryInstance *>
+      dead_connection_log_heads_;  // TODO: don't need to be in shared memory
 
   LogEntryInstance *crash_conn_head_ = nullptr;
 

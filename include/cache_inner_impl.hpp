@@ -11,12 +11,11 @@ template <typename Application, typename Request, typename Response,
 CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::CacheInner(const size_t &max_size,
                                    std::atomic<bool> &emergency_mode,
-                                   bip::managed_shared_memory::segment_manager
-                                       *segment_mgr)
+                                   bip::offset_ptr<SegmentManager> segment_mgr)
     : max_size_(max_size),
       size(0),
       emergency_mode_(emergency_mode),
-      cache_(segment_mgr),
+      cache_(segment_mgr.get()),
       segment_mgr_(segment_mgr) {
   lru_head_.pre_ = nullptr;
   lru_head_.nxt_ = &lru_tail_;
@@ -27,14 +26,12 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::~CacheInner() {
-  ListNode *node = lru_head_.nxt_;
-  ListNode *nxt;
+  bip::offset_ptr<ListNode> node = lru_head_.nxt_;
+  bip::offset_ptr<ListNode> nxt;
 
   while (node != &lru_tail_) {
     nxt = node->nxt_;
-    // Properly cleanup shared memory allocated ListNodes
-    node->~ListNode();
-    segment_mgr_->deallocate(node);
+    segment_mgr_->destroy_ptr(node.get());
     node = nxt;
   }
 }
@@ -44,15 +41,16 @@ template <typename Application, typename Request, typename Response,
 bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Add(const CacheKey &key, const CacheEntry &value,
                                  const bool in_transaction,
-                                 LogEntryInstance *dirty_node,
-                                 CacheStateInstance *&new_state) {
+                                 bip::offset_ptr<LogEntryInstance> dirty_node,
+                                 bip::offset_ptr<CacheStateInstance>
+                                     &new_state) {
   std::shared_lock<bip::interprocess_sharable_mutex> transaction_lock;
   if (!in_transaction) {
     transaction_lock =
         std::shared_lock<bip::interprocess_sharable_mutex>{transaction_mutex_};
   }
 
-  ListNode *lru_node;
+  bip::offset_ptr<ListNode> lru_node;
 #define insert_entry(entry)                                     \
   new_state = entry->state;                                     \
   lru_node = entry->lru_node;                                   \
@@ -61,7 +59,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     segment_mgr_->destroy_ptr(entry);                           \
     return false;                                               \
   }                                                             \
-  segment_mgr_->destroy_ptr(entry)  // Deallocate after successful move
+  segment_mgr_->destroy_ptr(entry)
 
   if constexpr (HasGetSize<CacheEntry>) {
     MapEntry *entry = segment_mgr_->construct<MapEntry>(
@@ -103,7 +101,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
                                                        std::try_to_lock);
     if (lru_lock) {
-      ListNode *lru_node = element.second.lru_node;
+      ListNode *lru_node = element.second.lru_node.get();
       // The list node may be out of the list if it is in the process of being
       // inserted or evicted. Doing this check allows us to lock the list for
       // shorter periods of time.
@@ -120,13 +118,14 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Delete(const CacheKey &key, bool in_transaction,
-                                    LogEntryInstance *&dirty_node) {
+                                    bip::offset_ptr<LogEntryInstance>
+                                        &dirty_node) {
   std::shared_lock<bip::interprocess_sharable_mutex> transaction_lock;
   if (!in_transaction) {
     transaction_lock =
         std::shared_lock<bip::interprocess_sharable_mutex>{transaction_mutex_};
   }
-  ListNode *lru_node = nullptr;
+  bip::offset_ptr<ListNode> lru_node = nullptr;
   cache_.cvisit(key, [&](auto &element) {
     lru_node = element.second.lru_node;
     dirty_node = element.second.state->dirty_node;
@@ -148,13 +147,13 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
-                CacheEntry>::Replace(const CacheKey &key,
-                                     const CacheEntry &value,
-                                     bool in_transaction,
-                                     LogEntryInstance *dirty_node,
-                                     bip::interprocess_mutex *logger_chr_mutex,
-                                     CacheStateInstance *&new_state) {
+bool CacheInner<
+    Application, Request, Response, ConnectionInfo, CacheKey,
+    CacheEntry>::Replace(const CacheKey &key, const CacheEntry &value,
+                         bool in_transaction,
+                         bip::offset_ptr<LogEntryInstance> dirty_node,
+                         std::mutex *logger_chr_mutex,
+                         bip::offset_ptr<CacheStateInstance> &new_state) {
   std::shared_lock<bip::interprocess_sharable_mutex> transaction_lock;
   if (!in_transaction) {
     transaction_lock =
@@ -164,9 +163,9 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
   cache_.visit(key, [&](auto &element) {
     element.second.state->value = value;
 
-    std::unique_lock<bip::interprocess_mutex> chr_lock;
+    std::unique_lock<std::mutex> chr_lock;
     if (logger_chr_mutex) {
-      chr_lock = std::unique_lock<bip::interprocess_mutex>{*logger_chr_mutex};
+      chr_lock = std::unique_lock<std::mutex>{*logger_chr_mutex};
     }
     auto old_dirty_node = element.second.state->dirty_node;
     element.second.state->dirty_node = dirty_node;
@@ -177,7 +176,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
       chr_lock.unlock();
     }
     if (old_dirty_node) {
-      delete old_dirty_node;
+      segment_mgr_->destroy_ptr(old_dirty_node.get());
     }
 
     size_t new_size;
@@ -189,7 +188,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
                                                        std::try_to_lock);
     if (lru_lock) {
-      ListNode *lru_node = element.second.lru_node;
+      bip::offset_ptr<ListNode> lru_node = element.second.lru_node;
       // The list node may be out of the list if it is in the process of being
       // inserted or evicted. Doing this check allows us to lock the list for
       // shorter periods of time.
@@ -242,7 +241,7 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     transaction_lock =
         std::shared_lock<bip::interprocess_sharable_mutex>{transaction_mutex_};
   }
-  cache_.visit_all([&](auto &x) { visitor(x.second.state); });
+  cache_.visit_all([&](auto &x) { visitor(x.second.state.get()); });
 }
 
 template <typename Application, typename Request, typename Response,
@@ -266,9 +265,7 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     }
 
     cache_.erase(moribund->state_->key);
-    // Properly cleanup shared memory allocated ListNode
-    moribund->~ListNode();
-    segment_mgr_->deallocate(moribund);
+    segment_mgr_->destroy_ptr(moribund);
   }
   // LOG(INFO) << "Evict done: " << size << std::endl;
 }

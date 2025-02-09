@@ -17,21 +17,34 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
                                    void* lite_server,
                                    LiteCoreInstance& lite_core,
                                    bool is_client_connection,
-                                   WorkerInstance* worker_ptr)
+                                   WorkerInstance* worker_ptr,
+                                   ConnectionStateInstance*
+                                       connection_state_entry_ptr)
     : base_(base),
       client_fd_(sfd),
       backend_fd_(-1),
-      request_(std::make_unique<Request>()),
-      response_(std::make_unique<Response>()),
+      request_(ShmMakeShared(
+          lite_core.shared_memory_.get_segment_manager()
+              ->template construct<Request>(bip::anonymous_instance)(
+                  lite_core.shared_memory_.get_segment_manager()),
+          lite_core.shared_memory_)),
+      response_(ShmMakeShared(
+          lite_core.shared_memory_.get_segment_manager()
+              ->template construct<Response>(bip::anonymous_instance)(
+                  lite_core.shared_memory_.get_segment_manager()),
+          lite_core.shared_memory_)),
       lite_server_(lite_server),
       lite_core_(lite_core),
       self_(std::make_shared<ConnectionInstance*>(this)),
-      log_head_(new LogEntryInstance(nullptr, nullptr, self_)),
-      cache_(*lite_core.cache_inner_ptr_, *lite_core.logger_inner_ptr_,
-             log_head_),
-      logger_(*lite_core.logger_inner_ptr_, log_head_),
-      worker_ptr_(worker_ptr) {
+      worker_ptr_(worker_ptr),
+      connection_state_entry_ptr_(connection_state_entry_ptr) {
   if (sfd) {
+    if (!connection_state_entry_ptr_ && is_client_connection) {
+      auto tcp_id = network::GetTCPID(sfd);
+      connection_state_entry_ptr_ =
+          lite_core_.connection_state_storage_ptr_->Add(tcp_id);
+    }
+
     event_set(&client_event_, sfd, event_flags, event_handler,
               static_cast<void*>(this));
     event_base_set(base, &client_event_);
@@ -51,7 +64,8 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 
   if (lite_core_.emergency_mode_) {
     std::optional<Response> greeting_msg =
-        lite_core_.app_.EmergencyConnectionEstablishHook(extra_app_info_);
+        lite_core_.app_.EmergencyConnectionEstablishHook(
+            connection_state_entry_ptr_->extra_app_info_);
     if (greeting_msg.has_value()) {
       const auto buffer = greeting_msg.value().Serialize();
       if (!network::Write(client_fd_, buffer)) {
@@ -77,7 +91,8 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   if (client_event_.ev_base) event_del(&client_event_);
   if (backend_event_.ev_base) event_del(&backend_event_);
 
-  lite_core_.dead_connection_log_heads_.push_back(log_head_);
+  lite_core_.dead_connection_log_heads_.push_back(
+      connection_state_entry_ptr_->log_head_.get());
   // LOG(INFO) << "connection closed" << std::endl;
 }
 
@@ -125,13 +140,20 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
         conn->ConnectBackend();
       }
       if (!conn->lite_core_.HandleRequest(
-              std::move(conn->request_), conn->extra_app_info_,
-              conn->pending_requests_, conn->client_fd_, conn->backend_fd_,
-              &conn->cache_, &conn->logger_, forwarded)) {
+              boost::move(conn->request_),
+              conn->connection_state_entry_ptr_->extra_app_info_,
+              conn->connection_state_entry_ptr_->pending_requests_,
+              conn->client_fd_, conn->backend_fd_,
+              &conn->connection_state_entry_ptr_->cache_,
+              &conn->connection_state_entry_ptr_->logger_, forwarded)) {
         delete conn;
         return;
       }
-      conn->request_ = std::make_unique<Request>();
+      conn->request_ = ShmMakeShared(
+          conn->lite_core_.shared_memory_.get_segment_manager()
+              ->template construct<Request>(bip::anonymous_instance)(
+                  conn->lite_core_.shared_memory_.get_segment_manager()),
+          conn->lite_core_.shared_memory_);
     } else if (result == kIndeterminate) {
       continue;
     } else if (result == kBad) {
@@ -185,13 +207,19 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     const auto result = conn->response_->Deserialize(begin, end);
     if (result == kGood) {
       if (!conn->lite_core_.HandleResponse(
-              std::move(conn->response_), conn->extra_app_info_,
-              conn->pending_requests_, conn->client_fd_, &conn->cache_,
+              boost::move(conn->response_),
+              conn->connection_state_entry_ptr_->extra_app_info_,
+              conn->connection_state_entry_ptr_->pending_requests_,
+              conn->client_fd_, &conn->connection_state_entry_ptr_->cache_,
               forwarded)) {
         delete conn;
         return;
       }
-      conn->response_ = std::make_unique<Response>();
+      conn->response_ = ShmMakeShared(
+          conn->lite_core_.shared_memory_.get_segment_manager()
+              ->template construct<Response>(bip::anonymous_instance)(
+                  conn->lite_core_.shared_memory_.get_segment_manager()),
+          conn->lite_core_.shared_memory_);
     } else if (result == kIndeterminate) {
       continue;
     } else if (result == kBad) {

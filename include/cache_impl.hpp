@@ -9,25 +9,25 @@ template <typename Application, typename Request, typename Response,
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Add(const CacheKey &key, const CacheEntry &value,
                             bool in_transaction, bool log) {
-  LogEntryInstance *dirty = nullptr;
-  CacheStateInstance *state = nullptr;
-  if (cache_inner_.emergency_mode_ && log) {
-    void *ptr = cache_inner_.segment_mgr_->allocate(sizeof(LogEntryInstance));
-    dirty = new (ptr)
-        LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
+  bip::offset_ptr<LogEntryInstance> dirty = nullptr;
+  bip::offset_ptr<CacheStateInstance> state = nullptr;
+  if (cache_inner_ptr_->emergency_mode_ && log) {
+    dirty =
+        cache_inner_ptr_->segment_mgr_->template construct<LogEntryInstance>(
+            bip::anonymous_instance)(nullptr, nullptr,
+                                     conn_head_->backend_conn_ptr);
   }
 
-  if (!cache_inner_.Add(key, value, in_transaction, dirty, state)) {
+  if (!cache_inner_ptr_->Add(key, value, in_transaction, dirty, state)) {
     if (dirty) {
-      dirty->~LogEntryInstance();
-      cache_inner_.segment_mgr_->deallocate(dirty);
+      cache_inner_ptr_->segment_mgr_->destroy_ptr(dirty.get());
     }
     return false;
   }
 
   if (dirty) {
-    dirty->state = state;
-    logger_inner_.Log(dirty, conn_head_);
+    dirty->state = state.get();
+    logger_inner_ptr_->Log(dirty.get(), conn_head_.get());
   }
   return true;
 }
@@ -37,23 +37,22 @@ template <typename Application, typename Request, typename Response,
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Get(const CacheKey &key, CacheEntry &value,
                             bool in_transaction) {
-  return cache_inner_.Get(key, value, in_transaction);
+  return cache_inner_ptr_->Get(key, value, in_transaction);
 }
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Delete(const CacheKey &key, bool in_transaction) {
-  LogEntryInstance *dirty = nullptr;
+  bip::offset_ptr<LogEntryInstance> dirty = nullptr;
 
-  if (!cache_inner_.Delete(key, in_transaction, dirty)) return false;
+  if (!cache_inner_ptr_->Delete(key, in_transaction, dirty)) return false;
 
   if (dirty) {
-    std::unique_lock<std::mutex> chr_lock(logger_inner_.chr_mutex_);
+    std::unique_lock<std::mutex> chr_lock(logger_inner_ptr_->chr_mutex_);
     dirty->Delink();
     chr_lock.unlock();
-    dirty->~LogEntryInstance();
-    cache_inner_.segment_mgr_->deallocate(dirty);
+    cache_inner_ptr_->segment_mgr_->destroy_ptr(dirty);
   }
   return true;
 }
@@ -72,28 +71,29 @@ template <typename Application, typename Request, typename Response,
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Replace(const CacheKey &key, const CacheEntry &value,
                                 bool in_transaction, bool log) {
-  LogEntryInstance *dirty = nullptr;
-  CacheStateInstance *state = nullptr;
-  if (cache_inner_.emergency_mode_ && log) {
-    void *ptr = cache_inner_.segment_mgr_->allocate(sizeof(LogEntryInstance));
-    dirty = new (ptr)
-        LogEntryInstance(nullptr, nullptr, conn_head_->backend_conn_ptr);
+  bip::offset_ptr<LogEntryInstance> dirty = nullptr;
+  bip::offset_ptr<CacheStateInstance> state = nullptr;
+  if (cache_inner_ptr_->emergency_mode_ && log) {
+    dirty =
+        cache_inner_ptr_->segment_mgr_->template construct<LogEntryInstance>(
+            bip::anonymous_instance)(nullptr, nullptr,
+                                     conn_head_->backend_conn_ptr);
   }
 
-  if (!cache_inner_.Replace(
-          key, value, in_transaction, dirty,
-          cache_inner_.emergency_mode_ ? &logger_inner_.chr_mutex_ : nullptr,
-          state)) {
+  if (!cache_inner_ptr_->Replace(key, value, in_transaction, dirty,
+                                 cache_inner_ptr_->emergency_mode_
+                                     ? &logger_inner_ptr_->chr_mutex_
+                                     : nullptr,
+                                 state)) {
     if (dirty) {
-      dirty->~LogEntryInstance();
-      cache_inner_.segment_mgr_->deallocate(dirty);
+      cache_inner_ptr_->segment_mgr_->destroy_ptr(dirty.get());
     }
     return false;
   }
 
   if (dirty) {
-    dirty->state = state;
-    logger_inner_.Log(dirty, conn_head_);
+    dirty->state = state.get();
+    logger_inner_ptr_->Log(dirty.get(), conn_head_.get());
   }
   return true;
 }
@@ -105,7 +105,7 @@ void Cache<Application, Request, Response, ConnectionInfo, CacheKey,
                                                          const CacheEntry &)>
                                           visitor,
                                       bool in_transaction) {
-  cache_inner_.ConstVisitAll(visitor, in_transaction);
+  cache_inner_ptr_->ConstVisitAll(visitor, in_transaction);
 }
 
 }  // namespace lite
