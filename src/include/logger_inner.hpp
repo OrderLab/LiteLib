@@ -24,7 +24,7 @@ class LogEntry {
   // NOTE: LogEntry is only used in the lite process, so we can use raw pointer
   // here
   CacheStateInstance *state;  // Cache::State *
-  std::shared_ptr<Request> req;
+  ShmSharedPtr<Request> req;
   std::shared_ptr<ConnectionInstance *>
       backend_conn_ptr;  // TODO: this is not needed
   LogEntry *chr_pre = nullptr,
@@ -32,7 +32,7 @@ class LogEntry {
   LogEntry *conn_pre = nullptr,
            *conn_nxt = nullptr;  // linked list per connection
 
-  LogEntry(CacheStateInstance *state, std::shared_ptr<Request> req,
+  LogEntry(CacheStateInstance *state, ShmSharedPtr<Request> req,
            std::shared_ptr<ConnectionInstance *> backend_conn_ptr)
       : state(state), req(req), backend_conn_ptr(backend_conn_ptr) {}
 

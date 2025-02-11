@@ -2,19 +2,28 @@
 
 #include <unordered_set>
 
-std::shared_ptr<Packet> Redis::abort_req_ = nullptr;
+ShmSharedPtr<Packet> Redis::abort_req_;
 
-Redis::Redis() {
-  if (abort_req_) return;
-  abort_req_ = std::make_shared<Packet>();
-  auto discard_comm = std::make_unique<RESPArray>();
-  discard_comm->value.emplace_back(std::make_unique<RESPBulkString>(
-      std::make_shared<std::string>("DISCARD")));
-  abort_req_->command = std::move(discard_comm);
+void Redis::DelayedConstructor() {
+  ShmUniquePtrWithDeleter<RESPArray, RESPTypeDeleter> discard_comm(
+      shm->get_segment_manager()->template construct<RESPArray>(
+          bip::anonymous_instance)(),
+      RESPTypeDeleter{shm->get_segment_manager()});
+  discard_comm->value.emplace_back(
+      shm->get_segment_manager()->template construct<RESPBulkString>(
+          bip::anonymous_instance)(ShmMakeShared(
+          shm->get_segment_manager()->template construct<ShmString>(
+              bip::anonymous_instance)("DISCARD", shm->get_segment_manager()),
+          *shm)),
+      RESPTypeDeleter{shm->get_segment_manager()});
+  abort_req_ =
+      ShmMakeShared(shm->get_segment_manager()->template construct<Packet>(
+                        bip::anonymous_instance)(boost::move(discard_comm)),
+                    *shm);
 }
 
-std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
-    const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
+std::pair<std::vector<ShmSharedPtr<Packet>>, bool> Redis::Match(
+    const ShmSharedPtr<Packet> &resp, ConnectionInfo &conn,
     lite::ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Packet>, bool>>
         &pending_requests) const {
   auto [req, is_not_replay] = pending_requests.pop_front();
@@ -22,12 +31,11 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
   if (opcode_resp == nullptr) {
     LOG(ERROR) << "Invalid request\n";
-    return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
-                          is_not_replay);
+    return std::make_pair(std::vector<ShmSharedPtr<Packet>>(), is_not_replay);
   }
 
   if (!is_not_replay)
-    return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
+    return std::make_pair(std::vector<ShmSharedPtr<Packet>>{req},
                           is_not_replay);
 
   auto &opcode = opcode_resp->value;
@@ -38,10 +46,9 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
 
   if (*opcode == "multi") {
     if (!is_error) conn.is_in_transaction_ = true;
-    return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
-                          is_not_replay);
+    return std::make_pair(std::vector<ShmSharedPtr<Packet>>(), is_not_replay);
   } else if (*opcode == "exec") {
-    return std::make_pair(std::vector<std::shared_ptr<Packet>>{req},
+    return std::make_pair(std::vector<ShmSharedPtr<Packet>>{req},
                           is_not_replay);
   }
   if (conn.is_in_transaction_) {
@@ -49,22 +56,21 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> Redis::Match(
       conn.transactions_.push_back(req);
     }  // TODO: do we need to abort the transaction if it's an illegal command
        // or if there are other kinds of errors here?
-    return std::make_pair(std::vector<std::shared_ptr<Packet>>(),
-                          is_not_replay);
+    return std::make_pair(std::vector<ShmSharedPtr<Packet>>(), is_not_replay);
   }
   static const std::unordered_set<std::string> valid_opcodes = {
       "set",     "get",  "ping", "incr",    "lpush", "rpush",
       "lpop",    "rpop", "sadd", "spop",    "zadd",  "zpop",
       "zpopmin", "hset", "hget", "hgetall", "hmset", "quit"};
-  if (valid_opcodes.find(*opcode) != valid_opcodes.end()) {
+  if (valid_opcodes.find(opcode->c_str()) != valid_opcodes.end()) {
     return {{req}, is_not_replay};
   }
   LOG(ERROR) << "Unknown opcode: " << *opcode << std::endl;
-  return std::make_pair(std::vector<std::shared_ptr<Packet>>(), is_not_replay);
+  return std::make_pair(std::vector<ShmSharedPtr<Packet>>(), is_not_replay);
 }
 
-void Redis::NormalUpdate(const std::shared_ptr<Packet> &resp,
-                         std::vector<std::shared_ptr<Packet>> requests,
+void Redis::NormalUpdate(const ShmSharedPtr<Packet> &resp,
+                         std::vector<ShmSharedPtr<Packet>> requests,
                          ConnectionInfo &conn, Cache *cache) {
   if (requests.empty()) return;
   if (conn.is_in_transaction_) {
@@ -104,14 +110,14 @@ void Redis::NormalUpdate(const std::shared_ptr<Packet> &resp,
   }
 }
 
-void Redis::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
+void Redis::NormalUpdateImpl(const ShmSharedPtr<Packet> &req, Cache *cache,
                              const bool in_transaction) {
-  ConnectionInfo conn;
-  HandleUpdate(req, conn, cache, NULL, NULL, in_transaction, false);
+  ConnectionInfo conn(shm->get_segment_manager());
+  HandleUpdate(req, conn, cache, NULL, false, in_transaction, false);
 }
 
-void Redis::HandleReplayResponse(const std::shared_ptr<Packet> &resp,
-                                 std::vector<std::shared_ptr<Packet>> requests,
+void Redis::HandleReplayResponse(const ShmSharedPtr<Packet> &resp,
+                                 std::vector<ShmSharedPtr<Packet>> requests,
                                  ConnectionInfo &conn, Cache *cache) {
   auto error_msg = dynamic_cast<RESPError *>(resp->command.get());
   if (error_msg) {
@@ -122,7 +128,7 @@ void Redis::HandleReplayResponse(const std::shared_ptr<Packet> &resp,
   return;
 }
 
-std::pair<Packet, bool> Redis::EmergencyServe(std::shared_ptr<Packet> req,
+std::pair<Packet, bool> Redis::EmergencyServe(ShmSharedPtr<Packet> req,
                                               ConnectionInfo &conn,
                                               Cache *cache, Logger *logger,
                                               bool flow_control) {
@@ -137,7 +143,8 @@ std::pair<Packet, bool> Redis::EmergencyServe(std::shared_ptr<Packet> req,
   std::transform(opcode->begin(), opcode->end(), opcode->begin(),
                  [](unsigned char c) { return std::tolower(c); });
 
-  RESPType *response = nullptr;
+  ShmUniquePtrWithDeleter<RESPType, RESPTypeDeleter> response(
+      nullptr, RESPTypeDeleter{shm->get_segment_manager()});
   if (conn.is_in_transaction_) {
     if (*opcode == "exec") {
       if (!logger->EraseConnectionLogs(conn.transactions_.size() + 1)) {
@@ -145,54 +152,80 @@ std::pair<Packet, bool> Redis::EmergencyServe(std::shared_ptr<Packet> req,
         logger->Log(abort_req_);
       }
 
-      auto response_array = new RESPArray;
+      auto response_array =
+          shm->get_segment_manager()->template construct<RESPArray>(
+              bip::anonymous_instance)();
       if (flow_control) {
         response_array->value.emplace_back(
-            new RESPError(std::make_shared<std::string>("ERR flow control")));
+            shm->get_segment_manager()->template construct<RESPError>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("ERR flow control",
+                                             shm->get_segment_manager()),
+                *shm)),
+            RESPTypeDeleter{shm->get_segment_manager()});
         shutdown = true;
       } else {
         auto cache_lock = cache->TransactionLock();
         for (const auto &c : conn.transactions_) {
           response_array->value.emplace_back(
-              EmergencyServeImpl(c, conn, cache, logger, false, true).first);
+              EmergencyServeImpl(c, conn, cache, logger, false, true).first,
+              RESPTypeDeleter{shm->get_segment_manager()});
         }
       }
 
       conn.is_in_transaction_ = false;
       conn.transactions_.clear();
-      response = response_array;
+      response = {response_array, RESPTypeDeleter{shm->get_segment_manager()}};
     } else {
       if (flow_control) {
-        response = new RESPError(
-            std::make_shared<std::string>("ERR flow control enabled"));
+        auto error_response =
+            shm->get_segment_manager()->template construct<RESPError>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("ERR flow control enabled",
+                                             shm->get_segment_manager()),
+                *shm));
         if (!logger->EraseConnectionLogs(conn.transactions_.size() + 1)) {
           LOG(ERROR) << "Failed to undo log\n";
           logger->Log(abort_req_);
         }
         conn.transactions_.clear();
         shutdown = true;
+        response = {error_response,
+                    RESPTypeDeleter{shm->get_segment_manager()}};
       } else {
         conn.transactions_.push_back(req);
         logger->Log(req);
-        response =
-            new RESPSimpleString(std::make_shared<std::string>("QUEUED"));
+        auto string_response =
+            shm->get_segment_manager()->template construct<RESPSimpleString>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("QUEUED",
+                                             shm->get_segment_manager()),
+                *shm));
+        response = {string_response,
+                    RESPTypeDeleter{shm->get_segment_manager()}};
       }
     }
   } else {
-    std::tie(response, shutdown) =
+    RESPType *response_ptr;
+    std::tie(response_ptr, shutdown) =
         EmergencyServeImpl(req, conn, cache, logger, flow_control);
+    response = {response_ptr, RESPTypeDeleter{shm->get_segment_manager()}};
   }
-  return {Packet(std::unique_ptr<RESPType>(response)), shutdown};
+
+  return {Packet(boost::move(response)), shutdown};
 }
 
 std::pair<RESPType *, bool> Redis::EmergencyServeImpl(
-    std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache,
+    ShmSharedPtr<Packet> req, ConnectionInfo &conn, Cache *cache,
     Logger *logger, bool flow_control, const bool in_transaction) {
   return HandleUpdate(req, conn, cache, logger, flow_control, in_transaction,
                       true);
 }
 
-std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
+std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
                                                 ConnectionInfo &conn,
                                                 Cache *cache, Logger *logger,
                                                 bool flow_control,
@@ -207,38 +240,57 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     for (const auto &c : *buffer) LOG(ERROR) << c;
     LOG(ERROR) << std::endl;
   }
-  CacheEntry entry(cache->GetSegmentManager());
+  CacheEntry entry(shm->get_segment_manager());
   if (flow_control)
-    return {new RESPError(
-                std::make_shared<std::string>("ERR flow control enabled")),
+    return {shm->get_segment_manager()->template construct<RESPError>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("ERR flow control enabled",
+                                             shm->get_segment_manager()),
+                *shm)),
             false};
   if (opcode == "set") {
     const auto key = static_cast<RESPString *>(req->GetArg(0));
     const auto value = static_cast<RESPString *>(req->GetArg(1));
     CacheKey cache_key(*(key->value),
-                       ShmAllocator<char>(cache->GetSegmentManager().get()));
+                       ShmAllocator<char>(shm->get_segment_manager()));
     entry.value = *(value->value);
     entry.type = CacheEntryType::STRING;
     if (cache->Set(cache_key, entry, in_transaction))
       if (in_emergency)
-        return {new RESPSimpleString(std::make_shared<std::string>("OK")),
-                false};
+        return {
+            shm->get_segment_manager()->template construct<RESPSimpleString>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("OK", shm->get_segment_manager()),
+                *shm)),
+            false};
       else
         return {nullptr, false};
-
-    return {new RESPError(std::make_shared<std::string>("ERR failed to set")),
+    return {shm->get_segment_manager()->template construct<RESPError>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("ERR failed to set",
+                                             shm->get_segment_manager()),
+                *shm)),
             false};
   } else if (opcode == "get") {
     if (in_emergency) {
       const auto key = static_cast<RESPString *>(req->GetArg(0));
       CacheKey cache_key(*(key->value),
-                         ShmAllocator<char>(cache->GetSegmentManager().get()));
+                         ShmAllocator<char>(shm->get_segment_manager()));
       if (cache->Get(cache_key, entry, in_transaction))
-        return {new RESPBulkString(
-                    std::make_shared<std::string>(entry.value.c_str())),
+        return {shm->get_segment_manager()->template construct<RESPBulkString>(
+                    bip::anonymous_instance)(ShmMakeShared(
+                    shm->get_segment_manager()->template construct<ShmString>(
+                        bip::anonymous_instance)(entry.value.c_str(),
+                                                 shm->get_segment_manager()),
+                    *shm)),
                 false};
       else
-        return {new RESPBulkString(nullptr), false};
+        return {shm->get_segment_manager()->template construct<RESPBulkString>(
+                    bip::anonymous_instance)(nullptr),
+                false};
     } else
       return std::make_pair(nullptr, false);
     // } else if (opcode == "hmset") {
@@ -288,31 +340,59 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
     //   return std::make_pair(nullptr, false);
   } else if (opcode == "quit") {
     if (in_emergency)
-      return {new RESPSimpleString(std::make_shared<std::string>("OK")), true};
+      return {
+          shm->get_segment_manager()->template construct<RESPSimpleString>(
+              bip::anonymous_instance)(ShmMakeShared(
+              shm->get_segment_manager()->template construct<ShmString>(
+                  bip::anonymous_instance)("OK", shm->get_segment_manager()),
+              *shm)),
+          true};
     else
       return {nullptr, true};
   } else if (opcode == "ping") {
     if (in_emergency) {
       if (req->GetArgNum() == 0)
-        return {new RESPSimpleString(std::make_shared<std::string>("PONG")),
-                false};
+        return {
+            shm->get_segment_manager()->template construct<RESPSimpleString>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("PONG",
+                                             shm->get_segment_manager()),
+                *shm)),
+            false};
       else if (req->GetArgNum() == 1) {
         const auto arg = static_cast<RESPString *>(req->GetArg(0));
-        return {new RESPBulkString(arg->value), false};
+        return {shm->get_segment_manager()->template construct<RESPBulkString>(
+                    bip::anonymous_instance)(arg->value),
+                false};
       }
     }
-    return {new RESPError(
-                std::make_shared<std::string>("ERR wrong number of arguments")),
+    return {shm->get_segment_manager()->template construct<RESPError>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("ERR wrong number of arguments",
+                                             shm->get_segment_manager()),
+                *shm)),
             false};
   } else if (opcode == "multi") {
     if (in_emergency) {
       if (flow_control)
-        return {new RESPError(
-                    std::make_shared<std::string>("ERR flow control enabled")),
+        return {shm->get_segment_manager()->template construct<RESPError>(
+                    bip::anonymous_instance)(ShmMakeShared(
+                    shm->get_segment_manager()->template construct<ShmString>(
+                        bip::anonymous_instance)("ERR flow control enabled",
+                                                 shm->get_segment_manager()),
+                    *shm)),
                 true};
       conn.is_in_transaction_ = true;
       logger->Log(req);
-      return {new RESPSimpleString(std::make_shared<std::string>("OK")), false};
+      return {
+          shm->get_segment_manager()->template construct<RESPSimpleString>(
+              bip::anonymous_instance)(ShmMakeShared(
+              shm->get_segment_manager()->template construct<ShmString>(
+                  bip::anonymous_instance)("OK", shm->get_segment_manager()),
+              *shm)),
+          false};
     }
   }
   // else if (opcode == "incr") {
@@ -544,7 +624,12 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(std::shared_ptr<Packet> req,
   // }
   LOG(ERROR) << "Unknown opcode1: " << opcode << std::endl;
   if (in_emergency)
-    return {new RESPError(std::make_shared<std::string>("ERR unknown opcode")),
+    return {shm->get_segment_manager()->template construct<RESPError>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("ERR unknown opcode",
+                                             shm->get_segment_manager()),
+                *shm)),
             false};
   return {nullptr, false};
 }

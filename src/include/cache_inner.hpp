@@ -32,7 +32,7 @@ struct CacheState {
   std::conditional_t<HasGetSize<CacheEntry>, size_t, std::false_type> size;
 
   CacheState(bip::offset_ptr<SegmentManager> segment_mgr)
-      : key(segment_mgr.get()), value(segment_mgr) {}
+      : key(segment_mgr.get()), value(segment_mgr.get()) {}
 
   using LogEntryInstance = LogEntry<Application, Request, Response,
                                     ConnectionInfo, CacheKey, CacheEntry>;

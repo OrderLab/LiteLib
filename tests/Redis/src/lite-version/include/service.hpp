@@ -10,9 +10,6 @@
 
 #include "packet.hpp"
 
-using ShmString =
-    bip::basic_string<char, std::char_traits<char>, ShmAllocator<char>>;
-
 enum class CacheEntryType { STRING };  // TODO: support more types
 // enum class CacheEntryType { STRING, LIST, SET, MAP, ZSET };
 
@@ -26,8 +23,7 @@ struct CacheEntry {
   // std::shared_ptr<std::map<std::string, std::string>> map_value = nullptr;
   // std::shared_ptr<std::map<double, std::string>> sorted_set_value = nullptr;
 
-  CacheEntry(bip::offset_ptr<SegmentManager> segment_mgr)
-      : value(segment_mgr.get()) {}
+  CacheEntry(ShmVoidAllocator allocator) : value(allocator) {}
 
   size_t GetSize() const {
     switch (type) {
@@ -46,17 +42,36 @@ struct CacheEntry {
     }
   }
 
-  std::shared_ptr<Packet> ToRequest(const std::string &key) const {
-    auto commands = std::make_unique<RESPArray>();
+  ShmSharedPtr<Packet> ToRequest(const CacheKey &key) const {
+    ShmUniquePtrWithDeleter<RESPArray, RESPTypeDeleter> commands(
+        shm->get_segment_manager()->template construct<RESPArray>(
+            bip::anonymous_instance)(),
+        RESPTypeDeleter{shm->get_segment_manager()});
 
     switch (type) {
       case CacheEntryType::STRING:
-        commands->value.push_back(std::make_unique<RESPBulkString>(
-            std::make_shared<std::string>("SET")));
-        commands->value.push_back(std::make_unique<RESPBulkString>(
-            std::make_shared<std::string>(key)));
-        commands->value.push_back(std::make_unique<RESPBulkString>(
-            std::make_shared<std::string>(value.c_str())));
+        commands->value.emplace_back(
+            shm->get_segment_manager()->template construct<RESPBulkString>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("SET", shm->get_segment_manager()),
+                *shm)),
+            RESPTypeDeleter{shm->get_segment_manager()});
+        commands->value.emplace_back(
+            shm->get_segment_manager()->template construct<RESPBulkString>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)(key, shm->get_segment_manager()),
+                *shm)),
+            RESPTypeDeleter{shm->get_segment_manager()});
+        commands->value.emplace_back(
+            shm->get_segment_manager()->template construct<RESPBulkString>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)(value.c_str(),
+                                             shm->get_segment_manager()),
+                *shm)),
+            RESPTypeDeleter{shm->get_segment_manager()});
         break;
       // case CacheEntryType::LIST:
       //   commands->value.push_back(std::make_unique<RESPBulkString>(
@@ -108,7 +123,9 @@ struct CacheEntry {
         break;
     }
 
-    return std::make_shared<Packet>(std::move(commands));
+    return ShmMakeShared(shm->get_segment_manager()->template construct<Packet>(
+                             bip::anonymous_instance)(boost::move(commands)),
+                         *shm);
   }
 
  private:
@@ -127,7 +144,9 @@ struct CacheEntry {
 
 struct ConnectionInfo {
   bool is_in_transaction_ = false;
-  std::vector<std::shared_ptr<Packet>> transactions_;
+  ShmVector<ShmSharedPtr<Packet>> transactions_;
+
+  ConnectionInfo(ShmVoidAllocator allocator) : transactions_(allocator) {}
 };
 
 class Redis {
@@ -137,22 +156,22 @@ class Redis {
       lite::Logger<Redis, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  Redis();
+  void DelayedConstructor();
 
-  std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
-      const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
+  std::pair<std::vector<ShmSharedPtr<Packet>>, bool> Match(
+      const ShmSharedPtr<Packet> &resp, ConnectionInfo &conn,
       lite::ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Packet>, bool>>
           &pending_requests) const;
 
-  void NormalUpdate(const std::shared_ptr<Packet> &resp,
-                    std::vector<std::shared_ptr<Packet>> requests,
+  void NormalUpdate(const ShmSharedPtr<Packet> &resp,
+                    std::vector<ShmSharedPtr<Packet>> requests,
                     ConnectionInfo &conn, Cache *cache);
 
-  void HandleReplayResponse(const std::shared_ptr<Packet> &resp,
-                            std::vector<std::shared_ptr<Packet>> requests,
+  void HandleReplayResponse(const ShmSharedPtr<Packet> &resp,
+                            std::vector<ShmSharedPtr<Packet>> requests,
                             ConnectionInfo &conn, Cache *cache);
 
-  std::pair<Packet, bool> EmergencyServe(std::shared_ptr<Packet> req,
+  std::pair<Packet, bool> EmergencyServe(ShmSharedPtr<Packet> req,
                                          ConnectionInfo &conn, Cache *cache,
                                          Logger *logger, bool flow_control);
 
@@ -165,18 +184,18 @@ class Redis {
   }
 
  private:
-  void NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
+  void NormalUpdateImpl(const ShmSharedPtr<Packet> &req, Cache *cache,
                         const bool in_transaction = false);
 
   std::pair<RESPType *, bool> EmergencyServeImpl(
-      std::shared_ptr<Packet> req, ConnectionInfo &conn, Cache *cache,
+      ShmSharedPtr<Packet> req, ConnectionInfo &conn, Cache *cache,
       Logger *logger, bool flow_control, const bool in_transaction = false);
 
-  std::pair<RESPType *, bool> HandleUpdate(std::shared_ptr<Packet> req,
+  std::pair<RESPType *, bool> HandleUpdate(ShmSharedPtr<Packet> req,
                                            ConnectionInfo &conn, Cache *cache,
                                            Logger *logger, bool flow_control,
                                            const bool in_transaction = false,
                                            const bool in_emergency = false);
 
-  static std::shared_ptr<Packet> abort_req_;
+  static ShmSharedPtr<Packet> abort_req_;
 };

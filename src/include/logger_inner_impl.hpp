@@ -11,8 +11,8 @@ LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
                                          sliding_window_size,
                                      bip::offset_ptr<SegmentManager>
                                          segment_mgr)
-    : chr_head_(nullptr, nullptr, nullptr),
-      chr_tail_(nullptr, nullptr, nullptr),
+    : chr_head_(nullptr, ShmSharedPtr<Request>{}, nullptr),
+      chr_tail_(nullptr, ShmSharedPtr<Request>{}, nullptr),
       inserting_rate_(sliding_window_size),
       segment_mgr_(segment_mgr) {
   chr_head_.chr_nxt = &chr_tail_;

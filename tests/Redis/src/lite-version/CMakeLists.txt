@@ -1,5 +1,19 @@
 cmake_minimum_required(VERSION 3.15)
 
+# execute_process(
+#     COMMAND which clang
+#     OUTPUT_VARIABLE CLANG_PATH
+#     OUTPUT_STRIP_TRAILING_WHITESPACE
+# )
+# execute_process(
+#     COMMAND which clang++
+#     OUTPUT_VARIABLE CLANGPP_PATH
+#     OUTPUT_STRIP_TRAILING_WHITESPACE
+# )
+
+# set(CMAKE_C_COMPILER "${CLANG_PATH}")
+# set(CMAKE_CXX_COMPILER "${CLANGPP_PATH}")
+
 project("redis-lite"
     VERSION 0.1.5
     DESCRIPTION "The lite version of Redis"
@@ -8,7 +22,7 @@ project("redis-lite"
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
 # set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb -O0 -fsanitize=address,undefined")
 # set(CMAKE_BUILD_TYPE Debug)
 

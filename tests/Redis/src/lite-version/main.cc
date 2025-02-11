@@ -17,6 +17,8 @@ void PrintHelp() {
   std::cout << "  -H <help>\tOutput this help and exit.\n";
 }
 
+SharedMemory *shm;
+
 int main(int argc, char *argv[]) {
   try {
     // size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
@@ -68,7 +70,8 @@ int main(int argc, char *argv[]) {
                      CacheEntry>
         s(thread_pool_size, cache_size, redis, backend_addr, backend_port,
           1000ms, 80000, 0.9, 2, "/tmp/lite_Redis");
-    shm = &s.shared_memory_;
+    shm = &s.lite_core_.shared_memory_;
+    redis.DelayedConstructor();
     // Run the server until stopped.
     s.Run(port);
   } catch (std::exception &e) {

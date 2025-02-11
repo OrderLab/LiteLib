@@ -14,7 +14,7 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
   if (cache_inner_ptr_->emergency_mode_ && log) {
     dirty =
         cache_inner_ptr_->segment_mgr_->template construct<LogEntryInstance>(
-            bip::anonymous_instance)(nullptr, nullptr,
+            bip::anonymous_instance)(nullptr, ShmSharedPtr<Request>{},
                                      conn_head_->backend_conn_ptr);
   }
 
@@ -76,7 +76,7 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
   if (cache_inner_ptr_->emergency_mode_ && log) {
     dirty =
         cache_inner_ptr_->segment_mgr_->template construct<LogEntryInstance>(
-            bip::anonymous_instance)(nullptr, nullptr,
+            bip::anonymous_instance)(nullptr, ShmSharedPtr<Request>{},
                                      conn_head_->backend_conn_ptr);
   }
 
