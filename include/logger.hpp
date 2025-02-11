@@ -19,7 +19,7 @@ class Logger {
          bip::offset_ptr<LogEntryInstance> conn_head)
       : logger_inner_ptr_(logger_inner_ptr), conn_head_(conn_head) {}
 
-  void Log(const std::shared_ptr<Request> &req);
+  void Log(const ShmSharedPtr<Request> &req);
 
   static bool Pop(LoggerInnerInstance &logger_inner, LogEntryInstance *&entry);
 

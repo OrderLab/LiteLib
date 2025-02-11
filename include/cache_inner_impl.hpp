@@ -51,14 +51,14 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   bip::offset_ptr<ListNode> lru_node;
-#define insert_entry(entry)                                     \
-  new_state = entry->state;                                     \
-  lru_node = entry->lru_node;                                   \
-  if (!cache_.insert(std::make_pair(key, std::move(*entry)))) { \
-    entry->~MapEntry();                                         \
-    segment_mgr_->destroy_ptr(entry);                           \
-    return false;                                               \
-  }                                                             \
+#define insert_entry(entry)                                       \
+  new_state = entry->state;                                       \
+  lru_node = entry->lru_node;                                     \
+  if (!cache_.insert(std::make_pair(key, boost::move(*entry)))) { \
+    entry->~MapEntry();                                           \
+    segment_mgr_->destroy_ptr(entry);                             \
+    return false;                                                 \
+  }                                                               \
   segment_mgr_->destroy_ptr(entry)
 
   if constexpr (HasGetSize<CacheEntry>) {

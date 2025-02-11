@@ -131,10 +131,10 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       }
     }
     // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
-    app_.NormalUpdate(resp, std::move(related_stateful_request), conn_info,
+    app_.NormalUpdate(resp, boost::move(related_stateful_request), conn_info,
                       cache);
   } else {
-    app_.HandleReplayResponse(resp, std::move(related_stateful_request),
+    app_.HandleReplayResponse(resp, boost::move(related_stateful_request),
                               conn_info, cache);
   }
 
@@ -185,13 +185,14 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   barrier_.arrive_and_wait();  // unblock worker threads
   if (!crash_recover_) {
     // add all cache nodes to the log
-    crash_conn_head_ = new LogEntryInstance(
-        nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
+    crash_conn_head_ =
+        new LogEntryInstance(nullptr, ShmSharedPtr<Request>{},
+                             std::shared_ptr<ConnectionInstance *>());
     cache_inner_ptr_->VisitAllState(
         [&](CacheStateInstance *state) {
           if (!state->dirty_node) {
             LogEntryInstance *dirty = new LogEntryInstance(
-                state, nullptr, crash_conn_head_->backend_conn_ptr);
+                state, {}, crash_conn_head_->backend_conn_ptr);
             logger_inner_ptr_->Log(dirty, crash_conn_head_);
             state->dirty_node = dirty;
           }

@@ -14,7 +14,8 @@ ConnectionState<Application, Request, Response, ConnectionInfo, CacheKey,
     : segment_mgr_(allocator.get_segment_manager()),
       log_head_(
           segment_mgr_->construct<LogEntryInstance>(bip::anonymous_instance)(
-              nullptr, nullptr, nullptr)),  // TODO: use true backend_conn here
+              nullptr, ShmSharedPtr<Request>{},
+              nullptr)),  // TODO: use true backend_conn here
       cache_(cache_inner_ptr, logger_inner_ptr, log_head_),
       logger_(logger_inner_ptr, log_head_),
       extra_app_info_(allocator),
@@ -62,7 +63,7 @@ ConnectionStateStorage<Application, Request, Response, ConnectionInfo, CacheKey,
           cache_inner_ptr_, logger_inner_ptr_, segment_mgr_.get());
   ConnectionStateEntry* entry = segment_mgr_->construct<ConnectionStateEntry>(
       bip::anonymous_instance)(state, segment_mgr_.get());
-  state_map_.insert(std::make_pair(GetHash(tcp_id), std::move(*entry)));
+  state_map_.insert(std::make_pair(GetHash(tcp_id), boost::move(*entry)));
   segment_mgr_->destroy_ptr(entry);
   return state;
 }

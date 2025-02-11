@@ -33,9 +33,11 @@ using ShmSharedPtr =
     typename bip::managed_shared_ptr<T, bip::managed_shared_memory>::
         type;  // TODO(test): if full crash, will the ref count be correct?
 #define ShmMakeShared(constructed_object, shm) \
-  bip::make_managed_shared_ptr(constructed_object, shm)
+  bip::make_managed_shared_ptr((constructed_object), (shm))
 template <class T>
 using ShmUniquePtr =
     typename bip::managed_unique_ptr<T, bip::managed_shared_memory>::type;
 #define ShmMakeUnique(constructed_object, shm) \
-  bip::make_managed_unique_ptr(constructed_object, shm)
+  bip::make_managed_unique_ptr((constructed_object), (shm))
+template <class T, class Deleter>
+using ShmUniquePtrWithDeleter = typename bip::unique_ptr<T, Deleter>;

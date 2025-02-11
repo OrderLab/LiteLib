@@ -7,7 +7,7 @@ namespace lite {
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Logger<Application, Request, Response, ConnectionInfo, CacheKey,
-            CacheEntry>::Log(const std::shared_ptr<Request> &req) {
+            CacheEntry>::Log(const ShmSharedPtr<Request> &req) {
   LogEntryInstance *entry =
       logger_inner_ptr_->segment_mgr_->template construct<LogEntryInstance>(
           bip::anonymous_instance)(nullptr, req, conn_head_->backend_conn_ptr);

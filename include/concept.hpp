@@ -23,7 +23,7 @@ concept IsCacheKey = requires(CacheKey key, ShmVoidAllocator allocator) {
 template <typename Request, typename CacheKey, typename CacheEntry>
 concept IsCacheEntry =
     requires(CacheEntry entry, CacheKey key, ShmVoidAllocator allocator) {
-      { entry.ToRequest(key) } -> std::convertible_to<std::shared_ptr<Request>>;
+      { entry.ToRequest(key) } -> std::convertible_to<ShmSharedPtr<Request>>;
       {
         CacheEntry(allocator)
       };  // It must be entirely self-contained within the shared memory
