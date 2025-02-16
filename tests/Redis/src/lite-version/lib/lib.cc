@@ -4,13 +4,10 @@
 #include "service.hpp"
 
 extern "C" {
-__attribute__((visibility("default"))) int LiteInit(
-    char *argv_0, int number_of_workers, long long shared_memory_size,
-    long long max_item_count, long long sliding_window_size_in_ms) {
+__attribute__((visibility("default"))) int LiteInit(char *argv_0) {
   auto ret =
       lite::Init<Redis, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>(
-          argv_0, number_of_workers, shared_memory_size, max_item_count,
-          sliding_window_size_in_ms);
+          argv_0, 1, 1024 * 1024 * 1024, 1024 * 1024 * 1024, 1000ms);
   shm = &static_cast<lite::EmbeddedServer<Redis, Packet, Packet, ConnectionInfo,
                                           CacheKey, CacheEntry> *>(
              lite::embedded_server_void_ptr)

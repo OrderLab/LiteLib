@@ -177,7 +177,7 @@ index 41af67f42..68f7f039b 100644
      if (c->original_argv) return;
      c->original_argc = c->argc;
 diff --git a/src/server.c b/src/server.c
-index 1a7bf2700..cf23c9348 100644
+index 1a7bf2700..716fa72f1 100644
 --- a/src/server.c
 +++ b/src/server.c
 @@ -43,6 +43,9 @@
@@ -210,7 +210,7 @@ index 1a7bf2700..cf23c9348 100644
      }
  
 +    if (!server.sentinel_mode) {
-+        LiteInit(argv[0], 1, 128 * 1024 * 1024, 16384, 1000);
++        LiteInit(argv[0]);
 +    }
      initServer();
      if (background || server.pidfile) createPidFile();
