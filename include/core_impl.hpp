@@ -68,7 +68,7 @@ template <typename Application, typename Request, typename Response,
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
     HandleRequest(ShmSharedPtr<Request> req, ConnectionInfo &conn_info,
-                  ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>>
+                  ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
                       &pending_requests,
                   const evutil_socket_t client_fd,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
@@ -120,7 +120,7 @@ template <typename Application, typename Request, typename Response,
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::
     HandleResponse(ShmSharedPtr<Response> resp, ConnectionInfo &conn_info,
-                   ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>>
+                   ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
                        &pending_requests,
                    const evutil_socket_t client_fd, CacheInstance *cache,
                    const bool forwarded) {

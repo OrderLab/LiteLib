@@ -50,7 +50,7 @@ template <typename Application, typename Request, typename Response,
 concept IsApplication = requires(
     Application app, ShmSharedPtr<Request> req, ShmSharedPtr<Response> resp,
     ConnectionInfo conn_info,
-    ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>>
+    ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
         pending_requests,  // true: request forward from client, false:
                            // request generated during replay
     std::vector<ShmSharedPtr<Request>> related_requests,

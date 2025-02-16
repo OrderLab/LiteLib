@@ -60,14 +60,14 @@ class LiteCore : public Daemon {
            const size_t n_replay_threads, bool crash_recover = true);
 
   bool HandleRequest(ShmSharedPtr<Request> req, ConnectionInfo &conn_info,
-                     ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>>
+                     ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
                          &pending_requests,
                      const evutil_socket_t client_fd,
                      const evutil_socket_t backend_fd, CacheInstance *cache,
                      LoggerInstance *logger, const bool forwarded);
 
   bool HandleResponse(ShmSharedPtr<Response> resp, ConnectionInfo &conn_info,
-                      ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>>
+                      ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
                           &pending_requests,
                       const evutil_socket_t client_fd, CacheInstance *cache,
                       const bool forwarded);

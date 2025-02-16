@@ -160,7 +160,7 @@ class CacheInner {
 
   size_t max_size_, size;
   bip::interprocess_sharable_mutex transaction_mutex_;
-  using MapAllocator = ShmAllocator<bip::pair<const CacheKey, MapEntry>>;
+  using MapAllocator = ShmAllocator<std::pair<const CacheKey, MapEntry>>;
   boost::unordered::concurrent_flat_map<CacheKey, MapEntry,
                                         boost::hash<CacheKey>,
                                         std::equal_to<CacheKey>, MapAllocator>

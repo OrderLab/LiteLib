@@ -12,10 +12,10 @@ ConnectionState<Application, Request, Response, ConnectionInfo, CacheKey,
                     bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr,
                     ShmVoidAllocator allocator)
     : segment_mgr_(allocator.get_segment_manager()),
-      log_head_(
-          segment_mgr_->construct<LogEntryInstance>(bip::anonymous_instance)(
-              nullptr, ShmSharedPtr<Request>{},
-              nullptr)),  // TODO: use true backend_conn here
+      log_head_(segment_mgr_->template construct<LogEntryInstance>(
+          bip::anonymous_instance)(
+          nullptr, ShmSharedPtr<Request>{},
+          nullptr)),  // TODO: use true backend_conn here
       cache_(cache_inner_ptr, logger_inner_ptr, log_head_),
       logger_(logger_inner_ptr, log_head_),
       extra_app_info_(allocator),
@@ -47,12 +47,15 @@ typename ConnectionStateStorage<Application, Request, Response, ConnectionInfo,
 ConnectionStateStorage<Application, Request, Response, ConnectionInfo, CacheKey,
                        CacheEntry>::Add(const network::TCPID& tcp_id) {
   // network::TCPID* shared_tcp_id =
-  //     segment_mgr_->construct<network::TCPID>(bip::anonymous_instance)(tcp_id);
+  //     segment_mgr_->template
+  //     construct<network::TCPID>(bip::anonymous_instance)(tcp_id);
   ConnectionStateInstance* state =
-      segment_mgr_->construct<ConnectionStateInstance>(bip::anonymous_instance)(
-          cache_inner_ptr_, logger_inner_ptr_, segment_mgr_.get());
-  ConnectionStateEntry* entry = segment_mgr_->construct<ConnectionStateEntry>(
-      bip::anonymous_instance)(state, segment_mgr_.get());
+      segment_mgr_->template construct<ConnectionStateInstance>(
+          bip::anonymous_instance)(cache_inner_ptr_, logger_inner_ptr_,
+                                   segment_mgr_.get());
+  ConnectionStateEntry* entry =
+      segment_mgr_->template construct<ConnectionStateEntry>(
+          bip::anonymous_instance)(state, segment_mgr_.get());
   state_map_.insert(std::make_pair(tcp_id, boost::move(*entry)));
   segment_mgr_->destroy_ptr(entry);
   return state;

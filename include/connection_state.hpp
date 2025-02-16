@@ -37,7 +37,7 @@ class ConnectionState {
   LoggerInstance logger_;
 
   /// The pending requests
-  ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Request>, bool>> pending_requests_;
+  ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>> pending_requests_;
 
   ConnectionInfo extra_app_info_;
 };
@@ -96,7 +96,7 @@ class ConnectionStateStorage {
   bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr_;
 
   using MapAllocator =
-      ShmAllocator<bip::pair<const network::TCPID, ConnectionStateEntry>>;
+      ShmAllocator<std::pair<const network::TCPID, ConnectionStateEntry>>;
   boost::concurrent_flat_map<network::TCPID, ConnectionStateEntry,
                              boost::hash<network::TCPID>,
                              std::equal_to<network::TCPID>, MapAllocator>
