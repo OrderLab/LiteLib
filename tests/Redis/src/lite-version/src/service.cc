@@ -26,7 +26,7 @@ void Redis::DelayedConstructor() {
 
 std::pair<std::vector<ShmSharedPtr<Packet>>, bool> Redis::Match(
     const ShmSharedPtr<Packet> &resp, ConnectionInfo &conn,
-    lite::ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Packet>, bool>>
+    lite::ShmThreadSafeQueue<std::pair<ShmSharedPtr<Packet>, bool>>
         &pending_requests) const {
   auto [req, is_not_replay] = pending_requests.pop_front();
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
@@ -252,8 +252,8 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
                 *shm)),
             false};
   if (opcode == "set") {
-    const auto key = static_cast<RESPString *>(req->GetArg(0));
-    const auto value = static_cast<RESPString *>(req->GetArg(1));
+    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+    const auto value = dynamic_cast<RESPString *>(req->GetArg(1));
     CacheKey cache_key(*(key->value),
                        ShmAllocator<char>(shm->get_segment_manager()));
     entry.value = *(value->value);
@@ -278,7 +278,7 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
             false};
   } else if (opcode == "get") {
     if (in_emergency) {
-      const auto key = static_cast<RESPString *>(req->GetArg(0));
+      const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
       CacheKey cache_key(*(key->value),
                          ShmAllocator<char>(shm->get_segment_manager()));
       if (cache->Get(cache_key, entry, in_transaction))
@@ -295,51 +295,73 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
                 false};
     } else
       return std::make_pair(nullptr, false);
-    // } else if (opcode == "hmset") {
-    //   const auto key = static_cast<RESPString *>(req->GetArg(0));
-    //   auto map = std::make_shared<std::map<std::string, std::string>>();
-    //   if (cache->Get(*(key->value), entry, in_transaction)) {
-    //     map = entry.map_value
-    //               ? entry.map_value
-    //               : std::make_shared<std::map<std::string, std::string>>();
-    //   }
-    //   for (size_t i = 1; i < req->GetArgNum(); i += 2) {
-    //     const auto field = static_cast<RESPString *>(req->GetArg(i));
-    //     const auto value = static_cast<RESPString *>(req->GetArg(i + 1));
-    //     (*map)[*field->value] = *value->value;
-    //   }
-    //   entry.type = CacheEntryType::MAP;
-    //   entry.map_value = map;
-    //   if (cache->Set(*(key->value), entry, in_transaction))
-    //     if (in_emergency)
-    //       return {new RESPSimpleString(std::make_shared<std::string>("OK")),
-    //               false};
-    //     else
-    //       return {nullptr, false};
-    //   return {new RESPError(std::make_shared<std::string>("ERR failed to
-    //   set")),
-    //           false};
-    // } else if (opcode == "hgetall") {
-    //   if (in_emergency) {
-    //     const auto key = static_cast<RESPString *>(req->GetArg(0));
-    //     if (cache->Get(*(key->value), entry, in_transaction)) {
-    //       if (entry.map_value) {
-    //         auto result = std::make_shared<
-    //             std::map<std::unique_ptr<RESPType>,
-    //             std::unique_ptr<RESPType>>>();
-    //         for (const auto &pair : *entry.map_value) {
-    //           result->insert(std::make_pair(
-    //               std::make_unique<RESPSimpleString>(
-    //                   std::make_shared<std::string>(pair.first)),
-    //               std::make_unique<RESPSimpleString>(
-    //                   std::make_shared<std::string>(pair.second))));
-    //         }
-    //         return {new RESPMap(result), false};
-    //       }
-    //     }
-    //     return {new RESPMap(), false};
-    //   }
-    //   return std::make_pair(nullptr, false);
+  } else if (opcode == "hmset") {
+    const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+    auto map =
+        ShmSharedPtr<MapType>(nullptr, shm->get_segment_manager(),
+                              ShmDeleter<MapType>(shm->get_segment_manager()));
+    if (cache->Get(*(key->value), entry, in_transaction)) {
+      map = entry.map_value;
+    } else {
+      map = ShmMakeShared(
+          shm->get_segment_manager()->template construct<MapType>(
+              bip::anonymous_instance)(shm->get_segment_manager()),
+          *shm);
+    }
+    for (size_t i = 1; i < req->GetArgNum(); i += 2) {
+      const auto field = dynamic_cast<RESPString *>(req->GetArg(i));
+      const auto value = dynamic_cast<RESPString *>(req->GetArg(i + 1));
+      auto new_value = ShmUniquePtrWithDeleter<RESPType, RESPTypeDeleter>{
+          shm->get_segment_manager()->template construct<RESPString>(
+              bip::anonymous_instance)(ShmMakeShared(
+              shm->get_segment_manager()->template construct<ShmString>(
+                  bip::anonymous_instance)(*(value->value),
+                                           shm->get_segment_manager()),
+              *shm)),  // TODO: I have to copy it as shared_ptr can't be
+                       // converted to unique_ptr
+          RESPTypeDeleter{shm->get_segment_manager()}};
+      auto it = map->find(*field->value);
+      if (it != map->end()) {
+        it->second.reset(new_value.release());
+      } else {
+        map->insert(std::make_pair(*field->value, boost::move(new_value)));
+      }
+    }
+    entry.type = CacheEntryType::MAP;
+    entry.map_value = map;
+    if (cache->Set(*(key->value), entry, in_transaction))
+      if (in_emergency)
+        return {
+            shm->get_segment_manager()->template construct<RESPSimpleString>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("OK", shm->get_segment_manager()),
+                *shm)),
+            false};
+      else
+        return {nullptr, false};
+    return {shm->get_segment_manager()->template construct<RESPError>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("ERR failed to set",
+                                             shm->get_segment_manager()),
+                *shm)),
+            false};
+  } else if (opcode == "hgetall") {
+    if (in_emergency) {
+      const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+      if (cache->Get(*(key->value), entry, in_transaction)) {
+        if (entry.map_value) {
+          return {shm->get_segment_manager()->template construct<RESPMap>(
+                      bip::anonymous_instance)(entry.map_value),
+                  false};
+        }
+      }
+      return {shm->get_segment_manager()->template construct<RESPMap>(
+                  bip::anonymous_instance)(nullptr),
+              false};
+    }
+    return std::make_pair(nullptr, false);
   } else if (opcode == "quit") {
     if (in_emergency)
       return {
@@ -363,7 +385,7 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
                 *shm)),
             false};
       else if (req->GetArgNum() == 1) {
-        const auto arg = static_cast<RESPString *>(req->GetArg(0));
+        const auto arg = dynamic_cast<RESPString *>(req->GetArg(0));
         return {shm->get_segment_manager()->template construct<RESPBulkString>(
                     bip::anonymous_instance)(arg->value),
                 false};
@@ -398,7 +420,7 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
     }
   }
   // else if (opcode == "incr") {
-  //   const auto key = static_cast<RESPString *>(req->GetArg(0));
+  //   const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
   //   if (cache->Get(*(key->value), entry, in_transaction))
   //     *entry.value = std::to_string(std::stoll(*entry.value) + 1);
   //   else
@@ -407,9 +429,9 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //   if (cache->Set(*(key->value), entry, in_transaction))
   //     return {new RESPInteger(entry.value), false};
   // } else if (opcode == "hset") {
-  //   const auto key = static_cast<RESPString *>(req->GetArg(0));
-  //   const auto field = static_cast<RESPString *>(req->GetArg(1));
-  //   const auto value = static_cast<RESPString *>(req->GetArg(2));
+  //   const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+  //   const auto field = dynamic_cast<RESPString *>(req->GetArg(1));
+  //   const auto value = dynamic_cast<RESPString *>(req->GetArg(2));
   //   if (cache->Get(*(key->value), entry, in_transaction)) {
   //     auto map = entry.map_value
   //                    ? entry.map_value
@@ -431,8 +453,8 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //           false};
   // } else if (opcode == "hget") {
   //   if (in_emergency) {
-  //     const auto key = static_cast<RESPString *>(req->GetArg(0));
-  //     const auto field = static_cast<RESPString *>(req->GetArg(1));
+  //     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+  //     const auto field = dynamic_cast<RESPString *>(req->GetArg(1));
   //     if (cache->Get(*(key->value), entry, in_transaction)) {
   //       if (entry.map_value) {
   //         auto it = entry.map_value->find(*field->value);
@@ -446,18 +468,18 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //     return {new RESPBulkString(nullptr), false};
   //   }
   // } else if (opcode == "lpush") {
-  //   const auto key = static_cast<RESPString *>(req->GetArg(0));
+  //   const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
   //   auto list = std::make_shared<std::list<std::string>>();
   //   if (cache->Get(*(key->value), entry, in_transaction)) {
   //     if (entry.list_value)
   //       list = entry.list_value;
   //     for (size_t i = 1; i < req->GetArgNum(); i++) {
-  //       const auto value = static_cast<RESPString *>(req->GetArg(i));
+  //       const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
   //       list->push_front(*value->value);
   //     }
   //   } else {
   //     for (size_t i = 1; i < req->GetArgNum(); i++) {
-  //       const auto value = static_cast<RESPString *>(req->GetArg(i));
+  //       const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
   //       list->push_front(*value->value);
   //     }
   //   }
@@ -468,18 +490,18 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //                 std::make_shared<std::string>(std::to_string(list->size()))),
   //             false};
   // } else if (opcode == "rpush") {
-  //   const auto key = static_cast<RESPString *>(req->GetArg(0));
+  //   const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
   //   auto list = std::make_shared<std::list<std::string>>();
   //   if (cache->Get(*(key->value), entry, in_transaction)) {
   //     if (entry.list_value)
   //       list = entry.list_value;
   //     for (size_t i = 1; i < req->GetArgNum(); i++) {
-  //       const auto value = static_cast<RESPString *>(req->GetArg(i));
+  //       const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
   //       list->push_back(*value->value);
   //     }
   //   } else {
   //     for (size_t i = 1; i < req->GetArgNum(); i++) {
-  //       const auto value = static_cast<RESPString *>(req->GetArg(i));
+  //       const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
   //       list->push_back(*value->value);
   //     }
   //   }
@@ -490,7 +512,7 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //                 std::make_shared<std::string>(std::to_string(list->size()))),
   //             false};
   // } else if (opcode == "lpop") {
-  //   const auto key = static_cast<RESPString *>(req->GetArg(0));
+  //   const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
   //   auto list = std::make_shared<std::list<std::string>>();
   //   if (cache->Get(*(key->value), entry, in_transaction)) {
   //     if (entry.list_value != nullptr)
@@ -508,7 +530,7 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //   }
   //   return {new RESPBulkString(nullptr), false};
   // } else if (opcode == "rpop") {
-  //   const auto key = static_cast<RESPString *>(req->GetArg(0));
+  //   const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
   //   auto list = std::make_shared<std::list<std::string>>();
   //   if (cache->Get(*(key->value), entry, in_transaction)) {
   //     if (entry.list_value != nullptr)
@@ -526,18 +548,18 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //   }
   //   return {new RESPBulkString(nullptr), false};
   // } else if (opcode == "sadd") {
-  //   const auto key = static_cast<RESPString *>(req->GetArg(0));
+  //   const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
   //   auto set = std::make_shared<std::set<std::string>>();
   //   if (cache->Get(*(key->value), entry, in_transaction)) {
   //     if (entry.set_value != nullptr)
   //       set = entry.set_value;
   //     for (size_t i = 1; i < req->GetArgNum(); i++) {
-  //       const auto value = static_cast<RESPString *>(req->GetArg(i));
+  //       const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
   //       set->insert(*value->value);
   //     }
   //   } else {
   //     for (size_t i = 1; i < req->GetArgNum(); i++) {
-  //       const auto value = static_cast<RESPString *>(req->GetArg(i));
+  //       const auto value = dynamic_cast<RESPString *>(req->GetArg(i));
   //       set->insert(*value->value);
   //     }
   //     entry.set_value = set;
@@ -550,7 +572,7 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //           false};
   // } else if (opcode == "spop") {
   //   if (in_emergency) {
-  //     const auto key = static_cast<RESPString *>(req->GetArg(0));
+  //     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
   //     auto set = std::make_shared<std::set<std::string>>();
   //     if (cache->Get(*(key->value), entry, in_transaction)) {
   //       if (entry.set_value != nullptr)
@@ -573,14 +595,14 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //   // TODO: update cache according to response of spop in normal mode
   //   return {new RESPBulkString(nullptr), false};
   // } else if (opcode == "zadd") {
-  //   const auto key = static_cast<RESPString *>(req->GetArg(0));
+  //   const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
   //   if (cache->Get(*(key->value), entry, in_transaction)) {
   //     if (entry.sorted_set_value == nullptr)
   //       entry.sorted_set_value =
   //           std::make_shared<std::map<double, std::string>>();
   //     for (size_t i = 1; i < req->GetArgNum(); i += 2) {
-  //       const auto score = static_cast<RESPString *>(req->GetArg(i));
-  //       const auto member = static_cast<RESPString *>(req->GetArg(i + 1));
+  //       const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
+  //       const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
   //       if (member == nullptr || score == nullptr)
   //         return {new RESPError(std::make_shared<std::string>(
   //                     "ERR wrong type of arguments")),
@@ -593,8 +615,8 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //     entry.sorted_set_value =
   //         std::make_shared<std::map<double, std::string>>();
   //     for (size_t i = 1; i < req->GetArgNum(); i += 2) {
-  //       const auto score = static_cast<RESPString *>(req->GetArg(i));
-  //       const auto member = static_cast<RESPString *>(req->GetArg(i + 1));
+  //       const auto score = dynamic_cast<RESPString *>(req->GetArg(i));
+  //       const auto member = dynamic_cast<RESPString *>(req->GetArg(i + 1));
   //       entry.sorted_set_value->insert(
   //           std::make_pair(std::stod(*score->value), *member->value));
   //     }
@@ -605,7 +627,7 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
   //   set")),
   //           false};
   // } else if (opcode == "zpopmin") {
-  //   const auto key = static_cast<RESPString *>(req->GetArg(0));
+  //   const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
   //   auto zset = std::make_shared<std::map<double, std::string>>();
   //   if (cache->Get(*(key->value), entry, in_transaction)) {
   //     if (entry.sorted_set_value != nullptr)
@@ -678,22 +700,49 @@ int Redis::EmbeddedNormalUpdate(void *request, ConnectionInfo &conn,
       LOG(ERROR) << "Failed to set key: " << cache_key << std::endl;
     }
     return 0;
-    // } else if (embedded_request->type == EmbeddedRequestType::kHset) {
-    //   char *key = static_cast<char *>(embedded_request->argv[1]->ptr);
+  } else if (embedded_request->type == EmbeddedRequestType::kHset) {
+    char *key = static_cast<char *>(embedded_request->argv[1]->ptr);
+    ShmString shm_key(key, shm->get_segment_manager());
+    CacheKey cache_key(shm_key, ShmAllocator<char>(shm->get_segment_manager()));
+    CacheEntry cache_entry(shm->get_segment_manager());
 
-    //   CacheKey cache_key(shm_key,
-    //                       ShmAllocator<char>(shm->get_segment_manager()));
-    //   CacheEntry cache_entry(shm->get_segment_manager());
-    //   if (!cache->Get(cache_key, cache_entry)) {
-    //     auto map =
+    auto map =
+        ShmSharedPtr<MapType>(nullptr, shm->get_segment_manager(),
+                              ShmDeleter<MapType>(shm->get_segment_manager()));
+    if (cache->Get(cache_key, cache_entry)) {
+      map = cache_entry.map_value;
+    } else {
+      map = ShmMakeShared(
+          shm->get_segment_manager()->template construct<MapType>(
+              bip::anonymous_instance)(shm->get_segment_manager()),
+          *shm);
+    }
+    for (size_t i = 2; i < embedded_request->argc; i += 2) {
+      char *field = static_cast<char *>(embedded_request->argv[i]->ptr);
+      char *value = static_cast<char *>(embedded_request->argv[i + 1]->ptr);
+      ShmString shm_key(field, shm->get_segment_manager());
+      auto new_value = ShmUniquePtrWithDeleter<RESPType, RESPTypeDeleter>{
+          shm->get_segment_manager()->template construct<RESPString>(
+              bip::anonymous_instance)(ShmMakeShared(
+              shm->get_segment_manager()->template construct<ShmString>(
+                  bip::anonymous_instance)(value, shm->get_segment_manager()),
+              *shm)),  // TODO: I have to copy it as shared_ptr can't be
+                       // converted to unique_ptr
+          RESPTypeDeleter{shm->get_segment_manager()}};
+      auto it = map->find(shm_key);
+      if (it != map->end()) {
+        it->second.reset(new_value.release());
+      } else {
+        map->insert(std::make_pair(shm_key, boost::move(new_value)));
+      }
+    }
+    cache_entry.type = CacheEntryType::MAP;
+    cache_entry.map_value = map;
 
-    //   for (int i = 2; i < embedded_request->argc; i += 2) {
-    //     char *field = static_cast<char *>(embedded_request->argv[i]->ptr);
-    //     char *value = static_cast<char *>(embedded_request->argv[i +
-    //     1]->ptr); ShmString shm_key(field, shm->get_segment_manager());
-    //     ShmString shm_value(value, shm->get_segment_manager());
-    //     map->insert(std::make_pair(shm_key, shm_value));
-    //   }
+    if (!cache->Set(cache_key, cache_entry)) {
+      LOG(ERROR) << "Failed to set key: " << cache_key << std::endl;
+    }
+    return 0;
   }
 
   LOG(ERROR) << "Unknown request type: " << int(embedded_request->type)

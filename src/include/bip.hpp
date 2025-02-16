@@ -28,7 +28,7 @@ template <class T>
 using ShmVector = bip::vector<T, ShmAllocator<T>>;
 template <class Key, class Value>
 using ShmMap = bip::map<Key, Value, std::less<Key>,
-                        ShmAllocator<bip::pair<const Key, Value>>>;
+                        ShmAllocator<std::pair<const Key, Value>>>;
 template <class T>
 using ShmSet = bip::set<T, std::less<T>, ShmAllocator<T>>;
 template <typename T>

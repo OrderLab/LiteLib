@@ -18,7 +18,7 @@ struct RESPType {
     LOG(ERROR) << "RESPType::Destructor" << std::endl;
     seg_mgr->destroy_ptr(this);
   }
-  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) {};
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) const {};
 };
 
 class RESPTypeDeleter {
@@ -58,7 +58,7 @@ struct RESPSimpleString : public RESPString {
                    ShmVoidAllocator allocator = shm->get_segment_manager())
       : RESPString(value, allocator) {}
 
-  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) const override;
   virtual void Destructor(SegmentManager *seg_mgr) override {
     seg_mgr->destroy_ptr(this);
   }
@@ -74,7 +74,7 @@ struct RESPError : public RESPString {
     seg_mgr->destroy_ptr(this);
   }
 
-  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) const override;
 };
 struct RESPBulkString : public RESPString {
   RESPBulkString(ShmVoidAllocator allocator = shm->get_segment_manager())
@@ -87,7 +87,7 @@ struct RESPBulkString : public RESPString {
     seg_mgr->destroy_ptr(this);
   }
 
-  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) const override;
 };
 
 struct RESPInteger : public RESPType {
@@ -109,7 +109,7 @@ struct RESPInteger : public RESPType {
     seg_mgr->destroy_ptr(this);
   }
 
-  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) const override;
 };
 
 struct RESPArray : public RESPType {
@@ -122,7 +122,7 @@ struct RESPArray : public RESPType {
     seg_mgr->destroy_ptr(this);
   }
 
-  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) const override;
 };
 
 // struct RESPNull : public RESPType {
@@ -135,19 +135,27 @@ struct RESPArray : public RESPType {
 //   virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
 // };
 
-// struct RESPMap : public RESPType {
-//   ShmSharedPtr<ShmMap<ShmUniquePtr<RESPType>, ShmUniquePtr<RESPType>>> value;
+using MapType =
+    ShmMap<ShmString, ShmUniquePtrWithDeleter<RESPType, RESPTypeDeleter>>;
+struct RESPMap : public RESPType {
+  ShmSharedPtr<MapType> value;
 
-//   RESPMap() = default;
-//   RESPMap(
-//       const ShmSharedPtr<ShmMap<ShmUniquePtr<RESPType>,
-//       ShmUniquePtr<RESPType>>>
-//           &value)
-//       : value(value) {}
-//   virtual ~RESPMap() {};
-//   virtual void Destructor(SegmentManager* seg_mgr) override {
-//   virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) override;
-// };
+  RESPMap(ShmVoidAllocator allocator = shm->get_segment_manager())
+      : RESPType(allocator) {
+    MapType *map = allocator.get_segment_manager()->template construct<MapType>(
+        bip::anonymous_instance)(allocator);
+    value = ShmMakeShared(map, *allocator.get_segment_manager());
+  }
+
+  RESPMap(const ShmSharedPtr<MapType> &value,
+          ShmVoidAllocator allocator = shm->get_segment_manager())
+      : RESPType(allocator), value(value) {}
+  virtual ~RESPMap() {};
+  virtual void Destructor(SegmentManager *seg_mgr) override {
+    seg_mgr->destroy_ptr(this);
+  }
+  virtual void AppendToBuffer(ShmVector<uint8_t> &buffer) const override;
+};
 
 // struct RESPSet : public RESPType {
 //   ShmSharedPtr<ShmSet<ShmUniquePtr<RESPType>>> value;
@@ -208,7 +216,7 @@ struct Packet {
   Packet(ShmVoidAllocator allocator = shm->get_segment_manager())
       : command(nullptr, RESPTypeDeleter{allocator.get_segment_manager()}),
         parser(ShmMakeShared(
-            allocator.get_segment_manager()->construct<RESPParser>(
+            allocator.get_segment_manager()->template construct<RESPParser>(
                 bip::anonymous_instance)(allocator),
             *allocator.get_segment_manager())) {}
 
@@ -225,7 +233,7 @@ struct Packet {
 
   ShmSharedPtr<ShmVector<uint8_t>> Serialize() const {
     ShmVector<uint8_t> *buffer =
-        shm->get_segment_manager()->construct<ShmVector<uint8_t>>(
+        shm->get_segment_manager()->template construct<ShmVector<uint8_t>>(
             bip::anonymous_instance)(shm->get_segment_manager());
     command->AppendToBuffer(*buffer);
     return ShmMakeShared(buffer, *shm);

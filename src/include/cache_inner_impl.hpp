@@ -63,11 +63,11 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
   segment_mgr_->destroy_ptr(entry)
 
   if constexpr (HasGetSize<CacheEntry>) {
-    MapEntry *entry = segment_mgr_->construct<MapEntry>(
+    MapEntry *entry = segment_mgr_->template construct<MapEntry>(
         bip::anonymous_instance)(key, value, dirty_node, this, value.GetSize());
     insert_entry(entry);
   } else {
-    MapEntry *entry = segment_mgr_->construct<MapEntry>(
+    MapEntry *entry = segment_mgr_->template construct<MapEntry>(
         bip::anonymous_instance)(key, value, dirty_node, this);
     insert_entry(entry);
   }

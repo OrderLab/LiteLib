@@ -10,7 +10,7 @@
 
 #include "packet.hpp"
 
-enum class CacheEntryType { STRING };  // TODO: support more types
+enum class CacheEntryType { STRING, MAP };  // TODO: support more types
 // enum class CacheEntryType { STRING, LIST, SET, MAP, ZSET };
 
 using CacheKey = ShmString;
@@ -20,10 +20,14 @@ struct CacheEntry {
   ShmString value;  // TODO: use offset_ptr and shared_ptr
   // std::shared_ptr<std::list<std::string>> list_value = nullptr;
   // std::shared_ptr<std::set<std::string>> set_value = nullptr;
-  // std::shared_ptr<std::map<std::string, std::string>> map_value = nullptr;
+  ShmSharedPtr<MapType> map_value;
   // std::shared_ptr<std::map<double, std::string>> sorted_set_value = nullptr;
 
-  CacheEntry(ShmVoidAllocator allocator) : value(allocator) {}
+  CacheEntry(ShmVoidAllocator allocator)
+      : value(allocator),
+        map_value(ShmSharedPtr<MapType>(
+            nullptr, allocator,
+            ShmDeleter<MapType>(allocator.get_segment_manager()))) {}
 
   size_t GetSize() const {
     switch (type) {
@@ -33,8 +37,8 @@ struct CacheEntry {
       //   return (list_value ? list_value->size() : 0);
       // case CacheEntryType::SET:
       //   return (set_value ? set_value->size() : 0);
-      // case CacheEntryType::MAP:
-      //   return (map_value ? map_value->size() : 0);
+      case CacheEntryType::MAP:
+        return (map_value ? map_value->size() : 0);
       // case CacheEntryType::ZSET:
       //   return (sorted_set_value ? sorted_set_value->size() : 0);
       default:
@@ -93,18 +97,38 @@ struct CacheEntry {
       //         std::make_shared<std::string>(item)));
       //   }
       //   break;
-      // case CacheEntryType::MAP:
-      //   commands->value.push_back(std::make_unique<RESPBulkString>(
-      //       std::make_shared<std::string>("HMSET")));
-      //   commands->value.push_back(std::make_unique<RESPBulkString>(
-      //       std::make_shared<std::string>(key)));
-      //   for (const auto &[field, value] : *map_value) {
-      //     commands->value.push_back(std::make_unique<RESPBulkString>(
-      //         std::make_shared<std::string>(field)));
-      //     commands->value.push_back(std::make_unique<RESPBulkString>(
-      //         std::make_shared<std::string>(value)));
-      //   }
-      //   break;
+      case CacheEntryType::MAP:
+        commands->value.emplace_back(
+            shm->get_segment_manager()->template construct<RESPBulkString>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)("HMSET",
+                                             shm->get_segment_manager()),
+                *shm)),
+            RESPTypeDeleter{shm->get_segment_manager()});
+        commands->value.emplace_back(
+            shm->get_segment_manager()->template construct<RESPBulkString>(
+                bip::anonymous_instance)(ShmMakeShared(
+                shm->get_segment_manager()->template construct<ShmString>(
+                    bip::anonymous_instance)(key, shm->get_segment_manager()),
+                *shm)),
+            RESPTypeDeleter{shm->get_segment_manager()});
+        for (const auto &[field, value] : *map_value) {
+          commands->value.emplace_back(
+              shm->get_segment_manager()->template construct<RESPBulkString>(
+                  bip::anonymous_instance)(ShmMakeShared(
+                  shm->get_segment_manager()->template construct<ShmString>(
+                      bip::anonymous_instance)(field,
+                                               shm->get_segment_manager()),
+                  *shm)),
+              RESPTypeDeleter{shm->get_segment_manager()});
+          commands->value.emplace_back(
+              shm->get_segment_manager()->template construct<RESPBulkString>(
+                  bip::anonymous_instance)(
+                  dynamic_cast<RESPString *>(value.get())->value),
+              RESPTypeDeleter{shm->get_segment_manager()});
+        }
+        break;
       // case CacheEntryType::ZSET:
       //   commands->value.push_back(std::make_unique<RESPBulkString>(
       //       std::make_shared<std::string>("ZADD")));
@@ -160,7 +184,7 @@ class Redis {
 
   std::pair<std::vector<ShmSharedPtr<Packet>>, bool> Match(
       const ShmSharedPtr<Packet> &resp, ConnectionInfo &conn,
-      lite::ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Packet>, bool>>
+      lite::ShmThreadSafeQueue<std::pair<ShmSharedPtr<Packet>, bool>>
           &pending_requests) const;
 
   static int EmbeddedNormalUpdate(void *request, ConnectionInfo &conn,

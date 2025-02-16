@@ -40,10 +40,10 @@ index cc84d09ad..713ccb0c4 100644
  REDIS_BENCHMARK_NAME=redis-benchmark$(PROG_SUFFIX)
 diff --git a/src/litesys.c b/src/litesys.c
 new file mode 100644
-index 000000000..51d5e8970
+index 000000000..38db1a081
 --- /dev/null
 +++ b/src/litesys.c
-@@ -0,0 +1,40 @@
+@@ -0,0 +1,61 @@
 +#include "litesys.h"
 +
 +#include <embedded_lite.h>
@@ -62,23 +62,44 @@ index 000000000..51d5e8970
 +  }
 +
 +  EmbeddedRequest *request = zmalloc(sizeof(EmbeddedRequest));
++
++  if (c->cmd->proc == setCommand) {
++    request->type = kSet;
++  } else if (c->cmd->proc == hsetCommand) {
++    request->type = kHset;
++  }
++
 +  request->argc = c->original_argv ? c->original_argc : c->argc;
 +
 +  robj **orig_argv = c->original_argv ? c->original_argv : c->argv;
-+  request->argv = orig_argv;
++  // TODO: use ref count
++  // request->argv = orig_argv;
++  // request->argv_len = zmalloc(sizeof(int) * request->argc);
++  // for (int i = 0; i < request->argc; i++) {
++  //   incrRefCount(orig_argv[i]);
++  //   request->argv[i] = orig_argv[i];
++  //   request->argv_len[i] = sdslen(orig_argv[i]->ptr);
++  // }
++  request->argv = zmalloc(sizeof(robj *) * request->argc);
 +  request->argv_len = zmalloc(sizeof(int) * request->argc);
 +  for (int i = 0; i < request->argc; i++) {
-+    incrRefCount(orig_argv[i]);
-+    request->argv[i] = orig_argv[i];
++    request->argv[i] = zmalloc(sizeof(robj));
 +    request->argv_len[i] = sdslen(orig_argv[i]->ptr);
++    request->argv[i]->ptr = zmalloc(request->argv_len[i]);
++    memcpy(request->argv[i]->ptr, orig_argv[i]->ptr, request->argv_len[i]);
 +  }
 +
 +  LiteProcessRequest(c->litesys_data, request, LiteFreeEmbeddedRequest);
 +}
 +
 +void LiteFreeEmbeddedRequest(EmbeddedRequest *request) {
++  // TODO: use ref count
++  // for (int i = 0; i < request->argc; i++) {
++  //   decrRefCount(request->argv[i]);
++  // }
 +  for (int i = 0; i < request->argc; i++) {
-+    decrRefCount(request->argv[i]);
++    zfree(request->argv[i]->ptr);
++    zfree(request->argv[i]);
 +  }
 +  zfree(request->argv);
 +  zfree(request->argv_len);
