@@ -17,13 +17,12 @@ void PrintHelp() {
   std::cout << "  -H <help>\tOutput this help and exit.\n";
 }
 
-SharedMemory *shm;
-
 int main(int argc, char *argv[]) {
   try {
     // size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t thread_pool_size = 1;
     size_t cache_size(16384);
+    size_t shared_memory_size(1024 * 1024 * 128);
     const char *port = "6479";
     const char *address = "127.0.0.1";
     const char *const short_opts = "p:h:H";
@@ -68,8 +67,8 @@ int main(int argc, char *argv[]) {
     Redis redis;
     lite::LiteServer<Redis, Packet, Packet, ConnectionInfo, CacheKey,
                      CacheEntry>
-        s(thread_pool_size, cache_size, redis, backend_addr, backend_port,
-          1000ms, 80000, 0.9, 2, "/tmp/lite_Redis");
+        s(thread_pool_size, shared_memory_size, cache_size, redis, backend_addr,
+          backend_port, 1000ms, 80000, 0.9, 2, "/tmp/lite_Redis");
     shm = &s.lite_core_.shared_memory_;
     redis.DelayedConstructor();
     // Run the server until stopped.

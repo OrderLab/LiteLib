@@ -1,0 +1,216 @@
+diff --git a/deps/LiteSys/build b/deps/LiteSys/build
+new file mode 120000
+index 000000000..acbf1cbf5
+--- /dev/null
++++ b/deps/LiteSys/build
+@@ -0,0 +1 @@
++../../../lite-version/build/
+\ No newline at end of file
+diff --git a/deps/LiteSys/embedded_lite.h b/deps/LiteSys/embedded_lite.h
+new file mode 120000
+index 000000000..64ced2f9a
+--- /dev/null
++++ b/deps/LiteSys/embedded_lite.h
+@@ -0,0 +1 @@
++../../../lite-version/Lite/include/embedded_lite.h
+\ No newline at end of file
+diff --git a/src/Makefile b/src/Makefile
+index cc84d09ad..713ccb0c4 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -326,6 +326,10 @@ else
+     endef
+ endif
+ 
++# LiteSys
++FINAL_CFLAGS+= -I../deps/LiteSys
++FINAL_LIBS:= -Wl,-rpath,../deps/LiteSys/build -L../deps/LiteSys/build -lembedded_lite_redis -lstdc++ -lglog $(FINAL_LIBS)
++
+ REDIS_CC=$(QUIET_CC)$(CC) $(FINAL_CFLAGS)
+ REDIS_LD=$(QUIET_LINK)$(CC) $(FINAL_LDFLAGS)
+ REDIS_INSTALL=$(QUIET_INSTALL)$(INSTALL)
+@@ -354,7 +358,7 @@ endif
+ 
+ REDIS_SERVER_NAME=redis-server$(PROG_SUFFIX)
+ REDIS_SENTINEL_NAME=redis-sentinel$(PROG_SUFFIX)
+-REDIS_SERVER_OBJ=threads_mngr.o adlist.o quicklist.o ae.o anet.o dict.o ebuckets.o mstr.o kvstore.o server.o sds.o zmalloc.o lzf_c.o lzf_d.o pqsort.o zipmap.o sha1.o ziplist.o release.o networking.o util.o object.o db.o replication.o rdb.o t_string.o t_list.o t_set.o t_zset.o t_hash.o config.o aof.o pubsub.o multi.o debug.o sort.o intset.o syncio.o cluster.o cluster_legacy.o crc16.o endianconv.o slowlog.o eval.o bio.o rio.o rand.o memtest.o syscheck.o crcspeed.o crc64.o bitops.o sentinel.o notify.o setproctitle.o blocked.o hyperloglog.o latency.o sparkline.o redis-check-rdb.o redis-check-aof.o geo.o lazyfree.o module.o evict.o expire.o geohash.o geohash_helper.o childinfo.o defrag.o siphash.o rax.o t_stream.o listpack.o localtime.o lolwut.o lolwut5.o lolwut6.o acl.o tracking.o socket.o tls.o sha256.o timeout.o setcpuaffinity.o monotonic.o mt19937-64.o resp_parser.o call_reply.o script_lua.o script.o functions.o function_lua.o commands.o strl.o connection.o unix.o logreqres.o
++REDIS_SERVER_OBJ=threads_mngr.o adlist.o quicklist.o ae.o anet.o dict.o ebuckets.o mstr.o kvstore.o server.o sds.o zmalloc.o lzf_c.o lzf_d.o pqsort.o zipmap.o sha1.o ziplist.o release.o networking.o util.o object.o db.o replication.o rdb.o t_string.o t_list.o t_set.o t_zset.o t_hash.o config.o aof.o pubsub.o multi.o debug.o sort.o intset.o syncio.o cluster.o cluster_legacy.o crc16.o endianconv.o slowlog.o eval.o bio.o rio.o rand.o memtest.o syscheck.o crcspeed.o crc64.o bitops.o sentinel.o notify.o setproctitle.o blocked.o hyperloglog.o latency.o sparkline.o redis-check-rdb.o redis-check-aof.o geo.o lazyfree.o module.o evict.o expire.o geohash.o geohash_helper.o childinfo.o defrag.o siphash.o rax.o t_stream.o listpack.o localtime.o lolwut.o lolwut5.o lolwut6.o acl.o tracking.o socket.o tls.o sha256.o timeout.o setcpuaffinity.o monotonic.o mt19937-64.o resp_parser.o call_reply.o script_lua.o script.o functions.o function_lua.o commands.o strl.o connection.o unix.o logreqres.o litesys.o
+ REDIS_CLI_NAME=redis-cli$(PROG_SUFFIX)
+ REDIS_CLI_OBJ=anet.o adlist.o dict.o redis-cli.o zmalloc.o release.o ae.o redisassert.o crcspeed.o crc64.o siphash.o crc16.o monotonic.o cli_common.o mt19937-64.o strl.o cli_commands.o
+ REDIS_BENCHMARK_NAME=redis-benchmark$(PROG_SUFFIX)
+diff --git a/src/litesys.c b/src/litesys.c
+new file mode 100644
+index 000000000..51d5e8970
+--- /dev/null
++++ b/src/litesys.c
+@@ -0,0 +1,40 @@
++#include "litesys.h"
++
++#include <embedded_lite.h>
++
++void LiteProtectOriginalRequest(client *c) {
++  if (c->cmd->proc == setCommand) {
++    // tryObjectEncoding in setCommand will change the argv[2], and it forgets
++    // to call retainOriginalCommandVector
++    retainOriginalCommandVector(c);
++  }
++}
++
++void LiteQueueEmbeddedRequest(client *c) {
++  if (!(c->cmd->proc == setCommand || c->cmd->proc == hsetCommand)) {
++    return;
++  }
++
++  EmbeddedRequest *request = zmalloc(sizeof(EmbeddedRequest));
++  request->argc = c->original_argv ? c->original_argc : c->argc;
++
++  robj **orig_argv = c->original_argv ? c->original_argv : c->argv;
++  request->argv = orig_argv;
++  request->argv_len = zmalloc(sizeof(int) * request->argc);
++  for (int i = 0; i < request->argc; i++) {
++    incrRefCount(orig_argv[i]);
++    request->argv[i] = orig_argv[i];
++    request->argv_len[i] = sdslen(orig_argv[i]->ptr);
++  }
++
++  LiteProcessRequest(c->litesys_data, request, LiteFreeEmbeddedRequest);
++}
++
++void LiteFreeEmbeddedRequest(EmbeddedRequest *request) {
++  for (int i = 0; i < request->argc; i++) {
++    decrRefCount(request->argv[i]);
++  }
++  zfree(request->argv);
++  zfree(request->argv_len);
++  zfree(request);
++}
+diff --git a/src/litesys.h b/src/litesys.h
+new file mode 100644
+index 000000000..673706c9a
+--- /dev/null
++++ b/src/litesys.h
+@@ -0,0 +1,21 @@
++#pragma once
++
++#include "server.h"
++
++typedef enum {
++  kSet,
++  kHset,
++} EmbeddedRequestType;
++
++typedef struct {
++  EmbeddedRequestType type;
++  int argc;
++  robj **argv;
++  int *argv_len;
++} EmbeddedRequest;
++
++void LiteProtectOriginalRequest(client *c);
++
++void LiteQueueEmbeddedRequest(client *c);
++
++void LiteFreeEmbeddedRequest(EmbeddedRequest *request);
+diff --git a/src/networking.c b/src/networking.c
+index 41af67f42..68f7f039b 100644
+--- a/src/networking.c
++++ b/src/networking.c
+@@ -22,6 +22,8 @@
+ #include <math.h>
+ #include <ctype.h>
+ 
++#include "embedded_lite.h"
++
+ static void setProtocolError(const char *errstr, client *c);
+ static void pauseClientsByClient(mstime_t end, int isPauseClientAll);
+ int postponeClientRead(client *c);
+@@ -1389,6 +1391,10 @@ void acceptCommonHandler(connection *conn, int flags, char *ip) {
+         freeClient(connGetPrivateData(conn));
+         return;
+     }
++
++    if (strcmp(c->conn->type->get_type(c->conn), CONN_TYPE_SOCKET) == 0) {
++        c->litesys_data = LiteRegisterFD(c->conn->fd, NULL, c); // TODO: implement ReinstallEventHandler
++    }
+ }
+ 
+ void freeClientOriginalArgv(client *c) {
+@@ -1458,6 +1464,10 @@ void unlinkClient(client *c) {
+      * If the client was already unlinked or if it's a "fake client" the
+      * conn is already set to NULL. */
+     if (c->conn) {
++        if (strcmp(c->conn->type->get_type(c->conn), CONN_TYPE_SOCKET) == 0) {
++            LiteUnregisterFD(c->conn->fd);
++        }
++
+         /* Remove from the list of active clients. */
+         if (c->client_list_node) {
+             uint64_t id = htonu64(c->id);
+@@ -3716,7 +3726,7 @@ void securityWarningCommand(client *c) {
+ 
+ /* Keep track of the original command arguments so that we can generate
+  * an accurate slowlog entry after the command has been executed. */
+-static void retainOriginalCommandVector(client *c) {
++void retainOriginalCommandVector(client *c) {
+     /* We already rewrote this command, so don't rewrite it again */
+     if (c->original_argv) return;
+     c->original_argc = c->argc;
+diff --git a/src/server.c b/src/server.c
+index 1a7bf2700..cf23c9348 100644
+--- a/src/server.c
++++ b/src/server.c
+@@ -43,6 +43,9 @@
+ #include <locale.h>
+ #include <sys/socket.h>
+ 
++#include <embedded_lite.h>
++#include "litesys.h"
++
+ #ifdef __linux__
+ #include <sys/mman.h>
+ #endif
+@@ -3572,8 +3575,14 @@ void call(client *c, int flags) {
+     if (monotonicGetType() == MONOTONIC_CLOCK_HW)
+         monotonic_start = getMonotonicUs();
+ 
++    LiteProtectOriginalRequest(c);
++
+     c->cmd->proc(c);
+ 
++    if (!incrCommandStatsOnError(real_cmd, ERROR_COMMAND_FAILED) && !incrCommandStatsOnError(real_cmd, ERROR_COMMAND_REJECTED)) {
++        LiteQueueEmbeddedRequest(c);
++    }
++
+     /* Clear the CLIENT_REPROCESSING_COMMAND flag after the proc is executed. */
+     if (reprocessing_command) c->flags &= ~CLIENT_REPROCESSING_COMMAND;
+ 
+@@ -7186,6 +7195,9 @@ int main(int argc, char **argv) {
+         serverLog(LL_NOTICE, "Configuration loaded");
+     }
+ 
++    if (!server.sentinel_mode) {
++        LiteInit(argv[0], 1, 128 * 1024 * 1024, 16384, 1000);
++    }
+     initServer();
+     if (background || server.pidfile) createPidFile();
+     if (server.set_proc_title) redisSetProcTitle(NULL);
+diff --git a/src/server.h b/src/server.h
+index 459d5b974..c34ca16cd 100644
+--- a/src/server.h
++++ b/src/server.h
+@@ -1277,6 +1277,7 @@ typedef struct client {
+ #ifdef LOG_REQ_RES
+     clientReqResInfo reqres;
+ #endif
++    void *litesys_data;
+ } client;
+ 
+ /* ACL information */
+@@ -2649,6 +2650,7 @@ char *getClientSockName(client *client);
+ sds catClientInfoString(sds s, client *client);
+ sds getAllClientsInfoString(int type);
+ int clientSetName(client *c, robj *name, const char **err);
++void retainOriginalCommandVector(client *c);
+ void rewriteClientCommandVector(client *c, int argc, ...);
+ void rewriteClientCommandArgument(client *c, int i, robj *newval);
+ void replaceClientCommandVector(client *c, int argc, robj **argv);

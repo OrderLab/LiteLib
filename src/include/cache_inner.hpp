@@ -52,7 +52,8 @@ class CacheInner {
 
   // If CacheEntry has GetSize method, then max_size_ is the sum of it.
   // Otherwise, max_size_ is the number of entries.
-  explicit CacheInner(const size_t &max_size, std::atomic<bool> &emergency_mode,
+  explicit CacheInner(const size_t &max_size,
+                      bip::offset_ptr<ShmAtomic<bool>> emergency_mode_ptr,
                       bip::offset_ptr<SegmentManager> segment_mgr);
 
   ~CacheInner();
@@ -87,7 +88,7 @@ class CacheInner {
 
   bip::offset_ptr<SegmentManager> GetSegmentManager() { return segment_mgr_; }
 
-  std::atomic<bool> &emergency_mode_;
+  bip::offset_ptr<ShmAtomic<bool>> emergency_mode_ptr_;
 
  private:
   class ListNode {

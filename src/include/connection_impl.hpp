@@ -59,10 +59,10 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   memset(&backend_event_, 0, sizeof(backend_event_));
 
   if (is_client_connection &&
-      (!lite_core_.emergency_mode_ && !lite_core_.is_replaying_))
+      (!lite_core_.emergency_mode_ptr_->load() && !lite_core_.is_replaying_))
     ConnectBackend();
 
-  if (lite_core_.emergency_mode_) {
+  if (lite_core_.emergency_mode_ptr_->load()) {
     std::optional<Response> greeting_msg =
         lite_core_.app_.EmergencyConnectionEstablishHook(
             connection_state_entry_ptr_->extra_app_info_);
@@ -122,7 +122,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   bool forwarded = false;
-  if (!conn->lite_core_.emergency_mode_) {
+  if (!conn->lite_core_.emergency_mode_ptr_->load()) {
     forwarded = true;
     if (!network::Write(conn->backend_fd_, conn->buffer_, bytes_transferred)) {
       LOG(ERROR) << "Failed to write request to backend" << std::endl;
@@ -136,7 +136,8 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   while (begin != end) {
     const auto result = conn->request_->Deserialize(begin, end);
     if (result == kGood) {
-      if (conn->backend_fd_ <= 0 && !conn->lite_core_.emergency_mode_) {
+      if (conn->backend_fd_ <= 0 &&
+          !conn->lite_core_.emergency_mode_ptr_->load()) {
         conn->ConnectBackend();
       }
       if (!conn->lite_core_.HandleRequest(
@@ -192,7 +193,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   bool forwarded = false;
-  if (!conn->lite_core_.emergency_mode_) {
+  if (!conn->lite_core_.emergency_mode_ptr_->load()) {
     forwarded = true;
     if (!network::Write(conn->client_fd_, conn->buffer_, bytes_transferred)) {
       LOG(ERROR) << "Failed to write request to backend" << std::endl;

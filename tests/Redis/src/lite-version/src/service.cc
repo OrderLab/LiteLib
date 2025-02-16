@@ -4,6 +4,8 @@
 
 ShmSharedPtr<Packet> Redis::abort_req_;
 
+SharedMemory *shm;
+
 void Redis::DelayedConstructor() {
   ShmUniquePtrWithDeleter<RESPArray, RESPTypeDeleter> discard_comm(
       shm->get_segment_manager()->template construct<RESPArray>(
@@ -632,4 +634,69 @@ std::pair<RESPType *, bool> Redis::HandleUpdate(ShmSharedPtr<Packet> req,
                 *shm)),
             false};
   return {nullptr, false};
+}
+
+#define LRU_BITS 24
+
+struct robj {
+  unsigned type : 4;
+  unsigned encoding : 4;
+  unsigned lru : LRU_BITS; /* LRU time (relative to global lru_clock) or
+                            * LFU data (least significant 8 bits frequency
+                            * and most significant 16 bits access time). */
+  int refcount;
+  void *ptr;
+};
+
+enum class EmbeddedRequestType {
+  kSet,
+  kHset,
+};
+
+typedef struct {
+  EmbeddedRequestType type;
+  int argc;
+  robj **argv;
+  int *argv_len;
+} EmbeddedRequest;
+
+int Redis::EmbeddedNormalUpdate(void *request, ConnectionInfo &conn,
+                                Cache *cache) {
+  auto embedded_request = static_cast<EmbeddedRequest *>(request);
+  if (embedded_request->type == EmbeddedRequestType::kSet) {
+    char *key = static_cast<char *>(embedded_request->argv[1]->ptr);
+    char *value = static_cast<char *>(embedded_request->argv[2]->ptr);
+    ShmString shm_key(key, shm->get_segment_manager());
+    ShmString shm_value(value, shm->get_segment_manager());
+
+    CacheKey cache_key(shm_key, ShmAllocator<char>(shm->get_segment_manager()));
+    CacheEntry cache_entry(shm->get_segment_manager());
+    cache_entry.value = shm_value;
+    cache_entry.type = CacheEntryType::STRING;
+
+    if (!cache->Set(cache_key, cache_entry)) {
+      LOG(ERROR) << "Failed to set key: " << cache_key << std::endl;
+    }
+    return 0;
+    // } else if (embedded_request->type == EmbeddedRequestType::kHset) {
+    //   char *key = static_cast<char *>(embedded_request->argv[1]->ptr);
+
+    //   CacheKey cache_key(shm_key,
+    //                       ShmAllocator<char>(shm->get_segment_manager()));
+    //   CacheEntry cache_entry(shm->get_segment_manager());
+    //   if (!cache->Get(cache_key, cache_entry)) {
+    //     auto map =
+
+    //   for (int i = 2; i < embedded_request->argc; i += 2) {
+    //     char *field = static_cast<char *>(embedded_request->argv[i]->ptr);
+    //     char *value = static_cast<char *>(embedded_request->argv[i +
+    //     1]->ptr); ShmString shm_key(field, shm->get_segment_manager());
+    //     ShmString shm_value(value, shm->get_segment_manager());
+    //     map->insert(std::make_pair(shm_key, shm_value));
+    //   }
+  }
+
+  LOG(ERROR) << "Unknown request type: " << int(embedded_request->type)
+             << std::endl;
+  return -1;
 }

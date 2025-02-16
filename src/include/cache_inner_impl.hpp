@@ -10,11 +10,12 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::CacheInner(const size_t &max_size,
-                                   std::atomic<bool> &emergency_mode,
+                                   bip::offset_ptr<ShmAtomic<bool>>
+                                       emergency_mode_ptr,
                                    bip::offset_ptr<SegmentManager> segment_mgr)
     : max_size_(max_size),
       size(0),
-      emergency_mode_(emergency_mode),
+      emergency_mode_ptr_(emergency_mode_ptr),
       cache_(segment_mgr.get()),
       segment_mgr_(segment_mgr) {
   lru_head_.pre_ = nullptr;
@@ -248,7 +249,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Evict() {
-  if (emergency_mode_) return;
+  if (emergency_mode_ptr_->load()) return;
   size_t threshold = 10;  // prevent blocking for too long
   // TODO: choose a better threshold
   while (size > max_size_ && threshold--) {

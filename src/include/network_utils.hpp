@@ -2,6 +2,7 @@
 
 #include <event.h>
 
+#include <boost/functional/hash.hpp>
 #include <memory>
 #include <vector>
 
@@ -36,6 +37,11 @@ struct TCPID {
   uint16_t src_port;
   uint32_t dst_ip;
   uint16_t dst_port;
+
+  bool operator==(const TCPID& other) const {
+    return src_ip == other.src_ip && src_port == other.src_port &&
+           dst_ip == other.dst_ip && dst_port == other.dst_port;
+  }
 };
 
 TCPID GetTCPID(const evutil_socket_t fd);
@@ -43,3 +49,17 @@ TCPID GetTCPID(const evutil_socket_t fd);
 }  // namespace network
 
 }  // namespace lite
+
+namespace boost {
+template <>
+struct hash<lite::network::TCPID> {
+  std::size_t operator()(const lite::network::TCPID& id) const {
+    std::size_t seed = 0;
+    boost::hash_combine(seed, id.src_ip);
+    boost::hash_combine(seed, id.src_port);
+    boost::hash_combine(seed, id.dst_ip);
+    boost::hash_combine(seed, id.dst_port);
+    return seed;
+  }
+};
+}  // namespace boost

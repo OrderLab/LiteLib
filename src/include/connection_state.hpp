@@ -91,17 +91,15 @@ class ConnectionStateStorage {
     }
   };
 
-  uint64_t GetHash(const network::TCPID& tcp_id);  // TODO: delete this
-
   bip::offset_ptr<SegmentManager> segment_mgr_;
   bip::offset_ptr<CacheInnerInstance> cache_inner_ptr_;
   bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr_;
 
   using MapAllocator =
-      ShmAllocator<bip::pair<const uint64_t, ConnectionStateEntry>>;
-  boost::concurrent_flat_map<uint64_t, ConnectionStateEntry,
-                             boost::hash<uint64_t>, std::equal_to<uint64_t>,
-                             MapAllocator>
+      ShmAllocator<bip::pair<const network::TCPID, ConnectionStateEntry>>;
+  boost::concurrent_flat_map<network::TCPID, ConnectionStateEntry,
+                             boost::hash<network::TCPID>,
+                             std::equal_to<network::TCPID>, MapAllocator>
       state_map_;
 };
 

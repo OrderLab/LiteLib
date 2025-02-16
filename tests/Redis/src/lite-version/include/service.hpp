@@ -163,6 +163,9 @@ class Redis {
       lite::ShmThreadSafeQueue<bip::pair<ShmSharedPtr<Packet>, bool>>
           &pending_requests) const;
 
+  static int EmbeddedNormalUpdate(void *request, ConnectionInfo &conn,
+                                  Cache *cache);
+
   void NormalUpdate(const ShmSharedPtr<Packet> &resp,
                     std::vector<ShmSharedPtr<Packet>> requests,
                     ConnectionInfo &conn, Cache *cache);
