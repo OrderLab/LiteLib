@@ -9,6 +9,7 @@ using ShmVoidAllocator = bip::allocator<void, SegmentManager>;
 template <typename T>
 using ShmDeleter = bip::deleter<T, SegmentManager>;
 
+#include <boost/atomic/ipc_atomic.hpp>
 #include <boost/interprocess/containers/deque.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/pair.hpp>
@@ -17,6 +18,10 @@ using ShmDeleter = bip::deleter<T, SegmentManager>;
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/smart_ptr/shared_ptr.hpp>
 #include <boost/interprocess/smart_ptr/unique_ptr.hpp>
+
+template <typename T>
+using ShmAtomic = boost::ipc_atomic<T>;
+
 using ShmString =
     bip::basic_string<char, std::char_traits<char>, ShmAllocator<char>>;
 template <class T>

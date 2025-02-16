@@ -16,6 +16,7 @@ template <typename Application, typename Request, typename Response,
 LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::LiteServer(const size_t& nthreads,
                                    const size_t& max_item_count,
+                                   const size_t& shared_memory_size,
                                    Application& app, std::string& backend_addr,
                                    std::string& backend_port,
                                    const std::chrono::milliseconds
@@ -24,9 +25,10 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                                    const double flow_control_ratio,
                                    const size_t n_replay_threads,
                                    const char pipe_path[], bool crash_recover)
-    : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path,
-                 barrier_, workers_, sliding_window_size, replay_expected_rps,
-                 flow_control_ratio, n_replay_threads, crash_recover),
+    : lite_core_(app, max_item_count, shared_memory_size, backend_addr,
+                 backend_port, pipe_path, barrier_, workers_,
+                 sliding_window_size, replay_expected_rps, flow_control_ratio,
+                 n_replay_threads, crash_recover),
       barrier_(nthreads + 1,
                []() { LOG(INFO) << "Barrier completed" << std::endl; }) {
   struct event_config* ev_config;

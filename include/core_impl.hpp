@@ -17,8 +17,8 @@ template <typename Application, typename Request, typename Response,
                IsCacheEntry<Request, CacheKey, CacheEntry>
 LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
     LiteCore(Application &app, const size_t &max_item_count,
-             std::string &backend_addr, std::string &backend_port,
-             const char pipe_path[],
+             const size_t &shared_memory_size, std::string &backend_addr,
+             std::string &backend_port, const char pipe_path[],
              std::barrier<std::function<void()>> &barrier,
              std::vector<std::unique_ptr<WorkerInstance>> &workers,
              const std::chrono::milliseconds sliding_window_size,
@@ -28,16 +28,20 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              pipe_path),
       app_(app),
       shared_memory_(bip::open_or_create, "lite_shared_memory",
-                     1024 * 1024 * 64),  // 64MB
+                     shared_memory_size),
       crash_recover_(crash_recover),
       backend_addr_(backend_addr),
       barrier_(barrier),
       workers_(workers),
+      emergency_mode_ptr_(shared_memory_.find_or_construct<ShmAtomic<bool>>(
+          "emergency_mode")(false)),
       replay_rate_(sliding_window_size),
       replay_expected_rps_(replay_expected_rps),
       flow_control_ratio_(flow_control_ratio) {
+  InitEmergencyModePtr(emergency_mode_ptr_);
+
   cache_inner_ptr_ = shared_memory_.find_or_construct<CacheInnerInstance>(
-      "cache_inner")(max_item_count, emergency_mode_,
+      "cache_inner")(max_item_count, emergency_mode_ptr_,
                      shared_memory_.get_segment_manager());
 
   logger_inner_ptr_ =
@@ -69,13 +73,13 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                   const evutil_socket_t client_fd,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
                   LoggerInstance *logger, const bool forwarded) {
-  if (!emergency_mode_ && backend_fd <= 0) {
+  if (!emergency_mode_ptr_->load() && backend_fd <= 0) {
     LOG(WARNING) << "Core: Fall back and entering emergency mode "
                  << GetUNIXTimeStamp() << std::endl;
     TakeOver();
   }
 
-  if (emergency_mode_) {
+  if (emergency_mode_ptr_->load()) {
     const bool flow_control =
         is_replaying_ & (flow_control_ratio_ * replay_rate_ <
                          logger_inner_ptr_->inserting_rate_);
@@ -148,7 +152,7 @@ template <typename Application, typename Request, typename Response,
            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::TakeOver() {
-  emergency_mode_ = true;
+  emergency_mode_ptr_->store(true);
   LOG(INFO) << "Disconnect all from backend" << std::endl;
   LOG(INFO) << "Emergency barrier initialized" << std::endl;
   for (auto &worker : workers_) {

@@ -72,9 +72,10 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
     if (!message.read(fd)) {
       LOG(ERROR) << "Daemon: Error reading pipe";
       return;
-    }
-    else {
-      LOG(INFO) << "Daemon: Received message " << magic_enum::enum_name(message.action) << " from " << message.backend_port << std::endl;
+    } else {
+      LOG(INFO) << "Daemon: Received message "
+                << magic_enum::enum_name(message.action) << " from "
+                << message.backend_port << std::endl;
     }
     // Close Pipe
     close(self->named_pipe_fd_);
@@ -85,7 +86,7 @@ void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
       case PipeMessage::kEnterEmergencyMode:
         LOG(WARNING) << "Daemon: Entering emergency mode " << GetUNIXTimeStamp()
                      << std::endl;
-        if (!self->emergency_mode_) {
+        if (!self->emergency_mode_ptr_->load()) {
           self->TakeOver_();
         } else {
           LOG(WARNING) << "Daemon: Already in emergency mode" << std::endl;

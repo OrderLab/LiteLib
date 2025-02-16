@@ -11,7 +11,7 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
                             bool in_transaction, bool log) {
   bip::offset_ptr<LogEntryInstance> dirty = nullptr;
   bip::offset_ptr<CacheStateInstance> state = nullptr;
-  if (cache_inner_ptr_->emergency_mode_ && log) {
+  if (cache_inner_ptr_->emergency_mode_ptr_->load() && log) {
     dirty =
         cache_inner_ptr_->segment_mgr_->template construct<LogEntryInstance>(
             bip::anonymous_instance)(nullptr, ShmSharedPtr<Request>{},
@@ -73,7 +73,7 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
                                 bool in_transaction, bool log) {
   bip::offset_ptr<LogEntryInstance> dirty = nullptr;
   bip::offset_ptr<CacheStateInstance> state = nullptr;
-  if (cache_inner_ptr_->emergency_mode_ && log) {
+  if (cache_inner_ptr_->emergency_mode_ptr_->load() && log) {
     dirty =
         cache_inner_ptr_->segment_mgr_->template construct<LogEntryInstance>(
             bip::anonymous_instance)(nullptr, ShmSharedPtr<Request>{},
@@ -81,7 +81,7 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   if (!cache_inner_ptr_->Replace(key, value, in_transaction, dirty,
-                                 cache_inner_ptr_->emergency_mode_
+                                 cache_inner_ptr_->emergency_mode_ptr_->load()
                                      ? &logger_inner_ptr_->chr_mutex_
                                      : nullptr,
                                  state)) {

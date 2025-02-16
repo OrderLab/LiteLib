@@ -51,8 +51,9 @@ class LiteCore : public Daemon {
 
  public:
   LiteCore(Application &app, const size_t &max_item_count,
-           std::string &backend_addr, std::string &backend_port,
-           const char pipe_path[], std::barrier<std::function<void()>> &barrier,
+           const size_t &shared_memory_size, std::string &backend_addr,
+           std::string &backend_port, const char pipe_path[],
+           std::barrier<std::function<void()>> &barrier,
            std::vector<std::unique_ptr<WorkerInstance>> &workers,
            const std::chrono::milliseconds sliding_window_size,
            const size_t replay_expected_rps, const double flow_control_ratio,
@@ -76,6 +77,8 @@ class LiteCore : public Daemon {
   std::string &backend_addr_;
 
   bool is_replaying_ = false;
+
+  ShmAtomic<bool> *emergency_mode_ptr_;
 
   ThreadSafeSet<ConnectionInstance *> live_connections_;
 

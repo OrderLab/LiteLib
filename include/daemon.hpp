@@ -7,6 +7,8 @@
 #include <functional>
 #include <string>
 
+#include "bip.hpp"
+
 namespace lite {
 
 class Daemon {
@@ -15,13 +17,17 @@ class Daemon {
                   std::function<void()> TakeOver, std::string &backend_port,
                   const std::string pipe_path = "/tmp/lite");
 
-  std::atomic<bool> emergency_mode_ = false;
-
   std::string &backend_port_;
 
   static size_t GetUNIXTimeStamp();
 
+  void InitEmergencyModePtr(ShmAtomic<bool> *emergency_mode) {
+    emergency_mode_ptr_ = emergency_mode;
+  }
+
  private:
+  ShmAtomic<bool> *emergency_mode_ptr_;
+
   std::function<bool()> Replay_;
 
   std::function<void()> TakeOver_;
