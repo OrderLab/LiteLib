@@ -253,7 +253,7 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
   size_t threshold = 10;  // prevent blocking for too long
   // TODO: choose a better threshold
   while (size > max_size_ && threshold--) {
-    ListNode *moribund = lru_tail_.pre_;
+    bip::offset_ptr<ListNode> moribund = lru_tail_.pre_;
     if (moribund == &lru_head_) {
       // List is empty, can't evict
       return;
@@ -266,7 +266,7 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     }
 
     cache_.erase(moribund->state_->key);
-    segment_mgr_->destroy_ptr(moribund);
+    segment_mgr_->destroy_ptr(moribund.get());
   }
   // LOG(INFO) << "Evict done: " << size << std::endl;
 }

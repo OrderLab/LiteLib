@@ -95,7 +95,7 @@ class CacheInner {
    public:
     CacheStateInstance *state_;
 
-    ListNode *pre_ = nullptr, *nxt_ = nullptr;
+    bip::offset_ptr<ListNode> pre_ = nullptr, nxt_ = nullptr;
 
     ListNode() : state_(nullptr) {}
     ListNode(CacheStateInstance *state) : state_(state) {}
