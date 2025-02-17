@@ -70,6 +70,8 @@ class EmbeddedServer {
   LoggerInnerInstance *logger_inner_ptr_;
   ConnectionStateStorageInstance *connection_state_storage_ptr_;
 
+  std::map<int, network::TCPID> fd_to_tcp_id_;
+
  private:
   std::vector<std::unique_ptr<EmbeddedWorkerInstance>> workers_;
   typename decltype(workers_)::iterator current_worker_;
