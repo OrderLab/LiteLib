@@ -58,6 +58,7 @@ class CacheInner {
 
   ~CacheInner();
 
+  // TODO: use insert_or_assign()
   bool Add(const CacheKey &key, const CacheEntry &value,
            const bool in_transaction,
            bip::offset_ptr<LogEntryInstance> dirty_node,
@@ -93,12 +94,12 @@ class CacheInner {
  private:
   class ListNode {
    public:
-    CacheStateInstance *state_;
+    bip::offset_ptr<CacheStateInstance> state_;
 
     bip::offset_ptr<ListNode> pre_ = nullptr, nxt_ = nullptr;
 
     ListNode() : state_(nullptr) {}
-    ListNode(CacheStateInstance *state) : state_(state) {}
+    ListNode(bip::offset_ptr<CacheStateInstance> state) : state_(state) {}
 
     bool isInList() const { return pre_ != nullptr; }
 
