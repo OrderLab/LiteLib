@@ -7,7 +7,7 @@ extern "C" {
 __attribute__((visibility("default"))) int LiteInit(char *argv_0) {
   auto ret =
       lite::Init<Redis, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>(
-          argv_0, 1, 1024 * 1024 * 1024, 16384 * 8, 1000ms);
+          argv_0, 1, std::numeric_limits<int>::max(), 16384 * 8, 1000ms);
   shm = &static_cast<lite::EmbeddedServer<Redis, Packet, Packet, ConnectionInfo,
                                           CacheKey, CacheEntry> *>(
              lite::embedded_server_void_ptr)
