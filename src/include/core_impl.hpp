@@ -234,6 +234,7 @@ template <typename Application, typename Request, typename Response,
            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::Replay() {
+  return true;
   // TODO: implement replay
   // const auto start_time = std::chrono::high_resolution_clock::now();
 

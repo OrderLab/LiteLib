@@ -51,39 +51,27 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
         std::shared_lock<bip::interprocess_sharable_mutex>{transaction_mutex_};
   }
 
-  bip::offset_ptr<ListNode> lru_node;
-#define insert_entry(entry)                                       \
-  new_state = entry->state;                                       \
-  lru_node = entry->lru_node;                                     \
-  if (!cache_.insert(std::make_pair(key, boost::move(*entry)))) { \
-    entry->~MapEntry();                                           \
-    segment_mgr_->destroy_ptr(entry);                             \
-    return false;                                                 \
-  }                                                               \
-  segment_mgr_->destroy_ptr(entry)
-
+  auto item_size = 0;
   if constexpr (HasGetSize<CacheEntry>) {
-    MapEntry *entry = segment_mgr_->template construct<MapEntry>(
-        bip::anonymous_instance)(key, value, dirty_node, this, value.GetSize());
-    insert_entry(entry);
-  } else {
-    MapEntry *entry = segment_mgr_->template construct<MapEntry>(
-        bip::anonymous_instance)(key, value, dirty_node, this);
-    insert_entry(entry);
+    item_size = value.GetSize();
   }
-#undef insert_entry
 
-  std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
-  lru_node->PushFront(lru_head_);
-  if constexpr (HasGetSize<CacheEntry>) {
-    size += lru_node->state_->size;
-  } else {
-    size++;
-  }
-  if (size > max_size_) Evict();
-  lru_lock.unlock();
-
-  return true;
+  return cache_.emplace_and_visit(
+      std::piecewise_construct, std::forward_as_tuple(key),
+      std::forward_as_tuple(key, value, dirty_node, this, item_size),
+      [&](auto &element) {
+        new_state = element.second.state;
+        std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
+        element.second.lru_node->PushFront(lru_head_);
+        if constexpr (HasGetSize<CacheEntry>) {
+          size += element.second.lru_node->state_->size;
+        } else {
+          size++;
+        }
+        if (size > max_size_) Evict();
+        lru_lock.unlock();
+      },
+      [&](auto &element) {});
 }
 
 template <typename Application, typename Request, typename Response,
@@ -141,7 +129,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     size--;
   }
   lru_lock.unlock();
-  delete lru_node;
+  segment_mgr_->destroy_ptr(lru_node.get());
 
   return true;
 }
@@ -266,7 +254,6 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     }
 
     cache_.erase(moribund->state_->key);
-    segment_mgr_->destroy_ptr(moribund.get());
   }
   // LOG(INFO) << "Evict done: " << size << std::endl;
 }

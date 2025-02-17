@@ -46,18 +46,16 @@ typename ConnectionStateStorage<Application, Request, Response, ConnectionInfo,
                                 CacheKey, CacheEntry>::ConnectionStateInstance*
 ConnectionStateStorage<Application, Request, Response, ConnectionInfo, CacheKey,
                        CacheEntry>::Add(const network::TCPID& tcp_id) {
-  // network::TCPID* shared_tcp_id =
-  //     segment_mgr_->template
-  //     construct<network::TCPID>(bip::anonymous_instance)(tcp_id);
   ConnectionStateInstance* state =
       segment_mgr_->template construct<ConnectionStateInstance>(
           bip::anonymous_instance)(cache_inner_ptr_, logger_inner_ptr_,
                                    segment_mgr_.get());
-  ConnectionStateEntry* entry =
-      segment_mgr_->template construct<ConnectionStateEntry>(
-          bip::anonymous_instance)(state, segment_mgr_.get());
-  state_map_.insert(std::make_pair(tcp_id, boost::move(*entry)));
-  segment_mgr_->destroy_ptr(entry);
+  if (!state_map_.emplace(std::piecewise_construct,
+                          std::forward_as_tuple(tcp_id),
+                          std::forward_as_tuple(state, segment_mgr_.get()))) {
+    segment_mgr_->destroy_ptr(state);
+    return nullptr;
+  }
   return state;
 }
 

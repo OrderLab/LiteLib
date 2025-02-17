@@ -26,6 +26,7 @@ class EmbeddedServer {
                              CacheKey, CacheEntry>;
 
  public:
+  // TODO: support called by multiple threads
   EmbeddedServer(int number_of_workers, size_t shared_memory_size,
                  size_t max_item_count,
                  const std::chrono::milliseconds &sliding_window_size)

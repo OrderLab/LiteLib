@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
   try {
     // size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t thread_pool_size = 1;
-    size_t cache_size(16384);
+    size_t cache_size(16384 * 8);
     size_t shared_memory_size(1024 * 1024 * 1024);
     const char *port = "6479";
     const char *address = "127.0.0.1";
