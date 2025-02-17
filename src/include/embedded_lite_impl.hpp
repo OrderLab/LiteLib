@@ -72,6 +72,7 @@ void *RegisterFD(int fd, ReinstallEventHandlerFn ReinstallEventHandler,
                                  CacheKey, CacheEntry> *>(
           embedded_server_void_ptr);
   auto tcp_id = network::GetTCPID(fd);
+  embedded_server_ptr->fd_to_tcp_id_[fd] = tcp_id;
 
   auto connection_state_ptr =
       embedded_server_ptr->connection_state_storage_ptr_->Get(tcp_id);
@@ -97,10 +98,11 @@ void UnregisterFD(int fd) {
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
           embedded_server_void_ptr);
-  auto tcp_id = network::GetTCPID(fd);
-  if (embedded_server_ptr->connection_state_storage_ptr_->Delete(tcp_id)) {
+  auto tcp_id = embedded_server_ptr->fd_to_tcp_id_[fd];
+  if (!embedded_server_ptr->connection_state_storage_ptr_->Delete(tcp_id)) {
     LOG(WARNING) << "Connection not registered";
   }
+  embedded_server_ptr->fd_to_tcp_id_.erase(fd);
 }
 
 template <typename Application, typename Request, typename Response,
