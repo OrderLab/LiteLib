@@ -56,22 +56,29 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     item_size = value.GetSize();
   }
 
-  return cache_.emplace_and_visit(
+  ListNode *lru_node = nullptr;
+  auto ret = cache_.emplace_and_visit(
       std::piecewise_construct, std::forward_as_tuple(key),
       std::forward_as_tuple(key, value, dirty_node, this, item_size),
       [&](auto &element) {
         new_state = element.second.state;
-        std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
-        element.second.lru_node->PushFront(lru_head_);
-        if constexpr (HasGetSize<CacheEntry>) {
-          size += element.second.lru_node->state_->size;
-        } else {
-          size++;
-        }
-        if (size > max_size_) Evict();
-        lru_lock.unlock();
+        lru_node = element.second.lru_node.get();
       },
       [&](auto &element) {});
+
+  if (lru_node) {
+    std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
+    lru_node->PushFront(lru_head_);
+    if constexpr (HasGetSize<CacheEntry>) {
+      size += lru_node->state_->size;
+    } else {
+      size++;
+    }
+    if (size > max_size_) Evict();
+    lru_lock.unlock();
+  }
+
+  return ret;
 }
 
 template <typename Application, typename Request, typename Response,
