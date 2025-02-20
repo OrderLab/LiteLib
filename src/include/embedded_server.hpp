@@ -29,10 +29,19 @@ class EmbeddedServer {
   // TODO: support called by multiple threads
   EmbeddedServer(int number_of_workers, size_t shared_memory_size,
                  size_t max_item_count,
-                 const std::chrono::milliseconds &sliding_window_size)
-      : number_of_workers_(number_of_workers) {
+                 const std::chrono::milliseconds &sliding_window_size,
+                 const std::string socket_path,
+                 RequestDestructorFn RequestDestructor,
+                 FlushWriteBufferFn FlushWriteBuffer,
+                 ReinstallEventHandlerFn ReinstallEventHandler)
+      : number_of_workers_(number_of_workers),
+        RequestDestructor(RequestDestructor),
+        FlushWriteBuffer(FlushWriteBuffer),
+        ReinstallEventHandler(ReinstallEventHandler),
+        socket_path_(socket_path) {
     for (int i = 0; i < number_of_workers; i++) {
-      workers_.push_back(std::make_unique<EmbeddedWorkerInstance>(i));
+      workers_.push_back(std::make_unique<EmbeddedWorkerInstance>(
+          i, RequestDestructor, notified_workers_count_));
       workers_[i]->Run();
     }
     current_worker_ = workers_.begin();
@@ -70,12 +79,23 @@ class EmbeddedServer {
   LoggerInnerInstance *logger_inner_ptr_;
   ConnectionStateStorageInstance *connection_state_storage_ptr_;
 
-  std::map<int, network::TCPID> fd_to_tcp_id_;
+  FlushWriteBufferFn FlushWriteBuffer;
+  ReinstallEventHandlerFn ReinstallEventHandler;
+
+  std::set<int> listener_fds_;
+  std::map<int, std::pair<network::TCPID, void *>> fd_to_tcp_id_and_arg_;
+
+  int number_of_workers_;
+  std::atomic<int> notified_workers_count_;  // used to ack workers to switch to
+                                             // emergency mode
+
+  std::string socket_path_;
 
  private:
   std::vector<std::unique_ptr<EmbeddedWorkerInstance>> workers_;
   typename decltype(workers_)::iterator current_worker_;
-  int number_of_workers_;
+
+  RequestDestructorFn RequestDestructor;
 };
 
 }  // namespace lite

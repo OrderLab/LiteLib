@@ -40,10 +40,10 @@ index cc84d09ad..713ccb0c4 100644
  REDIS_BENCHMARK_NAME=redis-benchmark$(PROG_SUFFIX)
 diff --git a/src/litesys.c b/src/litesys.c
 new file mode 100644
-index 000000000..38db1a081
+index 000000000..14b3cfea2
 --- /dev/null
 +++ b/src/litesys.c
-@@ -0,0 +1,61 @@
+@@ -0,0 +1,74 @@
 +#include "litesys.h"
 +
 +#include <embedded_lite.h>
@@ -89,10 +89,11 @@ index 000000000..38db1a081
 +    memcpy(request->argv[i]->ptr, orig_argv[i]->ptr, request->argv_len[i]);
 +  }
 +
-+  LiteProcessRequest(c->litesys_data, request, LiteFreeEmbeddedRequest);
++  LiteProcessRequest(c->litesys_data, request);
 +}
 +
-+void LiteFreeEmbeddedRequest(EmbeddedRequest *request) {
++void LiteFreeEmbeddedRequest(void *arg) {
++  EmbeddedRequest *request = (EmbeddedRequest *)arg;
 +  // TODO: use ref count
 +  // for (int i = 0; i < request->argc; i++) {
 +  //   decrRefCount(request->argv[i]);
@@ -105,12 +106,24 @@ index 000000000..38db1a081
 +  zfree(request->argv_len);
 +  zfree(request);
 +}
++
++void LiteFlushWriteBuffer(void *arg) {
++  client *c = (client *)arg;
++  // if (c->bufpos > 0) {
++  //   flushClientOutputBuffer(c);
++  // }
++}
++
++void LiteReinstallEventHandler(void *arg) {
++  client *c = (client *)arg;
++  // TODO
++}
 diff --git a/src/litesys.h b/src/litesys.h
 new file mode 100644
-index 000000000..673706c9a
+index 000000000..0b3c78ef9
 --- /dev/null
 +++ b/src/litesys.h
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,25 @@
 +#pragma once
 +
 +#include "server.h"
@@ -131,9 +144,13 @@ index 000000000..673706c9a
 +
 +void LiteQueueEmbeddedRequest(client *c);
 +
-+void LiteFreeEmbeddedRequest(EmbeddedRequest *request);
++void LiteFreeEmbeddedRequest(void *request);
++
++void LiteFlushWriteBuffer(void *c);
++
++void LiteReinstallEventHandler(void *c);
 diff --git a/src/networking.c b/src/networking.c
-index 41af67f42..68f7f039b 100644
+index 41af67f42..a8ef90a1a 100644
 --- a/src/networking.c
 +++ b/src/networking.c
 @@ -22,6 +22,8 @@
@@ -151,7 +168,7 @@ index 41af67f42..68f7f039b 100644
      }
 +
 +    if (strcmp(c->conn->type->get_type(c->conn), CONN_TYPE_SOCKET) == 0) {
-+        c->litesys_data = LiteRegisterFD(c->conn->fd, NULL, c); // TODO: implement ReinstallEventHandler
++        c->litesys_data = LiteRegisterClientFD(c->conn->fd, c);
 +    }
  }
  
@@ -161,7 +178,7 @@ index 41af67f42..68f7f039b 100644
       * conn is already set to NULL. */
      if (c->conn) {
 +        if (strcmp(c->conn->type->get_type(c->conn), CONN_TYPE_SOCKET) == 0) {
-+            LiteUnregisterFD(c->conn->fd);
++            LiteUnregisterClientFD(c->conn->fd);
 +        }
 +
          /* Remove from the list of active clients. */
@@ -177,7 +194,7 @@ index 41af67f42..68f7f039b 100644
      if (c->original_argv) return;
      c->original_argc = c->argc;
 diff --git a/src/server.c b/src/server.c
-index 1a7bf2700..716fa72f1 100644
+index 1a7bf2700..1db5701c7 100644
 --- a/src/server.c
 +++ b/src/server.c
 @@ -43,6 +43,9 @@
@@ -190,7 +207,27 @@ index 1a7bf2700..716fa72f1 100644
  #ifdef __linux__
  #include <sys/mman.h>
  #endif
-@@ -3572,8 +3575,14 @@ void call(client *c, int flags) {
+@@ -2433,6 +2436,7 @@ void closeListener(connListener *sfd) {
+ 
+         aeDeleteFileEvent(server.el, sfd->fd[j], AE_READABLE);
+         close(sfd->fd[j]);
++        LiteUnregisterListenerFD(sfd->fd[j]);
+     }
+ 
+     sfd->count = 0;
+@@ -2487,9 +2491,11 @@ int listenToPort(connListener *sfd) {
+         if (strchr(addr,':')) {
+             /* Bind IPv6 address. */
+             sfd->fd[sfd->count] = anetTcp6Server(server.neterr,port,addr,server.tcp_backlog);
++            LiteRegisterListenerFD(sfd->fd[sfd->count]);
+         } else {
+             /* Bind IPv4 address. */
+             sfd->fd[sfd->count] = anetTcpServer(server.neterr,port,addr,server.tcp_backlog);
++            LiteRegisterListenerFD(sfd->fd[sfd->count]);
+         }
+         if (sfd->fd[sfd->count] == ANET_ERR) {
+             int net_errno = errno;
+@@ -3572,8 +3578,14 @@ void call(client *c, int flags) {
      if (monotonicGetType() == MONOTONIC_CLOCK_HW)
          monotonic_start = getMonotonicUs();
  
@@ -205,12 +242,22 @@ index 1a7bf2700..716fa72f1 100644
      /* Clear the CLIENT_REPROCESSING_COMMAND flag after the proc is executed. */
      if (reprocessing_command) c->flags &= ~CLIENT_REPROCESSING_COMMAND;
  
-@@ -7186,6 +7195,9 @@ int main(int argc, char **argv) {
+@@ -6385,6 +6397,8 @@ int changeListener(connListener *listener) {
+ }
+ 
+ static void sigShutdownHandler(int sig) {
++    LiteSignalHandler(sig);
++
+     char *msg;
+ 
+     switch (sig) {
+@@ -7186,6 +7200,10 @@ int main(int argc, char **argv) {
          serverLog(LL_NOTICE, "Configuration loaded");
      }
  
 +    if (!server.sentinel_mode) {
-+        LiteInit(argv[0]);
++        LiteInit(argv[0], LiteFreeEmbeddedRequest, LiteFlushWriteBuffer,
++                 LiteReinstallEventHandler);
 +    }
      initServer();
      if (background || server.pidfile) createPidFile();

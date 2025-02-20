@@ -24,9 +24,9 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                                    const size_t replay_expected_rps,
                                    const double flow_control_ratio,
                                    const size_t n_replay_threads,
-                                   const char pipe_path[], bool crash_recover)
+                                   const char socket_path[], bool crash_recover)
     : lite_core_(app, max_item_count, shared_memory_size, backend_addr,
-                 backend_port, pipe_path, barrier_, workers_,
+                 backend_port, socket_path, barrier_, this, workers_,
                  sliding_window_size, replay_expected_rps, flow_control_ratio,
                  n_replay_threads, crash_recover),
       barrier_(nthreads + 1,
@@ -48,90 +48,8 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
 bool LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
-                CacheEntry>::Run(const char* port) {
-  signal(SIGPIPE, SIG_IGN);
-
-  int sfd;
-  struct linger ling = {0, 0};
-  struct addrinfo* ai;
-  struct addrinfo* next;
-  struct addrinfo hints = {.ai_flags = AI_PASSIVE, .ai_family = AF_UNSPEC};
-  char port_buf[NI_MAXSERV];
-  int error;
-  int success = 0;
-  int flags = 1;
-
-  hints.ai_socktype = SOCK_STREAM;
-
-  char* interface = nullptr;
-  error = getaddrinfo(interface, port, &hints, &ai);
-  if (error != 0) {
-    if (error != EAI_SYSTEM)
-      LOG(ERROR) << "getaddrinfo(): " << gai_strerror(error) << '\n';
-    else
-      PLOG(ERROR) << "getaddrinfo()";
-    return 0;
-  }
-
-  for (next = ai; next; next = next->ai_next) {
-    if ((sfd = NewSocket(next)) == -1) {
-      /* getaddrinfo can return "junk" addresses,
-       * we make sure at least one works before erroring.
-       */
-      if (errno == EMFILE) {
-        /* ...unless we're out of fds */
-        PLOG(ERROR) << "server_socket";
-        exit(EX_OSERR);
-      }
-      continue;
-    }
-
-    setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, (void*)&flags, sizeof(flags));
-    PLOG_IF(ERROR, setsockopt(sfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&flags,
-                              sizeof(flags)))
-        << "setsockopt";
-
-    PLOG_IF(ERROR,
-            setsockopt(sfd, SOL_SOCKET, SO_LINGER, (void*)&ling, sizeof(ling)))
-        << "setsockopt";
-
-    PLOG_IF(ERROR, setsockopt(sfd, IPPROTO_TCP, TCP_NODELAY, (void*)&flags,
-                              sizeof(flags)))
-        << "setsockopt";
-
-    if (bind(sfd, next->ai_addr, next->ai_addrlen) == -1) {
-      if (errno != EADDRINUSE) {
-        PLOG(ERROR) << "bind()";
-        close(sfd);
-        freeaddrinfo(ai);
-        return 0;
-      }
-      close(sfd);
-      continue;
-    } else {
-      success++;
-      if (listen(sfd, 1024) == -1) {
-        PLOG(ERROR) << "listen()";
-        close(sfd);
-        freeaddrinfo(ai);
-        return 0;
-      }
-    }
-
-    std::unique_ptr<ConnectionInstance> new_connection;
-    LOG_IF(FATAL, !(new_connection = std::make_unique<ConnectionInstance>(
-                        sfd, EV_READ | EV_PERSIST, main_base_, EventHandler,
-                        this, lite_core_, false, nullptr)))
-        << "failed to create listening connection\n";
-    conns_.push(std::move(new_connection));
-  }
-
-  freeaddrinfo(ai);
-
-  /* Return zero iff we detected no errors in starting up connections */
-  if (!success) return 0;
-
-  event_base_loop(main_base_, 0);
+                CacheEntry>::Run() {
+  event_base_loop(main_base_, EVLOOP_NO_EXIT_ON_EMPTY);
   event_base_free(main_base_);
   return 1;
 }

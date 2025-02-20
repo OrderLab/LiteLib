@@ -4,10 +4,15 @@
 #include "service.hpp"
 
 extern "C" {
-__attribute__((visibility("default"))) int LiteInit(char *argv_0) {
+__attribute__((visibility("default"))) int LiteInit(
+    char *argv_0, RequestDestructorFn RequestDestructor,
+    FlushWriteBufferFn FlushWriteBuffer,
+    ReinstallEventHandlerFn ReinstallEventHandler) {
   auto ret =
       lite::Init<Redis, Packet, Packet, ConnectionInfo, CacheKey, CacheEntry>(
-          argv_0, 1, std::numeric_limits<int>::max(), 16384 * 8, 1000ms);
+          argv_0, 1, std::numeric_limits<int>::max(), 16384 * 2, 1000ms,
+          "/tmp/lite_Redis", RequestDestructor, FlushWriteBuffer,
+          ReinstallEventHandler);
   shm = &static_cast<lite::EmbeddedServer<Redis, Packet, Packet, ConnectionInfo,
                                           CacheKey, CacheEntry> *>(
              lite::embedded_server_void_ptr)
@@ -15,26 +20,35 @@ __attribute__((visibility("default"))) int LiteInit(char *argv_0) {
   return ret;
 }
 
-__attribute__((visibility("default"))) int LiteSignalHandler() {
+__attribute__((visibility("default"))) int LiteSignalHandler(int sig) {
   return lite::SignalHandler<Redis, Packet, Packet, ConnectionInfo, CacheKey,
-                             CacheEntry>();
+                             CacheEntry>(sig);
 }
 
-__attribute__((visibility("default"))) void *LiteRegisterFD(
-    int fd, ReinstallEventHandlerFn ReinstallEventHandler, void *client) {
-  return lite::RegisterFD<Redis, Packet, Packet, ConnectionInfo, CacheKey,
-                          CacheEntry>(fd, ReinstallEventHandler, client);
+__attribute__((visibility("default"))) void LiteRegisterListenerFD(int fd) {
+  lite::RegisterListenerFD<Redis, Packet, Packet, ConnectionInfo, CacheKey,
+                           CacheEntry>(fd);
 }
 
-__attribute__((visibility("default"))) void LiteUnregisterFD(int fd) {
-  lite::UnregisterFD<Redis, Packet, Packet, ConnectionInfo, CacheKey,
-                     CacheEntry>(fd);
+__attribute__((visibility("default"))) void LiteUnregisterListenerFD(int fd) {
+  lite::UnregisterListenerFD<Redis, Packet, Packet, ConnectionInfo, CacheKey,
+                             CacheEntry>(fd);
+}
+__attribute__((visibility("default"))) void *LiteRegisterClientFD(
+    int fd, void *client) {
+  return lite::RegisterClientFD<Redis, Packet, Packet, ConnectionInfo, CacheKey,
+                                CacheEntry>(fd, client);
 }
 
-__attribute__((visibility("default"))) int LiteProcessRequest(
-    void *conn_info, void *request, RequestDestructorFn RequestDestructor) {
+__attribute__((visibility("default"))) void LiteUnregisterClientFD(int fd) {
+  lite::UnregisterClientFD<Redis, Packet, Packet, ConnectionInfo, CacheKey,
+                           CacheEntry>(fd);
+}
+
+__attribute__((visibility("default"))) int LiteProcessRequest(void *conn_info,
+                                                              void *request) {
   return lite::ProcessRequest<Redis, Packet, Packet, ConnectionInfo, CacheKey,
-                              CacheEntry>(conn_info, request, RequestDestructor,
+                              CacheEntry>(conn_info, request,
                                           &Redis::EmbeddedNormalUpdate);
 }
 }  // extern "C"

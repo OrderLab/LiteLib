@@ -25,6 +25,7 @@ using NormalUpdateFn =
 struct EmbeddedWorkerMessage {
   enum class Type {
     kNormalUpdate,
+    kSwitchToEmergencyMode,
   };
 
   Type type;
@@ -37,7 +38,6 @@ template <typename Application, typename Request, typename Response,
 struct EmbeddedNormalUpdateMessage {
   void* conn_info;
   void* request;
-  RequestDestructorFn RequestDestructor;
   NormalUpdateFn<Application, Request, Response, ConnectionInfo, CacheKey,
                  CacheEntry>
       NormalUpdate;
@@ -47,7 +47,13 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 class EmbeddedWorker {
  public:
-  EmbeddedWorker(int id) : id_(id), event_base_(nullptr), event_(nullptr) {
+  EmbeddedWorker(int id, RequestDestructorFn RequestDestructor,
+                 std::atomic<int>& notified_workers_count)
+      : id_(id),
+        RequestDestructor(RequestDestructor),
+        notified_workers_count_(notified_workers_count),
+        event_base_(nullptr),
+        event_(nullptr) {
     event_base_ = event_base_new();
 
     PCHECK(event_fd_ = eventfd(0, EFD_NONBLOCK))
@@ -129,8 +135,20 @@ class EmbeddedWorker {
         auto cache = connection_state_ptr->cache_;
         auto ret = job->NormalUpdate(
             job->request, connection_state_ptr->extra_app_info_, &cache);
-        job->RequestDestructor(job->request);
+        RequestDestructor(job->request);
         delete job;
+        break;
+      }
+      case EmbeddedWorkerMessage::Type::kSwitchToEmergencyMode: {
+        if (!message_queue.empty()) {
+          LOG(WARNING) << "Embedded worker " << id_
+                       << " has pending messages when switching to emergency "
+                          "mode, which might due to a never-stop full "
+                          "version's thread and may cause data loss";
+        }
+        LOG(INFO) << "Embedded worker " << id_ << " switches to emergency mode";
+        notified_workers_count_++;
+        event_base_loopexit(event_base_, nullptr);
         break;
       }
     }
@@ -141,6 +159,10 @@ class EmbeddedWorker {
   int event_fd_;
   struct event_base* event_base_;
   struct event* event_;
+
+  std::atomic<int>& notified_workers_count_;
+
+  RequestDestructorFn RequestDestructor;
 };
 
 }  // namespace lite

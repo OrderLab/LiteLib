@@ -66,6 +66,8 @@ class ConnectionStateStorage {
 
   ConnectionStateInstance* Add(const network::TCPID& tcp_id);
 
+  ConnectionStateInstance* GetOrAdd(const network::TCPID& tcp_id);
+
   // Pointers get from Get() will be invalidated after Delete()
   bool Delete(const network::TCPID& tcp_id);
 

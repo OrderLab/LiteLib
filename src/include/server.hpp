@@ -36,11 +36,11 @@ class LiteServer {
                       const size_t replay_expected_rps,
                       const double flow_control_ratio = 0.9,
                       const size_t n_replay_threads = 1,
-                      const char pipe_path[] = "/tmp/lite",
+                      const char socket_path[] = "/tmp/lite",
                       bool crash_recover = true);
 
   /// Listen on the specified TCP port.
-  bool Run(const char* port);
+  bool Run();
 
   /// Dispatch a new connection to the next thread in round-robin order.
   void DispatchNewConnection(const evutil_socket_t sfd);
@@ -71,6 +71,8 @@ class LiteServer {
   /// Handle a new connection.
   static void EventHandler(const evutil_socket_t fd, const short which,
                            void* arg_conn);
+
+  friend LiteCoreInstance;
 };
 
 }  // namespace lite

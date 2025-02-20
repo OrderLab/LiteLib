@@ -2,6 +2,8 @@
 
 #include <event.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include <atomic>
 #include <functional>
@@ -13,9 +15,10 @@ namespace lite {
 
 class Daemon {
  public:
-  explicit Daemon(const std::function<bool()> &Replay,
-                  std::function<void()> TakeOver, std::string &backend_port,
-                  const std::string pipe_path = "/tmp/lite");
+  explicit Daemon(
+      const std::function<bool()> &Replay,
+      const std::function<void(const std::vector<int> &, int)> TakeOver,
+      std::string &backend_port, const std::string socket_path = "/tmp/lite");
 
   std::string &backend_port_;
 
@@ -30,23 +33,23 @@ class Daemon {
 
   std::function<bool()> Replay_;
 
-  std::function<void()> TakeOver_;
+  std::function<void(const std::vector<int> &, int)> TakeOver_;
 
   pthread_t thread_id_;
 
-  int named_pipe_fd_;
+  int socket_fd_;
 
   struct event_base *base_;
 
-  struct event pipe_event_;
+  struct event socket_event_;
 
-  std::string pipe_path_;
+  std::string socket_path_;
 
-  void CreatePipeAndRegisterEvent();
+  void CreateSocketAndRegisterEvent();
 
   static void *ThreadBody(void *arg);
 
-  static void PipeHandler(evutil_socket_t fd, short which, void *arg_self);
+  static void SocketHandler(evutil_socket_t fd, short which, void *arg_self);
 };
 
 }  // namespace lite
