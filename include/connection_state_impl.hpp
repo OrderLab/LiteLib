@@ -61,6 +61,19 @@ ConnectionStateStorage<Application, Request, Response, ConnectionInfo, CacheKey,
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+typename ConnectionStateStorage<Application, Request, Response, ConnectionInfo,
+                                CacheKey, CacheEntry>::ConnectionStateInstance*
+ConnectionStateStorage<Application, Request, Response, ConnectionInfo, CacheKey,
+                       CacheEntry>::GetOrAdd(const network::TCPID& tcp_id) {
+  ConnectionStateInstance* state = Get(tcp_id);
+  if (!state) {
+    state = Add(tcp_id);
+  }
+  return state;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool ConnectionStateStorage<Application, Request, Response, ConnectionInfo,
                             CacheKey, CacheEntry>::Delete(const network::TCPID&
                                                               tcp_id) {

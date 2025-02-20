@@ -42,7 +42,7 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     if (!connection_state_entry_ptr_ && is_client_connection) {
       auto tcp_id = network::GetTCPID(sfd);
       connection_state_entry_ptr_ =
-          lite_core_.connection_state_storage_ptr_->Add(tcp_id);
+          lite_core_.connection_state_storage_ptr_->GetOrAdd(tcp_id);
     }
 
     event_set(&client_event_, sfd, event_flags, event_handler,

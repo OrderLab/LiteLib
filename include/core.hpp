@@ -24,6 +24,11 @@ class Worker;
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
+class LiteServer;
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
@@ -43,6 +48,8 @@ class LiteCore : public Daemon {
                                         ConnectionInfo, CacheKey, CacheEntry>;
   using WorkerInstance = Worker<Application, Request, Response, ConnectionInfo,
                                 CacheKey, CacheEntry>;
+  using ServerInstance = LiteServer<Application, Request, Response,
+                                    ConnectionInfo, CacheKey, CacheEntry>;
   using CacheStateInstance = CacheState<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>;
   using ConnectionStateStorageInstance =
@@ -52,8 +59,9 @@ class LiteCore : public Daemon {
  public:
   LiteCore(Application &app, const size_t &max_item_count,
            const size_t &shared_memory_size, std::string &backend_addr,
-           std::string &backend_port, const char pipe_path[],
+           std::string &backend_port, const char socket_path[],
            std::barrier<std::function<void()>> &barrier,
+           ServerInstance *server_instance_ptr,
            std::vector<std::unique_ptr<WorkerInstance>> &workers,
            const std::chrono::milliseconds sliding_window_size,
            const size_t replay_expected_rps, const double flow_control_ratio,
@@ -100,9 +108,11 @@ class LiteCore : public Daemon {
 
   std::barrier<std::function<void()>> &barrier_;
 
+  ServerInstance *server_instance_ptr_;
+
   std::vector<std::unique_ptr<WorkerInstance>> &workers_;
 
-  void TakeOver();
+  void TakeOver(const std::vector<int> &fds, int connection_cnt);
 
   SlidingWindow replay_rate_;
 

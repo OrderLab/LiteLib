@@ -5,6 +5,7 @@
 
 #include "core.hpp"
 #include "network_utils.hpp"
+#include "server.hpp"
 #include "worker.hpp"
 
 namespace lite {
@@ -18,20 +19,24 @@ template <typename Application, typename Request, typename Response,
 LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
     LiteCore(Application &app, const size_t &max_item_count,
              const size_t &shared_memory_size, std::string &backend_addr,
-             std::string &backend_port, const char pipe_path[],
+             std::string &backend_port, const char socket_path[],
              std::barrier<std::function<void()>> &barrier,
+             ServerInstance *server_instance_ptr,
              std::vector<std::unique_ptr<WorkerInstance>> &workers,
              const std::chrono::milliseconds sliding_window_size,
              const size_t replay_expected_rps, const double flow_control_ratio,
              const size_t n_replay_threads, bool crash_recover)
-    : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port,
-             pipe_path),
+    : Daemon(std::bind(&LiteCore::Replay, this),
+             std::bind(&LiteCore::TakeOver, this, std::placeholders::_1,
+                       std::placeholders::_2),
+             backend_port, socket_path),
       app_(app),
       shared_memory_(bip::open_or_create, "lite_shared_memory",
                      shared_memory_size),
       crash_recover_(crash_recover),
       backend_addr_(backend_addr),
       barrier_(barrier),
+      server_instance_ptr_(server_instance_ptr),
       workers_(workers),
       emergency_mode_ptr_(shared_memory_.find_or_construct<ShmAtomic<bool>>(
           "emergency_mode")(false)),
@@ -73,12 +78,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                   const evutil_socket_t client_fd,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
                   LoggerInstance *logger, const bool forwarded) {
-  if (!emergency_mode_ptr_->load() && backend_fd <= 0) {
-    LOG(WARNING) << "Core: Fall back and entering emergency mode "
-                 << GetUNIXTimeStamp() << std::endl;
-    TakeOver();
-  }
-
   if (emergency_mode_ptr_->load()) {
     const bool flow_control =
         is_replaying_ & (flow_control_ratio_ * replay_rate_ <
@@ -99,15 +98,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       return false;
     }
   } else {
-    if (!forwarded) {
-      const auto buffer = req->Serialize();
-      if (!network::Write(backend_fd, buffer)) {
-        LOG(ERROR) << "Failed to write request to backend" << std::endl;
-        return false;
-      }
-    }
-    // TODO: enable application to filter/modify requests before pushing back
-    pending_requests.push_back(std::make_pair(req, true));
+    LOG(ERROR) << "Received request in normal mode" << std::endl;
   }
   return true;
 }
@@ -151,42 +142,32 @@ template <typename Application, typename Request, typename Response,
                          CacheKey, CacheEntry> &&
            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-              CacheEntry>::TakeOver() {
+              CacheEntry>::TakeOver(const std::vector<int> &fds,
+                                    int connection_cnt) {
   emergency_mode_ptr_->store(true);
-  LOG(INFO) << "Disconnect all from backend" << std::endl;
-  LOG(INFO) << "Emergency barrier initialized" << std::endl;
-  for (auto &worker : workers_) {
-    worker->notify_queue_.push_back(
-        {.type = WorkerMessage::Type::kBarrier, .fd = 0});
-    uint64_t buf = 1;
-    PLOG_IF(ERROR, write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
-                       sizeof(uint64_t))
-        << "failed writing to worker eventfd";
-  }
-  barrier_.arrive_and_wait();
-
-  std::set<ConnectionInstance *> connections_to_be_closed;
-  LOG(INFO) << "live connections: " << live_connections_.size() << std::endl;
-  live_connections_.visit_all([&](ConnectionInstance *const &c) {
-    if (c->backend_fd_ > 0) {
-      close(c->backend_fd_);
-      c->backend_fd_ = -1;
-    }
-    if (!c->connection_state_entry_ptr_->pending_requests_.empty()) {
-      // TODO: serve them using EmergencyServe
-      // Remaining issue: MULTI -> (switch to emergency) ->
-      // EXEC, service.cc will inject an illegal DISCARD
-      connections_to_be_closed.insert(c);
-    }
-  });
-  for (auto &conn : connections_to_be_closed) {
-    live_connections_.erase(conn);
-    delete conn;
-  }
 
   app_.NormalToEmergencyHook();
 
-  barrier_.arrive_and_wait();  // unblock worker threads
+  // TODO: Remaining issue: MULTI -> (switch to emergency) ->
+  // EXEC, service.cc will inject an illegal DISCARD
+
+  // transfer client connections to workers
+  for (int i = 0; i < connection_cnt; i++) {
+    server_instance_ptr_->DispatchNewConnection(fds[i]);
+  }
+
+  // transfer listener connections to server
+  for (int i = connection_cnt; i < fds.size(); i++) {
+    std::unique_ptr<ConnectionInstance> new_connection;
+    LOG_IF(FATAL,
+           !(new_connection = std::make_unique<ConnectionInstance>(
+                 fds[i], EV_READ | EV_PERSIST, server_instance_ptr_->main_base_,
+                 ServerInstance::EventHandler, server_instance_ptr_, *this,
+                 false, nullptr)))
+        << "failed to create listening connection\n";
+    server_instance_ptr_->conns_.push(std::move(new_connection));
+  }
+
   if (!crash_recover_) {
     // add all cache nodes to the log
     crash_conn_head_ =
