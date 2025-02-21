@@ -15,6 +15,13 @@ LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
       chr_tail_(nullptr, ShmSharedPtr<Request>{}, nullptr),
       inserting_rate_(sliding_window_size),
       segment_mgr_(segment_mgr) {
+  Init();
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
+                 CacheEntry>::Init() {
   chr_head_.chr_nxt = &chr_tail_;
   chr_tail_.chr_pre = &chr_head_;
 }
