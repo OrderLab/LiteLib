@@ -146,6 +146,8 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                                     int connection_cnt) {
   emergency_mode_ptr_->store(true);
 
+  logger_inner_ptr_->Init();  // virtual addresses changed, init again
+
   app_.NormalToEmergencyHook();
 
   // TODO: Remaining issue: MULTI -> (switch to emergency) ->

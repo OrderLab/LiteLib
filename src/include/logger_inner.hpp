@@ -54,6 +54,8 @@ class LoggerInner {
   LoggerInner(const std::chrono::milliseconds sliding_window_size,
               bip::offset_ptr<SegmentManager> segment_mgr);
 
+  void Init();
+
   void Log(LogEntryInstance *entry, LogEntryInstance *conn_head);
 
   bool Pop(LogEntryInstance *&entry);
