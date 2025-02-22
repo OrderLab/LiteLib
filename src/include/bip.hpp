@@ -18,6 +18,8 @@ using ShmDeleter = bip::deleter<T, SegmentManager>;
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/smart_ptr/shared_ptr.hpp>
 #include <boost/interprocess/smart_ptr/unique_ptr.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
+#include <boost/interprocess/sync/sharable_lock.hpp>
 
 template <typename T>
 using ShmAtomic = boost::ipc_atomic<T>;

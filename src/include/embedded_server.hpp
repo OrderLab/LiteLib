@@ -41,7 +41,8 @@ class EmbeddedServer {
         socket_path_(socket_path) {
     for (int i = 0; i < number_of_workers; i++) {
       workers_.push_back(std::make_unique<EmbeddedWorkerInstance>(
-          i, RequestDestructor, notified_workers_count_));
+          i, RequestDestructor, connection_state_storage_ptr_,
+          notified_workers_count_));
       workers_[i]->Run();
     }
     current_worker_ = workers_.begin();

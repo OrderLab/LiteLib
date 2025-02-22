@@ -25,6 +25,7 @@ using NormalUpdateFn =
 struct EmbeddedWorkerMessage {
   enum class Type {
     kNormalUpdate,
+    kConnectionDisconnect,
     kSwitchToEmergencyMode,
   };
 
@@ -43,17 +44,27 @@ struct EmbeddedNormalUpdateMessage {
       NormalUpdate;
 };
 
+struct EmbeddedConnectionDisconnectMessage {
+  network::TCPID tcp_id;
+};
+
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 class EmbeddedWorker {
+  using ConnectionStateStorageInstance =
+      ConnectionStateStorage<Application, Request, Response, ConnectionInfo,
+                             CacheKey, CacheEntry>;
+
  public:
   EmbeddedWorker(int id, RequestDestructorFn RequestDestructor,
+                 ConnectionStateStorageInstance*& connection_state_storage_ptr,
                  std::atomic<int>& notified_workers_count)
       : id_(id),
         RequestDestructor(RequestDestructor),
         notified_workers_count_(notified_workers_count),
         event_base_(nullptr),
-        event_(nullptr) {
+        event_(nullptr),
+        connection_state_storage_ptr_(connection_state_storage_ptr) {
     event_base_ = event_base_new();
 
     PCHECK(event_fd_ = eventfd(0, EFD_NONBLOCK))
@@ -139,6 +150,12 @@ class EmbeddedWorker {
         delete job;
         break;
       }
+      case EmbeddedWorkerMessage::Type::kConnectionDisconnect: {
+        auto job = static_cast<EmbeddedConnectionDisconnectMessage*>(msg.data);
+        connection_state_storage_ptr_->Delete(job->tcp_id);
+        delete job;
+        break;
+      }
       case EmbeddedWorkerMessage::Type::kSwitchToEmergencyMode: {
         if (!message_queue.empty()) {
           LOG(WARNING) << "Embedded worker " << id_
@@ -163,6 +180,7 @@ class EmbeddedWorker {
   std::atomic<int>& notified_workers_count_;
 
   RequestDestructorFn RequestDestructor;
+  ConnectionStateStorageInstance*& connection_state_storage_ptr_;
 };
 
 }  // namespace lite
