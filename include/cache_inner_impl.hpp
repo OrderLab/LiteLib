@@ -45,10 +45,10 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                                  bip::offset_ptr<LogEntryInstance> dirty_node,
                                  bip::offset_ptr<CacheStateInstance>
                                      &new_state) {
-  std::shared_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
   if (!in_transaction) {
-    transaction_lock =
-        std::shared_lock<bip::interprocess_sharable_mutex>{transaction_mutex_};
+    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+        transaction_mutex_);
   }
 
   auto item_size = 0;
@@ -67,7 +67,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
       [&](auto &element) {});
 
   if (lru_node) {
-    std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
+    bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
     lru_node->PushFront(lru_head_);
     if constexpr (HasGetSize<CacheEntry>) {
       size += lru_node->state_->size;
@@ -86,16 +86,16 @@ template <typename Application, typename Request, typename Response,
 bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Get(const CacheKey &key, CacheEntry &value,
                                  bool in_transaction) {
-  std::shared_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
   if (!in_transaction) {
-    transaction_lock =
-        std::shared_lock<bip::interprocess_sharable_mutex>{transaction_mutex_};
+    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+        transaction_mutex_);
   }
   return cache_.cvisit(key, [this, &value](auto &element) {
     value = element.second.state->value;
 
-    std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
-                                                       std::try_to_lock);
+    bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
+                                                       bip::try_to_lock);
     if (lru_lock) {
       ListNode *lru_node = element.second.lru_node.get();
       // The list node may be out of the list if it is in the process of being
@@ -116,10 +116,10 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Delete(const CacheKey &key, bool in_transaction,
                                     bip::offset_ptr<LogEntryInstance>
                                         &dirty_node) {
-  std::shared_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
   if (!in_transaction) {
-    transaction_lock =
-        std::shared_lock<bip::interprocess_sharable_mutex>{transaction_mutex_};
+    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+        transaction_mutex_);
   }
   bip::offset_ptr<ListNode> lru_node = nullptr;
   cache_.cvisit(key, [&](auto &element) {
@@ -128,7 +128,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
   });
   if (!lru_node || !cache_.erase(key)) return false;
 
-  std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
+  bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
   lru_node->Delink();
   if constexpr (HasGetSize<CacheEntry>) {
     size -= lru_node->state_->size;
@@ -150,18 +150,18 @@ bool CacheInner<
                          bip::offset_ptr<LogEntryInstance> dirty_node,
                          std::mutex *logger_chr_mutex,
                          bip::offset_ptr<CacheStateInstance> &new_state) {
-  std::shared_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
   if (!in_transaction) {
-    transaction_lock =
-        std::shared_lock<bip::interprocess_sharable_mutex>{transaction_mutex_};
+    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+        transaction_mutex_);
   }
   bool ret = false;
   cache_.visit(key, [&](auto &element) {
     element.second.state->value = value;
 
-    std::unique_lock<std::mutex> chr_lock;
+    bip::scoped_lock<std::mutex> chr_lock;
     if (logger_chr_mutex) {
-      chr_lock = std::unique_lock<std::mutex>{*logger_chr_mutex};
+      chr_lock = bip::scoped_lock<std::mutex>{*logger_chr_mutex};
     }
     auto old_dirty_node = element.second.state->dirty_node;
     element.second.state->dirty_node = dirty_node;
@@ -181,8 +181,8 @@ bool CacheInner<
     }
     ret = true;
 
-    std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
-                                                       std::try_to_lock);
+    bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
+                                                       bip::try_to_lock);
     if (lru_lock) {
       bip::offset_ptr<ListNode> lru_node = element.second.lru_node;
       // The list node may be out of the list if it is in the process of being
@@ -203,8 +203,8 @@ bool CacheInner<
   });
 
   if (size > max_size_) {
-    std::unique_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
-                                                       std::try_to_lock);
+    bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
+                                                       bip::try_to_lock);
     if (lru_lock && size > max_size_) Evict();
   }
 
@@ -218,10 +218,10 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     ConstVisitAll(
         std::function<void(const CacheKey &, const CacheEntry &)> visitor,
         bool in_transaction) {
-  std::shared_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
   if (!in_transaction) {
-    transaction_lock =
-        std::shared_lock<bip::interprocess_sharable_mutex>{transaction_mutex_};
+    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+        transaction_mutex_);
   }
   cache_.visit_all([&](auto &x) { visitor(x.first, x.second.state->value); });
 }
@@ -232,10 +232,10 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::
     VisitAllState(std::function<void(CacheStateInstance *)> visitor,
                   bool in_transaction) {
-  std::shared_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
   if (!in_transaction) {
-    transaction_lock =
-        std::shared_lock<bip::interprocess_sharable_mutex>{transaction_mutex_};
+    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+        transaction_mutex_);
   }
   cache_.visit_all([&](auto &x) { visitor(x.second.state.get()); });
 }

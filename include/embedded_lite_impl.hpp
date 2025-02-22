@@ -248,6 +248,12 @@ void UnregisterClientFD(int fd) {
     LOG(WARNING) << "Connection not registered";
   }
   embedded_server_ptr->fd_to_tcp_id_and_arg_.erase(fd);
+
+  // clear the conn info until all the previous requests are processed
+  EmbeddedWorkerMessage msg;
+  msg.type = EmbeddedWorkerMessage::Type::kConnectionDisconnect;
+  msg.data = new EmbeddedConnectionDisconnectMessage{tcp_id_and_arg.first};
+  embedded_server_ptr->SendMessageToNextWorker(msg);
 }
 
 template <typename Application, typename Request, typename Response,

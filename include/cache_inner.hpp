@@ -82,9 +82,9 @@ class CacheInner {
   void VisitAllState(std::function<void(CacheStateInstance *)> visitor,
                      bool in_transaction);
 
-  std::unique_lock<bip::interprocess_sharable_mutex> TransactionLock() {
-    return std::unique_lock<bip::interprocess_sharable_mutex>{
-        transaction_mutex_};
+  bip::scoped_lock<bip::interprocess_sharable_mutex> TransactionLock() {
+    return bip::scoped_lock<bip::interprocess_sharable_mutex>(
+        transaction_mutex_);
   }
 
   bip::offset_ptr<SegmentManager> GetSegmentManager() { return segment_mgr_; }

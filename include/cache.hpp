@@ -47,7 +47,7 @@ class Cache {  // A wrapper for CacheInner
       std::function<void(const CacheKey &, const CacheEntry &)> visitor,
       bool in_transaction = false);
 
-  std::unique_lock<bip::interprocess_sharable_mutex> TransactionLock() {
+  bip::scoped_lock<bip::interprocess_sharable_mutex> TransactionLock() {
     return cache_inner_ptr_->TransactionLock();
   }
 
