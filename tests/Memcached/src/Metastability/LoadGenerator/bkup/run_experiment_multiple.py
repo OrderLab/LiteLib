@@ -57,7 +57,7 @@ metastable_stats_array = []
 timeout = 1
 # trace replay config 
 num_threads = 192  #192
-result_file_name = "results_warm_cache/result_300.0.1.00001.txt"
+result_file_name = "result_stats/result_300.0.1.00001.txt"
 trace_file_name  = "traces/trace_file_300.0_1.00001.txt"
 
 #plotting config
@@ -102,7 +102,7 @@ for iter in range(0, len(lambda_trigger_arr)):
     
     # step 3: run the TraceReplay (using & making the process non blocking) 
     trace_file_name = "traces/trace_file_" + str(float(_lambda)) + "_" + str(float(zipf_parameter)) +".txt"
-    result_file_name = "results_warm_cache/result_" + str(float(_lambda)) + "_" + str(float(zipf_parameter)) + "_DUR_" + str(duration_of_test) + "_TRSZ_" + str(trigger_size) "_TMOUT_"+ timeout +".txt"
+    result_file_name = "result_stats/result_" + str(float(_lambda)) + "_" + str(float(zipf_parameter)) + "_DUR_" + str(duration_of_test) + "_TRSZ_" + str(trigger_size) "_TMOUT_"+ timeout +".txt"
 
     trace_replay_thread = Thread(target= run_trace_replay, args=(trace_file_name, num_threads, result_file_name,))
     trace_replay_thread.start()  

@@ -77,4 +77,4 @@ if __name__ == '__main__':
   while i < total_time + 1:
     do(i)
     i = i + 1
-    time.sleep(time_interval - ((time.monotonic() - start_time) % time_interval))
+    time.sleep(time_interval - ((time.time() - start_time / 1e9) % time_interval))

@@ -14,6 +14,11 @@ find_package(Boost 1.83 REQUIRED COMPONENTS
 find_package(Libevent REQUIRED)
 find_package (glog 0.4.0 REQUIRED)
 
+find_library(GPERFTOOLS_LIBRARY NAMES tcmalloc)
+if(NOT GPERFTOOLS_LIBRARY)
+    message(FATAL_ERROR "gperftools library not found")
+endif()
+
 add_subdirectory(Lite)
 
 add_executable(${PROJECT_NAME})
@@ -30,6 +35,6 @@ target_sources(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
-target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog)
+target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog tcmalloc)
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

@@ -24,6 +24,8 @@ main() {
 
   # Install dependencies for litesys
   ./litesys_dependency.sh
+
+  echo "Initialization complete."
 }
 
 main

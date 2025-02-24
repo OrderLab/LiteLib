@@ -1,92 +1,56 @@
 #!/bin/bash
-apt update
-apt -y install ssh
-service ssh start
-cp /workspace/.ssh /root -r
-chmod 600 /root/.ssh/id_ed25519
-NGINX_SERVER_IP=${1:-"web"}
-DB_ENTRIES=${2:-" 1504000"}
-# echo "params: $NGINX_SERVER_IP $DB_ENTRIES" 
-# chmod 777  /var/cache/debconf/config.dat
-# cat ../config_files/deb_conf.dat >>  /var/cache/debconf/config.dat
-# wget http://repo.mysql.com/mysql-apt-config_0.8.10-1_all.deb
-# DEBIAN_FRONTEND=noninteractive dpkg -i mysql-apt-config_0.8.10-1_all.deb
-# apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 467B942D3A79BD29
-# apt-get update 
-# apt update
-# apt install -y mysql-client=5.7.*-1ubuntu18.04
-# debconf-set-selections <<< 'mysql-community-server mysql-community-server/root-pass password hello@123'
-# debconf-set-selections <<< 'mysql-community-server mysql-community-server/re-root-pass password hello@123'
-# DEBIAN_FRONTEND=noninteractive apt install -y mysql-community-server=5.7.*-1ubuntu18.04
-# DEBIAN_FRONTEND=noninteractive apt install -y mysql-server=5.7.*-1ubuntu18.04
-# mysql -u root -phello@123 < init_database.sql
 
-# sed -i "s/.*bind-address.*/bind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
-# /etc/init.d/mysql stop
-# /etc/init.d/mysql start
+set -e
+set -x
+
+NGINX_SERVER_IP=${1:-"%"}
+# DB_ENTRIES=${2:-"1504000"}
+DB_ENTRIES=${2:-"34600000"}
+
+if [ "$(id -u)" != "0" ]; then
+  echo "This script must be run as root" 1>&2
+  exit 1
+fi
+
+apt install -y mysql-server mysql-client
+
+echo "bind-address = 0.0.0.0" >> /etc/mysql/mysql.conf.d/mysqld.cnf
+
+ufw allow 3306
+service mysql restart
+
+# adding webserver IP
+cp add_user.sql.template add_user.sql
+sed -i "s/remote_server_ip/$NGINX_SERVER_IP/" add_user.sql
+mysql -u root < add_user.sql
+
+cp init_database.sql.template init_database.sql
+sed -i "s/remote_server_ip/$NGINX_SERVER_IP/" init_database.sql
+mysql -u root < init_database.sql
+
+# touch new_user.sql
+# chmod 777 new_user.sql
+# echo "CREATE USER 'metastable'@'%' IDENTIFIED BY 'hello@123';" > new_user.sql
+# echo "GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT, REFERENCES, RELOAD on *.* TO 'metastable'@'%' WITH GRANT OPTION;" >> new_user.sql
+# echo "ALTER USER 'metastable'@'%' IDENTIFIED WITH mysql_native_password BY 'hello@123';" >> new_user.sql
+# echo "FLUSH PRIVILEGES;" >> new_user.sql
+# mysql -u root -phello@123 < new_user.sql
 
 # wget https://github.com/Percona-Lab/mysql_random_data_load/releases/download/v0.1.12/mysql_random_data_load_0.1.12_Linux_x86_64.tar.gz
 # tar -xvf  mysql_random_data_load_*
-# ./mysql_random_data_load metastable_test_db large_test_table $DB_ENTRIES  --user=root --password=hello@123
-# wget random data generator , run it with params
-# construct a mini sql file from here
-# for adding server IP, user to mysql
+mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'hello@123';;FLUSH PRIVILEGES;"
 
-# adding webserver IP
-# sed -i "/SET @a:=/c\SET @a:= $DB_ENTRIES;" linearize_column_data.sql
-# sed -i "s/remote_server_ip/$NGINX_SERVER_IP/" add_user.sql
-# ufw allow 3306
-# mysql -u root -phello@123 < add_user.sql
-# mysql -u root -phello@123 < linearize_column_data.sql
+for i in {1..10}; do
+    ./mysql_random_data_load metastable_test_db large_test_table $(($DB_ENTRIES/10)) --user=root --password=hello@123 &
+done
 
-# echo "params: $NGINX_SERVER_IP $DB_ENTRIES" 
-#chmod 777  /var/cache/debconf/config.dat
-#cat ../config_files/deb_conf.dat >>  /var/cache/debconf/config.dat
-#wget http://repo.mysql.com/mysql-apt-config_0.8.10-1_all.deb
-#DEBIAN_FRONTEND=noninteractive dpkg -i mysql-apt-config_0.8.10-1_all.deb
-#apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 467B942D3A79BD29
-#apt-get update 
-#apt update
-#apt install -y mysql-client=5.7.*-1ubuntu18.04
-#debconf-set-selections <<< 'mysql-community-server mysql-community-server/root-pass password hello@123'
-#debconf-set-selections <<< 'mysql-community-server mysql-community-server/re-root-pass password hello@123'
-#DEBIAN_FRONTEND=noninteractive apt install -y mysql-community-server=5.7.*-1ubuntu18.04
-#DEBIAN_FRONTEND=noninteractive apt install -y mysql-server=5.7.*-1ubuntu18.04
-#mysql -u root -phello@123 < init_database.sql
+while pgrep -f mysql_random_data_load > /dev/null; do
+    echo "Waiting for mysql_random_data_load processes to complete..."
+    sleep 5
+done
 
-#sed -i "s/.*bind-address.*/bind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
-#/etc/init.d/mysql stop
-#/etc/init.d/mysql start
-
-#wget https://github.com/Percona-Lab/mysql_random_data_load/releases/download/v0.1.12/mysql_random_data_load_0.1.12_Linux_x86_64.tar.gz
-#tar -xvf  mysql_random_data_load_*
-#./mysql_random_data_load metastable_test_db large_test_table $DB_ENTRIES  --user=root --password=hello@123
-# wget random data generator , run it with params
-# construct a mini sql file from here
-# for adding server IP, user to mysql
-
-# adding webserver IP
-#sed -i "/SET @a:=/c\SET @a:= $DB_ENTRIES;" linearize_column_data.sql
-
-#mysql -u root -phello@123 < linearize_column_data.sql
- 
-touch new_user.sql
-chmod 777 new_user.sql
-echo "CREATE USER 'metastable'@'%' IDENTIFIED BY 'hello@123';" > new_user.sql
-echo "GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT, REFERENCES, RELOAD on *.* TO 'metastable'@'%' WITH GRANT OPTION;" >> new_user.sql
-echo "ALTER USER 'metastable'@'%' IDENTIFIED WITH mysql_native_password BY 'hello@123';" >> new_user.sql
-echo "FLUSH PRIVILEGES;" >> new_user.sql 
- 
-#ufw allow 3306
-mysql -u root -phello@123 < new_user.sql
-
-mysql -u root -phello@123 < init_database.sql
-
-# wget https://github.com/Percona-Lab/mysql_random_data_load/releases/download/v0.1.12/mysql_random_data_load_0.1.12_Linux_x86_64.tar.gz
-# tar -xvf  mysql_random_data_load_*
-./mysql_random_data_load metastable_test_db large_test_table $DB_ENTRIES --user=root --password=hello@123
-
+cp linearize_column_data.sql.template linearize_column_data.sql
 sed -i "/SET @a:=/c\SET @a:= $DB_ENTRIES;" linearize_column_data.sql
-mysql -u root -phello@123 < linearize_column_data.sql
+mysql -u root -phello@123 < linearize_column_data.sql # takes about 1 hour
 
 echo "Done executing setup_mysql.sh"

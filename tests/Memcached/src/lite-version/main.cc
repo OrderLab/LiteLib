@@ -71,8 +71,10 @@ int main(int argc, char* argv[]) {
 
     // Initialise the server.
     // TODO: make address and port configurable.
-    std::string backend_addr = "localhost";
-    std::string backend_port = "60000";
+    std::string backend_addr = "";
+    std::string backend_port = "/tmp/memcached.sock";
+    // std::string backend_addr = "127.0.0.1";
+    // std::string backend_port = "60000";
     Memcached memcached;
     lite::LiteServer<Memcached, Packet, Packet, ConnectionInfo,
                      std::vector<uint8_t>, CacheEntry>
