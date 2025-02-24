@@ -60,7 +60,8 @@ class ConnectionStateStorage {
       : connection_state_allocator_(allocator),
         cache_inner_ptr_(cache_inner_ptr),
         logger_inner_ptr_(logger_inner_ptr),
-        state_map_(allocator) {}
+        state_map_(allocator),
+        replay_conns_(allocator) {}
 
   ConnectionStateInstance* Get(const network::TCPID& tcp_id);
 
@@ -70,6 +71,8 @@ class ConnectionStateStorage {
 
   // Pointers get from Get() will be invalidated after Delete()
   bool Delete(const network::TCPID& tcp_id);
+
+  ShmThreadSafeQueue<network::TCPID> replay_conns_;
 
  private:
   struct ConnectionStateEntry {

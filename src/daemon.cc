@@ -14,7 +14,7 @@
 namespace lite {
 
 Daemon::Daemon(
-    const std::function<bool()> &Replay,
+    const std::function<bool(const int)> &Replay,
     const std::function<void(const std::vector<int> &, int)> TakeOver,
     std::string &backend_port, const std::string socket_path)
     : Replay_(Replay),
@@ -89,9 +89,9 @@ void Daemon::SocketHandler(evutil_socket_t fd, short which, void *arg_self) {
   if (fd == self->socket_fd_) {
     struct sockaddr_un client_addr;
     socklen_t client_len = sizeof(client_addr);
-    int client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
+    int full_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
 
-    if (client_fd == -1) {
+    if (full_fd == -1) {
       LOG(ERROR) << "Daemon: Error accepting connection";
       return;
     }
@@ -111,10 +111,10 @@ void Daemon::SocketHandler(evutil_socket_t fd, short which, void *arg_self) {
       msg.msg_control = cmsgBuf.data();
       msg.msg_controllen = cmsgBuf.size();
 
-      ssize_t received = recvmsg(client_fd, &msg, 0);
+      ssize_t received = recvmsg(full_fd, &msg, 0);
       if (received < 0) {
         LOG(ERROR) << "Daemon: Error receiving socket message";
-        close(client_fd);
+        close(full_fd);
         return;
       }
 
@@ -122,14 +122,14 @@ void Daemon::SocketHandler(evutil_socket_t fd, short which, void *arg_self) {
       if (!cmsg || cmsg->cmsg_level != SOL_SOCKET ||
           cmsg->cmsg_type != SCM_RIGHTS) {
         LOG(ERROR) << "Daemon: Invalid control message";
-        close(client_fd);
+        close(full_fd);
         return;
       }
 
       size_t num_fds = lens[1];
       if (num_fds > kMaxFds) {
         LOG(ERROR) << "Daemon: Too many FDs received";
-        close(client_fd);
+        close(full_fd);
         return;
       }
 
@@ -139,9 +139,9 @@ void Daemon::SocketHandler(evutil_socket_t fd, short which, void *arg_self) {
                 << (lens[1] - lens[0]) << " listener FDs";
       self->TakeOver_(received_fds, lens[0]);
     } else {
-      self->Replay_();
+      self->Replay_(full_fd);
     }
-    close(client_fd);
+    close(full_fd);
   }
 }
 

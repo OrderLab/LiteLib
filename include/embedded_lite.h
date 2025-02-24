@@ -6,16 +6,23 @@ extern "C" {
 
 typedef void (*FlushWriteBufferFn)(void *conn);
 typedef void (*RequestDestructorFn)(void *request);
-typedef void (*ReinstallEventHandlerFn)(void *client);
+typedef void (*ReinstallClientEventHandlerFn)(void *client);
+typedef void (*ReinstallListenerEventHandlerFn)(void *listener);
+
+int LiteIsNormalMode(void);
 
 int LiteInit(char *argv_0, RequestDestructorFn RequestDestructor,
              FlushWriteBufferFn FlushWriteBuffer,
-             ReinstallEventHandlerFn ReinstallEventHandler);
+             ReinstallClientEventHandlerFn ReinstallClientEventHandler,
+             ReinstallListenerEventHandlerFn ReinstallListenerEventHandler);
+
+int LiteFullStartListening(void);
 
 int LiteSignalHandler(int sig);
 
-void LiteRegisterListenerFD(int fd);
+void LiteRegisterListenerFD(int fd, void *listener);
 void LiteUnregisterListenerFD(int fd);
+int LiteGetDummyListenerFD(void);
 
 void *LiteRegisterClientFD(int fd, void *client);
 void LiteUnregisterClientFD(int fd);

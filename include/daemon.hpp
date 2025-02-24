@@ -16,7 +16,7 @@ namespace lite {
 class Daemon {
  public:
   explicit Daemon(
-      const std::function<bool()> &Replay,
+      const std::function<bool(const int)> &Replay,
       const std::function<void(const std::vector<int> &, int)> TakeOver,
       std::string &backend_port, const std::string socket_path = "/tmp/lite");
 
@@ -31,7 +31,7 @@ class Daemon {
  private:
   ShmAtomic<bool> *emergency_mode_ptr_;
 
-  std::function<bool()> Replay_;
+  std::function<bool(const int)> Replay_;
 
   std::function<void(const std::vector<int> &, int)> TakeOver_;
 
