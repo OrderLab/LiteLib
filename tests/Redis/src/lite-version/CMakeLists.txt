@@ -27,8 +27,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set(CMAKE_BUILD_TYPE Debug)
 
 set(Boost_USE_STATIC_LIBS ON)
-find_package(Boost 1.83 REQUIRED COMPONENTS
+find_package(Boost 1.87 REQUIRED COMPONENTS
     system thread)
+message(STATUS "Found Boost version: ${Boost_VERSION}")
+message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
+message(STATUS "Boost library dirs: ${Boost_LIBRARY_DIRS}")
 find_package(Libevent REQUIRED)
 find_package(glog 0.4.0 REQUIRED)
 find_package(PkgConfig REQUIRED)

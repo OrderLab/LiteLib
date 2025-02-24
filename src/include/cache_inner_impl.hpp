@@ -12,12 +12,15 @@ CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::CacheInner(const size_t &max_size,
                                    bip::offset_ptr<ShmAtomic<bool>>
                                        emergency_mode_ptr,
-                                   bip::offset_ptr<SegmentManager> segment_mgr)
+                                   ShmVoidAllocator allocator)
     : max_size_(max_size),
       size(0),
       emergency_mode_ptr_(emergency_mode_ptr),
-      cache_(segment_mgr.get()),
-      segment_mgr_(segment_mgr) {
+      allocator_(allocator),
+      list_node_allocator_(allocator),
+      log_entry_allocator_(allocator),
+      cache_state_allocator_(allocator),
+      cache_(allocator) {
   lru_head_.pre_ = nullptr;
   lru_head_.nxt_ = &lru_tail_;
   lru_tail_.pre_ = &lru_head_;
@@ -32,7 +35,8 @@ CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
 
   while (node != &lru_tail_) {
     nxt = node->nxt_;
-    segment_mgr_->destroy_ptr(node.get());
+    node->~ListNode();
+    list_node_allocator_.deallocate_one(node);
     node = nxt;
   }
 }
@@ -45,11 +49,11 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                                  bip::offset_ptr<LogEntryInstance> dirty_node,
                                  bip::offset_ptr<CacheStateInstance>
                                      &new_state) {
-  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
-  if (!in_transaction) {
-    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
-        transaction_mutex_);
-  }
+  // bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  // if (!in_transaction) {
+  //   transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+  //       transaction_mutex_);
+  // }
 
   auto item_size = 0;
   if constexpr (HasGetSize<CacheEntry>) {
@@ -67,7 +71,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
       [&](auto &element) {});
 
   if (lru_node) {
-    bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
+    // bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
     lru_node->PushFront(lru_head_);
     if constexpr (HasGetSize<CacheEntry>) {
       size += lru_node->state_->size;
@@ -75,7 +79,7 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
       size++;
     }
     if (size > max_size_) Evict();
-    lru_lock.unlock();
+    // lru_lock.unlock();
   }
 
   return ret;
@@ -86,28 +90,34 @@ template <typename Application, typename Request, typename Response,
 bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Get(const CacheKey &key, CacheEntry &value,
                                  bool in_transaction) {
-  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
-  if (!in_transaction) {
-    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
-        transaction_mutex_);
-  }
-  return cache_.cvisit(key, [this, &value](auto &element) {
-    value = element.second.state->value;
+  // bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  // if (!in_transaction) {
+  //   transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+  //       transaction_mutex_);
+  // }
 
-    bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
-                                                       bip::try_to_lock);
-    if (lru_lock) {
-      ListNode *lru_node = element.second.lru_node.get();
-      // The list node may be out of the list if it is in the process of being
-      // inserted or evicted. Doing this check allows us to lock the list for
-      // shorter periods of time.
-      if (lru_node->isInList()) {
-        lru_node->Delink();
-        lru_node->PushFront(lru_head_);
-      }
-      lru_lock.unlock();
-    }
+  ListNode *lru_node = nullptr;
+  auto ret = cache_.cvisit(key, [this, &value, &lru_node](auto &element) {
+    value = element.second.state->value;
+    lru_node = element.second.lru_node.get();
   });
+
+  if (lru_node) {
+    // bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
+    //                                                    bip::try_to_lock);
+    // if (lru_lock) {
+    // The list node may be out of the list if it is in the process of being
+    // inserted or evicted. Doing this check allows us to lock the list for
+    // shorter periods of time.
+    if (lru_node->isInList()) {
+      lru_node->Delink();
+      lru_node->PushFront(lru_head_);
+    }
+    //   lru_lock.unlock();
+    // }
+  }
+
+  return ret;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -116,11 +126,12 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Delete(const CacheKey &key, bool in_transaction,
                                     bip::offset_ptr<LogEntryInstance>
                                         &dirty_node) {
-  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
-  if (!in_transaction) {
-    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
-        transaction_mutex_);
-  }
+  // bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  // if (!in_transaction) {
+  //   transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+  //       transaction_mutex_);
+  // }
+
   bip::offset_ptr<ListNode> lru_node = nullptr;
   cache_.cvisit(key, [&](auto &element) {
     lru_node = element.second.lru_node;
@@ -128,15 +139,16 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
   });
   if (!lru_node || !cache_.erase(key)) return false;
 
-  bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
+  // bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
   lru_node->Delink();
   if constexpr (HasGetSize<CacheEntry>) {
     size -= lru_node->state_->size;
   } else {
     size--;
   }
-  lru_lock.unlock();
-  segment_mgr_->destroy_ptr(lru_node.get());
+  // lru_lock.unlock();
+  lru_node->~ListNode();
+  list_node_allocator_.deallocate_one(lru_node);
 
   return true;
 }
@@ -150,12 +162,15 @@ bool CacheInner<
                          bip::offset_ptr<LogEntryInstance> dirty_node,
                          std::mutex *logger_chr_mutex,
                          bip::offset_ptr<CacheStateInstance> &new_state) {
-  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
-  if (!in_transaction) {
-    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
-        transaction_mutex_);
-  }
+  // bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  // if (!in_transaction) {
+  //   transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+  //       transaction_mutex_);
+  // }
   bool ret = false;
+  ListNode *lru_node = nullptr;
+  size_t new_size;
+
   cache_.visit(key, [&](auto &element) {
     element.second.state->value = value;
 
@@ -172,40 +187,37 @@ bool CacheInner<
       chr_lock.unlock();
     }
     if (old_dirty_node) {
-      segment_mgr_->destroy_ptr(old_dirty_node.get());
+      old_dirty_node->~LogEntryInstance();
+      log_entry_allocator_.deallocate_one(old_dirty_node);
     }
 
-    size_t new_size;
     if constexpr (HasGetSize<CacheEntry>) {
       new_size = value.GetSize();
     }
     ret = true;
 
-    bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
-                                                       bip::try_to_lock);
-    if (lru_lock) {
-      bip::offset_ptr<ListNode> lru_node = element.second.lru_node;
-      // The list node may be out of the list if it is in the process of being
-      // inserted or evicted. Doing this check allows us to lock the list for
-      // shorter periods of time.
-      if (lru_node->isInList()) {
-        lru_node->Delink();
-        lru_node->PushFront(lru_head_);
-        if constexpr (HasGetSize<CacheEntry>) {
-          size += new_size - lru_node->size;
-          lru_node->size = new_size;
-        }
-      }
-      lru_lock.unlock();
-    }
-
     new_state = element.second.state;
+    lru_node = element.second.lru_node.get();
   });
 
-  if (size > max_size_) {
-    bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
-                                                       bip::try_to_lock);
-    if (lru_lock && size > max_size_) Evict();
+  if (lru_node) {
+    // bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_,
+    //                                                    bip::try_to_lock);
+    // if (lru_lock) {
+    // The list node may be out of the list if it is in the process of being
+    // inserted or evicted. Doing this check allows us to lock the list for
+    // shorter periods of time.
+    if (lru_node->isInList()) {
+      lru_node->Delink();
+      lru_node->PushFront(lru_head_);
+      if constexpr (HasGetSize<CacheEntry>) {
+        size += new_size - lru_node->size;
+        lru_node->size = new_size;
+        if (size > max_size_) Evict();
+      }
+    }
+    //   lru_lock.unlock();
+    // }
   }
 
   return ret;
@@ -218,11 +230,11 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     ConstVisitAll(
         std::function<void(const CacheKey &, const CacheEntry &)> visitor,
         bool in_transaction) {
-  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
-  if (!in_transaction) {
-    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
-        transaction_mutex_);
-  }
+  // bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  // if (!in_transaction) {
+  //   transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+  //       transaction_mutex_);
+  // }
   cache_.visit_all([&](auto &x) { visitor(x.first, x.second.state->value); });
 }
 
@@ -232,11 +244,11 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::
     VisitAllState(std::function<void(CacheStateInstance *)> visitor,
                   bool in_transaction) {
-  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
-  if (!in_transaction) {
-    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
-        transaction_mutex_);
-  }
+  // bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  // if (!in_transaction) {
+  //   transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+  //       transaction_mutex_);
+  // }
   cache_.visit_all([&](auto &x) { visitor(x.second.state.get()); });
 }
 

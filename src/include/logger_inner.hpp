@@ -52,7 +52,7 @@ class LoggerInner {
 
  public:
   LoggerInner(const std::chrono::milliseconds sliding_window_size,
-              bip::offset_ptr<SegmentManager> segment_mgr);
+              ShmAllocator<LogEntryInstance> allocator);
 
   void Init();
 
@@ -65,7 +65,7 @@ class LoggerInner {
 
   bool Empty();
 
-  bip::offset_ptr<SegmentManager> segment_mgr_;
+  ShmAllocator<LogEntryInstance> log_entry_allocator_;
 
   std::mutex chr_mutex_;
 

@@ -9,8 +9,8 @@ template <typename Application, typename Request, typename Response,
 void Logger<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Log(const ShmSharedPtr<Request> &req) {
   LogEntryInstance *entry =
-      logger_inner_ptr_->segment_mgr_->template construct<LogEntryInstance>(
-          bip::anonymous_instance)(nullptr, req, conn_head_->backend_conn_ptr);
+      logger_inner_ptr_->log_entry_allocator_.allocate_one().get();
+  new (entry) LogEntryInstance(nullptr, req, conn_head_->backend_conn_ptr);
   logger_inner_ptr_->Log(entry, conn_head_.get());
 }
 

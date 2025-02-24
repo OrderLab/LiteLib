@@ -51,10 +51,6 @@ class Cache {  // A wrapper for CacheInner
     return cache_inner_ptr_->TransactionLock();
   }
 
-  bip::offset_ptr<SegmentManager> GetSegmentManager() {
-    return cache_inner_ptr_->GetSegmentManager();
-  }
-
  private:
   bip::offset_ptr<CacheInnerInstance> cache_inner_ptr_;
   bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr_;

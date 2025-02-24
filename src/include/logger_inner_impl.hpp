@@ -9,12 +9,11 @@ template <typename Application, typename Request, typename Response,
 LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::LoggerInner(const std::chrono::milliseconds
                                          sliding_window_size,
-                                     bip::offset_ptr<SegmentManager>
-                                         segment_mgr)
+                                     ShmAllocator<LogEntryInstance> allocator)
     : chr_head_(nullptr, ShmSharedPtr<Request>{}, nullptr),
       chr_tail_(nullptr, ShmSharedPtr<Request>{}, nullptr),
       inserting_rate_(sliding_window_size),
-      segment_mgr_(segment_mgr) {
+      log_entry_allocator_(allocator) {
   Init();
 }
 
@@ -83,7 +82,8 @@ bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
     nxt_entry = entry->conn_nxt;
     entry->Delink();
     --inserting_rate_;
-    segment_mgr_->destroy_ptr(entry);
+    entry->~LogEntryInstance();
+    log_entry_allocator_.deallocate_one(entry);
   }
   chr_lock.unlock();
   return true;

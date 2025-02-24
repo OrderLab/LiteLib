@@ -12,15 +12,15 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
   bip::offset_ptr<LogEntryInstance> dirty = nullptr;
   bip::offset_ptr<CacheStateInstance> state = nullptr;
   if (cache_inner_ptr_->emergency_mode_ptr_->load() && log) {
-    dirty =
-        cache_inner_ptr_->segment_mgr_->template construct<LogEntryInstance>(
-            bip::anonymous_instance)(nullptr, ShmSharedPtr<Request>{},
-                                     conn_head_->backend_conn_ptr);
+    dirty = cache_inner_ptr_->log_entry_allocator_.allocate_one();
+    new (dirty.get()) LogEntryInstance(nullptr, ShmSharedPtr<Request>{},
+                                       conn_head_->backend_conn_ptr);
   }
 
   if (!cache_inner_ptr_->Add(key, value, in_transaction, dirty, state)) {
     if (dirty) {
-      cache_inner_ptr_->segment_mgr_->destroy_ptr(dirty.get());
+      dirty->~LogEntryInstance();
+      cache_inner_ptr_->log_entry_allocator_.deallocate_one(dirty);
     }
     return false;
   }
@@ -52,7 +52,8 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
     std::unique_lock<std::mutex> chr_lock(logger_inner_ptr_->chr_mutex_);
     dirty->Delink();
     chr_lock.unlock();
-    cache_inner_ptr_->segment_mgr_->destroy_ptr(dirty);
+    dirty->~LogEntryInstance();
+    cache_inner_ptr_->log_entry_allocator_.deallocate_one(dirty);
   }
   return true;
 }
@@ -74,10 +75,9 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
   bip::offset_ptr<LogEntryInstance> dirty = nullptr;
   bip::offset_ptr<CacheStateInstance> state = nullptr;
   if (cache_inner_ptr_->emergency_mode_ptr_->load() && log) {
-    dirty =
-        cache_inner_ptr_->segment_mgr_->template construct<LogEntryInstance>(
-            bip::anonymous_instance)(nullptr, ShmSharedPtr<Request>{},
-                                     conn_head_->backend_conn_ptr);
+    dirty = cache_inner_ptr_->log_entry_allocator_.allocate_one();
+    new (dirty.get()) LogEntryInstance(nullptr, ShmSharedPtr<Request>{},
+                                       conn_head_->backend_conn_ptr);
   }
 
   if (!cache_inner_ptr_->Replace(key, value, in_transaction, dirty,
@@ -86,7 +86,8 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
                                      : nullptr,
                                  state)) {
     if (dirty) {
-      cache_inner_ptr_->segment_mgr_->destroy_ptr(dirty.get());
+      dirty->~LogEntryInstance();
+      cache_inner_ptr_->log_entry_allocator_.deallocate_one(dirty);
     }
     return false;
   }

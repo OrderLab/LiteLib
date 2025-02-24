@@ -20,7 +20,7 @@ class ConnectionState {
                                           ConnectionInfo, CacheKey, CacheEntry>;
 
  private:
-  bip::offset_ptr<SegmentManager> segment_mgr_;
+  ShmAllocator<LogEntryInstance> log_entry_allocator_;
 
  public:
   ConnectionState(bip::offset_ptr<CacheInnerInstance> cache_inner_ptr,
@@ -57,7 +57,7 @@ class ConnectionStateStorage {
   ConnectionStateStorage(bip::offset_ptr<CacheInnerInstance> cache_inner_ptr,
                          bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr,
                          ShmVoidAllocator allocator)
-      : segment_mgr_(allocator.get_segment_manager()),
+      : connection_state_allocator_(allocator),
         cache_inner_ptr_(cache_inner_ptr),
         logger_inner_ptr_(logger_inner_ptr),
         state_map_(allocator) {}
@@ -73,27 +73,29 @@ class ConnectionStateStorage {
 
  private:
   struct ConnectionStateEntry {
-    bip::offset_ptr<SegmentManager> segment_mgr_;
+    ShmAllocator<ConnectionStateInstance> connection_state_allocator_;
     bip::offset_ptr<ConnectionStateInstance> state_ptr_;
 
     ConnectionStateEntry(bip::offset_ptr<ConnectionStateInstance> state_ptr,
-                         bip::offset_ptr<SegmentManager> segment_mgr)
-        : segment_mgr_(segment_mgr), state_ptr_(state_ptr) {}
+                         ShmAllocator<ConnectionStateInstance> allocator)
+        : connection_state_allocator_(allocator), state_ptr_(state_ptr) {}
 
     ConnectionStateEntry(ConnectionStateEntry&& other) noexcept
-        : segment_mgr_(other.segment_mgr_), state_ptr_(other.state_ptr_) {
+        : connection_state_allocator_(other.connection_state_allocator_),
+          state_ptr_(other.state_ptr_) {
       other.state_ptr_ = nullptr;
-      other.segment_mgr_ = nullptr;
     }
 
     ~ConnectionStateEntry() {
       if (state_ptr_) {
-        segment_mgr_->destroy_ptr(state_ptr_.get());
+        state_ptr_->~ConnectionStateInstance();
+        connection_state_allocator_.deallocate_one(state_ptr_);
       }
     }
   };
 
-  bip::offset_ptr<SegmentManager> segment_mgr_;
+  ShmAllocator<ConnectionStateInstance> connection_state_allocator_;
+
   bip::offset_ptr<CacheInnerInstance> cache_inner_ptr_;
   bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr_;
 
