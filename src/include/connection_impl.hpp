@@ -192,42 +192,44 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     return;
   }
 
-  bool forwarded = false;
-  if (!conn->lite_core_.emergency_mode_ptr_->load()) {
-    forwarded = true;
-    if (!network::Write(conn->client_fd_, conn->buffer_, bytes_transferred)) {
-      LOG(ERROR) << "Failed to write request to backend" << std::endl;
-      delete conn;
-      return;
-    }
-  }
-
-  uint8_t* begin = conn->buffer_;
-  uint8_t* end = begin + bytes_transferred;
-  while (begin != end) {
-    const auto result = conn->response_->Deserialize(begin, end);
-    if (result == kGood) {
-      if (!conn->lite_core_.HandleResponse(
-              boost::move(conn->response_),
-              conn->connection_state_entry_ptr_->extra_app_info_,
-              conn->connection_state_entry_ptr_->pending_requests_,
-              conn->client_fd_, &conn->connection_state_entry_ptr_->cache_,
-              forwarded)) {
-        delete conn;
-        return;
-      }
-      conn->response_ = ShmMakeShared(
-          conn->lite_core_.shared_memory_.get_segment_manager()
-              ->template construct<Response>(bip::anonymous_instance)(
-                  conn->lite_core_.shared_memory_.get_segment_manager()),
-          conn->lite_core_.shared_memory_);
-    } else if (result == kIndeterminate) {
-      continue;
-    } else if (result == kBad) {
-      LOG(ERROR) << "failed to parse response" << std::endl;
-      return;
-    }
-  }
+  // NOTE: we don't need to handle responses in emebedded mode
+  // bool forwarded = false;
+  // if (!conn->lite_core_.emergency_mode_ptr_->load()) {
+  //   forwarded = true;
+  //   if (!network::Write(conn->client_fd_, conn->buffer_, bytes_transferred))
+  //   {
+  //     LOG(ERROR) << "Failed to write request to backend" << std::endl;
+  //     delete conn;
+  //     return;
+  //   }
+  // }
+  //
+  // uint8_t* begin = conn->buffer_;
+  // uint8_t* end = begin + bytes_transferred;
+  // while (begin != end) {
+  //   const auto result = conn->response_->Deserialize(begin, end);
+  //   if (result == kGood) {
+  //     if (!conn->lite_core_.HandleResponse(
+  //             boost::move(conn->response_),
+  //             conn->connection_state_entry_ptr_->extra_app_info_,
+  //             conn->connection_state_entry_ptr_->pending_requests_,
+  //             conn->client_fd_, &conn->connection_state_entry_ptr_->cache_,
+  //             forwarded)) {
+  //       delete conn;
+  //       return;
+  //     }
+  //     conn->response_ = ShmMakeShared(
+  //         conn->lite_core_.shared_memory_.get_segment_manager()
+  //             ->template construct<Response>(bip::anonymous_instance)(
+  //                 conn->lite_core_.shared_memory_.get_segment_manager()),
+  //         conn->lite_core_.shared_memory_);
+  //   } else if (result == kIndeterminate) {
+  //     continue;
+  //   } else if (result == kBad) {
+  //     LOG(ERROR) << "failed to parse response" << std::endl;
+  //     return;
+  //   }
+  // }
   return;
 }
 
@@ -253,7 +255,18 @@ bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     throw std::runtime_error("backend event_add");
   }
 
+  lite_core_.connection_state_storage_ptr_->replay_conns_.push_back(
+      network::GetTCPID(client_fd_));
+
   return true;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::Detach() {
+  if (client_fd_ > 0) client_fd_ = 0;
+  if (client_event_.ev_base) event_del(&client_event_);
 }
 
 }  // namespace lite

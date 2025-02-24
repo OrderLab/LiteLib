@@ -26,7 +26,7 @@ LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
              const std::chrono::milliseconds sliding_window_size,
              const size_t replay_expected_rps, const double flow_control_ratio,
              const size_t n_replay_threads, bool crash_recover)
-    : Daemon(std::bind(&LiteCore::Replay, this),
+    : Daemon(std::bind(&LiteCore::Replay, this, std::placeholders::_1),
              std::bind(&LiteCore::TakeOver, this, std::placeholders::_1,
                        std::placeholders::_2),
              backend_port, socket_path),
@@ -103,38 +103,39 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   return true;
 }
 
-template <typename Application, typename Request, typename Response,
-          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-  requires IsApplication<Application, Request, Response, ConnectionInfo,
-                         CacheKey, CacheEntry> &&
-           IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
-bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-              CacheEntry>::
-    HandleResponse(ShmSharedPtr<Response> resp, ConnectionInfo &conn_info,
-                   ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
-                       &pending_requests,
-                   const evutil_socket_t client_fd, CacheInstance *cache,
-                   const bool forwarded) {
-  const auto [related_stateful_request, forward_resp] =
-      app_.Match(resp, conn_info, pending_requests);
-  if (forward_resp) {
-    if (!forwarded) {
-      const auto buffer = resp->Serialize();
-      if (!network::Write(client_fd, buffer)) {
-        LOG(ERROR) << "Failed to write response to client" << std::endl;
-        return false;
-      }
-    }
-    // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
-    app_.NormalUpdate(resp, boost::move(related_stateful_request), conn_info,
-                      cache);
-  } else {
-    app_.HandleReplayResponse(resp, boost::move(related_stateful_request),
-                              conn_info, cache);
-  }
-
-  return true;
-}
+// template <typename Application, typename Request, typename Response,
+//           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+//   requires IsApplication<Application, Request, Response, ConnectionInfo,
+//                          CacheKey, CacheEntry> &&
+//            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey,
+//            CacheEntry>
+// bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
+//               CacheEntry>::
+//     HandleResponse(ShmSharedPtr<Response> resp, ConnectionInfo &conn_info,
+//                    ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
+//                        &pending_requests,
+//                    const evutil_socket_t client_fd, CacheInstance *cache,
+//                    const bool forwarded) {
+//   const auto [related_stateful_request, forward_resp] =
+//       app_.Match(resp, conn_info, pending_requests);
+//   if (forward_resp) {
+//     if (!forwarded) {
+//       const auto buffer = resp->Serialize();
+//       if (!network::Write(client_fd, buffer)) {
+//         LOG(ERROR) << "Failed to write response to client" << std::endl;
+//         return false;
+//       }
+//     }
+//     // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
+//     app_.NormalUpdate(resp, boost::move(related_stateful_request), conn_info,
+//                       cache);
+//   } else {
+//     app_.HandleReplayResponse(resp, boost::move(related_stateful_request),
+//                               conn_info, cache);
+//   }
+//
+//   return true;
+// }
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -189,25 +190,25 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
 
-#define SendReplayReq(conn, req, buffer)                               \
-  do {                                                                 \
-    assert((conn)->pending_requests_.empty());                         \
-    (conn)->pending_requests_.push_back(std::make_pair((req), false)); \
-    if (!network::Write((conn)->backend_fd_, (buffer))) {              \
-      LOG(ERROR) << "line#" << __LINE__                                \
-                 << " Replay failed to write to backend\n";            \
-      return false;                                                    \
-    }                                                                  \
+#define SendReplayReq(conn, req, buffer)                                     \
+  do {                                                                       \
+    /* assert((conn)->pending_requests_.empty()); */                         \
+    /* (conn)->pending_requests_.push_back(std::make_pair((req), false)); */ \
+    if (!network::Write((conn)->backend_fd_, (buffer))) {                    \
+      LOG(ERROR) << "line#" << __LINE__                                      \
+                 << " Replay failed to write to backend\n";                  \
+      return false;                                                          \
+    }                                                                        \
   } while (0)
 
-#define SendReplayReqWithoutAssertion(conn, req, buffer)               \
-  do {                                                                 \
-    (conn)->pending_requests_.push_back(std::make_pair((req), false)); \
-    if (!network::Write((conn)->backend_fd_, (buffer))) {              \
-      LOG(ERROR) << "line#" << __LINE__                                \
-                 << " Replay failed to write to backend\n";            \
-      return false;                                                    \
-    }                                                                  \
+#define SendReplayReqWithoutAssertion(conn, req, buffer)                     \
+  do {                                                                       \
+    /* (conn)->pending_requests_.push_back(std::make_pair((req), false)); */ \
+    if (!network::Write((conn)->backend_fd_, (buffer))) {                    \
+      LOG(ERROR) << "line#" << __LINE__                                      \
+                 << " Replay failed to write to backend\n";                  \
+      return false;                                                          \
+    }                                                                        \
   } while (0)
 
 template <typename Application, typename Request, typename Response,
@@ -216,128 +217,196 @@ template <typename Application, typename Request, typename Response,
                          CacheKey, CacheEntry> &&
            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-              CacheEntry>::Replay() {
-  return true;
-  // TODO: implement replay
-  // const auto start_time = std::chrono::high_resolution_clock::now();
+              CacheEntry>::Replay(const int full_fd) {
+  const auto start_time = std::chrono::high_resolution_clock::now();
 
-  // replay_rate_.Reset(replay_expected_rps_);  // Reset the sliding window
-  // is_replaying_ = true;
-  // LOG(INFO) << "replay start, live connections: " << live_connections_.size()
-  //           << std::endl;
-  // live_connections_.visit_all([&](ConnectionInstance *const &c) {
-  //   if (!c->ConnectBackend()) {
-  //     LOG(ERROR) << "Failed to connect to backend" << std::endl;
-  //   } else {
-  //     LOG(INFO) << "Connect backend " << c->backend_fd_ << " to "
-  //               << c->client_fd_ << std::endl;
-  //   }
-  // });
+  replay_rate_.Reset(replay_expected_rps_);  // Reset the sliding window
+  is_replaying_ = true;
+  LOG(INFO) << "replay start, live connections: " << live_connections_.size()
+            << std::endl;
+  int replay_id = 0;
+  live_connections_.visit_all([&](ConnectionInstance *const &c) {
+    if (!c->ConnectBackend()) {
+      LOG(ERROR) << "Failed to connect to backend" << std::endl;
+    } else {
+      LOG(INFO) << "Connect backend " << c->backend_fd_ << " to "
+                << c->client_fd_ << std::endl;
+      c->replay_conn_id_ = replay_id++;
+    }
+  });
 
-  // std::map<WorkerInstance *, ConnectionInstance *>
-  //     replay_worker_sync_state_conns;
+  // replay
+  std::map<WorkerInstance *, ConnectionInstance *>
+      replay_worker_sync_state_conns;
 
-  // for (auto &replay_worker_ : replay_workers_) {
-  //   replay_worker_->RemoveAllConnections();
-  //   replay_worker_sync_state_conns[replay_worker_.get()] =
-  //       replay_worker_->NewReplayConnection();
-  // }
-  // next_replay_worker_ = replay_workers_.begin();
+  for (auto &replay_worker_ : replay_workers_) {
+    replay_worker_->RemoveAllConnections();
+    replay_worker_sync_state_conns[replay_worker_.get()] =
+        replay_worker_->NewReplayConnection();
+  }
+  next_replay_worker_ = replay_workers_.begin();
 
-  // LogEntryInstance *entry;
+  LogEntryInstance *entry;
 
-  // for (int i = 0; i < 2;
-  //      i++) {  // Double flush to process in-flight connections
-  //   size_t log_cnt = 0, dirty_cnt = 0;
-  //   while (LoggerInstance::Pop(*logger_inner_ptr_, entry)) {
-  //     if (entry->state) {
-  //       dirty_cnt++;
-  //       const auto req = entry->state->value.ToRequest(entry->state->key);
-  //       const auto buffer = req->Serialize();
-  //       auto &replay_conn =
-  //           replay_worker_sync_state_conns[next_replay_worker_->get()];
-  //       replay_conn->pending_requests_.wait_for_empty();
-  //       SendReplayReq(replay_conn, req, buffer);
-  //       next_replay_worker_++;
-  //       if (next_replay_worker_ == replay_workers_.end())
-  //         next_replay_worker_ = replay_workers_.begin();
-  //     } else {
-  //       log_cnt++;
-  //       const auto buffer = entry->req->Serialize();
-  //       if (!*entry->backend_conn_ptr) {  // log belongs to a closed
-  //       connection
-  //         auto replay_conn = (*next_replay_worker_)->NewReplayConnection();
-  //         *entry->backend_conn_ptr = replay_conn;
-  //         SendReplayReq(replay_conn, entry->req, buffer);
-  //         next_replay_worker_++;
-  //         if (next_replay_worker_ == replay_workers_.end())
-  //           next_replay_worker_ = replay_workers_.begin();
-  //       } else {
-  //         if (!i) {
-  //           (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
-  //         } else {
-  //           // TODO: how to disable the reading from client event, instead of
-  //           // blocking the worker. So that we can wait for the server's
-  //           // responses
-  //         }
-  //         SendReplayReqWithoutAssertion(*entry->backend_conn_ptr, entry->req,
-  //                                       buffer);
-  //       }
-  //     }
-  //     delete entry;
-  //     ++replay_rate_;
-  //   }
-  //   LOG(INFO) << "Replay i = " << i << " finished with " << log_cnt
-  //             << " log entries and " << dirty_cnt << " dirty entries\n";
+  for (int i = 0; i < 2;
+       i++) {  // Double flush to process in-flight connections
+    size_t log_cnt = 0, dirty_cnt = 0;
+    while (LoggerInstance::Pop(*logger_inner_ptr_, entry)) {
+      if (entry->state) {
+        dirty_cnt++;
+        const auto req = entry->state->value.ToRequest(entry->state->key);
+        const auto buffer = req->Serialize();
+        auto &replay_conn =
+            replay_worker_sync_state_conns[next_replay_worker_->get()];
+        // replay_conn->pending_requests_.wait_for_empty();
+        SendReplayReq(replay_conn, req, buffer);
+        next_replay_worker_++;
+        if (next_replay_worker_ == replay_workers_.end())
+          next_replay_worker_ = replay_workers_.begin();
+      } else {
+        log_cnt++;
+        const auto buffer = entry->req->Serialize();
+        if (!*entry->backend_conn_ptr) {  // log belongs to a closed connection
+          auto replay_conn = (*next_replay_worker_)->NewReplayConnection();
+          *entry->backend_conn_ptr = replay_conn;
+          SendReplayReq(replay_conn, entry->req, buffer);
+          next_replay_worker_++;
+          if (next_replay_worker_ == replay_workers_.end())
+            next_replay_worker_ = replay_workers_.begin();
+        } else {
+          // if (!i) {
+          //   (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
+          // } else {
+          //   // TODO: how to disable the reading from client event, instead of
+          //   // blocking the worker. So that we can wait for the server's
+          //   // responses
+          // }
+          SendReplayReqWithoutAssertion(*entry->backend_conn_ptr, entry->req,
+                                        buffer);
+        }
+      }
+      delete entry;
+      ++replay_rate_;
+    }
+    LOG(INFO) << "Replay i = " << i << " finished with " << log_cnt
+              << " log entries and " << dirty_cnt << " dirty entries\n";
 
-  //   if (!i) {  // Wait for all inflight connections
-  //     LOG(INFO) << "Replay barrier initialized" << std::endl;
-  //     for (auto &worker : workers_) {
-  //       worker->notify_queue_.push_back(
-  //           {.type = WorkerMessage::Type::kBarrier, .fd = 0});
-  //       uint64_t buf = 1;
-  //       PLOG_IF(ERROR, write(worker->notify_event_fd, &buf, sizeof(uint64_t))
-  //       !=
-  //                          sizeof(uint64_t))
-  //           << "failed writing to worker eventfd";
-  //     }
-  //     barrier_.arrive_and_wait();
-  //   }
-  // }
+    if (!i) {  // Wait for all inflight connections
+      LOG(INFO) << "Replay barrier initialized" << std::endl;
+      for (auto &worker : workers_) {
+        worker->notify_queue_.push_back(
+            {.type = WorkerMessage::Type::kBarrier, .fd = 0});
+        uint64_t buf = 1;
+        PLOG_IF(ERROR, write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
+                           sizeof(uint64_t))
+            << "failed writing to worker eventfd";
+      }
+      barrier_.arrive_and_wait();
+    }
+  }
 
-  // LOG(INFO) << "Waiting for all replay connections to finish\n";
+  LOG(INFO) << "Waiting for all replay connections to finish\n";
   // for (auto &replay_worker : replay_workers_) {
   //   replay_worker->conns_.visit_all([&](ConnectionInstance *const &c) {
   //     c->pending_requests_.wait_for_empty();
   //   });
   // }
-  // // TODO: wait for all live connections to receive replay responses
+  // TODO: wait for all live connections to receive replay responses
 
-  // is_replaying_ = false;
-  // emergency_mode_ = false;
-  // LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
-  //              << std::endl;
+  is_replaying_ = false;
 
-  // app_.EmergencyToNormalHook();
+  app_.EmergencyToNormalHook();
 
-  // barrier_.arrive_and_wait();  // unblock worker threads
+  if (!TransferConnectionsToServer(full_fd)) {
+    LOG(ERROR) << "Failed to transfer connections to server" << std::endl;
+    return false;
+  }
 
-  // const auto end_time = std::chrono::high_resolution_clock::now();
-  // const auto duration =
-  // std::chrono::duration_cast<std::chrono::milliseconds>(
-  //                           end_time - start_time)
-  //                           .count();
-  // LOG(INFO) << "Replay took " << duration << " ms\n";
+  while (emergency_mode_ptr_->load()) {
+    std::this_thread::yield();
+  }
 
-  // while (!dead_connection_log_heads_.empty()) {
-  //   delete dead_connection_log_heads_.pop_front();
-  // }
+  LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
+               << std::endl;
 
-  // for (auto &replay_worker_ : replay_workers_) {
-  //   replay_worker_->RemoveAllConnections();
-  // }
+  barrier_.arrive_and_wait();  // unblock worker threads
 
-  // return true;
+  const auto end_time = std::chrono::high_resolution_clock::now();
+  const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            end_time - start_time)
+                            .count();
+  LOG(INFO) << "Replay took " << duration << " ms\n";
+
+  while (!dead_connection_log_heads_.empty()) {
+    delete dead_connection_log_heads_.pop_front();
+  }
+
+  for (auto &replay_worker_ : replay_workers_) {
+    replay_worker_->RemoveAllConnections();
+  }
+
+  return true;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsApplication<Application, Request, Response, ConnectionInfo,
+                         CacheKey, CacheEntry> &&
+           IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
+bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
+              CacheEntry>::TransferConnectionsToServer(const int full_fd) {
+  std::array<int, 2> lens = {static_cast<int>(live_connections_.size()), 0};
+  std::vector<int> fds;
+
+  // client connections
+  fds.resize(lens[0]);
+  live_connections_.visit_all([&](ConnectionInstance *const &c) {
+    if (!c->ConnectBackend()) {
+      LOG(ERROR) << "Failed to connect to backend" << std::endl;
+    } else {
+      LOG(INFO) << "Connect backend " << c->backend_fd_ << " to "
+                << c->client_fd_ << std::endl;
+      fds[c->replay_conn_id_] = c->client_fd_;
+      c->Detach();
+    }
+  });
+
+  // listener connections
+  lens[1] = lens[0];
+  while (!server_instance_ptr_->conns_.empty()) {
+    auto conn = std::move(server_instance_ptr_->conns_.front());
+    fds.push_back(conn->client_fd_);
+    lens[1]++;
+    conn->Detach();
+    server_instance_ptr_->conns_.pop();
+  }
+
+  size_t totalBytes = sizeof(int) * fds.size();
+  std::vector<char> cmsgBuf(CMSG_SPACE(totalBytes), 0);
+
+  struct iovec iov;
+  iov.iov_base = lens.data();
+  iov.iov_len = sizeof(int) * lens.size();
+
+  struct msghdr msg;
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = cmsgBuf.data();
+  msg.msg_controllen = cmsgBuf.size();
+
+  struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+  cmsg->cmsg_len = CMSG_LEN(totalBytes);
+  cmsg->cmsg_level = SOL_SOCKET;
+  cmsg->cmsg_type = SCM_RIGHTS;
+  memcpy(CMSG_DATA(cmsg), fds.data(), totalBytes);
+
+  if (sendmsg(full_fd, &msg, 0) < 0) {
+    LOG(ERROR) << "Failed to transfer sockets to the full process";
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace lite

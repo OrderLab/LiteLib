@@ -15,12 +15,28 @@ template <typename Application, typename Request, typename Response,
            IsProtocolMessage<Request> && IsProtocolMessage<Response> &&
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
+int IsNormalMode() {
+  auto embedded_server_ptr =
+      static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
+                                 CacheKey, CacheEntry> *>(
+          embedded_server_void_ptr);
+  return !embedded_server_ptr->emergency_mode_ptr_->load();
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsApplication<Application, Request, Response, ConnectionInfo,
+                         CacheKey, CacheEntry> &&
+           IsProtocolMessage<Request> && IsProtocolMessage<Response> &&
+           IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
+           IsCacheEntry<Request, CacheKey, CacheEntry>
 int Init(char *argv_0, int number_of_workers, long long shared_memory_size,
          long long max_item_count,
          const std::chrono::milliseconds sliding_window_size,
          const std::string socket_path, RequestDestructorFn RequestDestructor,
          FlushWriteBufferFn FlushWriteBuffer,
-         ReinstallEventHandlerFn ReinstallEventHandler) {
+         ReinstallClientEventHandlerFn ReinstallClientEventHandler,
+         ReinstallListenerEventHandlerFn ReinstallListenerEventHandler) {
   google::InitGoogleLogging(argv_0);
   std::cerr << "\033[31mEmbedded LiteSys [INFO] messages are printed to "
                "/tmp/${full-version}.*\033[0m"
@@ -36,7 +52,7 @@ int Init(char *argv_0, int number_of_workers, long long shared_memory_size,
                          CacheKey, CacheEntry>(
           number_of_workers, shared_memory_size, max_item_count,
           sliding_window_size, socket_path, RequestDestructor, FlushWriteBuffer,
-          ReinstallEventHandler);
+          ReinstallClientEventHandler, ReinstallListenerEventHandler);
   LOG(INFO) << "Embedded LiteSys initialized";
   LOG(INFO) << "\tnumber_of_workers: " << number_of_workers;
   LOG(INFO) << "\tmax_item_count: " << max_item_count;
@@ -45,23 +61,137 @@ int Init(char *argv_0, int number_of_workers, long long shared_memory_size,
   return 0;
 }
 
-// replace the socket under fd with a new one to prevent the old one from
-// being closed
-#define CopyAndReplaceSocket(fd, dummy_fd)                \
-  ({                                                      \
-    int new_fd = dup(fd);                                 \
-    if (new_fd == -1) {                                   \
-      PLOG(ERROR) << "Failed to duplicate socket " << fd; \
-      new_fd = -1;                                        \
-    } else {                                              \
-      if (dup2(dummy_fd, fd) != fd) {                     \
-        PLOG(ERROR) << "Failed to hijack socket " << fd;  \
-        close(new_fd);                                    \
-        new_fd = -1;                                      \
-      }                                                   \
-    }                                                     \
-    new_fd;                                               \
-  })
+inline int ConnectToLiteProcess(const std::string &socket_path) {
+  struct sockaddr_un addr;
+  int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (fd < 0) {
+    LOG(ERROR) << "Failed to create unix domain socket";
+    return -2;
+  }
+
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, socket_path.c_str(), sizeof(addr.sun_path) - 1);
+
+  if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    LOG(ERROR) << "Failed to connect to " << socket_path;
+    close(fd);
+    return -2;
+  }
+
+  return fd;
+}
+
+// replace the socket under fd with a new one
+inline int CopyAndReplaceSocket(int fd, int dummy_fd) {
+  int new_fd = dup(fd);
+  if (new_fd == -1) {
+    PLOG(ERROR) << "Failed to duplicate socket " << fd;
+    return -1;
+  }
+  if (dup2(dummy_fd, fd) != fd) {
+    PLOG(ERROR) << "Failed to hijack socket " << fd;
+    close(new_fd);
+    return -1;
+  }
+  return new_fd;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsApplication<Application, Request, Response, ConnectionInfo,
+                         CacheKey, CacheEntry> &&
+           IsProtocolMessage<Request> && IsProtocolMessage<Response> &&
+           IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
+           IsCacheEntry<Request, CacheKey, CacheEntry>
+int FullStartListening() {
+  static constexpr size_t kMaxFds = 1024;
+
+  auto embedded_server_ptr =
+      static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
+                                 CacheKey, CacheEntry> *>(
+          embedded_server_void_ptr);
+  if (!embedded_server_ptr->emergency_mode_ptr_->load()) return 0;
+
+  // transition from emergency mode to normal mode
+  auto lite_fd = ConnectToLiteProcess(embedded_server_ptr->socket_path_);
+  if (lite_fd < 0) return lite_fd;
+
+  std::array<int, 2> lens;
+  std::vector<char> cmsgBuf(CMSG_SPACE(sizeof(int) * kMaxFds));
+
+  struct iovec iov;
+  iov.iov_base = lens.data();
+  iov.iov_len = sizeof(lens);
+
+  struct msghdr msg;
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = cmsgBuf.data();
+  msg.msg_controllen = cmsgBuf.size();
+
+  ssize_t received = recvmsg(lite_fd, &msg, 0);
+  if (received < 0) {
+    LOG(ERROR) << "LiteSys: Error receiving socket message";
+    close(lite_fd);
+    return -1;
+  }
+
+  struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+  if (!cmsg || cmsg->cmsg_level != SOL_SOCKET ||
+      cmsg->cmsg_type != SCM_RIGHTS) {
+    LOG(ERROR) << "LiteSys: Invalid control message";
+    close(lite_fd);
+    return -1;
+  }
+
+  size_t num_fds = lens[1];
+  if (num_fds > kMaxFds) {
+    LOG(ERROR) << "LiteSys: Too many FDs received";
+    close(lite_fd);
+    return -1;
+  }
+
+  std::vector<int> received_fds(num_fds);
+  memcpy(received_fds.data(), CMSG_DATA(cmsg), sizeof(int) * num_fds);
+  LOG(INFO) << "LiteSys: Received " << lens[0] << " client FDs and "
+            << (lens[1] - lens[0]) << " listener FDs";
+
+  for (int i = 0; i < lens[0]; i++) {
+    auto [replay_fd, client] = embedded_server_ptr->replay_conns_.front();
+    embedded_server_ptr->replay_conns_.pop();
+    auto original_fd = CopyAndReplaceSocket(replay_fd, received_fds[i]);
+    if (original_fd < 0) {
+      LOG(ERROR) << "Failed to hijack client socket: replay_fd=" << replay_fd
+                 << ", new_fd=" << received_fds[i];
+      continue;
+    }
+    close(replay_fd);
+    embedded_server_ptr->ReinstallClientEventHandler(client);
+  }
+
+  if (embedded_server_ptr->fd_to_listener_.size() != lens[1] - lens[0]) {
+    LOG(ERROR) << "LiteSys: Number of listener FDs mismatch";
+    close(lite_fd);
+    return -1;
+  }
+  int id = lens[0];
+  for (auto &[fd, listener] : embedded_server_ptr->fd_to_listener_) {
+    auto original_fd = CopyAndReplaceSocket(fd, received_fds[id++]);
+    if (original_fd < 0) {
+      LOG(ERROR) << "Failed to hijack listener socket: fd=" << fd
+                 << ", new_fd=" << received_fds[id - 1];
+      continue;
+    }
+    close(fd);
+    embedded_server_ptr->ReinstallListenerEventHandler(listener);
+  }
+
+  embedded_server_ptr->emergency_mode_ptr_->store(false);
+
+  return 0;
+}
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -97,7 +227,8 @@ int SignalHandler(int sig) {
     auto &[tcp_id, arg] = tcp_id_and_arg;
     FlushWriteBuffer(arg);
 
-    int new_fd = CopyAndReplaceSocket(fd, dummy_fd);
+    int new_fd = CopyAndReplaceSocket(
+        fd, dummy_fd);  // prevent the old one from being closed
     if (new_fd < 0) {
       LOG(ERROR) << "Failed to transfer client socket " << fd;
       continue;
@@ -109,7 +240,8 @@ int SignalHandler(int sig) {
   std::array<int, 2> lens = {static_cast<int>(fds.size()), 0};
 
   for (auto listener_fd : embedded_server_ptr->listener_fds_) {
-    int new_fd = CopyAndReplaceSocket(listener_fd, dummy_fd);
+    int new_fd = CopyAndReplaceSocket(
+        listener_fd, dummy_fd);  // prevent the old one from being closed
     if (new_fd < 0) {
       LOG(ERROR) << "Failed to transfer listener socket " << listener_fd;
       continue;
@@ -145,33 +277,16 @@ int SignalHandler(int sig) {
   cmsg->cmsg_type = SCM_RIGHTS;
   memcpy(CMSG_DATA(cmsg), fds.data(), totalBytes);
 
-  struct sockaddr_un addr;
-  int sock = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (sock < 0) {
-    LOG(ERROR) << "Failed to create unix domain socket";
-    return -2;
-  }
+  auto lite_fd = ConnectToLiteProcess(embedded_server_ptr->socket_path_);
+  if (lite_fd < 0) return lite_fd;
 
-  memset(&addr, 0, sizeof(addr));
-  addr.sun_family = AF_UNIX;
-  strncpy(addr.sun_path, embedded_server_ptr->socket_path_.c_str(),
-          sizeof(addr.sun_path) - 1);
-
-  if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-    LOG(ERROR) << "Failed to connect to " << embedded_server_ptr->socket_path_;
-    close(sock);
-    return -2;
-  }
-
-  if (sendmsg(sock, &msg, 0) < 0) {
+  if (sendmsg(lite_fd, &msg, 0) < 0) {
     LOG(ERROR) << "Failed to transfer sockets to the lite process";
   }
 
   delete embedded_server_ptr;
   return 0;
 }
-
-#undef CopyAndReplaceSocket
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -180,12 +295,14 @@ template <typename Application, typename Request, typename Response,
            IsProtocolMessage<Request> && IsProtocolMessage<Response> &&
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
-void RegisterListenerFD(int fd) {
+void RegisterListenerFD(int fd, void *listener) {
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
           embedded_server_void_ptr);
   embedded_server_ptr->listener_fds_.insert(fd);
+  if (embedded_server_ptr->emergency_mode_ptr_->load())
+    embedded_server_ptr->fd_to_listener_[fd] = listener;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -201,6 +318,32 @@ void UnregisterListenerFD(int fd) {
                                  CacheKey, CacheEntry> *>(
           embedded_server_void_ptr);
   embedded_server_ptr->listener_fds_.erase(fd);
+  if (embedded_server_ptr->emergency_mode_ptr_->load())
+    embedded_server_ptr->fd_to_listener_.erase(fd);
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsApplication<Application, Request, Response, ConnectionInfo,
+                         CacheKey, CacheEntry> &&
+           IsProtocolMessage<Request> && IsProtocolMessage<Response> &&
+           IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
+           IsCacheEntry<Request, CacheKey, CacheEntry>
+int GetDummyListenerFD() {
+  auto embedded_server_ptr =
+      static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
+                                 CacheKey, CacheEntry> *>(
+          embedded_server_void_ptr);
+  if (!embedded_server_ptr->emergency_mode_ptr_->load()) {
+    LOG(ERROR) << "GetDummyListenerFD called in normal mode";
+    return -1;
+  }
+  int fd = open("/dev/null", O_RDWR);
+  if (fd == -1) {
+    LOG(ERROR) << "Failed to create a dummy socket";
+    return -1;
+  }
+  return fd;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -215,18 +358,30 @@ void *RegisterClientFD(int fd, void *client) {
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
           embedded_server_void_ptr);
-  auto tcp_id = network::GetTCPID(fd);
-  embedded_server_ptr->fd_to_tcp_id_and_arg_[fd] = {tcp_id, client};
+  void *connection_state_ptr = nullptr;
+  if (!embedded_server_ptr->emergency_mode_ptr_->load()) {
+    auto tcp_id = network::GetTCPID(fd);
+    embedded_server_ptr->fd_to_tcp_id_and_arg_[fd] = {tcp_id, client};
 
-  auto connection_state_ptr =
-      embedded_server_ptr->connection_state_storage_ptr_->Get(tcp_id);
-  if (connection_state_ptr) {
-    LOG(WARNING) << "Connection already registered, deleting old one";
-    embedded_server_ptr->connection_state_storage_ptr_->Delete(tcp_id);
+    connection_state_ptr =
+        embedded_server_ptr->connection_state_storage_ptr_->Get(tcp_id);
+    if (connection_state_ptr) {
+      LOG(WARNING) << "Connection already registered, deleting old one";
+      embedded_server_ptr->connection_state_storage_ptr_->Delete(tcp_id);
+    }
+    connection_state_ptr =
+        embedded_server_ptr->connection_state_storage_ptr_->Add(tcp_id);
+  } else {
+    auto tcp_id = embedded_server_ptr->connection_state_storage_ptr_
+                      ->replay_conns_.pop_front();
+    connection_state_ptr =
+        embedded_server_ptr->connection_state_storage_ptr_->Get(tcp_id);
+    if (!connection_state_ptr) {
+      LOG(ERROR) << "Replay connection not registered";
+      return nullptr;
+    }
+    embedded_server_ptr->replay_conns_.push(std::make_pair(fd, client));
   }
-  connection_state_ptr =
-      embedded_server_ptr->connection_state_storage_ptr_->Add(tcp_id);
-
   return connection_state_ptr;
 }
 
@@ -242,18 +397,22 @@ void UnregisterClientFD(int fd) {
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
           embedded_server_void_ptr);
-  auto tcp_id_and_arg = embedded_server_ptr->fd_to_tcp_id_and_arg_[fd];
-  if (!embedded_server_ptr->connection_state_storage_ptr_->Delete(
-          tcp_id_and_arg.first)) {
-    LOG(WARNING) << "Connection not registered";
-  }
-  embedded_server_ptr->fd_to_tcp_id_and_arg_.erase(fd);
+  if (!embedded_server_ptr->emergency_mode_ptr_->load()) {
+    auto tcp_id_and_arg = embedded_server_ptr->fd_to_tcp_id_and_arg_[fd];
+    if (!embedded_server_ptr->connection_state_storage_ptr_->Delete(
+            tcp_id_and_arg.first)) {
+      LOG(WARNING) << "Connection not registered";
+    }
+    embedded_server_ptr->fd_to_tcp_id_and_arg_.erase(fd);
 
-  // clear the conn info until all the previous requests are processed
-  EmbeddedWorkerMessage msg;
-  msg.type = EmbeddedWorkerMessage::Type::kConnectionDisconnect;
-  msg.data = new EmbeddedConnectionDisconnectMessage{tcp_id_and_arg.first};
-  embedded_server_ptr->SendMessageToNextWorker(msg);
+    // clear the conn info until all the previous requests are processed
+    EmbeddedWorkerMessage msg;
+    msg.type = EmbeddedWorkerMessage::Type::kConnectionDisconnect;
+    msg.data = new EmbeddedConnectionDisconnectMessage{tcp_id_and_arg.first};
+    embedded_server_ptr->SendMessageToNextWorker(msg);
+  } else {
+    LOG(WARNING) << "Replay connection disconnected in emergency mode";
+  }
 }
 
 template <typename Application, typename Request, typename Response,
@@ -267,21 +426,26 @@ int ProcessRequest(void *conn_info, void *request,
                    NormalUpdateFn<Application, Request, Response,
                                   ConnectionInfo, CacheKey, CacheEntry>
                        NormalUpdate) {
-  auto job =
-      new EmbeddedNormalUpdateMessage<Application, Request, Response,
-                                      ConnectionInfo, CacheKey, CacheEntry>{
-          conn_info, request, std::move(NormalUpdate)};
-
-  EmbeddedWorkerMessage msg;
-  msg.type = EmbeddedWorkerMessage::Type::kNormalUpdate;
-  msg.data = job;
-
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
           embedded_server_void_ptr);
-  embedded_server_ptr->SendMessageToNextWorker(msg);
-  return 0;
+  if (!embedded_server_ptr->emergency_mode_ptr_->load()) {
+    auto job =
+        new EmbeddedNormalUpdateMessage<Application, Request, Response,
+                                        ConnectionInfo, CacheKey, CacheEntry>{
+            conn_info, request, std::move(NormalUpdate)};
+
+    EmbeddedWorkerMessage msg;
+    msg.type = EmbeddedWorkerMessage::Type::kNormalUpdate;
+    msg.data = job;
+
+    embedded_server_ptr->SendMessageToNextWorker(msg);
+    return 0;
+  } else {
+    // TODO: process error during replay
+    return 0;
+  }
 }
 
 }  // namespace lite

@@ -40,10 +40,10 @@ index cc84d09ad..713ccb0c4 100644
  REDIS_BENCHMARK_NAME=redis-benchmark$(PROG_SUFFIX)
 diff --git a/src/litesys.c b/src/litesys.c
 new file mode 100644
-index 000000000..14b3cfea2
+index 000000000..6c2f6e1d0
 --- /dev/null
 +++ b/src/litesys.c
-@@ -0,0 +1,74 @@
+@@ -0,0 +1,97 @@
 +#include "litesys.h"
 +
 +#include <embedded_lite.h>
@@ -109,21 +109,44 @@ index 000000000..14b3cfea2
 +
 +void LiteFlushWriteBuffer(void *arg) {
 +  client *c = (client *)arg;
-+  // if (c->bufpos > 0) {
-+  //   flushClientOutputBuffer(c);
-+  // }
++  sendReplyToClient(c->conn);
 +}
 +
-+void LiteReinstallEventHandler(void *arg) {
++void LiteReinstallClientEventHandler(void *arg) {
 +  client *c = (client *)arg;
-+  // TODO
++  aeDeleteFileEvent(server.el, c->conn->fd, AE_WRITABLE);
++  if (aeCreateFileEvent(server.el, c->conn->fd, AE_WRITABLE,
++                        c->conn->type->ae_handler, c->conn) == AE_ERR) {
++    printf("Failed to reinstall client write event handler\n");
++  }
++  aeDeleteFileEvent(server.el, c->conn->fd, AE_READABLE);
++  if (aeCreateFileEvent(server.el, c->conn->fd, AE_READABLE,
++                        c->conn->type->ae_handler, c->conn) == AE_ERR) {
++    /* Rollback */
++    aeDeleteFileEvent(server.el, c->conn->fd, AE_WRITABLE);
++    printf("Failed to reinstall client read event handler\n");
++  }
++}
++
++void LiteReinstallListenerEventHandler(void *arg) {
++  connListener *sfd = (connListener *)arg;
++  for (int i = 0; i < sfd->count; i++) {
++    aeDeleteFileEvent(server.el, sfd->fd[i], AE_READABLE);
++    if (aeCreateFileEvent(server.el, sfd->fd[i], AE_READABLE,
++                          sfd->ct->accept_handler, sfd) == AE_ERR) {
++      /* Rollback */
++      for (int j = i - 1; j >= 0; j--)
++        aeDeleteFileEvent(server.el, sfd->fd[j], AE_READABLE);
++      printf("Failed to reinstall listener read event handler\n");
++    }
++  }
 +}
 diff --git a/src/litesys.h b/src/litesys.h
 new file mode 100644
-index 000000000..0b3c78ef9
+index 000000000..c657772a3
 --- /dev/null
 +++ b/src/litesys.h
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,27 @@
 +#pragma once
 +
 +#include "server.h"
@@ -148,7 +171,9 @@ index 000000000..0b3c78ef9
 +
 +void LiteFlushWriteBuffer(void *c);
 +
-+void LiteReinstallEventHandler(void *c);
++void LiteReinstallClientEventHandler(void *c);
++
++void LiteReinstallListenerEventHandler(void *c);
 diff --git a/src/networking.c b/src/networking.c
 index 41af67f42..a8ef90a1a 100644
 --- a/src/networking.c
@@ -194,7 +219,7 @@ index 41af67f42..a8ef90a1a 100644
      if (c->original_argv) return;
      c->original_argc = c->argc;
 diff --git a/src/server.c b/src/server.c
-index 1a7bf2700..1db5701c7 100644
+index 1a7bf2700..cd2846923 100644
 --- a/src/server.c
 +++ b/src/server.c
 @@ -43,6 +43,9 @@
@@ -215,15 +240,18 @@ index 1a7bf2700..1db5701c7 100644
      }
  
      sfd->count = 0;
-@@ -2487,9 +2491,11 @@ int listenToPort(connListener *sfd) {
+@@ -2486,10 +2490,12 @@ int listenToPort(connListener *sfd) {
+         if (optional) addr++;
          if (strchr(addr,':')) {
              /* Bind IPv6 address. */
-             sfd->fd[sfd->count] = anetTcp6Server(server.neterr,port,addr,server.tcp_backlog);
-+            LiteRegisterListenerFD(sfd->fd[sfd->count]);
+-            sfd->fd[sfd->count] = anetTcp6Server(server.neterr,port,addr,server.tcp_backlog);
++            sfd->fd[sfd->count] = LiteIsNormalMode() ? anetTcp6Server(server.neterr,port,addr,server.tcp_backlog) : LiteGetDummyListenerFD();
++            LiteRegisterListenerFD(sfd->fd[sfd->count], sfd);
          } else {
              /* Bind IPv4 address. */
-             sfd->fd[sfd->count] = anetTcpServer(server.neterr,port,addr,server.tcp_backlog);
-+            LiteRegisterListenerFD(sfd->fd[sfd->count]);
+-            sfd->fd[sfd->count] = anetTcpServer(server.neterr,port,addr,server.tcp_backlog);
++            sfd->fd[sfd->count] = LiteIsNormalMode() ? anetTcpServer(server.neterr,port,addr,server.tcp_backlog) : LiteGetDummyListenerFD();
++            LiteRegisterListenerFD(sfd->fd[sfd->count], sfd);
          }
          if (sfd->fd[sfd->count] == ANET_ERR) {
              int net_errno = errno;
@@ -257,11 +285,19 @@ index 1a7bf2700..1db5701c7 100644
  
 +    if (!server.sentinel_mode) {
 +        LiteInit(argv[0], LiteFreeEmbeddedRequest, LiteFlushWriteBuffer,
-+                 LiteReinstallEventHandler);
++                 LiteReinstallClientEventHandler, LiteReinstallListenerEventHandler);
 +    }
      initServer();
      if (background || server.pidfile) createPidFile();
      if (server.set_proc_title) redisSetProcTitle(NULL);
+@@ -7248,6 +7266,7 @@ int main(int argc, char **argv) {
+     redisSetCpuAffinity(server.server_cpulist);
+     setOOMScoreAdj(-1);
+ 
++    LiteFullStartListening();
+     aeMain(server.el);
+     aeDeleteEventLoop(server.el);
+     return 0;
 diff --git a/src/server.h b/src/server.h
 index 459d5b974..c34ca16cd 100644
 --- a/src/server.h

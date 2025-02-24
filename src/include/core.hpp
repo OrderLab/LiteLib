@@ -74,11 +74,14 @@ class LiteCore : public Daemon {
                      const evutil_socket_t backend_fd, CacheInstance *cache,
                      LoggerInstance *logger, const bool forwarded);
 
-  bool HandleResponse(ShmSharedPtr<Response> resp, ConnectionInfo &conn_info,
-                      ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
-                          &pending_requests,
-                      const evutil_socket_t client_fd, CacheInstance *cache,
-                      const bool forwarded);
+  //   NOTE: we don't need to handle responses in emebedded mode
+  //   bool HandleResponse(ShmSharedPtr<Response> resp, ConnectionInfo
+  //   &conn_info,
+  //                       ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>,
+  //                       bool>>
+  //                           &pending_requests,
+  //                       const evutil_socket_t client_fd, CacheInstance
+  //                       *cache, const bool forwarded);
 
   bip::managed_shared_memory shared_memory_;
 
@@ -123,7 +126,9 @@ class LiteCore : public Daemon {
   std::vector<std::unique_ptr<WorkerInstance>> replay_workers_;
   typename decltype(replay_workers_)::iterator next_replay_worker_;
 
-  bool Replay();
+  bool Replay(const int full_fd);
+
+  bool TransferConnectionsToServer(const int full_fd);
 };
 
 }  // namespace lite

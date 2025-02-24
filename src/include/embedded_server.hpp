@@ -33,11 +33,13 @@ class EmbeddedServer {
                  const std::string socket_path,
                  RequestDestructorFn RequestDestructor,
                  FlushWriteBufferFn FlushWriteBuffer,
-                 ReinstallEventHandlerFn ReinstallEventHandler)
+                 ReinstallClientEventHandlerFn ReinstallClientEventHandler,
+                 ReinstallListenerEventHandlerFn ReinstallListenerEventHandler)
       : number_of_workers_(number_of_workers),
         RequestDestructor(RequestDestructor),
         FlushWriteBuffer(FlushWriteBuffer),
-        ReinstallEventHandler(ReinstallEventHandler),
+        ReinstallClientEventHandler(ReinstallClientEventHandler),
+        ReinstallListenerEventHandler(ReinstallListenerEventHandler),
         socket_path_(socket_path) {
     for (int i = 0; i < number_of_workers; i++) {
       workers_.push_back(std::make_unique<EmbeddedWorkerInstance>(
@@ -81,7 +83,8 @@ class EmbeddedServer {
   ConnectionStateStorageInstance *connection_state_storage_ptr_;
 
   FlushWriteBufferFn FlushWriteBuffer;
-  ReinstallEventHandlerFn ReinstallEventHandler;
+  ReinstallClientEventHandlerFn ReinstallClientEventHandler;
+  ReinstallListenerEventHandlerFn ReinstallListenerEventHandler;
 
   std::set<int> listener_fds_;
   std::map<int, std::pair<network::TCPID, void *>> fd_to_tcp_id_and_arg_;
@@ -91,6 +94,9 @@ class EmbeddedServer {
                                              // emergency mode
 
   std::string socket_path_;
+
+  std::queue<std::pair<int, void *>> replay_conns_;
+  std::map<int, void *> fd_to_listener_;
 
  private:
   std::vector<std::unique_ptr<EmbeddedWorkerInstance>> workers_;

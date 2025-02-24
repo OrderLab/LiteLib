@@ -65,6 +65,8 @@ class Connection {
   /// Try to connect to the backend and set event
   bool ConnectBackend();
 
+  void Detach();
+
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;
 
@@ -78,6 +80,8 @@ class Connection {
 
  public:
   ConnectionStateInstance* connection_state_entry_ptr_;
+
+  int replay_conn_id_;
 
  private:
   /// Corresponding worker's event_base
