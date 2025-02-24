@@ -1,13 +1,13 @@
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 namespace bip = boost::interprocess;
-using SharedMemory = bip::managed_shared_memory;
-using SegmentManager = SharedMemory::segment_manager;
+using SharedMemory = typename bip::managed_shared_memory;
+using SegmentManager = typename SharedMemory::segment_manager;
 template <typename T>
-using ShmAllocator = bip::allocator<T, SegmentManager>;
-using ShmVoidAllocator = bip::allocator<void, SegmentManager>;
+using ShmAllocator = typename bip::allocator<T, SegmentManager>;
+using ShmVoidAllocator = typename bip::allocator<void, SegmentManager>;
 template <typename T>
-using ShmDeleter = bip::deleter<T, SegmentManager>;
+using ShmDeleter = typename bip::deleter<T, SegmentManager>;
 
 #include <boost/atomic/ipc_atomic.hpp>
 #include <boost/interprocess/containers/deque.hpp>
@@ -22,19 +22,19 @@ using ShmDeleter = bip::deleter<T, SegmentManager>;
 #include <boost/interprocess/sync/sharable_lock.hpp>
 
 template <typename T>
-using ShmAtomic = boost::ipc_atomic<T>;
+using ShmAtomic = typename boost::ipc_atomic<T>;
 
-using ShmString =
-    bip::basic_string<char, std::char_traits<char>, ShmAllocator<char>>;
+using ShmString = typename bip::basic_string<char, std::char_traits<char>,
+                                             ShmAllocator<char>>;
 template <class T>
-using ShmVector = bip::vector<T, ShmAllocator<T>>;
+using ShmVector = typename bip::vector<T, ShmAllocator<T>>;
 template <class Key, class Value>
-using ShmMap = bip::map<Key, Value, std::less<Key>,
-                        ShmAllocator<std::pair<const Key, Value>>>;
+using ShmMap = typename bip::map<Key, Value, std::less<Key>,
+                                 ShmAllocator<std::pair<const Key, Value>>>;
 template <class T>
-using ShmSet = bip::set<T, std::less<T>, ShmAllocator<T>>;
+using ShmSet = typename bip::set<T, std::less<T>, ShmAllocator<T>>;
 template <typename T>
-using ShmDeque = bip::deque<T, ShmAllocator<T>>;
+using ShmDeque = typename bip::deque<T, ShmAllocator<T>>;
 template <class T>
 using ShmSharedPtr =
     typename bip::managed_shared_ptr<T, bip::managed_shared_memory>::

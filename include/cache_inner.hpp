@@ -31,8 +31,7 @@ struct CacheState {
   CacheEntry value;
   std::conditional_t<HasGetSize<CacheEntry>, size_t, std::false_type> size;
 
-  CacheState(bip::offset_ptr<SegmentManager> segment_mgr)
-      : key(segment_mgr.get()), value(segment_mgr.get()) {}
+  CacheState(ShmVoidAllocator allocator) : key(allocator), value(allocator) {}
 
   using LogEntryInstance = LogEntry<Application, Request, Response,
                                     ConnectionInfo, CacheKey, CacheEntry>;
@@ -48,13 +47,11 @@ class CacheInner {
                                         ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  bip::offset_ptr<SegmentManager> segment_mgr_;
-
   // If CacheEntry has GetSize method, then max_size_ is the sum of it.
   // Otherwise, max_size_ is the number of entries.
   explicit CacheInner(const size_t &max_size,
                       bip::offset_ptr<ShmAtomic<bool>> emergency_mode_ptr,
-                      bip::offset_ptr<SegmentManager> segment_mgr);
+                      ShmVoidAllocator allocator);
 
   ~CacheInner();
 
@@ -86,8 +83,6 @@ class CacheInner {
     return bip::scoped_lock<bip::interprocess_sharable_mutex>(
         transaction_mutex_);
   }
-
-  bip::offset_ptr<SegmentManager> GetSegmentManager() { return segment_mgr_; }
 
   bip::offset_ptr<ShmAtomic<bool>> emergency_mode_ptr_;
 
@@ -127,8 +122,8 @@ class CacheInner {
              bip::offset_ptr<LogEntryInstance> dirty_node,
              bip::offset_ptr<CacheInner> parent, const size_t size = 0)
         : parent_(parent),
-          state(parent_->segment_mgr_->template construct<CacheStateInstance>(
-              bip::anonymous_instance)(parent_->segment_mgr_)) {
+          state(parent_->cache_state_allocator_.allocate_one()) {
+      new (state.get()) CacheStateInstance(parent_->allocator_);
       state->key = key;
       state->value = value;
       state->dirty_node = dirty_node;
@@ -136,8 +131,8 @@ class CacheInner {
         state->size = size;
       }
 
-      lru_node = parent_->segment_mgr_->template construct<ListNode>(
-          bip::anonymous_instance)(state.get());
+      lru_node = parent_->list_node_allocator_.allocate_one();
+      new (lru_node.get()) ListNode(state);
     }
 
     MapEntry(MapEntry &&other) noexcept
@@ -148,10 +143,12 @@ class CacheInner {
 
     ~MapEntry() {
       if (state) {
-        parent_->segment_mgr_->destroy_ptr(state.get());
+        state->~CacheStateInstance();
+        parent_->cache_state_allocator_.deallocate_one(state);
       }
       if (lru_node) {
-        parent_->segment_mgr_->destroy_ptr(lru_node.get());
+        lru_node->~ListNode();
+        parent_->list_node_allocator_.deallocate_one(lru_node);
       }
     }
   };
@@ -170,6 +167,12 @@ class CacheInner {
   // WARNING: assumes that the mutex is held when calling this function.
   // TODO: how to notify application
   void Evict();
+
+ public:
+  ShmVoidAllocator allocator_;
+  ShmAllocator<ListNode> list_node_allocator_;
+  ShmAllocator<LogEntryInstance> log_entry_allocator_;
+  ShmAllocator<CacheStateInstance> cache_state_allocator_;
 };
 
 }  // namespace lite
