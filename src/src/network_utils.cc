@@ -300,18 +300,18 @@ bool SendSockets(const evutil_socket_t fd, std::vector<int>& fds,
   return true;
 }
 
-int CopyAndReplaceSocket(int fd, int dummy_fd) {
-  int new_fd = dup(fd);
-  if (new_fd == -1) {
-    PLOG(ERROR) << "Failed to duplicate socket " << fd;
+int CopyAndReplaceSocket(int dst_fd, int src_fd) {
+  int original_fd = dup(dst_fd);
+  if (original_fd == -1) {
+    PLOG(ERROR) << "Failed to duplicate socket " << dst_fd;
     return -1;
   }
-  if (dup2(dummy_fd, fd) != fd) {
-    PLOG(ERROR) << "Failed to hijack socket " << fd;
-    close(new_fd);
+  if (dup2(src_fd, dst_fd) != dst_fd) {
+    PLOG(ERROR) << "Failed to hijack socket " << dst_fd;
+    close(original_fd);
     return -1;
   }
-  return new_fd;
+  return original_fd;
 }
 
 }  // namespace network

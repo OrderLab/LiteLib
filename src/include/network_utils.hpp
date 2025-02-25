@@ -61,7 +61,7 @@ bool SendSockets(const evutil_socket_t fd, std::vector<int>& fds,
                  std::array<int, 2>& lens);
 
 // replace the socket under fd with a new one
-int CopyAndReplaceSocket(int fd, int new_fd);
+int CopyAndReplaceSocket(int dst_fd, int src_fd);
 }  // namespace network
 
 }  // namespace lite
