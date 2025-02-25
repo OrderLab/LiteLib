@@ -40,10 +40,10 @@ index cc84d09ad..713ccb0c4 100644
  REDIS_BENCHMARK_NAME=redis-benchmark$(PROG_SUFFIX)
 diff --git a/src/litesys.c b/src/litesys.c
 new file mode 100644
-index 000000000..dca4fdf53
+index 000000000..f9e94cca1
 --- /dev/null
 +++ b/src/litesys.c
-@@ -0,0 +1,115 @@
+@@ -0,0 +1,99 @@
 +#include "litesys.h"
 +
 +#include <embedded_lite.h>
@@ -72,22 +72,12 @@ index 000000000..dca4fdf53
 +  request->argc = c->original_argv ? c->original_argc : c->argc;
 +
 +  robj **orig_argv = c->original_argv ? c->original_argv : c->argv;
-+  // TODO: use ref count
-+  // request->argv = orig_argv;
-+  // request->argv_len = zmalloc(sizeof(int) * request->argc);
-+  // for (int i = 0; i < request->argc; i++) {
-+  //   incrRefCount(orig_argv[i]);
-+  //   request->argv[i] = orig_argv[i];
-+  //   request->argv_len[i] = sdslen(orig_argv[i]->ptr);
-+  // }
-+  request->argv = zmalloc(sizeof(robj *) * request->argc);
++  request->argv = orig_argv;
 +  request->argv_len = zmalloc(sizeof(int) * request->argc);
 +  for (int i = 0; i < request->argc; i++) {
-+    request->argv[i] = zmalloc(sizeof(robj));
++    incrRefCount(orig_argv[i]);
++    request->argv[i] = orig_argv[i];
 +    request->argv_len[i] = sdslen(orig_argv[i]->ptr);
-+    request->argv[i]->ptr = zmalloc(request->argv_len[i] + 1);
-+    memcpy(request->argv[i]->ptr, orig_argv[i]->ptr, request->argv_len[i]);
-+    ((char *)(request->argv[i]->ptr))[request->argv_len[i]] = 0;
 +  }
 +
 +  LiteProcessRequest(c->litesys_data, request);
@@ -95,15 +85,9 @@ index 000000000..dca4fdf53
 +
 +void LiteFreeEmbeddedRequest(void *arg) {
 +  EmbeddedRequest *request = (EmbeddedRequest *)arg;
-+  // TODO: use ref count
-+  // for (int i = 0; i < request->argc; i++) {
-+  //   decrRefCount(request->argv[i]);
-+  // }
 +  for (int i = 0; i < request->argc; i++) {
-+    zfree(request->argv[i]->ptr);
-+    zfree(request->argv[i]);
++    decrRefCount(request->argv[i]);
 +  }
-+  zfree(request->argv);
 +  zfree(request->argv_len);
 +  zfree(request);
 +}

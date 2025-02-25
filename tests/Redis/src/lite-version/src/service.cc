@@ -688,8 +688,10 @@ int Redis::EmbeddedNormalUpdate(void *request, ConnectionInfo &conn,
   if (embedded_request->type == EmbeddedRequestType::kSet) {
     char *key = static_cast<char *>(embedded_request->argv[1]->ptr);
     char *value = static_cast<char *>(embedded_request->argv[2]->ptr);
-    ShmString shm_key(key, shm->get_segment_manager());
-    ShmString shm_value(value, shm->get_segment_manager());
+    ShmString shm_key(key, embedded_request->argv_len[1],
+                      shm->get_segment_manager());
+    ShmString shm_value(value, embedded_request->argv_len[2],
+                        shm->get_segment_manager());
 
     CacheKey cache_key(shm_key, ShmAllocator<char>(shm->get_segment_manager()));
     CacheEntry cache_entry(shm->get_segment_manager());
@@ -702,7 +704,8 @@ int Redis::EmbeddedNormalUpdate(void *request, ConnectionInfo &conn,
     return 0;
   } else if (embedded_request->type == EmbeddedRequestType::kHset) {
     char *key = static_cast<char *>(embedded_request->argv[1]->ptr);
-    ShmString shm_key(key, shm->get_segment_manager());
+    ShmString shm_key(key, embedded_request->argv_len[1],
+                      shm->get_segment_manager());
     CacheKey cache_key(shm_key, ShmAllocator<char>(shm->get_segment_manager()));
     CacheEntry cache_entry(shm->get_segment_manager());
 
@@ -720,12 +723,15 @@ int Redis::EmbeddedNormalUpdate(void *request, ConnectionInfo &conn,
     for (size_t i = 2; i < embedded_request->argc; i += 2) {
       char *field = static_cast<char *>(embedded_request->argv[i]->ptr);
       char *value = static_cast<char *>(embedded_request->argv[i + 1]->ptr);
-      ShmString shm_key(field, shm->get_segment_manager());
+      ShmString shm_key(field, embedded_request->argv_len[i],
+                        shm->get_segment_manager());
       auto new_value = ShmUniquePtrWithDeleter<RESPType, RESPTypeDeleter>{
           shm->get_segment_manager()->template construct<RESPString>(
               bip::anonymous_instance)(ShmMakeShared(
               shm->get_segment_manager()->template construct<ShmString>(
-                  bip::anonymous_instance)(value, shm->get_segment_manager()),
+                  bip::anonymous_instance)(value,
+                                           embedded_request->argv_len[i + 1],
+                                           shm->get_segment_manager()),
               *shm)),  // TODO: I have to copy it as shared_ptr can't be
                        // converted to unique_ptr
           RESPTypeDeleter{shm->get_segment_manager()}};
