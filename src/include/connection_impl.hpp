@@ -91,9 +91,12 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   if (client_event_.ev_base) event_del(&client_event_);
   if (backend_event_.ev_base) event_del(&backend_event_);
 
-  lite_core_.dead_connection_log_heads_.push_back(
-      connection_state_entry_ptr_->log_head_.get());
-  // LOG(INFO) << "connection closed" << std::endl;
+  if (connection_state_entry_ptr_) {
+    lite_core_.dead_connection_log_heads_.push_back(
+        connection_state_entry_ptr_->log_head_.get());
+  }
+  // LOG(INFO) << "connection closed client_fd: " << client_fd_
+  //           << " backend_fd: " << backend_fd_ << std::endl;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -255,8 +258,15 @@ bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     throw std::runtime_error("backend event_add");
   }
 
-  lite_core_.connection_state_storage_ptr_->replay_conns_.push_back(
-      network::GetTCPID(client_fd_));
+  if (client_fd_ > 0) {
+    lite_core_.connection_state_storage_ptr_->replay_conns_.push_back(
+        network::GetTCPID(client_fd_));
+  } else {
+    auto tcp_id = network::TCPID::GetUUID();
+    lite_core_.connection_state_storage_ptr_->replay_conns_.push_back(tcp_id);
+    connection_state_entry_ptr_ =
+        lite_core_.connection_state_storage_ptr_->GetOrAdd(tcp_id);
+  }
 
   return true;
 }

@@ -8,6 +8,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "network_utils.hpp"
+
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
@@ -83,7 +85,6 @@ void *Daemon::ThreadBody(void *arg_self) {
 }
 
 void Daemon::SocketHandler(evutil_socket_t fd, short which, void *arg_self) {
-  static constexpr size_t kMaxFds = 1024;
   Daemon *self = static_cast<Daemon *>(arg_self);
 
   if (fd == self->socket_fd_) {
@@ -97,44 +98,12 @@ void Daemon::SocketHandler(evutil_socket_t fd, short which, void *arg_self) {
     }
 
     if (!self->emergency_mode_ptr_->load()) {
-      std::array<int, 2> lens;
-      std::vector<char> cmsgBuf(CMSG_SPACE(sizeof(int) * kMaxFds));
-
-      struct iovec iov;
-      iov.iov_base = lens.data();
-      iov.iov_len = sizeof(lens);
-
-      struct msghdr msg;
-      memset(&msg, 0, sizeof(msg));
-      msg.msg_iov = &iov;
-      msg.msg_iovlen = 1;
-      msg.msg_control = cmsgBuf.data();
-      msg.msg_controllen = cmsgBuf.size();
-
-      ssize_t received = recvmsg(full_fd, &msg, 0);
-      if (received < 0) {
+      auto [received_fds, lens] = network::ReceiveSockets(full_fd);
+      if (received_fds.empty()) {
         LOG(ERROR) << "Daemon: Error receiving socket message";
-        close(full_fd);
         return;
       }
-
-      struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-      if (!cmsg || cmsg->cmsg_level != SOL_SOCKET ||
-          cmsg->cmsg_type != SCM_RIGHTS) {
-        LOG(ERROR) << "Daemon: Invalid control message";
-        close(full_fd);
-        return;
-      }
-
-      size_t num_fds = lens[1];
-      if (num_fds > kMaxFds) {
-        LOG(ERROR) << "Daemon: Too many FDs received";
-        close(full_fd);
-        return;
-      }
-
-      std::vector<int> received_fds(num_fds);
-      memcpy(received_fds.data(), CMSG_DATA(cmsg), sizeof(int) * num_fds);
+      close(full_fd);
       LOG(INFO) << "Daemon: Received " << lens[0] << " client FDs and "
                 << (lens[1] - lens[0]) << " listener FDs";
       self->TakeOver_(received_fds, lens[0]);

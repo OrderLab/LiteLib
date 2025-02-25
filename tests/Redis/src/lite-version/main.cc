@@ -44,11 +44,9 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    std::cout << "LiteRedis starts" << std::endl;
-
     // recovered full addr
-    std::string backend_addr = "";
-    std::string backend_port = "";
+    std::string backend_addr = "127.0.0.1";
+    std::string backend_port = "16379";
 
     Redis redis;
     lite::LiteServer<Redis, Packet, Packet, ConnectionInfo, CacheKey,

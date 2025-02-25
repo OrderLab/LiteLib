@@ -37,9 +37,9 @@ __attribute__((visibility("default"))) int LiteSignalHandler(int sig) {
 }
 
 __attribute__((visibility("default"))) void LiteRegisterListenerFD(
-    int fd, void *listener) {
+    int fd, void *listener, int is_replay) {
   lite::RegisterListenerFD<Redis, Packet, Packet, ConnectionInfo, CacheKey,
-                           CacheEntry>(fd, listener);
+                           CacheEntry>(fd, listener, is_replay);
 }
 
 __attribute__((visibility("default"))) void LiteUnregisterListenerFD(int fd) {

@@ -40,10 +40,10 @@ index cc84d09ad..713ccb0c4 100644
  REDIS_BENCHMARK_NAME=redis-benchmark$(PROG_SUFFIX)
 diff --git a/src/litesys.c b/src/litesys.c
 new file mode 100644
-index 000000000..6c2f6e1d0
+index 000000000..dca4fdf53
 --- /dev/null
 +++ b/src/litesys.c
-@@ -0,0 +1,97 @@
+@@ -0,0 +1,115 @@
 +#include "litesys.h"
 +
 +#include <embedded_lite.h>
@@ -85,8 +85,9 @@ index 000000000..6c2f6e1d0
 +  for (int i = 0; i < request->argc; i++) {
 +    request->argv[i] = zmalloc(sizeof(robj));
 +    request->argv_len[i] = sdslen(orig_argv[i]->ptr);
-+    request->argv[i]->ptr = zmalloc(request->argv_len[i]);
++    request->argv[i]->ptr = zmalloc(request->argv_len[i] + 1);
 +    memcpy(request->argv[i]->ptr, orig_argv[i]->ptr, request->argv_len[i]);
++    ((char *)(request->argv[i]->ptr))[request->argv_len[i]] = 0;
 +  }
 +
 +  LiteProcessRequest(c->litesys_data, request);
@@ -112,38 +113,55 @@ index 000000000..6c2f6e1d0
 +  sendReplyToClient(c->conn);
 +}
 +
-+void LiteReinstallClientEventHandler(void *arg) {
++void LiteReinstallClientEventHandler(void *arg, int install) {
 +  client *c = (client *)arg;
-+  aeDeleteFileEvent(server.el, c->conn->fd, AE_WRITABLE);
-+  if (aeCreateFileEvent(server.el, c->conn->fd, AE_WRITABLE,
-+                        c->conn->type->ae_handler, c->conn) == AE_ERR) {
-+    printf("Failed to reinstall client write event handler\n");
-+  }
-+  aeDeleteFileEvent(server.el, c->conn->fd, AE_READABLE);
-+  if (aeCreateFileEvent(server.el, c->conn->fd, AE_READABLE,
-+                        c->conn->type->ae_handler, c->conn) == AE_ERR) {
-+    /* Rollback */
++  if (!install) {
++    serverLog(LL_WARNING, "Uninstalling client event handler for client %d",
++              c->conn->fd);
 +    aeDeleteFileEvent(server.el, c->conn->fd, AE_WRITABLE);
-+    printf("Failed to reinstall client read event handler\n");
++    aeDeleteFileEvent(server.el, c->conn->fd, AE_READABLE);
++  } else {
++    serverLog(LL_WARNING, "Installing client event handler for client %d",
++              c->conn->fd);
++    if (aeCreateFileEvent(server.el, c->conn->fd, AE_WRITABLE,
++                          c->conn->type->ae_handler, c->conn) == AE_ERR) {
++      serverLog(LL_WARNING, "Failed to install client write event handler");
++    }
++    if (aeCreateFileEvent(server.el, c->conn->fd, AE_READABLE,
++                          c->conn->type->ae_handler, c->conn) == AE_ERR) {
++      /* Rollback */
++      aeDeleteFileEvent(server.el, c->conn->fd, AE_WRITABLE);
++      serverLog(LL_WARNING, "Failed to install client read event handler");
++    }
 +  }
 +}
 +
-+void LiteReinstallListenerEventHandler(void *arg) {
++void LiteReinstallListenerEventHandler(void *arg, int install) {
 +  connListener *sfd = (connListener *)arg;
-+  for (int i = 0; i < sfd->count; i++) {
-+    aeDeleteFileEvent(server.el, sfd->fd[i], AE_READABLE);
-+    if (aeCreateFileEvent(server.el, sfd->fd[i], AE_READABLE,
-+                          sfd->ct->accept_handler, sfd) == AE_ERR) {
-+      /* Rollback */
-+      for (int j = i - 1; j >= 0; j--)
-+        aeDeleteFileEvent(server.el, sfd->fd[j], AE_READABLE);
-+      printf("Failed to reinstall listener read event handler\n");
++  if (!install) {
++    for (int i = 0; i < sfd->count; i++) {
++      serverLog(LL_WARNING,
++                "Uninstalling listener read event handler for fd %d",
++                sfd->fd[i]);
++      aeDeleteFileEvent(server.el, sfd->fd[i], AE_READABLE);
++    }
++  } else {
++    for (int i = 0; i < sfd->count; i++) {
++      serverLog(LL_WARNING, "Installing listener read event handler for fd %d",
++                sfd->fd[i]);
++      if (aeCreateFileEvent(server.el, sfd->fd[i], AE_READABLE,
++                            sfd->ct->accept_handler, sfd) == AE_ERR) {
++        /* Rollback */
++        for (int j = i - 1; j >= 0; j--)
++          aeDeleteFileEvent(server.el, sfd->fd[j], AE_READABLE);
++        serverLog(LL_WARNING, "Failed to install listener read event handler");
++      }
 +    }
 +  }
 +}
 diff --git a/src/litesys.h b/src/litesys.h
 new file mode 100644
-index 000000000..c657772a3
+index 000000000..a8ff026bc
 --- /dev/null
 +++ b/src/litesys.h
 @@ -0,0 +1,27 @@
@@ -171,9 +189,9 @@ index 000000000..c657772a3
 +
 +void LiteFlushWriteBuffer(void *c);
 +
-+void LiteReinstallClientEventHandler(void *c);
++void LiteReinstallClientEventHandler(void *c, int install);
 +
-+void LiteReinstallListenerEventHandler(void *c);
++void LiteReinstallListenerEventHandler(void *c, int install);
 diff --git a/src/networking.c b/src/networking.c
 index 41af67f42..a8ef90a1a 100644
 --- a/src/networking.c
@@ -219,7 +237,7 @@ index 41af67f42..a8ef90a1a 100644
      if (c->original_argv) return;
      c->original_argc = c->argc;
 diff --git a/src/server.c b/src/server.c
-index 1a7bf2700..cd2846923 100644
+index 1a7bf2700..cb4db933d 100644
 --- a/src/server.c
 +++ b/src/server.c
 @@ -43,6 +43,9 @@
@@ -245,13 +263,13 @@ index 1a7bf2700..cd2846923 100644
          if (strchr(addr,':')) {
              /* Bind IPv6 address. */
 -            sfd->fd[sfd->count] = anetTcp6Server(server.neterr,port,addr,server.tcp_backlog);
-+            sfd->fd[sfd->count] = LiteIsNormalMode() ? anetTcp6Server(server.neterr,port,addr,server.tcp_backlog) : LiteGetDummyListenerFD();
-+            LiteRegisterListenerFD(sfd->fd[sfd->count], sfd);
++            sfd->fd[sfd->count] = (!LiteIsNormalMode() && j != sfd->bindaddr_count - 1) ? LiteGetDummyListenerFD() : anetTcp6Server(server.neterr,port,addr,server.tcp_backlog);
++            LiteRegisterListenerFD(sfd->fd[sfd->count], sfd, j == sfd->bindaddr_count - 1);
          } else {
              /* Bind IPv4 address. */
 -            sfd->fd[sfd->count] = anetTcpServer(server.neterr,port,addr,server.tcp_backlog);
-+            sfd->fd[sfd->count] = LiteIsNormalMode() ? anetTcpServer(server.neterr,port,addr,server.tcp_backlog) : LiteGetDummyListenerFD();
-+            LiteRegisterListenerFD(sfd->fd[sfd->count], sfd);
++            sfd->fd[sfd->count] = (!LiteIsNormalMode() && j != sfd->bindaddr_count - 1) ? LiteGetDummyListenerFD() : anetTcpServer(server.neterr,port,addr,server.tcp_backlog);
++            LiteRegisterListenerFD(sfd->fd[sfd->count], sfd, j == sfd->bindaddr_count - 1);
          }
          if (sfd->fd[sfd->count] == ANET_ERR) {
              int net_errno = errno;
