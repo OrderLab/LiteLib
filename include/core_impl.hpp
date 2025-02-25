@@ -234,13 +234,13 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       c->replay_conn_id_ = replay_id++;
     }
   });
+  // TODO: handle new client connections/client connection closeing after this
 
   // replay
   std::map<WorkerInstance *, ConnectionInstance *>
       replay_worker_sync_state_conns;
 
   for (auto &replay_worker_ : replay_workers_) {
-    replay_worker_->RemoveAllConnections();
     replay_worker_sync_state_conns[replay_worker_.get()] =
         replay_worker_->NewReplayConnection();
   }
@@ -361,14 +361,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   // client connections
   fds.resize(lens[0]);
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
-    if (!c->ConnectBackend()) {
-      LOG(ERROR) << "Failed to connect to backend" << std::endl;
-    } else {
-      LOG(INFO) << "Connect backend " << c->backend_fd_ << " to "
-                << c->client_fd_ << std::endl;
-      fds[c->replay_conn_id_] = c->client_fd_;
-      c->Detach();
-    }
+    fds[c->replay_conn_id_] = c->client_fd_;
+    c->Detach();
   });
 
   // listener connections
@@ -381,28 +375,9 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     server_instance_ptr_->conns_.pop();
   }
 
-  size_t totalBytes = sizeof(int) * fds.size();
-  std::vector<char> cmsgBuf(CMSG_SPACE(totalBytes), 0);
-
-  struct iovec iov;
-  iov.iov_base = lens.data();
-  iov.iov_len = sizeof(int) * lens.size();
-
-  struct msghdr msg;
-  memset(&msg, 0, sizeof(msg));
-  msg.msg_iov = &iov;
-  msg.msg_iovlen = 1;
-  msg.msg_control = cmsgBuf.data();
-  msg.msg_controllen = cmsgBuf.size();
-
-  struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-  cmsg->cmsg_len = CMSG_LEN(totalBytes);
-  cmsg->cmsg_level = SOL_SOCKET;
-  cmsg->cmsg_type = SCM_RIGHTS;
-  memcpy(CMSG_DATA(cmsg), fds.data(), totalBytes);
-
-  if (sendmsg(full_fd, &msg, 0) < 0) {
+  if (!network::SendSockets(full_fd, fds, lens)) {
     LOG(ERROR) << "Failed to transfer sockets to the full process";
+    close(full_fd);
     return false;
   }
 

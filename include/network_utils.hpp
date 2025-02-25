@@ -42,10 +42,26 @@ struct TCPID {
     return src_ip == other.src_ip && src_port == other.src_port &&
            dst_ip == other.dst_ip && dst_port == other.dst_port;
   }
+
+  static TCPID GetUUID() {
+    static u_int16_t counter = 0;
+    counter++;
+    return {counter, counter, counter, counter};
+  }
 };
 
 TCPID GetTCPID(const evutil_socket_t fd);
 
+// std::vector<int> fds: [all client fds, all listener fds]
+// std::array<int, 2> lens: [number of client fds, number of all fds]
+std::pair<std::vector<int>, std::array<int, 2>> ReceiveSockets(
+    const evutil_socket_t fd);
+
+bool SendSockets(const evutil_socket_t fd, std::vector<int>& fds,
+                 std::array<int, 2>& lens);
+
+// replace the socket under fd with a new one
+int CopyAndReplaceSocket(int fd, int new_fd);
 }  // namespace network
 
 }  // namespace lite

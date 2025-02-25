@@ -227,6 +227,93 @@ TCPID GetTCPID(const evutil_socket_t fd) {
   return ret;
 }
 
+std::pair<std::vector<int>, std::array<int, 2>> ReceiveSockets(
+    const evutil_socket_t fd) {
+  static constexpr size_t kMaxFds = 1024;
+
+  std::array<int, 2> lens;
+  std::vector<char> cmsgBuf(CMSG_SPACE(sizeof(int) * kMaxFds));
+
+  struct iovec iov;
+  iov.iov_base = lens.data();
+  iov.iov_len = sizeof(lens);
+
+  struct msghdr msg;
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = cmsgBuf.data();
+  msg.msg_controllen = cmsgBuf.size();
+
+  ssize_t received = recvmsg(fd, &msg, 0);
+  if (received < 0) {
+    LOG(ERROR) << "Error receiving socket message";
+    return {std::vector<int>(), lens};
+  }
+
+  struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+  if (!cmsg || cmsg->cmsg_level != SOL_SOCKET ||
+      cmsg->cmsg_type != SCM_RIGHTS) {
+    LOG(ERROR) << "Invalid control message";
+    return {std::vector<int>(), lens};
+  }
+
+  size_t num_fds = lens[1];
+  if (num_fds > kMaxFds) {
+    LOG(ERROR) << "Too many FDs received";
+    return {std::vector<int>(), lens};
+  }
+
+  std::vector<int> received_fds(num_fds);
+  memcpy(received_fds.data(), CMSG_DATA(cmsg), sizeof(int) * num_fds);
+
+  return {received_fds, lens};
+}
+
+bool SendSockets(const evutil_socket_t fd, std::vector<int>& fds,
+                 std::array<int, 2>& lens) {
+  size_t totalBytes = sizeof(int) * fds.size();
+  std::vector<char> cmsgBuf(CMSG_SPACE(totalBytes), 0);
+
+  struct iovec iov;
+  iov.iov_base = lens.data();
+  iov.iov_len = sizeof(int) * lens.size();
+
+  struct msghdr msg;
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = cmsgBuf.data();
+  msg.msg_controllen = cmsgBuf.size();
+
+  struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+  cmsg->cmsg_len = CMSG_LEN(totalBytes);
+  cmsg->cmsg_level = SOL_SOCKET;
+  cmsg->cmsg_type = SCM_RIGHTS;
+  memcpy(CMSG_DATA(cmsg), fds.data(), totalBytes);
+
+  if (sendmsg(fd, &msg, 0) < 0) {
+    LOG(ERROR) << "Failed to transfer sockets to the full process";
+    return false;
+  }
+
+  return true;
+}
+
+int CopyAndReplaceSocket(int fd, int dummy_fd) {
+  int new_fd = dup(fd);
+  if (new_fd == -1) {
+    PLOG(ERROR) << "Failed to duplicate socket " << fd;
+    return -1;
+  }
+  if (dup2(dummy_fd, fd) != fd) {
+    PLOG(ERROR) << "Failed to hijack socket " << fd;
+    close(new_fd);
+    return -1;
+  }
+  return new_fd;
+}
+
 }  // namespace network
 
 }  // namespace lite

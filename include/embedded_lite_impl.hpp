@@ -38,25 +38,25 @@ int Init(char *argv_0, int number_of_workers, long long shared_memory_size,
          ReinstallClientEventHandlerFn ReinstallClientEventHandler,
          ReinstallListenerEventHandlerFn ReinstallListenerEventHandler) {
   google::InitGoogleLogging(argv_0);
-  std::cerr << "\033[31mEmbedded LiteSys [INFO] messages are printed to "
-               "/tmp/${full-version}.*\033[0m"
-            << std::endl;
 
   if (number_of_workers != 1) {
     LOG(ERROR) << "LiteSys only supports 1 worker in embedded mode now";
     return 1;
   }
 
-  embedded_server_void_ptr =
+  auto embedded_server_ptr =
       new EmbeddedServer<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry>(
           number_of_workers, shared_memory_size, max_item_count,
           sliding_window_size, socket_path, RequestDestructor, FlushWriteBuffer,
           ReinstallClientEventHandler, ReinstallListenerEventHandler);
+  embedded_server_void_ptr = embedded_server_ptr;
   LOG(INFO) << "Embedded LiteSys initialized";
   LOG(INFO) << "\tnumber_of_workers: " << number_of_workers;
   LOG(INFO) << "\tmax_item_count: " << max_item_count;
   LOG(INFO) << "\tsliding_window_size_in_ms: " << sliding_window_size.count();
+  LOG(INFO) << "\temergency_mode: "
+            << embedded_server_ptr->emergency_mode_ptr_->load();
 
   return 0;
 }
@@ -82,21 +82,6 @@ inline int ConnectToLiteProcess(const std::string &socket_path) {
   return fd;
 }
 
-// replace the socket under fd with a new one
-inline int CopyAndReplaceSocket(int fd, int dummy_fd) {
-  int new_fd = dup(fd);
-  if (new_fd == -1) {
-    PLOG(ERROR) << "Failed to duplicate socket " << fd;
-    return -1;
-  }
-  if (dup2(dummy_fd, fd) != fd) {
-    PLOG(ERROR) << "Failed to hijack socket " << fd;
-    close(new_fd);
-    return -1;
-  }
-  return new_fd;
-}
-
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
@@ -105,8 +90,6 @@ template <typename Application, typename Request, typename Response,
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 int FullStartListening() {
-  static constexpr size_t kMaxFds = 1024;
-
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
@@ -117,79 +100,7 @@ int FullStartListening() {
   auto lite_fd = ConnectToLiteProcess(embedded_server_ptr->socket_path_);
   if (lite_fd < 0) return lite_fd;
 
-  std::array<int, 2> lens;
-  std::vector<char> cmsgBuf(CMSG_SPACE(sizeof(int) * kMaxFds));
-
-  struct iovec iov;
-  iov.iov_base = lens.data();
-  iov.iov_len = sizeof(lens);
-
-  struct msghdr msg;
-  memset(&msg, 0, sizeof(msg));
-  msg.msg_iov = &iov;
-  msg.msg_iovlen = 1;
-  msg.msg_control = cmsgBuf.data();
-  msg.msg_controllen = cmsgBuf.size();
-
-  ssize_t received = recvmsg(lite_fd, &msg, 0);
-  if (received < 0) {
-    LOG(ERROR) << "LiteSys: Error receiving socket message";
-    close(lite_fd);
-    return -1;
-  }
-
-  struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-  if (!cmsg || cmsg->cmsg_level != SOL_SOCKET ||
-      cmsg->cmsg_type != SCM_RIGHTS) {
-    LOG(ERROR) << "LiteSys: Invalid control message";
-    close(lite_fd);
-    return -1;
-  }
-
-  size_t num_fds = lens[1];
-  if (num_fds > kMaxFds) {
-    LOG(ERROR) << "LiteSys: Too many FDs received";
-    close(lite_fd);
-    return -1;
-  }
-
-  std::vector<int> received_fds(num_fds);
-  memcpy(received_fds.data(), CMSG_DATA(cmsg), sizeof(int) * num_fds);
-  LOG(INFO) << "LiteSys: Received " << lens[0] << " client FDs and "
-            << (lens[1] - lens[0]) << " listener FDs";
-
-  for (int i = 0; i < lens[0]; i++) {
-    auto [replay_fd, client] = embedded_server_ptr->replay_conns_.front();
-    embedded_server_ptr->replay_conns_.pop();
-    auto original_fd = CopyAndReplaceSocket(replay_fd, received_fds[i]);
-    if (original_fd < 0) {
-      LOG(ERROR) << "Failed to hijack client socket: replay_fd=" << replay_fd
-                 << ", new_fd=" << received_fds[i];
-      continue;
-    }
-    close(replay_fd);
-    embedded_server_ptr->ReinstallClientEventHandler(client);
-  }
-
-  if (embedded_server_ptr->fd_to_listener_.size() != lens[1] - lens[0]) {
-    LOG(ERROR) << "LiteSys: Number of listener FDs mismatch";
-    close(lite_fd);
-    return -1;
-  }
-  int id = lens[0];
-  for (auto &[fd, listener] : embedded_server_ptr->fd_to_listener_) {
-    auto original_fd = CopyAndReplaceSocket(fd, received_fds[id++]);
-    if (original_fd < 0) {
-      LOG(ERROR) << "Failed to hijack listener socket: fd=" << fd
-                 << ", new_fd=" << received_fds[id - 1];
-      continue;
-    }
-    close(fd);
-    embedded_server_ptr->ReinstallListenerEventHandler(listener);
-  }
-
-  embedded_server_ptr->emergency_mode_ptr_->store(false);
-
+  embedded_server_ptr->TransitionToNormalMode(lite_fd);
   return 0;
 }
 
@@ -227,7 +138,7 @@ int SignalHandler(int sig) {
     auto &[tcp_id, arg] = tcp_id_and_arg;
     FlushWriteBuffer(arg);
 
-    int new_fd = CopyAndReplaceSocket(
+    int new_fd = network::CopyAndReplaceSocket(
         fd, dummy_fd);  // prevent the old one from being closed
     if (new_fd < 0) {
       LOG(ERROR) << "Failed to transfer client socket " << fd;
@@ -240,7 +151,7 @@ int SignalHandler(int sig) {
   std::array<int, 2> lens = {static_cast<int>(fds.size()), 0};
 
   for (auto listener_fd : embedded_server_ptr->listener_fds_) {
-    int new_fd = CopyAndReplaceSocket(
+    int new_fd = network::CopyAndReplaceSocket(
         listener_fd, dummy_fd);  // prevent the old one from being closed
     if (new_fd < 0) {
       LOG(ERROR) << "Failed to transfer listener socket " << listener_fd;
@@ -257,31 +168,19 @@ int SignalHandler(int sig) {
     std::this_thread::yield();
   }
 
-  size_t totalBytes = sizeof(int) * fds.size();
-  std::vector<char> cmsgBuf(CMSG_SPACE(totalBytes), 0);
-
-  struct iovec iov;
-  iov.iov_base = lens.data();
-  iov.iov_len = sizeof(int) * lens.size();
-
-  struct msghdr msg;
-  memset(&msg, 0, sizeof(msg));
-  msg.msg_iov = &iov;
-  msg.msg_iovlen = 1;
-  msg.msg_control = cmsgBuf.data();
-  msg.msg_controllen = cmsgBuf.size();
-
-  struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-  cmsg->cmsg_len = CMSG_LEN(totalBytes);
-  cmsg->cmsg_level = SOL_SOCKET;
-  cmsg->cmsg_type = SCM_RIGHTS;
-  memcpy(CMSG_DATA(cmsg), fds.data(), totalBytes);
-
   auto lite_fd = ConnectToLiteProcess(embedded_server_ptr->socket_path_);
   if (lite_fd < 0) return lite_fd;
 
-  if (sendmsg(lite_fd, &msg, 0) < 0) {
+  if (!network::SendSockets(lite_fd, fds, lens)) {
     LOG(ERROR) << "Failed to transfer sockets to the lite process";
+    close(lite_fd);
+    return -1;
+  }
+
+  // clean up
+  close(dummy_fd);
+  for (auto fd : fds) {
+    close(fd);
   }
 
   delete embedded_server_ptr;
@@ -295,7 +194,8 @@ template <typename Application, typename Request, typename Response,
            IsProtocolMessage<Request> && IsProtocolMessage<Response> &&
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
-void RegisterListenerFD(int fd, void *listener) {
+void RegisterListenerFD(int fd, void *listener, int is_replay) {
+  if (is_replay) return;
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
@@ -338,11 +238,42 @@ int GetDummyListenerFD() {
     LOG(ERROR) << "GetDummyListenerFD called in normal mode";
     return -1;
   }
-  int fd = open("/dev/null", O_RDWR);
+
+  // Generate random string for socket path
+  std::string random_str;
+  const char charset[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+  random_str.reserve(16);
+  for (int i = 0; i < 16; i++) {
+    random_str += charset[rand() % sizeof(charset)];
+  }
+  std::string socket_path = "/tmp/" + random_str + ".sock";
+
+  // Create random unix domain socket
+  int fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd == -1) {
-    LOG(ERROR) << "Failed to create a dummy socket";
+    LOG(ERROR) << "Failed to create unix socket";
     return -1;
   }
+
+  struct sockaddr_un addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, socket_path.c_str(), sizeof(addr.sun_path) - 1);
+
+  unlink(socket_path.c_str());
+  if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    LOG(ERROR) << "Failed to bind unix socket";
+    close(fd);
+    return -1;
+  }
+
+  if (listen(fd, SOMAXCONN) == -1) {
+    LOG(ERROR) << "Failed to listen on unix socket";
+    close(fd);
+    return -1;
+  }
+
+  LOG(INFO) << "GetDummyListenerFD: " << fd << " at " << socket_path;
   return fd;
 }
 
@@ -374,6 +305,8 @@ void *RegisterClientFD(int fd, void *client) {
   } else {
     auto tcp_id = embedded_server_ptr->connection_state_storage_ptr_
                       ->replay_conns_.pop_front();
+    embedded_server_ptr->fd_to_tcp_id_and_arg_[fd] = {tcp_id, client};
+
     connection_state_ptr =
         embedded_server_ptr->connection_state_storage_ptr_->Get(tcp_id);
     if (!connection_state_ptr) {
@@ -443,7 +376,8 @@ int ProcessRequest(void *conn_info, void *request,
     embedded_server_ptr->SendMessageToNextWorker(msg);
     return 0;
   } else {
-    // TODO: process error during replay
+    // TODO: process error during replay, and let TransitionToNormalMode wait
+    // for it
     return 0;
   }
 }

@@ -6,8 +6,10 @@ extern "C" {
 
 typedef void (*FlushWriteBufferFn)(void *conn);
 typedef void (*RequestDestructorFn)(void *request);
-typedef void (*ReinstallClientEventHandlerFn)(void *client);
-typedef void (*ReinstallListenerEventHandlerFn)(void *listener);
+// uninstall is 0 if the event handler is being uninstalled, 1 if it is being
+// installed
+typedef void (*ReinstallClientEventHandlerFn)(void *client, int install);
+typedef void (*ReinstallListenerEventHandlerFn)(void *listener, int install);
 
 int LiteIsNormalMode(void);
 
@@ -20,7 +22,7 @@ int LiteFullStartListening(void);
 
 int LiteSignalHandler(int sig);
 
-void LiteRegisterListenerFD(int fd, void *listener);
+void LiteRegisterListenerFD(int fd, void *listener, int is_replay);
 void LiteUnregisterListenerFD(int fd);
 int LiteGetDummyListenerFD(void);
 
