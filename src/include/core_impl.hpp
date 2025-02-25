@@ -66,6 +66,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   if (emergency_mode_) {
+    conn_info.client_fd = client_fd;
     const bool flow_control =
         is_replaying_ &
         (flow_control_ratio_ * replay_rate_ < logger_inner_.inserting_rate_);

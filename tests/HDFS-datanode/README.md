@@ -25,7 +25,7 @@ In this setup, the HDFS cluster is deployed on 3 nodes:
 	mv /usr/local/hadoop-3.3.6 /usr/local/hadoop
 	# Configure HDFS
 	echo "export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >>/usr/local/hadoop/etc/hadoop/hadoop-env.sh
-	echo "export HADOOP_LOG_DIR=/workspace/data/logs" >>/usr/local/hadoop/etc/hadoop/hadoop-env.sh
+	echo "export HADOOP_LOG_DIR=<your log dir>" >>/usr/local/hadoop/etc/hadoop/hadoop-env.sh
 	sed -i '2iHDFS_DATANODE_USER=root\nHDFS_DATANODE_SECURE_USER=hdfs\nHDFS_NAMENODE_USER=root\nHDFS_SECONDARYNAMENODE_USER=root' /usr/local/hadoop/sbin/start-dfs.sh
 	sed -i '2iHDFS_DATANODE_USER=root\nHDFS_DATANODE_SECURE_USER=hdfs\nHDFS_NAMENODE_USER=root\nHDFS_SECONDARYNAMENODE_USER=root' /usr/local/hadoop/sbin/stop-dfs.sh
 	# Copy the configuration files

@@ -556,6 +556,96 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
         TargetMap[&conn] = OpWriteBlock;
         BlockMap[std::make_pair(target.poolid(), target.blockid())] = target;
 
+        auto DatanodeTargets = OpWriteBlock.targets();
+        std::vector<int> datanodeSockfd(DatanodeTargets.size());
+
+        for(int i = 0; i < datanodeSockfd.size(); i++) {
+          auto NextDatanodeId = DatanodeTargets[i].id();
+          const char *addr = NextDatanodeId.ipaddr().data();
+          auto port = NextDatanodeId.xferport();
+          datanodeSockfd[i] = socket(AF_INET, SOCK_STREAM, 0);
+          if (datanodeSockfd[i] < 0) {
+            LOG(ERROR) << "Socket creation failed for datanode " << i << std::endl;
+            continue;
+          }
+          std::cout << "connect to datanode at " << addr << ":" << port << std::endl;
+          sockaddr_in server_addr;
+          memset(&server_addr, 0, sizeof(server_addr));
+          server_addr.sin_family = AF_INET;
+          server_addr.sin_port = htons(port);
+          inet_pton(AF_INET, addr, &server_addr.sin_addr);
+          if (connect(datanodeSockfd[i], (struct sockaddr *)&server_addr,
+                      sizeof(server_addr)) < 0) {
+            LOG(ERROR) << "Connection to datanode "<< i << " failed" << std::endl;
+            close(datanodeSockfd[i]);
+          }
+        }
+
+        OpWriteBlock.clear_targets();
+        OpWriteBlock.clear_targetstoragetypes();
+        OpWriteBlock.clear_targetpinnings();
+        OpWriteBlock.clear_targetstorageids();
+
+        // This piece of code has not been tested
+        std::cout << "replication number: " << DatanodeTargets.size()
+                  << std::endl;
+
+        hadoop::hdfs::DatanodeInfoProto* source = OpWriteBlock.mutable_source();
+        
+        // probably not needed till set_numblocks
+        hadoop::hdfs::DatanodeIDProto* id = source->mutable_id();
+        id->set_ipaddr("");
+        id->set_hostname("");
+        id->set_datanodeuuid("");
+        id->set_xferport(0);
+        id->set_infoport(0);
+        id->set_ipcport(0);
+        id->set_infosecureport(0);
+        source->set_capacity(0);
+        source->set_dfsused(0);
+        source->set_remaining(0);
+        source->set_blockpoolused(0);
+        source->set_lastupdate(0);
+        source->set_xceivercount(0);
+        source->set_nondfsused(0);
+        source->set_adminstate(hadoop::hdfs::DatanodeInfoProto::NORMAL);
+        source->set_cachecapacity(0);
+        source->set_cacheused(0);
+        source->set_lastupdatemonotonic(0);
+        source->set_lastblockreporttime(0);
+        source->set_lastblockreportmonotonic(0);
+        source->set_numblocks(0);
+        OpWriteBlock.clear_targetstoragetypes();
+        OpWriteBlock.clear_targetpinnings();
+        OpWriteBlock.clear_targetstorageids();
+        std::cout << "New OpWriteBlock size: " << OpWriteBlock.ByteSizeLong() << ", OpWriteBlock:\n" << OpWriteBlock.DebugString() << std::endl;
+
+        std::shared_ptr<std::vector<uint8_t>> send_buffer = std::make_shared<std::vector<uint8_t>>();
+        int OpWriteBlockSize = OpWriteBlock.ByteSizeLong();
+        uint8_t appendBytes[] = {0x0, 0x1c, 0x50, static_cast<uint8_t>(OpWriteBlockSize & 0xFF), 0x1};
+        size_t appendLength = sizeof(appendBytes);
+        // Append the bytes to send_buffer
+        send_buffer->insert(send_buffer->end(), appendBytes, appendBytes + appendLength);
+        // WriteDelimitedTo(*send_buffer, &OpWriteBlock);
+        send_buffer->resize(appendLength + OpWriteBlockSize);
+        OpWriteBlock.SerializeToArray(send_buffer->data() + appendLength, OpWriteBlockSize);
+
+        for(int i = 0; i < datanodeSockfd.size(); i++) {
+          int sent = send(datanodeSockfd[i], send_buffer->data(), send_buffer->size(), 0);
+          if (sent < 0) {
+            LOG(ERROR) << "send failed" << std::endl;
+            close(datanodeSockfd[i]);
+          }
+
+          char buffer[1024];
+          memset(buffer, 0, sizeof(buffer));
+          int bytes_received = recv(datanodeSockfd[i], buffer, sizeof(buffer) - 1, 0);
+          if (bytes_received < 0) {
+            LOG(ERROR) << "receive from datanode " << i << " failed" << std::endl;
+            close(datanodeSockfd[i]);
+          }
+        }
+
         hadoop::hdfs::BlockOpResponseProto block_op_response;
         block_op_response.set_status(hadoop::hdfs::Status::SUCCESS);
         block_op_response.set_firstbadlink("");
@@ -566,6 +656,8 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
         ack_buffer.resize(1 + size);
         ack_buffer[0] = size;
         block_op_response.SerializeToArray(ack_buffer.data() + 1, size);
+        
+        printf("client_fd: %d", conn.client_fd);
 
         int sent = send(conn.client_fd, ack_buffer.data(), ack_buffer.size(), 0);
         if (sent == -1) {
@@ -574,9 +666,9 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
           std::cout << "Sent " << sent << " bytes." << std::endl;
         }
 
-        std::string BlockPath = "/workspace/data/dfs/data/current/" +
+        std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" +
                       target.poolid() +
-                      "/current/finalized/subdir0/subdir1/blk_" +
+                      "/current/finalized/subdir0/subdir0/blk_" +
                       std::to_string(target.blockid());
         std::string MetaPath = BlockPath + "_" +
                               std::to_string(target.generationstamp()) +
@@ -669,6 +761,27 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
               }
           }
 
+          char send_buffer_2[sizeof(net_packet_size) + 27 + total_received];
+          std::memcpy(send_buffer_2, &net_packet_size, sizeof(net_packet_size));
+          std::memcpy(send_buffer_2 + sizeof(net_packet_size), packet_header_buffer, sizeof(packet_header_buffer));
+          std::memcpy(send_buffer_2 + sizeof(net_packet_size) + 27, data_buffer, total_received);
+          
+          for(int i = 0; i < datanodeSockfd.size(); i++) {
+            int sent = send(datanodeSockfd[i], send_buffer_2, sizeof(net_packet_size) + 27 + total_received, 0);
+            if (sent < 0) {
+              LOG(ERROR) << "send failed" << std::endl;
+              close(datanodeSockfd[i]);
+            }
+  
+            char buffer[1024];
+            memset(buffer, 0, sizeof(buffer));
+            int bytes_received = recv(datanodeSockfd[i], buffer, sizeof(buffer) - 1, 0);
+            if (bytes_received < 0) {
+              LOG(ERROR) << "receive from datanode " << i << " failed" << std::endl;
+              close(datanodeSockfd[i]);
+            }
+          }
+
           if (!blockstream->is_open() || !metastream->is_open()) {
               LOG(ERROR) << "Failed to open the block for writing: " << BlockPath << std::endl;
               WriteErrorResponse(resp.buffer);
@@ -729,19 +842,19 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
         auto* registration = blockReceivedAndDeletedRequest.mutable_registration();
         blockReceivedAndDeletedRequest.set_blockpoolid(target.poolid());
         auto* datanodeID = registration->mutable_datanodeid();
-        datanodeID->set_ipaddr("172.16.0.4");
-        datanodeID->set_hostname("dn1");
-        datanodeID->set_datanodeuuid("fe103c3c-3ce8-42b6-a8d8-036e13adfb26");
+        datanodeID->set_ipaddr("10.10.1.2");
+        datanodeID->set_hostname("node1");
+        datanodeID->set_datanodeuuid("9675a363-9430-46a7-b90b-554d919a07f4");
         datanodeID->set_xferport(9866);
         datanodeID->set_infoport(9864);
         datanodeID->set_ipcport(9867);
         datanodeID->set_infosecureport(0);
 
         auto* storageInfo = registration->mutable_storageinfo();
-        storageInfo->set_layoutversion(4294967239);
-        storageInfo->set_namespceid(1837632098);
-        storageInfo->set_clusterid("CID-0f6d786b-17b0-4903-ad26-16fb8248ba17");
-        storageInfo->set_ctime(1731271218236);
+        storageInfo->set_layoutversion(-66);
+        storageInfo->set_namespceid(508935736);
+        storageInfo->set_clusterid("CID-066a572c-d4f0-4f2c-b6c5-905e230df5d9");
+        storageInfo->set_ctime(1738680776488);
 
         auto* keys = registration->mutable_keys();
         keys->set_isblocktokenenabled(false);
@@ -791,85 +904,111 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
             LOG(ERROR) << "Failed to send finalResponse" << std::endl;
         }
 
-        // replication
-        auto DatanodeTargets = OpWriteBlock.targets();
-        if (DatanodeTargets.empty()) {
         
-        } else {
-          OpWriteBlock.clear_targets();
-          OpWriteBlock.clear_targetstoragetypes();
-          OpWriteBlock.clear_targetpinnings();
-          OpWriteBlock.clear_targetstorageids();
+        // if (DatanodeTargets.empty()) {
+        
+        // } else {
+        //   OpWriteBlock.clear_targets();
+        //   OpWriteBlock.clear_targetstoragetypes();
+        //   OpWriteBlock.clear_targetpinnings();
+        //   OpWriteBlock.clear_targetstorageids();
 
-          // This piece of code has not been tested
-          std::cout << "replication number: " << DatanodeTargets.size()
-                    << std::endl;
-          for(auto datanode : DatanodeTargets) {
-            auto NextDatanodeId = datanode.id();
-            const char *addr = NextDatanodeId.ipaddr().data();
-            auto port = NextDatanodeId.xferport();
-            int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-            if (sockfd < 0) {
-              LOG(ERROR) << "Socket creation failed" << std::endl;
-              WriteErrorResponse(resp.buffer);
-              return std::make_pair(resp, false);
-            }
-            sockaddr_in server_addr;
-            memset(&server_addr, 0, sizeof(server_addr));
-            server_addr.sin_family = AF_INET;
-            server_addr.sin_port = htons(port);
-            inet_pton(AF_INET, addr, &server_addr.sin_addr);
-            if (connect(sockfd, (struct sockaddr *)&server_addr,
-                        sizeof(server_addr)) < 0) {
-              LOG(ERROR) << "Connection to next datanode failed" << std::endl;
-              close(sockfd);
-              WriteErrorResponse(resp.buffer);
-              return std::make_pair(resp, false);
-            }
+        //   // This piece of code has not been tested
+        //   std::cout << "replication number: " << DatanodeTargets.size()
+        //             << std::endl;
 
-            std::shared_ptr<std::vector<uint8_t>> send_buffer = std::make_shared<std::vector<uint8_t>>();
+        //   hadoop::hdfs::DatanodeInfoProto* source = OpWriteBlock.mutable_source();
+        //   // probably not needed till set_numblocks
+        //   hadoop::hdfs::DatanodeIDProto* id = source->mutable_id();
+        //   id->set_ipaddr("");
+        //   id->set_hostname("");
+        //   id->set_datanodeuuid("");
+        //   id->set_xferport(0);
+        //   id->set_infoport(0);
+        //   id->set_ipcport(0);
+        //   id->set_infosecureport(0);
+        //   source->set_capacity(0);
+        //   source->set_dfsused(0);
+        //   source->set_remaining(0);
+        //   source->set_blockpoolused(0);
+        //   source->set_lastupdate(0);
+        //   source->set_xceivercount(0);
+        //   source->set_nondfsused(0);
+        //   source->set_adminstate(hadoop::hdfs::DatanodeInfoProto::NORMAL);
+        //   source->set_cachecapacity(0);
+        //   source->set_cacheused(0);
+        //   source->set_lastupdatemonotonic(0);
+        //   source->set_lastblockreporttime(0);
+        //   source->set_lastblockreportmonotonic(0);
+        //   source->set_numblocks(0);
+        //   OpWriteBlock.clear_targetstoragetypes();
+        //   OpWriteBlock.clear_targetpinnings();
+        //   OpWriteBlock.clear_targetstorageids();
+        //   std::cout << "New OpWriteBlock size: " << OpWriteBlock.ByteSizeLong() << ", OpWriteBlock:\n" << OpWriteBlock.DebugString() << std::endl;
 
-            int size = OpWriteBlock.ByteSizeLong();
-            uint8_t appendBytes[] = {0x0, 0x1c, 0x50, static_cast<uint8_t>(size & 0xFF), 0x1};
-            size_t appendLength = sizeof(appendBytes);
+        //   std::shared_ptr<std::vector<uint8_t>> send_buffer = std::make_shared<std::vector<uint8_t>>();
+        //   int size = OpWriteBlock.ByteSizeLong();
+        //   uint8_t appendBytes[] = {0x0, 0x1c, 0x50, static_cast<uint8_t>(size & 0xFF), 0x1};
+        //   size_t appendLength = sizeof(appendBytes);
+        //   // Append the bytes to send_buffer
+        //   send_buffer->insert(send_buffer->end(), appendBytes, appendBytes + appendLength);
+        //   // WriteDelimitedTo(*send_buffer, &OpWriteBlock);
+        //   send_buffer->resize(appendLength + size);
+        //   OpWriteBlock.SerializeToArray(send_buffer->data() + appendLength, size);
 
-            // Append the bytes to send_buffer
-            send_buffer->insert(send_buffer->end(), appendBytes, appendBytes + appendLength);
-            // WriteDelimitedTo(*send_buffer, &OpWriteBlock);
-            send_buffer->resize(appendLength + size);
-            OpWriteBlock.SerializeToArray(send_buffer->data() + appendLength, size);
+        //   for(auto datanode : DatanodeTargets) {
+        //     auto NextDatanodeId = datanode.id();
+        //     const char *addr = NextDatanodeId.ipaddr().data();
+        //     auto port = NextDatanodeId.xferport();
+        //     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        //     if (sockfd < 0) {
+        //       LOG(ERROR) << "Socket creation failed" << std::endl;
+        //       WriteErrorResponse(resp.buffer);
+        //       return std::make_pair(resp, false);
+        //     }
+        //     std::cout << "connect to datanode at " << addr << ":" << port << std::endl;
+        //     sockaddr_in server_addr;
+        //     memset(&server_addr, 0, sizeof(server_addr));
+        //     server_addr.sin_family = AF_INET;
+        //     server_addr.sin_port = htons(port);
+        //     inet_pton(AF_INET, addr, &server_addr.sin_addr);
+        //     if (connect(sockfd, (struct sockaddr *)&server_addr,
+        //                 sizeof(server_addr)) < 0) {
+        //       LOG(ERROR) << "Connection to next datanode failed" << std::endl;
+        //       close(sockfd);
+        //       WriteErrorResponse(resp.buffer);
+        //       return std::make_pair(resp, false);
+        //     }
             
-            int sent = send(sockfd, send_buffer->data(), send_buffer->size(), 0);
-            if (sent < 0) {
-              LOG(ERROR) << "send failed" << std::endl;
-              close(sockfd);
-              WriteErrorResponse(resp.buffer);
-              return std::make_pair(resp, false);
-            }
+        //     int sent = send(sockfd, send_buffer->data(), send_buffer->size(), 0);
+        //     if (sent < 0) {
+        //       LOG(ERROR) << "send failed" << std::endl;
+        //       close(sockfd);
+        //     }
 
-            char buffer[1024];
-            memset(buffer, 0, sizeof(buffer));
-            int bytes_received = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
-            if (bytes_received < 0) {
-              LOG(ERROR) << "receive failed" << std::endl;
-              close(sockfd);
-              WriteErrorResponse(resp.buffer);
-              return std::make_pair(resp, false);
-            }
+        //     char buffer[1024];
+        //     memset(buffer, 0, sizeof(buffer));
+        //     int bytes_received = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+        //     if (bytes_received < 0) {
+        //       LOG(ERROR) << "receive failed" << std::endl;
+        //       close(sockfd);
+        //       WriteErrorResponse(resp.buffer);
+        //       return std::make_pair(resp, false);
+        //     }
 
-            close(sockfd);
-            google::protobuf::io::ArrayInputStream array_input(buffer,
-                                                              bytes_received);
-            google::protobuf::io::CodedInputStream coded_input(&array_input);
-            if (!ReadDelimitedFrom(&coded_input, &resp.block_op_response)) {
-              WriteErrorResponse(resp.buffer);
-              return std::make_pair(resp, false);
-            } else {
-              WriteDelimitedTo(resp.buffer, &resp.block_op_response);
-              std::cout << "resp.block_op_response: " << resp.block_op_response.DebugString() << std::endl;
-            }
-          }
-        }
+        //     close(sockfd);
+        //     google::protobuf::io::ArrayInputStream array_input(buffer,
+        //                                                       bytes_received);
+        //     google::protobuf::io::CodedInputStream coded_input(&array_input);
+        //     if (!ReadDelimitedFrom(&coded_input, &resp.block_op_response)) {
+        //       WriteErrorResponse(resp.buffer);
+        //       return std::make_pair(resp, false);
+        //     } else {
+        //       WriteDelimitedTo(resp.buffer, &resp.block_op_response);
+        //       std::cout << "resp.block_op_response: " << resp.block_op_response.DebugString() << std::endl;
+        //     }
+        //   }
+        // }
         return std::make_pair(resp, false);
         break;
       }

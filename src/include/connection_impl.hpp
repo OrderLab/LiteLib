@@ -151,7 +151,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       close(fd);
       conn->backend_fd_ = -1;
     } else {
-      PLOG(ERROR) << "read from backend";
+      PLOG(ERROR) << "read from backend fd: " << fd;
       delete conn;
     }
     return;

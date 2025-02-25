@@ -76,11 +76,11 @@ int main(int argc, char* argv[]) {
 
     // Initialise the server.
     // TODO: make address and port configurable.
-    std::string backend_addr_1 = "nna";
+    std::string backend_addr_1 = "node0";
     std::string backend_port_1 = "8020";
-    std::string backend_addr_2 = "dn1";
+    std::string backend_addr_2 = "node1";
     std::string backend_port_2 = "19866";
-    std::string backend_addr_3 = "dn1";
+    std::string backend_addr_3 = "node1";
     std::string backend_port_3 = "19867";
     Datanode datanode;
     lite::LiteServer<Datanode, Packet, Packet, ConnectionInfo, std::string,
