@@ -8,6 +8,7 @@
 #include "connection.hpp"
 #include "core.hpp"
 #include "worker.hpp"
+#include "ebpf_worker.hpp"
 
 namespace lite {
 
