@@ -39,8 +39,6 @@ struct socket_info {
     uint32_t daddr;
     uint16_t dport;
     uint8_t state;  // TCP connection state
-    uint32_t seq, ack_seq;
-    uint16_t window_size;
 };
 
 struct connection_event {
@@ -163,43 +161,29 @@ void read_callback(evutil_socket_t fd, short what, void *arg_conn) {
 
 static int handle_event(void *ctx, void *data, size_t data_sz) {
     struct connection_event *event = (struct connection_event *)data;
-    printf("Event received: type=%d, src=%u:%u -> dst=%u:%u\n",
-           event->header.kind, event->socket.saddr, event->socket.sport,
-           event->socket.daddr, event->socket.dport);
-    FILE *fp = fopen("tcp_state_dump.txt", "a");
-    if (fp) {
-        fprintf(fp, "%u %u %u %u %u %u %u %u\n",
-                event->socket.saddr, event->socket.sport,
-                event->socket.daddr, event->socket.dport,
-                event->socket.state, event->socket.seq,
-                event->socket.ack_seq, event->socket.window_size);
-        fclose(fp);
-    }
+    // printf("Event received: type=%d, src=%u:%u -> dst=%u:%u\n",
+    //        event->header.kind, event->socket.saddr, event->socket.sport,
+    //        event->socket.daddr, event->socket.dport);
     
-    return 0;  // Return 0 to indicate success
+
+    
+    return 0;  
 }
 
-int switch_to_emergency(struct socket_bpf *skel){
+int switch_mode(struct socket_bpf *skel, int mode){
     uint32_t key=0;
     uint64_t value;
-    if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.emergency), &key, &value) < 0) {
-        std::cerr << "Failed to look up map value: " << strerror(errno) << std::endl;
-        return -1;
-    }
-    printf("Intial emergency status: %ld\n", value);
 
-    sleep(3);
-
-    value = 1;
+    value = mode;
     if (bpf_map_update_elem(bpf_map__fd(skel->maps.emergency), &key, &value, BPF_ANY) < 0) {
-        std::cerr << "Failed to update value in map: " << strerror(errno) << std::endl;
+        std::cerr << "Failed to update mode value in map: " << strerror(errno) << std::endl;
         return -1;
     }
     if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.emergency), &key, &value) < 0) {
-        std::cerr << "Failed to look up map value: " << strerror(errno) << std::endl;
+        std::cerr << "Failed to look up map mode value: " << strerror(errno) << std::endl;
         return -1;
     }
-    printf("Intial emergency status: %ld\n", value);
+    // printf("Mode: %ld\n", value);
     return 0;
 }
 
@@ -212,8 +196,7 @@ int main() {
     struct bpf_program *prog;
     struct ring_buffer *rb;
     int err;
-    FILE *fp = fopen("tcp_state_dump.txt", "w");
-    fclose(fp);
+    
     struct event_base *base = event_base_new();
     if (!base) {
         fprintf(stderr, "Could not initialize libevent\n");
@@ -253,13 +236,8 @@ int main() {
     signal(SIGTERM, signal_handler);
     evutil_make_socket_nonblocking(sock_fd);
 
-    uint32_t key = 0;
-    uint64_t value = 0;
-    if (bpf_map_update_elem(bpf_map__fd(skel->maps.emergency), &key, &value, BPF_ANY) < 0) {
-        std::cerr << "Failed to set initial value in map: " << strerror(errno) << std::endl;
-        return -1;
-    }
-    std::thread t(switch_to_emergency, skel);
+    switch_mode(skel, 0);
+
 
     rb = ring_buffer__new(bpf_map__fd(skel->maps.conn_ringbuf), handle_event, NULL, NULL);
     if (!rb) {

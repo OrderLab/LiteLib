@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <iostream>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -16,42 +15,21 @@
 #include <ctype.h>
 #include <event2/event.h>
 #include <event2/util.h>
-#include <thread>
-#include <bpf/bpf.h>
-#include "socket.skel.h"
-#include "socket.h"
+#include <liburing.h>
+#include <fcntl.h>
 
 #define SO_ATTACH_BPF 50
 #define SO_DETACH_BPF 27
 #define BUFFER_SIZE 65536
 #define SERVER_PORT 6379
-#define ACCEPT 1
-#define CLOSE 2
+#define QUEUE_DEPTH 64
+#define BUFFER_SIZE 2048
+#define BATCH_SIZE 8
 
-struct event_type_header {
-    int kind;  // ACCEPT or CLOSE
-};
-
-struct socket_info {
-    uint8_t proto;
-    uint32_t saddr;
-    uint16_t sport;
-    uint32_t daddr;
-    uint16_t dport;
-    uint8_t state;  // TCP connection state
-    uint32_t seq, ack_seq;
-    uint16_t window_size;
-};
-
-struct connection_event {
-    struct event_type_header header;
-    struct socket_info socket;
-};
-
-volatile sig_atomic_t running = 1;
+static int keep_running = 1;
 
 void signal_handler(int signum) {
-    running = 0;
+    keep_running = 0;
 }
 
 int is_resp_message(unsigned char *data, int len) {
@@ -161,75 +139,39 @@ void read_callback(evutil_socket_t fd, short what, void *arg_conn) {
     }
 }
 
-static int handle_event(void *ctx, void *data, size_t data_sz) {
-    struct connection_event *event = (struct connection_event *)data;
-    printf("Event received: type=%d, src=%u:%u -> dst=%u:%u\n",
-           event->header.kind, event->socket.saddr, event->socket.sport,
-           event->socket.daddr, event->socket.dport);
-    FILE *fp = fopen("tcp_state_dump.txt", "a");
-    if (fp) {
-        fprintf(fp, "%u %u %u %u %u %u %u %u\n",
-                event->socket.saddr, event->socket.sport,
-                event->socket.daddr, event->socket.dport,
-                event->socket.state, event->socket.seq,
-                event->socket.ack_seq, event->socket.window_size);
-        fclose(fp);
-    }
-    
-    return 0;  // Return 0 to indicate success
-}
 
-int switch_to_emergency(struct socket_bpf *skel){
-    uint32_t key=0;
-    uint64_t value;
-    if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.emergency), &key, &value) < 0) {
-        std::cerr << "Failed to look up map value: " << strerror(errno) << std::endl;
-        return -1;
-    }
-    printf("Intial emergency status: %ld\n", value);
-
-    sleep(3);
-
-    value = 1;
-    if (bpf_map_update_elem(bpf_map__fd(skel->maps.emergency), &key, &value, BPF_ANY) < 0) {
-        std::cerr << "Failed to update value in map: " << strerror(errno) << std::endl;
-        return -1;
-    }
-    if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.emergency), &key, &value) < 0) {
-        std::cerr << "Failed to look up map value: " << strerror(errno) << std::endl;
-        return -1;
-    }
-    printf("Intial emergency status: %ld\n", value);
-    return 0;
-}
 
 uint16_t htons_custom(uint16_t i) {
     return (i << 8) | (i >> 8);
 }
 
 int main() {
-    struct socket_bpf *skel;
+    struct bpf_object *obj;
     struct bpf_program *prog;
-    struct ring_buffer *rb;
+    struct io_uring ring;
     int err;
-    FILE *fp = fopen("tcp_state_dump.txt", "w");
-    fclose(fp);
-    struct event_base *base = event_base_new();
-    if (!base) {
-        fprintf(stderr, "Could not initialize libevent\n");
-        return 1;
-    }
-
-    skel = socket_bpf__open_and_load();
-    if (!skel) {
-        fprintf(stderr, "Failed to open and load BPF skeleton\n");
-        return 1;
-    }
-
+    struct __kernel_timespec timeout = {
+        .tv_sec = 1,
+        .tv_nsec = 0,
+    };
     
-    err = socket_bpf__attach(skel);
+
+    // Load BPF program
+    obj = bpf_object__open("/home/rishika/cascade/tests/LevelDB/src/socket.bpf.o");
+    if (libbpf_get_error(obj)) {
+        fprintf(stderr, "Error opening BPF object\n");
+        return 1;
+    }
+
+    err = bpf_object__load(obj);
     if (err) {
-        fprintf(stderr, "Failed to attach BPF skeleton\n");
+        fprintf(stderr, "Error loading BPF object\n");
+        return 1;
+    }
+
+    prog = bpf_object__find_program_by_name(obj, "socket__filter_tcp");
+    if (!prog) {
+        fprintf(stderr, "Error finding BPF program\n");
         return 1;
     }
 
@@ -240,10 +182,23 @@ int main() {
         return 1;
     }
 
-    int prog_fd = bpf_program__fd(skel->progs.socket__filter_tcp);
 
+
+    // Attach BPF program
+    int prog_fd = bpf_program__fd(prog);
     if (setsockopt(sock_fd, SOL_SOCKET, SO_ATTACH_BPF, &prog_fd, sizeof(prog_fd)) < 0) {
         perror("Error attaching BPF program");
+        close(sock_fd);
+        return 1;
+    }
+
+    int flags = fcntl(sock_fd, F_GETFL, 0);
+    fcntl(sock_fd, F_SETFL, flags | O_NONBLOCK);
+
+
+    // Initialize io_uring
+    if (io_uring_queue_init(QUEUE_DEPTH, &ring, 0) < 0) {
+        perror("io_uring_queue_init");
         close(sock_fd);
         return 1;
     }
@@ -251,54 +206,108 @@ int main() {
     // Set up signal handling
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
-    evutil_make_socket_nonblocking(sock_fd);
+    // evutil_make_socket_nonblocking(sock_fd);
 
-    uint32_t key = 0;
-    uint64_t value = 0;
-    if (bpf_map_update_elem(bpf_map__fd(skel->maps.emergency), &key, &value, BPF_ANY) < 0) {
-        std::cerr << "Failed to set initial value in map: " << strerror(errno) << std::endl;
-        return -1;
-    }
-    std::thread t(switch_to_emergency, skel);
-
-    rb = ring_buffer__new(bpf_map__fd(skel->maps.conn_ringbuf), handle_event, NULL, NULL);
-    if (!rb) {
-        printf("Failed to create ring buffer\n");
-        return 1;
+    char buffers[QUEUE_DEPTH][BUFFER_SIZE];
+    struct iovec iovecs[QUEUE_DEPTH];
+    for (int i = 0; i < QUEUE_DEPTH; i++) {
+        iovecs[i].iov_base = buffers[i];
+        iovecs[i].iov_len = BUFFER_SIZE;
     }
 
+    for (int i = 0; i < QUEUE_DEPTH; i++) {
+        struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
+        if (!sqe) {
+            fprintf(stderr, "Failed to get SQE\n");
+            break;
+        }
+        io_uring_prep_readv(sqe, sock_fd, &iovecs[i], 1, 0);
+        io_uring_sqe_set_data(sqe, &iovecs[i]);
+    }
+
+    if (io_uring_submit(&ring) < 0) {
+        perror("io_uring_submit");
+        goto cleanup;
+    }
+
+    
     printf("tracing...\n");
+
+    
+
 
     // unsigned char buffer[BUFFER_SIZE];
 
     // Connection new_connection;
-    struct event *read_event = event_new(base, sock_fd, EV_READ | EV_PERSIST, read_callback, NULL);
-    if (!read_event) {
-        fprintf(stderr, "Could not create event\n");
-        close(sock_fd);
-        event_base_free(base);
-        return 1;
-    }
+    // struct event *read_event = event_new(base, sock_fd, EV_READ | EV_PERSIST, read_callback, NULL);
+    // if (!read_event) {
+    //     fprintf(stderr, "Could not create event\n");
+    //     close(sock_fd);
+    //     event_base_free(base);
+    //     return 1;
+    // }
 
     // Add the event
-    event_add(read_event, NULL);
-
+    // event_add(read_event, NULL);
 
     // Run the event loop
+    // event_base_dispatch(base);
+    
 
-    while(running){
-        event_base_loop(base, EVLOOP_NONBLOCK);
-        ring_buffer__poll(rb, 100);
+    while (keep_running) {
+        struct io_uring_cqe *cqes[BATCH_SIZE];
+        int ret = io_uring_wait_cqes(&ring, cqes, BATCH_SIZE, &timeout, NULL);
+        if (ret < 0) {
+            // perror("io_uring_wait_cqe_batch");
+            continue;
+        }
+
+        for (int i = 0; i < BATCH_SIZE; i++) {
+            struct io_uring_cqe *cqe = cqes[i];
+            if (!cqe) break; // No more CQEs in this batch
+            if (cqe->res < 0) {
+                fprintf(stderr, "Read error: %s\n", strerror(-cqe->res));
+            } else {
+                struct iovec *iov = (struct iovec *)io_uring_cqe_get_data(cqe);
+                printf("Received packet (%d bytes) from buffer: %p\n", cqe->res, iov->iov_base);
+                // printf("Data: %.*s\n", cqe->res, (char *)iov->iov_base);
+                unsigned char *data = (unsigned char *)iov->iov_base;
+
+                // printf("Received packet (hex): ");
+                // for (int j = 0; j < cqe->res; j++) {
+                //     printf("%02x ", data[j]);
+                // }
+                // printf("\n");
+                parse_tcp_data(data, cqe->res);
+            }
+
+            io_uring_cqe_seen(&ring, cqe);
+
+            // Re-submit the read request
+            struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
+            if (!sqe) {
+                fprintf(stderr, "Failed to get SQE for re-submission\n");
+                break;
+            }
+            io_uring_prep_readv(sqe, sock_fd, (const struct iovec *)io_uring_cqe_get_data(cqe), 1, 0);
+            io_uring_sqe_set_data(sqe, io_uring_cqe_get_data(cqe));
+        }
+
+        if (io_uring_submit(&ring) < 0) {
+            perror("io_uring_submit");
+            break;
+        }
     }
+
 
     // Cleanup
     cleanup:
         setsockopt(sock_fd, SOL_SOCKET, SO_DETACH_BPF, &prog_fd, sizeof(prog_fd));
         close(sock_fd);
-        socket_bpf__destroy(skel);
-        event_free(read_event);
-        event_base_free(base);
-        t.join();
+        bpf_object__close(obj);
+        // event_free(read_event);
+        // event_base_free(base);
+
         printf("bye bye~\n");
     return 0;
 }

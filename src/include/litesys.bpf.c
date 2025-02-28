@@ -22,9 +22,7 @@ struct socket_info {
     u16 sport;
     u32 daddr;
     u16 dport;
-    u8 state;  // TCP connection state
-    u32 seq, ack_seq;
-    u16 window_size;
+    u8 state;  
 };
 
 struct connection_event {
@@ -39,11 +37,11 @@ struct {
 } conn_ringbuf SEC(".maps");
 
 struct {
-    __uint(type, BPF_MAP_TYPE_ARRAY);
-    __uint(max_entries, 1);  // Only one element to act as the static variable
+    __uint(type, BPF_MAP_TYPE_ARRAY); 
+    __uint(max_entries, 1);  // element 0: application mode
     __type(key, __u32);      // Array index
     __type(value, __u64);    // Counter value
-} emergency SEC(".maps");
+} mode SEC(".maps");
 
 __u8 is_resp_message(char *data, __u32 len) {
     if (len < 1)
@@ -117,10 +115,7 @@ int bpf_call_inet_csk_accept(struct pt_regs *ctx) {
         bpf_printk("accept event ringbuf reserve failed\n");
         return 0;
     }
-    u32 write_seq, ack_seq, window_size;
-    bpf_core_read(&write_seq, sizeof(write_seq), &((struct tcp_sock *)sk)->write_seq);
-    bpf_core_read(&ack_seq, sizeof(ack_seq), &((struct tcp_sock *)sk)->rcv_nxt);
-    bpf_core_read(&window_size, sizeof(window_size), &((struct tcp_sock *)sk)->rcv_wnd);
+    
     event->header.kind = ACCEPT;
     event->socket.proto = 6; // TCP
     event->socket.saddr = saddr;
@@ -128,9 +123,6 @@ int bpf_call_inet_csk_accept(struct pt_regs *ctx) {
     event->socket.daddr = daddr;
     event->socket.dport = dport;
     event->socket.state = sc.skc_state;
-    event->socket.seq = bpf_ntohl(write_seq);
-    event->socket.ack_seq = bpf_ntohl(ack_seq);
-    event->socket.window_size = bpf_ntohs(window_size);
 
     bpf_ringbuf_submit(event, 0);
     return 0;
@@ -158,10 +150,8 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
         bpf_printk("close event ringbuf reserve failed\n");
         return 0;
     }
-    u32 write_seq, ack_seq, window_size;
-    bpf_core_read(&write_seq, sizeof(write_seq), &((struct tcp_sock *)sk)->write_seq);
-    bpf_core_read(&ack_seq, sizeof(ack_seq), &((struct tcp_sock *)sk)->rcv_nxt);
-    bpf_core_read(&window_size, sizeof(window_size), &((struct tcp_sock *)sk)->rcv_wnd);
+    
+    
     event->header.kind = CLOSE;
     event->socket.proto = 6; // TCP
     event->socket.saddr = saddr;
@@ -169,29 +159,11 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
     event->socket.daddr = daddr;
     event->socket.dport = dport;
     event->socket.state = sc.skc_state;
-    event->socket.seq = bpf_ntohl(write_seq);
-    event->socket.ack_seq = bpf_ntohl(ack_seq);
-    event->socket.window_size = bpf_ntohs(window_size);
-
+    
     bpf_ringbuf_submit(event, 0);
     return 0;
 }
 
-SEC("xdp") 
-int redirect_packet(struct __sk_buff *skb) {
-    __u32 key = 0;
-    __u64 *value;
-    bpf_printk("Normal mode\n");
-    value = bpf_map_lookup_elem(&emergency, &key);
-    if (value) {
-        bpf_printk("Emergency mode!\n");
-        return XDP_PASS;
-    } else{
-        bpf_printk("Normal mode\n");
-    }
-
-    return XDP_DROP;
-}
 
 
 char _license[] SEC("license") = "GPL";
