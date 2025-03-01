@@ -50,8 +50,8 @@ display_status() {
 
 main() {
   install_dependencies
-  remove_lvm
-  delete_sda4
+  # remove_lvm
+  # delete_sda4
   extend_sda3
   resize_filesystem
   update_fstab
