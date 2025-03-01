@@ -6,6 +6,7 @@ set -x
 BOOST_VERSION=1.85.0
 LIBEVENT_VERSION=2.1.12
 NUM_JOBS=32
+FREQUENCY=2.2
 
 install_dependencies() {
   apt-get install -y --no-install-recommends \
@@ -38,7 +39,13 @@ install_dependencies() {
     tcpdump \
     cgroup-tools \
     google-perftools \
-    libgoogle-perftools-dev
+    libgoogle-perftools-dev \
+    linux-tools-common \
+    linux-tools-generic \
+    linux-tools-$(uname -r) \
+    libbpf-dev \
+    clang \
+    sysstat
 }
 
 install_boost() {
@@ -73,8 +80,14 @@ configure_ssh() {
   # echo "PermitRootLogin yes" >>/etc/ssh/sshd_config
 }
 
+set_cpu_frequency() {
+  cpupower frequency-set -g performance
+  cpupower frequency-set -d ${FREQUENCY}GHz -u ${FREQUENCY}GHz
+}
+
 main() {
   install_dependencies
+  set_cpu_frequency
   install_boost
   install_libevent
   configure_ssh
