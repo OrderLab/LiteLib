@@ -40,10 +40,10 @@ index cc84d09ad..713ccb0c4 100644
  REDIS_BENCHMARK_NAME=redis-benchmark$(PROG_SUFFIX)
 diff --git a/src/litesys.c b/src/litesys.c
 new file mode 100644
-index 000000000..f9e94cca1
+index 000000000..065e155a9
 --- /dev/null
 +++ b/src/litesys.c
-@@ -0,0 +1,99 @@
+@@ -0,0 +1,100 @@
 +#include "litesys.h"
 +
 +#include <embedded_lite.h>
@@ -72,7 +72,7 @@ index 000000000..f9e94cca1
 +  request->argc = c->original_argv ? c->original_argc : c->argc;
 +
 +  robj **orig_argv = c->original_argv ? c->original_argv : c->argv;
-+  request->argv = orig_argv;
++  request->argv = zmalloc(sizeof(robj *) * request->argc);
 +  request->argv_len = zmalloc(sizeof(int) * request->argc);
 +  for (int i = 0; i < request->argc; i++) {
 +    incrRefCount(orig_argv[i]);
@@ -89,6 +89,7 @@ index 000000000..f9e94cca1
 +    decrRefCount(request->argv[i]);
 +  }
 +  zfree(request->argv_len);
++  zfree(request->argv);
 +  zfree(request);
 +}
 +
