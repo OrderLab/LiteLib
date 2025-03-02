@@ -11,6 +11,12 @@
 
 namespace lite {
 
+typedef void (*RequestDestructorFn)(void *request);
+
+#define Unreachable() __builtin_unreachable()
+#define Likely(x) __builtin_expect(!!(x), 1)
+#define Unlikely(x) __builtin_expect(!!(x), 0)
+
 enum DeserializeResult { kGood, kBad, kIndeterminate };
 
 template <typename CacheKey>
@@ -58,23 +64,14 @@ concept IsApplication = requires(
         *cache,
     Logger<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>
         *logger,
-    bool flow_control  // true: reject this request if it will trigger
-                       // replay packets
-) {
-  // Find the corresponding requests of the response, return a subset of the
-  // requests that contain information about state changes
-  {
-    app.Match(resp, conn_info, pending_requests)
-  } -> std::convertible_to<std::pair<std::vector<ShmSharedPtr<Request>>,
-                                     bool>>;  // pair<related_requests,
-                                              // forward response>
-
+    bool flow_control,  // true: reject this request if it will trigger
+                        // replay packets
+    void *none_type_req, RequestDestructorFn request_destructor_fn) {
   // Update the states during normal time
-  { app.NormalUpdate(resp, related_requests, conn_info, cache) };
-
-  // Handle response of requests sent by Replay (those Match() = (_, false))
-  // TODO: let the application to be able to retry the request
-  { app.HandleReplayResponse(resp, related_requests, conn_info, cache) };
+  {
+    Application::EmbeddedNormalUpdate(none_type_req, conn_info, cache,
+                                      request_destructor_fn)
+  } -> std::convertible_to<int>;
 
   // Perform any operation during emergency time
   {

@@ -26,6 +26,11 @@ class EmbeddedServer {
   using ConnectionStateStorageInstance =
       ConnectionStateStorage<Application, Request, Response, ConnectionInfo,
                              CacheKey, CacheEntry>;
+  using NormalUpdateFn =
+      std::function<int(void *request, ConnectionInfo &,
+                        Cache<Application, Request, Response, ConnectionInfo,
+                              CacheKey, CacheEntry> *,
+                        RequestDestructorFn)>;
 
  public:
   // TODO: support called by multiple threads
@@ -36,16 +41,18 @@ class EmbeddedServer {
                  RequestDestructorFn RequestDestructor,
                  FlushWriteBufferFn FlushWriteBuffer,
                  ReinstallClientEventHandlerFn ReinstallClientEventHandler,
-                 ReinstallListenerEventHandlerFn ReinstallListenerEventHandler)
+                 ReinstallListenerEventHandlerFn ReinstallListenerEventHandler,
+                 NormalUpdateFn NormalUpdate)
       : number_of_workers_(number_of_workers),
         RequestDestructor(RequestDestructor),
         FlushWriteBuffer(FlushWriteBuffer),
         ReinstallClientEventHandler(ReinstallClientEventHandler),
         ReinstallListenerEventHandler(ReinstallListenerEventHandler),
+        NormalUpdate(NormalUpdate),
         socket_path_(socket_path) {
     for (int i = 0; i < number_of_workers; i++) {
       workers_.push_back(std::make_unique<EmbeddedWorkerInstance>(
-          i, RequestDestructor, connection_state_storage_ptr_,
+          i, RequestDestructor, NormalUpdate, connection_state_storage_ptr_,
           notified_workers_count_));
       workers_[i]->Run();
     }
@@ -105,6 +112,7 @@ class EmbeddedServer {
   typename decltype(workers_)::iterator current_worker_;
 
   RequestDestructorFn RequestDestructor;
+  NormalUpdateFn NormalUpdate;
 
  public:
   void TransitionToNormalMode(const int lite_fd) {
