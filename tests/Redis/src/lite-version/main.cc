@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
     std::string backend_port = "16379";
 
     Redis redis;
-    lite::LiteServer<Redis, Packet, Packet, ConnectionInfo, CacheKey,
+    lite::LiteServer<Redis, RESPPacket, RESPPacket, ConnectionInfo, CacheKey,
                      CacheEntry>
         s(thread_pool_size, shared_memory_size, cache_size, redis, backend_addr,
           backend_port, 1000ms, 80000, 0.9, 2, "/tmp/lite_Redis");

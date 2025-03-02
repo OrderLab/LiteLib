@@ -40,10 +40,10 @@ index cc84d09ad..713ccb0c4 100644
  REDIS_BENCHMARK_NAME=redis-benchmark$(PROG_SUFFIX)
 diff --git a/src/litesys.c b/src/litesys.c
 new file mode 100644
-index 000000000..065e155a9
+index 000000000..d0a83da6a
 --- /dev/null
 +++ b/src/litesys.c
-@@ -0,0 +1,100 @@
+@@ -0,0 +1,109 @@
 +#include "litesys.h"
 +
 +#include <embedded_lite.h>
@@ -56,9 +56,9 @@ index 000000000..065e155a9
 +  }
 +}
 +
-+void LiteQueueEmbeddedRequest(client *c) {
-+  if (!(c->cmd->proc == setCommand || c->cmd->proc == hsetCommand)) {
-+    return;
++void LiteQueueEmbeddedRequest(client *c, int success) {
++  if (!success) {
++    return;  // TODO: handle failure in emergency mode
 +  }
 +
 +  EmbeddedRequest *request = zmalloc(sizeof(EmbeddedRequest));
@@ -67,6 +67,15 @@ index 000000000..065e155a9
 +    request->type = kSet;
 +  } else if (c->cmd->proc == hsetCommand) {
 +    request->type = kHset;
++  } else if (c->cmd->proc == multiCommand) {
++    request->type = kMulti;
++  } else if (c->cmd->proc == execCommand) {
++    request->type = kExec;
++  } else if (c->cmd->proc == discardCommand) {
++    request->type = kDiscard;
++  } else {
++    zfree(request);
++    return;
 +  }
 +
 +  request->argc = c->original_argv ? c->original_argc : c->argc;
@@ -146,17 +155,26 @@ index 000000000..065e155a9
 +}
 diff --git a/src/litesys.h b/src/litesys.h
 new file mode 100644
-index 000000000..a8ff026bc
+index 000000000..e6c509727
 --- /dev/null
 +++ b/src/litesys.h
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,36 @@
 +#pragma once
 +
 +#include "server.h"
 +
++// need to be synced with lite-version/include/embedded_full.hpp
 +typedef enum {
 +  kSet,
 +  kHset,
++  kGet,
++  kHgetall,
++  kPing,
++  kMulti,
++  kExec,
++  kDiscard,
++  kQuit,
++  kUnknown
 +} EmbeddedRequestType;
 +
 +typedef struct {
@@ -168,7 +186,7 @@ index 000000000..a8ff026bc
 +
 +void LiteProtectOriginalRequest(client *c);
 +
-+void LiteQueueEmbeddedRequest(client *c);
++void LiteQueueEmbeddedRequest(client *c, int success);
 +
 +void LiteFreeEmbeddedRequest(void *request);
 +
@@ -222,7 +240,7 @@ index 41af67f42..a8ef90a1a 100644
      if (c->original_argv) return;
      c->original_argc = c->argc;
 diff --git a/src/server.c b/src/server.c
-index 1a7bf2700..cb4db933d 100644
+index 1a7bf2700..d18371045 100644
 --- a/src/server.c
 +++ b/src/server.c
 @@ -43,6 +43,9 @@
@@ -258,7 +276,7 @@ index 1a7bf2700..cb4db933d 100644
          }
          if (sfd->fd[sfd->count] == ANET_ERR) {
              int net_errno = errno;
-@@ -3572,8 +3578,14 @@ void call(client *c, int flags) {
+@@ -3572,8 +3578,13 @@ void call(client *c, int flags) {
      if (monotonicGetType() == MONOTONIC_CLOCK_HW)
          monotonic_start = getMonotonicUs();
  
@@ -266,14 +284,13 @@ index 1a7bf2700..cb4db933d 100644
 +
      c->cmd->proc(c);
  
-+    if (!incrCommandStatsOnError(real_cmd, ERROR_COMMAND_FAILED) && !incrCommandStatsOnError(real_cmd, ERROR_COMMAND_REJECTED)) {
-+        LiteQueueEmbeddedRequest(c);
-+    }
++    int success = !incrCommandStatsOnError(real_cmd, ERROR_COMMAND_FAILED) && !incrCommandStatsOnError(real_cmd, ERROR_COMMAND_REJECTED);
++    LiteQueueEmbeddedRequest(c, success);
 +
      /* Clear the CLIENT_REPROCESSING_COMMAND flag after the proc is executed. */
      if (reprocessing_command) c->flags &= ~CLIENT_REPROCESSING_COMMAND;
  
-@@ -6385,6 +6397,8 @@ int changeListener(connListener *listener) {
+@@ -6385,6 +6396,8 @@ int changeListener(connListener *listener) {
  }
  
  static void sigShutdownHandler(int sig) {
@@ -282,7 +299,7 @@ index 1a7bf2700..cb4db933d 100644
      char *msg;
  
      switch (sig) {
-@@ -7186,6 +7200,10 @@ int main(int argc, char **argv) {
+@@ -7186,6 +7199,10 @@ int main(int argc, char **argv) {
          serverLog(LL_NOTICE, "Configuration loaded");
      }
  
@@ -293,7 +310,7 @@ index 1a7bf2700..cb4db933d 100644
      initServer();
      if (background || server.pidfile) createPidFile();
      if (server.set_proc_title) redisSetProcTitle(NULL);
-@@ -7248,6 +7266,7 @@ int main(int argc, char **argv) {
+@@ -7248,6 +7265,7 @@ int main(int argc, char **argv) {
      redisSetCpuAffinity(server.server_cpulist);
      setOOMScoreAdj(-1);
  
@@ -302,10 +319,18 @@ index 1a7bf2700..cb4db933d 100644
      aeDeleteEventLoop(server.el);
      return 0;
 diff --git a/src/server.h b/src/server.h
-index 459d5b974..c34ca16cd 100644
+index 459d5b974..91dd0a666 100644
 --- a/src/server.h
 +++ b/src/server.h
-@@ -1277,6 +1277,7 @@ typedef struct client {
+@@ -893,6 +893,7 @@ struct RedisModuleDigest {
+ #define OBJ_ENCODING_LISTPACK 11 /* Encoded as a listpack */
+ #define OBJ_ENCODING_LISTPACK_EX 12 /* Encoded as listpack, extended with metadata */
+ 
++// need to be synced with lite-version/include/embedded_full.hpp
+ #define LRU_BITS 24
+ #define LRU_CLOCK_MAX ((1<<LRU_BITS)-1) /* Max value of obj->lru */
+ #define LRU_CLOCK_RESOLUTION 1000 /* LRU clock resolution in ms */
+@@ -1277,6 +1278,7 @@ typedef struct client {
  #ifdef LOG_REQ_RES
      clientReqResInfo reqres;
  #endif
@@ -313,7 +338,7 @@ index 459d5b974..c34ca16cd 100644
  } client;
  
  /* ACL information */
-@@ -2649,6 +2650,7 @@ char *getClientSockName(client *client);
+@@ -2649,6 +2651,7 @@ char *getClientSockName(client *client);
  sds catClientInfoString(sds s, client *client);
  sds getAllClientsInfoString(int type);
  int clientSetName(client *c, robj *name, const char **err);

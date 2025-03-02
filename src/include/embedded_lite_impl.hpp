@@ -36,7 +36,12 @@ int Init(char *argv_0, int number_of_workers, long long shared_memory_size,
          const std::string socket_path, RequestDestructorFn RequestDestructor,
          FlushWriteBufferFn FlushWriteBuffer,
          ReinstallClientEventHandlerFn ReinstallClientEventHandler,
-         ReinstallListenerEventHandlerFn ReinstallListenerEventHandler) {
+         ReinstallListenerEventHandlerFn ReinstallListenerEventHandler,
+         std::function<int(void *request, ConnectionInfo &,
+                           Cache<Application, Request, Response, ConnectionInfo,
+                                 CacheKey, CacheEntry> *,
+                           RequestDestructorFn)>
+             NormalUpdate) {
   google::InitGoogleLogging(argv_0);
 
   if (number_of_workers != 1) {
@@ -49,7 +54,8 @@ int Init(char *argv_0, int number_of_workers, long long shared_memory_size,
                          CacheKey, CacheEntry>(
           number_of_workers, shared_memory_size, max_item_count,
           sliding_window_size, socket_path, RequestDestructor, FlushWriteBuffer,
-          ReinstallClientEventHandler, ReinstallListenerEventHandler);
+          ReinstallClientEventHandler, ReinstallListenerEventHandler,
+          NormalUpdate);
   embedded_server_void_ptr = embedded_server_ptr;
   LOG(INFO) << "Embedded LiteSys initialized";
   LOG(INFO) << "\tnumber_of_workers: " << number_of_workers;
@@ -355,10 +361,7 @@ template <typename Application, typename Request, typename Response,
            IsProtocolMessage<Request> && IsProtocolMessage<Response> &&
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
-int ProcessRequest(void *conn_info, void *request,
-                   NormalUpdateFn<Application, Request, Response,
-                                  ConnectionInfo, CacheKey, CacheEntry>
-                       NormalUpdate) {
+int ProcessRequest(void *conn_info, void *request) {
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
@@ -367,7 +370,7 @@ int ProcessRequest(void *conn_info, void *request,
     auto job =
         new EmbeddedNormalUpdateMessage<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>{
-            conn_info, request, std::move(NormalUpdate)};
+            conn_info, request};
 
     EmbeddedWorkerMessage msg;
     msg.type = EmbeddedWorkerMessage::Type::kNormalUpdate;

@@ -9,19 +9,6 @@
 #include "thread_safe_queue.hpp"
 
 namespace lite {
-
-template <typename Application, typename Request, typename Response,
-          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-  requires IsApplication<Application, Request, Response, ConnectionInfo,
-                         CacheKey, CacheEntry> &&
-               IsProtocolMessage<Request> && IsProtocolMessage<Response> &&
-               IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
-               IsCacheEntry<Request, CacheKey, CacheEntry>
-using NormalUpdateFn =
-    std::function<int(void* request, ConnectionInfo&,
-                      Cache<Application, Request, Response, ConnectionInfo,
-                            CacheKey, CacheEntry>*)>;
-
 struct EmbeddedWorkerMessage {
   enum class Type {
     kNormalUpdate,
@@ -39,9 +26,6 @@ template <typename Application, typename Request, typename Response,
 struct EmbeddedNormalUpdateMessage {
   void* conn_info;
   void* request;
-  NormalUpdateFn<Application, Request, Response, ConnectionInfo, CacheKey,
-                 CacheEntry>
-      NormalUpdate;
 };
 
 struct EmbeddedConnectionDisconnectMessage {
@@ -54,13 +38,20 @@ class EmbeddedWorker {
   using ConnectionStateStorageInstance =
       ConnectionStateStorage<Application, Request, Response, ConnectionInfo,
                              CacheKey, CacheEntry>;
+  using NormalUpdateFn =
+      std::function<int(void* request, ConnectionInfo&,
+                        Cache<Application, Request, Response, ConnectionInfo,
+                              CacheKey, CacheEntry>*,
+                        RequestDestructorFn)>;
 
  public:
   EmbeddedWorker(int id, RequestDestructorFn RequestDestructor,
+                 NormalUpdateFn NormalUpdate,
                  ConnectionStateStorageInstance*& connection_state_storage_ptr,
                  std::atomic<int>& notified_workers_count)
       : id_(id),
         RequestDestructor(RequestDestructor),
+        NormalUpdate(NormalUpdate),
         notified_workers_count_(notified_workers_count),
         event_base_(nullptr),
         event_(nullptr),
@@ -144,9 +135,9 @@ class EmbeddedWorker {
                                         ConnectionInfo, CacheKey, CacheEntry>*>(
                 job->conn_info);
         auto cache = connection_state_ptr->cache_;
-        auto ret = job->NormalUpdate(
-            job->request, connection_state_ptr->extra_app_info_, &cache);
-        RequestDestructor(job->request);
+        auto ret =
+            NormalUpdate(job->request, connection_state_ptr->extra_app_info_,
+                         &cache, RequestDestructor);
         delete job;
         break;
       }
@@ -180,6 +171,8 @@ class EmbeddedWorker {
   std::atomic<int>& notified_workers_count_;
 
   RequestDestructorFn RequestDestructor;
+  NormalUpdateFn NormalUpdate;
+
   ConnectionStateStorageInstance*& connection_state_storage_ptr_;
 };
 
