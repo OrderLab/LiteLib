@@ -25,8 +25,7 @@ class LogEntry {
   // here
   CacheStateInstance *state;  // Cache::State *
   ShmSharedPtr<Request> req;
-  std::shared_ptr<ConnectionInstance *>
-      backend_conn_ptr;  // TODO: this is not needed
+  std::shared_ptr<ConnectionInstance *> backend_conn_ptr;
   LogEntry *chr_pre = nullptr,
            *chr_nxt = nullptr;  // global linked list in chronological order
   LogEntry *conn_pre = nullptr,
