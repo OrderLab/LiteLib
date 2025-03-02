@@ -285,7 +285,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                                         buffer);
         }
       }
-      delete entry;
+      entry->~LogEntryInstance();
+      logger_inner_ptr_->log_entry_allocator_.deallocate_one(entry);
       ++replay_rate_;
     }
     LOG(INFO) << "Replay i = " << i << " finished with " << log_cnt
@@ -338,7 +339,9 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   LOG(INFO) << "Replay took " << duration << " ms\n";
 
   while (!dead_connection_log_heads_.empty()) {
-    delete dead_connection_log_heads_.pop_front();
+    auto head = dead_connection_log_heads_.pop_front();
+    head->~LogEntryInstance();
+    logger_inner_ptr_->log_entry_allocator_.deallocate_one(head);
   }
 
   for (auto &replay_worker_ : replay_workers_) {
