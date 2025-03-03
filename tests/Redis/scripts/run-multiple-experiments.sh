@@ -2,7 +2,7 @@
 
 set -x
 
-SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR=$(realpath "$(dirname "$0")")
 
 for SUFFIX in {1..5}; do
     for MODE in vanilla embedded; do

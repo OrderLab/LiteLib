@@ -2,7 +2,7 @@
 
 set -x
 
-SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR=$(realpath "$(dirname "$0")")
 LITE_HOST="10.10.1.4"
 REPLICA_HOST="10.10.1.2"
 SENTINEL_HOST="10.10.1.3"

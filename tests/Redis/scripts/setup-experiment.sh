@@ -4,7 +4,7 @@
 
 set -x
 
-SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR=$(realpath "$(dirname "$0")")
 
 # take arg for mode: lite, replica
 MODE=$1

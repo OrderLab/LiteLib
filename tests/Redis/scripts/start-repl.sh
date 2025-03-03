@@ -2,7 +2,7 @@
 
 set -x
 
-SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR=$(realpath "$(dirname "$0")")
 REPLICA_HOST="10.10.1.2"
 DEST_DIR="$SCRIPT_DIR"
 MODE=$1

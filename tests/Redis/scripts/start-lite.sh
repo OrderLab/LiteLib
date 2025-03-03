@@ -2,7 +2,7 @@
 
 set -x
 
-SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR=$(realpath "$(dirname "$0")")
 MODE=$1
 SUFFIX=$2
 

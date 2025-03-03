@@ -7,7 +7,7 @@
 
 set -x
 
-SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR=$(realpath "$(dirname "$0")")
 DEST_DIR="$SCRIPT_DIR/monitor"
 LITE_DIR="$SCRIPT_DIR/../src/lite-version/build"
 YCSB_DIR="~/YCSB"
@@ -22,7 +22,7 @@ SENTINEL_HOST="10.10.1.3"
 
 LITE_PORT=6479
 VANILLA_PORT=16379
-SENTINEL_PORT="26479"
+SENTINEL_PORT="26379"
 MASTER_NAME="vanilla_redis"
 
 CRASH_TIME=20
