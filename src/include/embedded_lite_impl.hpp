@@ -16,6 +16,8 @@ template <typename Application, typename Request, typename Response,
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 int IsNormalMode() {
+  if (unlikely(!embedded_server_void_ptr))  // called after SignalHandler
+    return -1;
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
@@ -190,6 +192,7 @@ int SignalHandler(int sig) {
   }
 
   delete embedded_server_ptr;
+  embedded_server_void_ptr = nullptr;
   return 0;
 }
 
@@ -201,6 +204,8 @@ template <typename Application, typename Request, typename Response,
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 void RegisterListenerFD(int fd, void *listener, int is_replay) {
+  if (unlikely(!embedded_server_void_ptr))  // called after SignalHandler
+    return;
   if (is_replay) return;
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
@@ -219,6 +224,8 @@ template <typename Application, typename Request, typename Response,
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 void UnregisterListenerFD(int fd) {
+  if (unlikely(!embedded_server_void_ptr))  // called after SignalHandler
+    return;
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
@@ -236,6 +243,8 @@ template <typename Application, typename Request, typename Response,
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 int GetDummyListenerFD() {
+  if (unlikely(!embedded_server_void_ptr))  // called after SignalHandler
+    return -1;
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
@@ -296,6 +305,8 @@ template <typename Application, typename Request, typename Response,
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 void *RegisterClientFD(int fd, void *client) {
+  if (unlikely(!embedded_server_void_ptr))  // called after SignalHandler
+    return nullptr;
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
@@ -337,6 +348,8 @@ template <typename Application, typename Request, typename Response,
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 void UnregisterClientFD(int fd) {
+  if (unlikely(!embedded_server_void_ptr))  // called after SignalHandler
+    return;
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
@@ -357,6 +370,8 @@ template <typename Application, typename Request, typename Response,
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 void UnregisterClient(void *conn_info) {
+  if (unlikely(!embedded_server_void_ptr))  // called after SignalHandler
+    return;
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
@@ -381,6 +396,10 @@ template <typename Application, typename Request, typename Response,
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 int ProcessRequest(void *conn_info, void *request) {
+  if (unlikely(!embedded_server_void_ptr)) {
+    LOG(ERROR) << "ProcessRequest called after SignalHandler";
+    return -1;
+  }
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
