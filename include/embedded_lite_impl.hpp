@@ -283,6 +283,11 @@ int GetDummyListenerFD() {
   return fd;
 }
 
+struct ClientInfo {
+  network::TCPID tcp_id;
+  void *connection_state_ptr;
+};
+
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
@@ -295,33 +300,33 @@ void *RegisterClientFD(int fd, void *client) {
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
           embedded_server_void_ptr);
-  void *connection_state_ptr = nullptr;
+  auto ret = new ClientInfo;
   if (!embedded_server_ptr->emergency_mode_ptr_->load()) {
-    auto tcp_id = network::GetTCPID(fd);
-    embedded_server_ptr->fd_to_tcp_id_and_arg_[fd] = {tcp_id, client};
+    ret->tcp_id = network::GetTCPID(fd);
+    embedded_server_ptr->fd_to_tcp_id_and_arg_[fd] = {ret->tcp_id, client};
 
-    connection_state_ptr =
-        embedded_server_ptr->connection_state_storage_ptr_->Get(tcp_id);
-    if (connection_state_ptr) {
+    ret->connection_state_ptr =
+        embedded_server_ptr->connection_state_storage_ptr_->Get(ret->tcp_id);
+    if (ret->connection_state_ptr) {
       LOG(WARNING) << "Connection already registered, deleting old one";
-      embedded_server_ptr->connection_state_storage_ptr_->Delete(tcp_id);
+      embedded_server_ptr->connection_state_storage_ptr_->Delete(ret->tcp_id);
     }
-    connection_state_ptr =
-        embedded_server_ptr->connection_state_storage_ptr_->Add(tcp_id);
+    ret->connection_state_ptr =
+        embedded_server_ptr->connection_state_storage_ptr_->Add(ret->tcp_id);
   } else {
-    auto tcp_id = embedded_server_ptr->connection_state_storage_ptr_
+    ret->tcp_id = embedded_server_ptr->connection_state_storage_ptr_
                       ->replay_conns_.pop_front();
-    embedded_server_ptr->fd_to_tcp_id_and_arg_[fd] = {tcp_id, client};
+    embedded_server_ptr->fd_to_tcp_id_and_arg_[fd] = {ret->tcp_id, client};
 
-    connection_state_ptr =
-        embedded_server_ptr->connection_state_storage_ptr_->Get(tcp_id);
-    if (!connection_state_ptr) {
+    ret->connection_state_ptr =
+        embedded_server_ptr->connection_state_storage_ptr_->Get(ret->tcp_id);
+    if (!ret->connection_state_ptr) {
       LOG(ERROR) << "Replay connection not registered";
       return nullptr;
     }
     embedded_server_ptr->replay_conns_.push(std::make_pair(fd, client));
   }
-  return connection_state_ptr;
+  return ret;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -338,19 +343,33 @@ void UnregisterClientFD(int fd) {
           embedded_server_void_ptr);
   if (!embedded_server_ptr->emergency_mode_ptr_->load()) {
     auto tcp_id_and_arg = embedded_server_ptr->fd_to_tcp_id_and_arg_[fd];
-    if (!embedded_server_ptr->connection_state_storage_ptr_->Delete(
-            tcp_id_and_arg.first)) {
-      LOG(WARNING) << "Connection not registered";
-    }
     embedded_server_ptr->fd_to_tcp_id_and_arg_.erase(fd);
+  } else {
+    LOG(WARNING) << "Replay connection disconnected in emergency mode";
+  }
+}
 
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsApplication<Application, Request, Response, ConnectionInfo,
+                         CacheKey, CacheEntry> &&
+           IsProtocolMessage<Request> && IsProtocolMessage<Response> &&
+           IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
+           IsCacheEntry<Request, CacheKey, CacheEntry>
+void UnregisterClient(void *conn_info) {
+  auto embedded_server_ptr =
+      static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
+                                 CacheKey, CacheEntry> *>(
+          embedded_server_void_ptr);
+  auto client_info = static_cast<ClientInfo *>(conn_info);
+  if (!embedded_server_ptr->emergency_mode_ptr_->load()) {
     // clear the conn info until all the previous requests are processed
     EmbeddedWorkerMessage msg;
     msg.type = EmbeddedWorkerMessage::Type::kConnectionDisconnect;
-    msg.data = new EmbeddedConnectionDisconnectMessage{tcp_id_and_arg.first};
+    msg.data = new EmbeddedConnectionDisconnectMessage{client_info->tcp_id};
     embedded_server_ptr->SendMessageToNextWorker(msg);
   } else {
-    LOG(WARNING) << "Replay connection disconnected in emergency mode";
+    LOG(WARNING) << "Replay connection freed in emergency mode";
   }
 }
 
@@ -366,11 +385,12 @@ int ProcessRequest(void *conn_info, void *request) {
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
           embedded_server_void_ptr);
+  auto client_info = static_cast<ClientInfo *>(conn_info);
   if (!embedded_server_ptr->emergency_mode_ptr_->load()) {
     auto job =
         new EmbeddedNormalUpdateMessage<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>{
-            conn_info, request};
+            client_info->connection_state_ptr, request};
 
     EmbeddedWorkerMessage msg;
     msg.type = EmbeddedWorkerMessage::Type::kNormalUpdate;

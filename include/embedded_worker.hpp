@@ -142,7 +142,9 @@ class EmbeddedWorker {
       }
       case EmbeddedWorkerMessage::Type::kConnectionDisconnect: {
         auto job = static_cast<EmbeddedConnectionDisconnectMessage*>(msg.data);
-        connection_state_storage_ptr_->Delete(job->tcp_id);
+        if (!connection_state_storage_ptr_->Delete(job->tcp_id)) {
+          LOG(WARNING) << "Connection not registered";
+        }
         delete job;
         break;
       }
