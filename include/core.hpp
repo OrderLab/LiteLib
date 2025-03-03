@@ -68,20 +68,9 @@ class LiteCore : public Daemon {
            const size_t n_replay_threads, bool crash_recover = true);
 
   bool HandleRequest(ShmSharedPtr<Request> req, ConnectionInfo &conn_info,
-                     ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
-                         &pending_requests,
                      const evutil_socket_t client_fd,
                      const evutil_socket_t backend_fd, CacheInstance *cache,
                      LoggerInstance *logger, const bool forwarded);
-
-  //   NOTE: we don't need to handle responses in emebedded mode
-  //   bool HandleResponse(ShmSharedPtr<Response> resp, ConnectionInfo
-  //   &conn_info,
-  //                       ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>,
-  //                       bool>>
-  //                           &pending_requests,
-  //                       const evutil_socket_t client_fd, CacheInstance
-  //                       *cache, const bool forwarded);
 
   bip::managed_shared_memory shared_memory_;
 
@@ -102,7 +91,7 @@ class LiteCore : public Daemon {
   ThreadSafeQueue<LogEntryInstance *>
       dead_connection_log_heads_;  // TODO: don't need to be in shared memory
 
-  LogEntryInstance *crash_conn_head_ = nullptr;
+  bip::offset_ptr<LogEntryInstance> crash_conn_head_ = nullptr;
 
   Application &app_;
 

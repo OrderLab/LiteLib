@@ -71,13 +71,13 @@ template <typename Application, typename Request, typename Response,
                          CacheKey, CacheEntry> &&
            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-              CacheEntry>::
-    HandleRequest(ShmSharedPtr<Request> req, ConnectionInfo &conn_info,
-                  ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
-                      &pending_requests,
-                  const evutil_socket_t client_fd,
-                  const evutil_socket_t backend_fd, CacheInstance *cache,
-                  LoggerInstance *logger, const bool forwarded) {
+              CacheEntry>::HandleRequest(ShmSharedPtr<Request> req,
+                                         ConnectionInfo &conn_info,
+                                         const evutil_socket_t client_fd,
+                                         const evutil_socket_t backend_fd,
+                                         CacheInstance *cache,
+                                         LoggerInstance *logger,
+                                         const bool forwarded) {
   if (emergency_mode_ptr_->load()) {
     const bool flow_control =
         is_replaying_ & (flow_control_ratio_ * replay_rate_ <
@@ -102,40 +102,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
   return true;
 }
-
-// template <typename Application, typename Request, typename Response,
-//           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-//   requires IsApplication<Application, Request, Response, ConnectionInfo,
-//                          CacheKey, CacheEntry> &&
-//            IsCacheKey<CacheKey> && IsCacheEntry<Request, CacheKey,
-//            CacheEntry>
-// bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-//               CacheEntry>::
-//     HandleResponse(ShmSharedPtr<Response> resp, ConnectionInfo &conn_info,
-//                    ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>>
-//                        &pending_requests,
-//                    const evutil_socket_t client_fd, CacheInstance *cache,
-//                    const bool forwarded) {
-//   const auto [related_stateful_request, forward_resp] =
-//       app_.Match(resp, conn_info, pending_requests);
-//   if (forward_resp) {
-//     if (!forwarded) {
-//       const auto buffer = resp->Serialize();
-//       if (!network::Write(client_fd, buffer)) {
-//         LOG(ERROR) << "Failed to write response to client" << std::endl;
-//         return false;
-//       }
-//     }
-//     // TODO: in parallel with network::Write MSG_DONTWAIT? O_NONBLOCK?
-//     app_.NormalUpdate(resp, boost::move(related_stateful_request), conn_info,
-//                       cache);
-//   } else {
-//     app_.HandleReplayResponse(resp, boost::move(related_stateful_request),
-//                               conn_info, cache);
-//   }
-//
-//   return true;
-// }
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -173,14 +139,15 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   if (!crash_recover_) {
     // add all cache nodes to the log
-    crash_conn_head_ =
-        new LogEntryInstance(nullptr, ShmSharedPtr<Request>{},
-                             std::shared_ptr<ConnectionInstance *>());
+    crash_conn_head_ = cache_inner_ptr_->log_entry_allocator_.allocate_one();
+    new (crash_conn_head_.get()) LogEntryInstance(
+        nullptr, ShmSharedPtr<Request>{}, shared_memory_.get_segment_manager());
     cache_inner_ptr_->VisitAllState(
         [&](CacheStateInstance *state) {
           if (!state->dirty_node) {
-            LogEntryInstance *dirty = new LogEntryInstance(
-                state, {}, crash_conn_head_->backend_conn_ptr);
+            auto dirty = cache_inner_ptr_->log_entry_allocator_.allocate_one();
+            new (dirty.get())
+                LogEntryInstance(state, {}, crash_conn_head_->backend_conn_ptr);
             logger_inner_ptr_->Log(dirty, crash_conn_head_);
             state->dirty_node = dirty;
           }

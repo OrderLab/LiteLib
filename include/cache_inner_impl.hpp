@@ -160,7 +160,7 @@ bool CacheInner<
     CacheEntry>::Replace(const CacheKey &key, const CacheEntry &value,
                          bool in_transaction,
                          bip::offset_ptr<LogEntryInstance> dirty_node,
-                         std::mutex *logger_chr_mutex,
+                         bip::interprocess_mutex *logger_chr_mutex,
                          bip::offset_ptr<CacheStateInstance> &new_state) {
   // bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
   // if (!in_transaction) {
@@ -174,9 +174,9 @@ bool CacheInner<
   cache_.visit(key, [&](auto &element) {
     element.second.state->value = value;
 
-    bip::scoped_lock<std::mutex> chr_lock;
+    bip::scoped_lock<bip::interprocess_mutex> chr_lock;
     if (logger_chr_mutex) {
-      chr_lock = bip::scoped_lock<std::mutex>{*logger_chr_mutex};
+      chr_lock = bip::scoped_lock<bip::interprocess_mutex>{*logger_chr_mutex};
     }
     auto old_dirty_node = element.second.state->dirty_node;
     element.second.state->dirty_node = dirty_node;

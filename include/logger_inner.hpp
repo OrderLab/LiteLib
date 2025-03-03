@@ -21,18 +21,28 @@ class LogEntry {
                                         ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
-  // NOTE: LogEntry is only used in the lite process, so we can use raw pointer
-  // here
-  CacheStateInstance *state;  // Cache::State *
+  // TODO: init logger only after mode transition so that we can use raw pointer
+  bip::offset_ptr<CacheStateInstance> state;
   ShmSharedPtr<Request> req;
-  std::shared_ptr<ConnectionInstance *> backend_conn_ptr;
-  LogEntry *chr_pre = nullptr,
-           *chr_nxt = nullptr;  // global linked list in chronological order
-  LogEntry *conn_pre = nullptr,
-           *conn_nxt = nullptr;  // linked list per connection
+  ShmSharedPtr<bip::offset_ptr<ConnectionInstance>> backend_conn_ptr;
+  bip::offset_ptr<LogEntry>
+      chr_pre = nullptr,
+      chr_nxt = nullptr;  // global linked list in chronological order
+  bip::offset_ptr<LogEntry> conn_pre = nullptr,
+                            conn_nxt = nullptr;  // linked list per connection
 
-  LogEntry(CacheStateInstance *state, ShmSharedPtr<Request> req,
-           std::shared_ptr<ConnectionInstance *> backend_conn_ptr)
+  LogEntry(bip::offset_ptr<CacheStateInstance> state, ShmSharedPtr<Request> req,
+           ShmVoidAllocator allocator)
+      : state(state), req(req) {
+    backend_conn_ptr = ShmMakeShared(
+        allocator.get_segment_manager()
+            ->template construct<bip::offset_ptr<ConnectionInstance>>(
+                bip::anonymous_instance)(nullptr),
+        *allocator.get_segment_manager());
+  }
+
+  LogEntry(bip::offset_ptr<CacheStateInstance> state, ShmSharedPtr<Request> req,
+           ShmSharedPtr<bip::offset_ptr<ConnectionInstance>> backend_conn_ptr)
       : state(state), req(req), backend_conn_ptr(backend_conn_ptr) {}
 
   void Delink() {
@@ -55,18 +65,19 @@ class LoggerInner {
 
   void Init();
 
-  void Log(LogEntryInstance *entry, LogEntryInstance *conn_head);
+  void Log(bip::offset_ptr<LogEntryInstance> entry,
+           bip::offset_ptr<LogEntryInstance> conn_head);
 
-  bool Pop(LogEntryInstance *&entry);
+  bool Pop(bip::offset_ptr<LogEntryInstance> &entry);
 
-  bool EraseConnectionLogs(LogEntryInstance *conn_head,
+  bool EraseConnectionLogs(bip::offset_ptr<LogEntryInstance> conn_head,
                            const size_t number_of_entries);
 
   bool Empty();
 
   ShmAllocator<LogEntryInstance> log_entry_allocator_;
 
-  std::mutex chr_mutex_;
+  bip::interprocess_mutex chr_mutex_;
 
   SlidingWindow inserting_rate_;
 

@@ -29,15 +29,11 @@ class ConnectionState {
 
   ~ConnectionState();
 
-  bip::offset_ptr<LogEntryInstance>
-      log_head_;  // TODO: don't put it in shared memory
+  bip::offset_ptr<LogEntryInstance> log_head_;
 
   CacheInstance cache_;
 
   LoggerInstance logger_;
-
-  /// The pending requests
-  ShmThreadSafeQueue<std::pair<ShmSharedPtr<Request>, bool>> pending_requests_;
 
   ConnectionInfo extra_app_info_;
 };

@@ -10,8 +10,8 @@ LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::LoggerInner(const std::chrono::milliseconds
                                          sliding_window_size,
                                      ShmAllocator<LogEntryInstance> allocator)
-    : chr_head_(nullptr, ShmSharedPtr<Request>{}, nullptr),
-      chr_tail_(nullptr, ShmSharedPtr<Request>{}, nullptr),
+    : chr_head_(nullptr, ShmSharedPtr<Request>{}, allocator),
+      chr_tail_(nullptr, ShmSharedPtr<Request>{}, allocator),
       inserting_rate_(sliding_window_size),
       log_entry_allocator_(allocator) {
   Init();
@@ -28,10 +28,11 @@ void LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
-                 CacheEntry>::
-    Log(LogEntryInstance *entry,
-        LogEntryInstance *conn_head) {  // TODO: deal with capacity issues
-  std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+                 CacheEntry>::Log(bip::offset_ptr<LogEntryInstance> entry,
+                                  bip::offset_ptr<LogEntryInstance>
+                                      conn_head) {  // TODO: deal with capacity
+                                                    // issues
+  bip::scoped_lock<bip::interprocess_mutex> chr_lock(chr_mutex_);
   ++inserting_rate_;
   entry->chr_pre = &chr_head_;
   entry->chr_nxt = chr_head_.chr_nxt;
@@ -47,8 +48,8 @@ void LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
-                 CacheEntry>::Pop(LogEntryInstance *&entry) {
-  std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+                 CacheEntry>::Pop(bip::offset_ptr<LogEntryInstance> &entry) {
+  bip::scoped_lock<bip::interprocess_mutex> chr_lock(chr_mutex_);
   if (chr_tail_.chr_pre == &chr_head_) return false;
   entry = chr_tail_.chr_pre;
   entry->Delink();
@@ -61,11 +62,11 @@ bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
-                 CacheEntry>::EraseConnectionLogs(LogEntryInstance *conn_head,
-                                                  const size_t
-                                                      number_of_entries) {
-  std::unique_lock<std::mutex> chr_lock(chr_mutex_);
-  LogEntryInstance *entry = conn_head->conn_nxt, *nxt_entry;
+                 CacheEntry>::
+    EraseConnectionLogs(bip::offset_ptr<LogEntryInstance> conn_head,
+                        const size_t number_of_entries) {
+  bip::scoped_lock<bip::interprocess_mutex> chr_lock(chr_mutex_);
+  bip::offset_ptr<LogEntryInstance> entry = conn_head->conn_nxt, nxt_entry;
   for (size_t i = 0; i < number_of_entries; ++i, entry = nxt_entry) {
     if (!entry) {
       LOG(ERROR) << "Expected to erase " << number_of_entries
@@ -93,7 +94,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
                  CacheEntry>::Empty() {
-  std::unique_lock<std::mutex> chr_lock(chr_mutex_);
+  bip::scoped_lock<bip::interprocess_mutex> chr_lock(chr_mutex_);
   return chr_tail_.chr_pre == &chr_head_;
 }
 

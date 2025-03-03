@@ -69,7 +69,7 @@ class CacheInner {
   bool Replace(const CacheKey &key, const CacheEntry &value,
                bool in_transaction,
                bip::offset_ptr<LogEntryInstance> dirty_node,
-               std::mutex *logger_chr_mutex,
+               bip::interprocess_mutex *logger_chr_mutex,
                bip::offset_ptr<CacheStateInstance> &new_state);
 
   void ConstVisitAll(

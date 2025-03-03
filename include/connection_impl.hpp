@@ -58,11 +58,7 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 
   memset(&backend_event_, 0, sizeof(backend_event_));
 
-  if (is_client_connection &&
-      (!lite_core_.emergency_mode_ptr_->load() && !lite_core_.is_replaying_))
-    ConnectBackend();
-
-  if (lite_core_.emergency_mode_ptr_->load()) {
+  if (is_client_connection && lite_core_.emergency_mode_ptr_->load()) {
     std::optional<Response> greeting_msg =
         lite_core_.app_.EmergencyConnectionEstablishHook(
             connection_state_entry_ptr_->extra_app_info_);
@@ -146,7 +142,6 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       if (!conn->lite_core_.HandleRequest(
               boost::move(conn->request_),
               conn->connection_state_entry_ptr_->extra_app_info_,
-              conn->connection_state_entry_ptr_->pending_requests_,
               conn->client_fd_, conn->backend_fd_,
               &conn->connection_state_entry_ptr_->cache_,
               &conn->connection_state_entry_ptr_->logger_, forwarded)) {
