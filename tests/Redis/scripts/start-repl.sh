@@ -1,50 +1,46 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname "$0")
-REPLICA_HOST="10.10.1.3"
-DEST_DIR="litesys/redis"
+REPLICA_HOST="10.10.1.2"
+DEST_DIR="$SCRIPT_DIR"
+MODE=$1
+SUFFIX=$2
+
+REDIS="$SCRIPT_DIR/../src/redis/src/redis-server-vanilla"
+if [ "$MODE" == "embedded" ]; then
+	REDIS="$SCRIPT_DIR/../src/redis/src/redis-server"
+fi
+
+REDIS_SENTINEL="$SCRIPT_DIR/../src/redis/src/redis-sentinel-vanilla"
+if [ "$MODE" == "embedded" ]; then
+	REDIS_SENTINEL="$SCRIPT_DIR/../src/redis/src/redis-sentinel"
+fi
 
 # Start the Redis replica on REPLICA_HOST, making directory if it doesn't exist
 ssh "$REPLICA_HOST" "
   if [ ! -d \"$DEST_DIR/logs\" ]; then
     mkdir -p \"$DEST_DIR/logs\"
   fi
-
-  if [ ! -d \"$DEST_DIR/config\" ]; then
-    mkdir -p \"$DEST_DIR/config\"
-  fi
 "
-
-scp "$SCRIPT_DIR/monitor/repl-monitor.py" "$REPLICA_HOST:$DEST_DIR/repl-monitor.py"
-scp "$SCRIPT_DIR/config/replica.conf" "$REPLICA_HOST:$DEST_DIR/config/replica.conf"
 
 ssh "$REPLICA_HOST" "
   rm -f *.rdb
   rm -f $DEST_DIR/logs/*.log
-  sed -i \"s|logfile .*|logfile \\\"$DEST_DIR/logs/redis-replica.log\\\"|\" \"$DEST_DIR/config/replica.conf\"
-  redis-server \"$DEST_DIR/config/replica.conf\"
+  $REDIS \"$DEST_DIR/config/replica.conf\" > \"$DEST_DIR/logs/redis-replica-$SUFFIX.log\" 2>&1 &
 "
 
-SENTINEL_HOST="10.10.1.4"
+LITE_HOST="10.10.1.4"
+REPLICA_HOST="10.10.1.2"
+SENTINEL_HOST="10.10.1.3"
 
-# start sentinels on 26479, 26480, 26481
+for HOST in "$LITE_HOST" "$REPLICA_HOST" "$SENTINEL_HOST"; do
+  ssh "$HOST" "
+    if [ ! -d \"$DEST_DIR/logs\" ]; then
+      mkdir -p \"$DEST_DIR/logs\"
+    fi
+  "
 
-ssh "$SENTINEL_HOST" "
-	if [ ! -d \"$DEST_DIR/config\" ]; then
-	  mkdir -p \"$DEST_DIR/config\"
-	fi
-	if [ ! -d \"$DEST_DIR/logs\" ]; then
-	  mkdir -p \"$DEST_DIR/logs\"
-	fi
-"
-
-scp "$SCRIPT_DIR/monitor/sentinel-monitor.py" "$SENTINEL_HOST:$DEST_DIR/sentinel-monitor.py"
-scp "$SCRIPT_DIR/config/sentinel.conf" "$SENTINEL_HOST:$DEST_DIR/config/sentinel.conf"
-
-for port in 26479 26480 26481; do
-  ssh "$SENTINEL_HOST" "
-	cp \"$DEST_DIR/config/sentinel.conf\" \"$DEST_DIR/config/sentinel-$port.conf\"
-	sed -i \"1i\port $port\" \"$DEST_DIR/config/sentinel-$port.conf\"
-	redis-sentinel \"$DEST_DIR/config/sentinel-$port.conf\" > \"$DEST_DIR/logs/redis-sentinel-$port.log\" 2>&1 &
+  ssh "$HOST" "
+	$REDIS_SENTINEL \"$DEST_DIR/config/sentinel.conf\" > \"$DEST_DIR/logs/redis-sentinel-$HOST-$SUFFIX.log\" 2>&1 &
   "
 done
