@@ -1,8 +1,11 @@
 #!/bin/bash
 
+set -x
+
 SCRIPT_DIR=$(dirname "$0")
-REPLICA_HOST="10.10.1.3"
-SENTINEL_HOST="10.10.1.4"
+LITE_HOST="10.10.1.4"
+REPLICA_HOST="10.10.1.2"
+SENTINEL_HOST="10.10.1.3"
 
 kill_process_by_port() {
   local port=$1
@@ -15,13 +18,31 @@ kill_process_by_port() {
   fi
 }
 
-pkill -f "redis-lite"
+kill_process_by_name() {
+  local name=$1
+  local pids=$(pgrep -f "$name")
+  if [ -n "$pids" ]; then
+    kill -9 $pids
+    echo "Killed processes named $name: $pids"
+  else
+    echo "No processes found named $name"
+  fi
+}
+
+kill_process_by_name "redis-lite"
 echo "Redis Lite stopped"
 
+kill_process_by_port 6479
 kill_process_by_port 16379
+kill_process_by_port 26379
 
 ssh "$REPLICA_HOST" "$(typeset -f kill_process_by_port); kill_process_by_port 16379"
+ssh "$REPLICA_HOST" "$(typeset -f kill_process_by_port); kill_process_by_port 26379"
+ssh "$SENTINEL_HOST" "$(typeset -f kill_process_by_port); kill_process_by_port 26379"
 
-for port in 26479 26480 26481; do
-  ssh "$SENTINEL_HOST" "$(typeset -f kill_process_by_port); kill_process_by_port $port"
-done
+rm /dev/shm/lite-shared-memory
+rm /tmp/lite_Redis
+kill_process_by_name "python -u $SCRIPT_DIR/monitor/monitor.py"
+# TODO: the following commands are not working
+ssh "$REPLICA_HOST" "$(typeset -f kill_process_by_name); kill_process_by_name 'python -u $SCRIPT_DIR/monitor/monitor.py'"
+ssh "$SENTINEL_HOST" "$(typeset -f kill_process_by_name); kill_process_by_name 'python -u $SCRIPT_DIR/monitor/monitor.py'"

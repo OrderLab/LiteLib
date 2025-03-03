@@ -5,6 +5,8 @@
 # Node 2: Client + Sentinel
 # Node 3: Vanilla + Lite + Sentinel
 
+set -x
+
 SCRIPT_DIR=$(dirname "$0")
 DEST_DIR="$SCRIPT_DIR/monitor"
 LITE_DIR="$SCRIPT_DIR/../src/lite-version/build"
@@ -12,6 +14,7 @@ YCSB_DIR="~/YCSB"
 
 MODE=$1
 SUFFIX=$2
+CRASH=$3
 CLIENT_HOST="10.10.1.3"
 LITE_HOST="10.10.1.4"
 REPLICA_HOST="10.10.1.2"
@@ -110,6 +113,9 @@ kill_vanilla_server() {
     fi
 }
 
+# Init redis
+$SCRIPT_DIR/setup-experiment.sh $MODE $SUFFIX
+
 # Clean up previous logs and dump files
 rm -f $SCRIPT_DIR/*.rdb
 
@@ -133,35 +139,37 @@ get_master_info
 echo "Master host: $MASTER_HOST, Master port: $MASTER_PORT"
 
 if [ "$MODE" == "lite" ] || [ "$MODE" == "vanilla" ] || [ "$MODE" == "embedded" ]; then
-    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" > $SCRIPT_DIR/logs/benchmark-$SUFFIX.log 2>&1
+    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" > $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
 elif [ "$MODE" == "replica" ]; then
-    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" > $SCRIPT_DIR/logs/benchmark-$SUFFIX.log 2>&1
+    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" > $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
 fi
 
 sleep 5
 
 # Kill vanilla server after the crash time
-kill_vanilla_server &
-echo "Vanilla server will be killed in $CRASH_TIME seconds"
+if [ "$CRASH" == "1" ]; then
+    kill_vanilla_server &
+    echo "Vanilla server will be killed in $CRASH_TIME seconds"
+fi
 
 # Run benchmarks in a loop
 while true; do
     get_master_info
     TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-    echo "[$TIMESTAMP] Starting benchmark" >> $SCRIPT_DIR/logs/benchmark-$SUFFIX.log
+    echo "[$TIMESTAMP] Starting benchmark" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log
 
     if [ "$MODE" == "replica" ]; then
-        ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" >> $SCRIPT_DIR/logs/benchmark-$SUFFIX.log 2>&1
+        ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
     elif [ "$MODE" == "lite" ] || [ "$MODE" == "vanilla" ] || [ "$MODE" == "embedded" ]; then
-        ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" >> $SCRIPT_DIR/logs/benchmark-$SUFFIX.log 2>&1
+        ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
     fi
     STATUS=$?
     
     # Check for errors in the benchmark
     if [[ $STATUS -eq 0 ]]; then
-        if grep -q "Connection error" $SCRIPT_DIR/logs/benchmark-$SUFFIX.log; then
+        if grep -q "Connection error" $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log; then
             STATUS=1
-        elif grep -q "Exception" $SCRIPT_DIR/logs/benchmark-$SUFFIX.log; then
+        elif grep -q "Exception" $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log; then
             STATUS=2
         else
             echo "Benchmark completed successfully"
@@ -185,4 +193,9 @@ if [ "$MODE" == "replica" ]; then
     scp $REPLICA_HOST:$DEST_DIR/logs/*.log $SCRIPT_DIR/logs
     scp $SENTINEL_HOST:$DEST_DIR/*.csv $SCRIPT_DIR/data
     scp $SENTINEL_HOST:$DEST_DIR/logs/*.log $SCRIPT_DIR/logs
+
+    ssh $REPLICA_HOST "rm -f $DEST_DIR/*.csv"
+    ssh $REPLICA_HOST "rm -f $DEST_DIR/logs/*.log"
+    ssh $SENTINEL_HOST "rm -f $DEST_DIR/*.csv"
+    ssh $SENTINEL_HOST "rm -f $DEST_DIR/logs/*.log"
 fi

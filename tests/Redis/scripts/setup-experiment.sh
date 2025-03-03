@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# node 0: benchmark client
+# run in vanilla node
+
+set -x
 
 SCRIPT_DIR=$(dirname "$0")
 

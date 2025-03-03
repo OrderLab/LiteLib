@@ -1,13 +1,19 @@
 #!/bin/bash
 
+set -x
+
 SCRIPT_DIR=$(dirname "$0")
 MODE=$1
 SUFFIX=$2
 
 CONFIG_FILE=vanilla.conf
 if [ "$MODE" == "embedded" ]; then
-	CONFIG_FILE=vanilla-embedded.conf
+	CONFIG_FILE=embedded.conf
 fi
+
+export GLOG_stderrthreshold=0
+export GLOG_logtostderr=1
+export LD_LIBRARY_PATH=$SCRIPT_DIR/../src/lite-version/build:$LD_LIBRARY_PATH
 
 REDIS="$SCRIPT_DIR/../src/redis/src/redis-server-vanilla"
 if [ "$MODE" == "embedded" ]; then
@@ -19,5 +25,5 @@ if [ ! -d "$SCRIPT_DIR/logs" ]; then
 fi
 
 # Start a vanilla redis server instance dump rdb to dbfilename dump_full.rdb
-$REDIS "$SCRIPT_DIR/config/$CONFIG_FILE.conf" > "$SCRIPT_DIR/logs/redis-$MODE-$SUFFIX.log" 2>&1 &
+$REDIS "$SCRIPT_DIR/config/$CONFIG_FILE" > "$SCRIPT_DIR/logs/redis-$MODE-$SUFFIX.log" 2>&1 &
 echo "Redis $MODE started"
