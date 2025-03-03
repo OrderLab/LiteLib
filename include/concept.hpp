@@ -14,8 +14,8 @@ namespace lite {
 typedef void (*RequestDestructorFn)(void *request);
 
 #define Unreachable() __builtin_unreachable()
-#define Likely(x) __builtin_expect(!!(x), 1)
-#define Unlikely(x) __builtin_expect(!!(x), 0)
+#define likely(x) __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
 
 enum DeserializeResult { kGood, kBad, kIndeterminate };
 
