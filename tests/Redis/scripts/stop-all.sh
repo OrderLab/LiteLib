@@ -40,7 +40,7 @@ ssh "$REPLICA_HOST" "$(typeset -f kill_process_by_port); kill_process_by_port 16
 ssh "$REPLICA_HOST" "$(typeset -f kill_process_by_port); kill_process_by_port 26379"
 ssh "$SENTINEL_HOST" "$(typeset -f kill_process_by_port); kill_process_by_port 26379"
 
-rm /dev/shm/lite-shared-memory
+rm /dev/shm/lite_shared_memory
 rm /tmp/lite_Redis
 kill_process_by_name "python -u $SCRIPT_DIR/monitor/monitor.py"
 # TODO: the following commands are not working

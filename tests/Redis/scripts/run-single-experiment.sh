@@ -121,13 +121,13 @@ rm -f $SCRIPT_DIR/*.rdb
 
 # Start relevant monitoring processes
 if [ "$MODE" == "lite" ] || [ "$MODE" == "embedded" ]; then
-    python -u $SCRIPT_DIR/monitor/monitor.py 300 $SCRIPT_DIR/logs/$MODE-monitor-$SUFFIX.log 0 &
+    python -u $SCRIPT_DIR/monitor/monitor.py 180 $SCRIPT_DIR/logs/$MODE-monitor-$SUFFIX.log 0 &
 elif [ "$MODE" == "replica" ]; then
-    python -u $SCRIPT_DIR/monitor/monitor.py 300 $SCRIPT_DIR/logs/$MODE-vanilla-monitor-$SUFFIX.log 0 &
-    ssh $REPLICA_HOST "python -u $DEST_DIR/monitor.py 300 $SCRIPT_DIR/logs/$MODE-replica-monitor-$SUFFIX.log 0" &
-    ssh $SENTINEL_HOST "python -u $DEST_DIR/monitor.py 300 $SCRIPT_DIR/logs/$MODE-sentinel-monitor-$SUFFIX.log 0" &
+    python -u $SCRIPT_DIR/monitor/monitor.py 180 $SCRIPT_DIR/logs/$MODE-vanilla-monitor-$SUFFIX.log 0 &
+    ssh $REPLICA_HOST "python -u $DEST_DIR/monitor.py 180 $SCRIPT_DIR/logs/$MODE-replica-monitor-$SUFFIX.log 0" &
+    ssh $SENTINEL_HOST "python -u $DEST_DIR/monitor.py 180 $SCRIPT_DIR/logs/$MODE-sentinel-monitor-$SUFFIX.log 0" &
 elif [ "$MODE" == "vanilla" ]; then
-	python -u $SCRIPT_DIR/monitor/monitor.py 300 $SCRIPT_DIR/logs/$MODE-monitor-$SUFFIX.log 0 &
+	python -u $SCRIPT_DIR/monitor/monitor.py 180 $SCRIPT_DIR/logs/$MODE-monitor-$SUFFIX.log 0 &
 fi
 echo "Monitoring started"
 

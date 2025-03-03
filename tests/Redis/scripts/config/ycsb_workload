@@ -25,7 +25,7 @@
 target=30000
 
 recordcount=500000
-operationcount=10000000
+operationcount=5000000
 workload=site.ycsb.workloads.CoreWorkload
 
 status.interval=1
