@@ -2,7 +2,7 @@
 
 set -x
 
-sudo apt install -y maven redis-server
+sudo apt install -y maven redis-server numactl
 sudo systemctl stop redis-server
 sudo systemctl disable redis-server
 sudo sysctl vm.overcommit_memory=1

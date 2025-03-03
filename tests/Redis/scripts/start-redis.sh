@@ -25,5 +25,5 @@ if [ ! -d "$SCRIPT_DIR/logs" ]; then
 fi
 
 # Start a vanilla redis server instance dump rdb to dbfilename dump_full.rdb
-$REDIS "$SCRIPT_DIR/config/$CONFIG_FILE" > "$SCRIPT_DIR/logs/$MODE-$SUFFIX.log" 2>&1 &
+taskset -c 36,37,38,39 $REDIS "$SCRIPT_DIR/config/$CONFIG_FILE" > "$SCRIPT_DIR/logs/$MODE-$SUFFIX.log" 2>&1 &
 echo "Redis $MODE started"

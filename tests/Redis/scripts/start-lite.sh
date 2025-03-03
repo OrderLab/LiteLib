@@ -13,5 +13,5 @@ fi
 export GLOG_stderrthreshold=0
 export GLOG_logtostderr=1
 
-"$SCRIPT_DIR/../src/lite-version/build/redis-lite" > "$SCRIPT_DIR/logs/$MODE-lite-$SUFFIX.log" 2>&1 &
+taskset -c 32,33,34,35 "$SCRIPT_DIR/../src/lite-version/build/redis-lite" > "$SCRIPT_DIR/logs/$MODE-lite-$SUFFIX.log" 2>&1 &
 echo "Redis Lite started"
