@@ -23,12 +23,19 @@ ssh "$REPLICA_HOST" "
   if [ ! -d \"$DEST_DIR/logs\" ]; then
     mkdir -p \"$DEST_DIR/logs\"
   fi
-"
 
-ssh "$REPLICA_HOST" "
   rm -f *.rdb
   rm -f $DEST_DIR/logs/*.log
   taskset -c 36,37,38,39 $REDIS \"$DEST_DIR/config/replica.conf\" > \"$DEST_DIR/logs/$MODE-replica-$SUFFIX.log\" 2>&1 &
+"
+
+ssh "$SENTINEL_HOST" "
+  if [ ! -d \"$DEST_DIR/logs\" ]; then
+    mkdir -p \"$DEST_DIR/logs\"
+  fi
+
+  rm -f *.rdb
+  rm -f $DEST_DIR/logs/*.log
 "
 
 LITE_HOST="10.10.1.4"
