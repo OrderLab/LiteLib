@@ -1,5 +1,5 @@
-apt install -y maven redis
-systemctl stop redis-server
-systemctl disable redis-server
-sysctl vm.overcommit_memory=1
+sudo apt install -y maven redis
+sudo systemctl stop redis-server
+sudo systemctl disable redis-server
+sudo sysctl vm.overcommit_memory=1
 pip install psutil
