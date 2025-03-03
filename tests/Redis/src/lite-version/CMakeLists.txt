@@ -1,18 +1,18 @@
 cmake_minimum_required(VERSION 3.15)
 
-execute_process(
-    COMMAND which clang
-    OUTPUT_VARIABLE CLANG_PATH
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-execute_process(
-    COMMAND which clang++
-    OUTPUT_VARIABLE CLANGPP_PATH
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+# execute_process(
+#     COMMAND which clang
+#     OUTPUT_VARIABLE CLANG_PATH
+#     OUTPUT_STRIP_TRAILING_WHITESPACE
+# )
+# execute_process(
+#     COMMAND which clang++
+#     OUTPUT_VARIABLE CLANGPP_PATH
+#     OUTPUT_STRIP_TRAILING_WHITESPACE
+# )
 
-set(CMAKE_C_COMPILER "${CLANG_PATH}")
-set(CMAKE_CXX_COMPILER "${CLANGPP_PATH}")
+# set(CMAKE_C_COMPILER "${CLANG_PATH}")
+# set(CMAKE_CXX_COMPILER "${CLANGPP_PATH}")
 
 project("redis-lite"
     VERSION 0.1.5

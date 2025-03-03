@@ -166,9 +166,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
   switch (req->type) {
     case EmbeddedRequestType::kHset: {
       char *key = static_cast<char *>(req->argv[1]->ptr);
-      ShmString shm_key(key, req->argv_len[1], shm->get_segment_manager());
-      CacheKey cache_key(shm_key,
-                         ShmAllocator<char>(shm->get_segment_manager()));
+      CacheKey cache_key(key, req->argv_len[1], shm->get_segment_manager());
       auto map = ShmSharedPtr<MapType>(
           nullptr, shm->get_segment_manager(),
           ShmDeleter<MapType>(shm->get_segment_manager()));
@@ -226,9 +224,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
     case EmbeddedRequestType::kHgetall: {
       assert(in_emergency);
       char *key = static_cast<char *>(req->argv[1]->ptr);
-      ShmString shm_key(key, req->argv_len[1], shm->get_segment_manager());
-      CacheKey cache_key(shm_key,
-                         ShmAllocator<char>(shm->get_segment_manager()));
+      CacheKey cache_key(key, req->argv_len[1], shm->get_segment_manager());
       if (Likely(cache->Get(cache_key, cache_entry, in_transaction) &&
                  cache_entry.map_value)) {
         auto resp =
@@ -252,10 +248,8 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
     case EmbeddedRequestType::kSet: {
       char *key = static_cast<char *>(req->argv[1]->ptr);
       char *value = static_cast<char *>(req->argv[2]->ptr);
-      ShmString shm_key(key, req->argv_len[1], shm->get_segment_manager());
       ShmString shm_value(value, req->argv_len[2], shm->get_segment_manager());
-      CacheKey cache_key(shm_key,
-                         ShmAllocator<char>(shm->get_segment_manager()));
+      CacheKey cache_key(key, req->argv_len[1], shm->get_segment_manager());
       cache_entry.SetType(CacheEntryType::STRING);
       cache_entry.value = shm_value;
       if (Likely(!cache->Set(cache_key, cache_entry, in_transaction))) {
@@ -273,9 +267,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
     case EmbeddedRequestType::kGet: {
       assert(in_emergency);
       char *key = static_cast<char *>(req->argv[1]->ptr);
-      ShmString shm_key(key, req->argv_len[1], shm->get_segment_manager());
-      CacheKey cache_key(shm_key,
-                         ShmAllocator<char>(shm->get_segment_manager()));
+      CacheKey cache_key(key, req->argv_len[1], shm->get_segment_manager());
       if (Likely(cache->Get(cache_key, cache_entry, in_transaction))) {
         return std::make_pair(
             RESPPacket::ResponseBulkString(cache_entry.value.c_str(),
