@@ -123,11 +123,11 @@ rm -f $SCRIPT_DIR/*.rdb
 if [ "$MODE" == "lite" ] || [ "$MODE" == "embedded" ]; then
     python -u $SCRIPT_DIR/monitor/monitor.py 300 $SCRIPT_DIR/logs/$MODE-monitor-$SUFFIX.log 0 &
 elif [ "$MODE" == "replica" ]; then
-    python -u $SCRIPT_DIR/monitor/monitor.py 300 $SCRIPT_DIR/logs/vanilla-monitor-$SUFFIX.log 0 &
-    ssh $REPLICA_HOST "python -u $DEST_DIR/monitor.py 300 $SCRIPT_DIR/logs/repl-monitor-$SUFFIX.log 0" &
-    ssh $SENTINEL_HOST "python -u $DEST_DIR/monitor.py 300 $SCRIPT_DIR/logs/sentinel-monitor-$SUFFIX.log 0" &
+    python -u $SCRIPT_DIR/monitor/monitor.py 300 $SCRIPT_DIR/logs/$MODE-vanilla-monitor-$SUFFIX.log 0 &
+    ssh $REPLICA_HOST "python -u $DEST_DIR/monitor.py 300 $SCRIPT_DIR/logs/$MODE-replica-monitor-$SUFFIX.log 0" &
+    ssh $SENTINEL_HOST "python -u $DEST_DIR/monitor.py 300 $SCRIPT_DIR/logs/$MODE-sentinel-monitor-$SUFFIX.log 0" &
 elif [ "$MODE" == "vanilla" ]; then
-	python -u $SCRIPT_DIR/monitor/monitor.py 300 $SCRIPT_DIR/logs/vanilla-monitor-$SUFFIX.log 0 &
+	python -u $SCRIPT_DIR/monitor/monitor.py 300 $SCRIPT_DIR/logs/$MODE-monitor-$SUFFIX.log 0 &
 fi
 echo "Monitoring started"
 
@@ -189,13 +189,8 @@ done
 
 # Copy the resulting CSV files from replica and sentinel hosts
 if [ "$MODE" == "replica" ]; then
-    scp $REPLICA_HOST:$DEST_DIR/*.csv $SCRIPT_DIR/data
-    scp $REPLICA_HOST:$DEST_DIR/logs/*.log $SCRIPT_DIR/logs
-    scp $SENTINEL_HOST:$DEST_DIR/*.csv $SCRIPT_DIR/data
-    scp $SENTINEL_HOST:$DEST_DIR/logs/*.log $SCRIPT_DIR/logs
+    scp $REPLICA_HOST:$SCRIPT_DIR/logs/*.log $SCRIPT_DIR/logs
+    scp $SENTINEL_HOST:$SCRIPT_DIR/logs/*.log $SCRIPT_DIR/logs
 
-    ssh $REPLICA_HOST "rm -f $DEST_DIR/*.csv"
-    ssh $REPLICA_HOST "rm -f $DEST_DIR/logs/*.log"
-    ssh $SENTINEL_HOST "rm -f $DEST_DIR/*.csv"
     ssh $SENTINEL_HOST "rm -f $DEST_DIR/logs/*.log"
 fi
