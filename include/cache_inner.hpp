@@ -55,7 +55,6 @@ class CacheInner {
 
   ~CacheInner();
 
-  // TODO: use insert_or_assign()
   bool Add(const CacheKey &key, const CacheEntry &value,
            const bool in_transaction,
            bip::offset_ptr<LogEntryInstance> dirty_node,
@@ -67,6 +66,12 @@ class CacheInner {
               bip::offset_ptr<LogEntryInstance> &dirty_node);
 
   bool Replace(const CacheKey &key, const CacheEntry &value,
+               bool in_transaction,
+               bip::offset_ptr<LogEntryInstance> dirty_node,
+               bip::interprocess_mutex *logger_chr_mutex,
+               bip::offset_ptr<CacheStateInstance> &new_state);
+
+  bool Set(const CacheKey &key, const CacheEntry &value,
                bool in_transaction,
                bip::offset_ptr<LogEntryInstance> dirty_node,
                bip::interprocess_mutex *logger_chr_mutex,
