@@ -134,10 +134,9 @@ class EmbeddedWorker {
             static_cast<ConnectionState<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>*>(
                 job->conn_info);
-        auto cache = connection_state_ptr->cache_;
         auto ret =
             NormalUpdate(job->request, connection_state_ptr->extra_app_info_,
-                         &cache, RequestDestructor);
+                         &connection_state_ptr->cache_, RequestDestructor);
         delete job;
         break;
       }

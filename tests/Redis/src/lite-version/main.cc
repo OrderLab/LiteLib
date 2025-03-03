@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     // size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t thread_pool_size = 1;
     size_t cache_size(16384 * 8);
-    size_t shared_memory_size(std::numeric_limits<int>::max());
+    size_t shared_memory_size(4ll * 1024 * 1024 * 1024);
     const char *const short_opts = "s:t:H";
     const option long_opts[] = {{"size", required_argument, nullptr, 's'},
                                 {"thread", required_argument, nullptr, 't'},

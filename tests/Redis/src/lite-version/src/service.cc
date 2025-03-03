@@ -128,6 +128,8 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleRequestForConnection(
       logger->Log(abort_req_);
     }
     conn.Reset();
+    if (Unlikely(in_emergency))
+      return std::make_pair(RESPPacket::ResponseSimpleString("OK"), false);
     return std::nullopt;
   } else if (Unlikely(req->type == EmbeddedRequestType::kMulti)) {
     conn.is_in_transaction_ = true;
@@ -135,14 +137,14 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleRequestForConnection(
       return std::nullopt;
     }
     logger->Log(req_packet);
-    return std::make_pair(
-        RESPPacket::ResponseSimpleString("OK", shm->get_segment_manager()),
-        false);
-  }
-  conn.transactions.push_back(req_packet);
-  if (Likely(!in_emergency)) {
+    if (Unlikely(in_emergency))
+      return std::make_pair(
+          RESPPacket::ResponseSimpleString("OK", shm->get_segment_manager()),
+          false);
     return std::nullopt;
   }
+  conn.transactions.push_back(req_packet);
+  if (Likely(!in_emergency)) return std::nullopt;
   logger->Log(req_packet);
   return std::make_pair(RESPPacket::ResponseSimpleString("QUEUED"), false);
 }
@@ -171,8 +173,10 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
           nullptr, shm->get_segment_manager(),
           ShmDeleter<MapType>(shm->get_segment_manager()));
       // get original value
+      bool found = false;
       if (Likely(cache->Get(cache_key, cache_entry, in_transaction))) {
         map = cache_entry.map_value;
+        found = true;
       } else {
         map = ShmMakeShared(
             shm->get_segment_manager()->template construct<MapType>(
@@ -196,6 +200,14 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
         } else {
           map->insert(std::make_pair(shm_field, boost::move(new_value)));
         }
+      }
+      if (found) {
+        // map is shared, so we don't need to reset it
+        if (Unlikely(in_emergency))
+          return std::make_pair(RESPPacket::ResponseSimpleString(
+                                    "OK", shm->get_segment_manager()),
+                                false);
+        return std::nullopt;
       }
       cache_entry.SetType(CacheEntryType::MAP);
       cache_entry.map_value = map;

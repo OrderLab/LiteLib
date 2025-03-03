@@ -8,9 +8,10 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Logger<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Log(const ShmSharedPtr<Request> &req) {
-  LogEntryInstance *entry =
-      logger_inner_ptr_->log_entry_allocator_.allocate_one().get();
-  new (entry) LogEntryInstance(nullptr, req, conn_head_->backend_conn_ptr);
+  bip::offset_ptr<LogEntryInstance> entry =
+      logger_inner_ptr_->log_entry_allocator_.allocate_one();
+  new (entry.get())
+      LogEntryInstance(nullptr, req, conn_head_->backend_conn_ptr);
   logger_inner_ptr_->Log(entry, conn_head_.get());
 }
 
@@ -19,7 +20,9 @@ template <typename Application, typename Request, typename Response,
 bool Logger<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Pop(LoggerInnerInstance &logger_inner,
                              LogEntryInstance *&entry) {
-  auto ret = logger_inner.Pop(entry);
+  bip::offset_ptr<LogEntryInstance> entry_ptr;
+  auto ret = logger_inner.Pop(entry_ptr);
+  entry = entry_ptr.get();
   return ret;
 }
 

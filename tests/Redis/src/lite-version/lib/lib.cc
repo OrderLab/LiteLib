@@ -16,10 +16,9 @@ __attribute__((visibility("default"))) int LiteInit(
     ReinstallListenerEventHandlerFn ReinstallListenerEventHandler) {
   auto ret = lite::Init<Redis, RESPPacket, RESPPacket, ConnectionInfo, CacheKey,
                         CacheEntry>(
-      argv_0, 1, std::numeric_limits<int>::max(), 16384 * 2, 1000ms,
-      "/tmp/lite_Redis", RequestDestructor, FlushWriteBuffer,
-      ReinstallClientEventHandler, ReinstallListenerEventHandler,
-      &Redis::EmbeddedNormalUpdate);
+      argv_0, 1, 4ll * 1024 * 1024 * 1024, 16384 * 2, 1000ms, "/tmp/lite_Redis",
+      RequestDestructor, FlushWriteBuffer, ReinstallClientEventHandler,
+      ReinstallListenerEventHandler, &Redis::EmbeddedNormalUpdate);
   shm = &static_cast<lite::EmbeddedServer<
       Redis, RESPPacket, RESPPacket, ConnectionInfo, CacheKey, CacheEntry> *>(
              lite::embedded_server_void_ptr)

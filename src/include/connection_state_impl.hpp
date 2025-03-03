@@ -1,6 +1,6 @@
 #pragma once
 
-#include "connection_state.hpp"
+#include "connection.hpp"
 
 namespace lite {
 
@@ -15,11 +15,9 @@ ConnectionState<Application, Request, Response, ConnectionInfo, CacheKey,
       log_head_(log_entry_allocator_.allocate_one()),
       cache_(cache_inner_ptr, logger_inner_ptr, log_head_),
       logger_(logger_inner_ptr, log_head_),
-      extra_app_info_(allocator),
-      pending_requests_(allocator) {
+      extra_app_info_(allocator) {
   new (log_head_.get())
-      LogEntryInstance(nullptr, ShmSharedPtr<Request>{},
-                       nullptr);  // TODO: use true backend_conn here
+      LogEntryInstance(nullptr, ShmSharedPtr<Request>{}, allocator);
 }
 
 template <typename Application, typename Request, typename Response,
@@ -68,9 +66,7 @@ typename ConnectionStateStorage<Application, Request, Response, ConnectionInfo,
 ConnectionStateStorage<Application, Request, Response, ConnectionInfo, CacheKey,
                        CacheEntry>::GetOrAdd(const network::TCPID& tcp_id) {
   ConnectionStateInstance* state = Get(tcp_id);
-  if (!state) {
-    state = Add(tcp_id);
-  }
+  if (!state) state = Add(tcp_id);
   return state;
 }
 
