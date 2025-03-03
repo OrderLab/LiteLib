@@ -1,8 +1,9 @@
 #pragma once
-#include <event2/event.h>
-#include <sys/eventfd.h>
-
+#include <atomic>
+#include <condition_variable>
 #include <memory>
+#include <mutex>
+#include <thread>
 
 #include "connection_state.hpp"
 #include "embedded_lite.h"
@@ -53,47 +54,24 @@ class EmbeddedWorker {
         RequestDestructor(RequestDestructor),
         NormalUpdate(NormalUpdate),
         notified_workers_count_(notified_workers_count),
-        event_base_(nullptr),
-        event_(nullptr),
-        connection_state_storage_ptr_(connection_state_storage_ptr) {
-    event_base_ = event_base_new();
+        running_(true),
+        connection_state_storage_ptr_(connection_state_storage_ptr) {}
 
-    PCHECK(event_fd_ = eventfd(0, EFD_NONBLOCK))
-        << "failed creating eventfd for worker thread";
-
-    event_ = event_new(event_base_, event_fd_, EV_READ | EV_PERSIST,
-                       &EmbeddedWorker::EventCallback, this);
-    LOG_IF(FATAL, !event_ || event_add(event_, nullptr) < 0)
-        << "failed to create/add event";
-  }
-
-  void Notify() {
-    uint64_t value = 1;
-    PCHECK(write(event_fd_, &value, sizeof(value)) == sizeof(value))
-        << "failed to write to eventfd";
-  }
+  void Notify() { cv_.notify_one(); }
 
   void Run() {
-    pthread_attr_t attr;
-
-    pthread_attr_init(&attr);
-
-    PCHECK(!pthread_create(&thread_id_, &attr, ThreadBody, this))
-        << "Can't create thread: lite-worker";
-
-    pthread_setname_np(thread_id_, "lite-worker");
-    pthread_attr_destroy(&attr);
+    thread_ = std::thread(&EmbeddedWorker::ThreadBody, this);
+    pthread_setname_np(thread_.native_handle(), "lite-worker");
   }
 
   ~EmbeddedWorker() {
-    if (event_) {
-      event_free(event_);
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      running_ = false;
     }
-    if (event_base_) {
-      event_base_free(event_base_);
-    }
-    if (event_fd_ != -1) {
-      close(event_fd_);
+    cv_.notify_one();
+    if (thread_.joinable()) {
+      thread_.join();
     }
   }
 
@@ -102,23 +80,23 @@ class EmbeddedWorker {
  private:
   static void* ThreadBody(void* arg) {
     EmbeddedWorker* worker = static_cast<EmbeddedWorker*>(arg);
-
-    event_base_loop(worker->event_base_, 0);
-    event_base_free(worker->event_base_);
-
+    worker->ProcessMessages();
     return nullptr;
   }
 
-  static void EventCallback(evutil_socket_t fd, short events, void* arg) {
-    EmbeddedWorker* worker = static_cast<EmbeddedWorker*>(arg);
-    uint64_t value;
-    if (read(fd, &value, sizeof(value)) != sizeof(value)) {
-      throw std::runtime_error("Failed to read from eventfd");
-    }
-
-    // Process all pending messages
-    while (value--) {
-      worker->HandleEvent();
+  void ProcessMessages() {
+    while (true) {
+      {
+        std::unique_lock<std::mutex> lock(mutex_);
+        cv_.wait(lock,
+                 [this]() { return !running_ || !message_queue.empty(); });
+        if (!running_ && message_queue.empty()) {
+          break;
+        }
+      }
+      while (!message_queue.empty()) {
+        HandleEvent();
+      }
     }
   }
 
@@ -157,17 +135,21 @@ class EmbeddedWorker {
         }
         LOG(INFO) << "Embedded worker " << id_ << " switches to emergency mode";
         notified_workers_count_++;
-        event_base_loopexit(event_base_, nullptr);
+        {
+          std::lock_guard<std::mutex> lock(mutex_);
+          running_ = false;
+        }
         break;
       }
     }
   }
 
   int id_;
-  pthread_t thread_id_;
-  int event_fd_;
-  struct event_base* event_base_;
-  struct event* event_;
+  std::thread thread_;
+
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  bool running_;
 
   std::atomic<int>& notified_workers_count_;
 
