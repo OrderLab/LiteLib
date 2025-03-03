@@ -40,10 +40,10 @@ index cc84d09ad..713ccb0c4 100644
  REDIS_BENCHMARK_NAME=redis-benchmark$(PROG_SUFFIX)
 diff --git a/src/litesys.c b/src/litesys.c
 new file mode 100644
-index 000000000..d0a83da6a
+index 000000000..f02883ca1
 --- /dev/null
 +++ b/src/litesys.c
-@@ -0,0 +1,109 @@
+@@ -0,0 +1,111 @@
 +#include "litesys.h"
 +
 +#include <embedded_lite.h>
@@ -61,23 +61,25 @@ index 000000000..d0a83da6a
 +    return;  // TODO: handle failure in emergency mode
 +  }
 +
-+  EmbeddedRequest *request = zmalloc(sizeof(EmbeddedRequest));
-+
-+  if (c->cmd->proc == setCommand) {
-+    request->type = kSet;
-+  } else if (c->cmd->proc == hsetCommand) {
-+    request->type = kHset;
-+  } else if (c->cmd->proc == multiCommand) {
-+    request->type = kMulti;
-+  } else if (c->cmd->proc == execCommand) {
-+    request->type = kExec;
-+  } else if (c->cmd->proc == discardCommand) {
-+    request->type = kDiscard;
++  EmbeddedRequestType type;
++  if (likely(c->cmd->proc == hgetallCommand)) {
++    return;
++  } else if (unlikely(c->cmd->proc == hsetCommand)) {
++    type = kHset;
++  } else if (unlikely(c->cmd->proc == setCommand)) {
++    type = kSet;
++  } else if (unlikely(c->cmd->proc == multiCommand)) {
++    type = kMulti;
++  } else if (unlikely(c->cmd->proc == execCommand)) {
++    type = kExec;
++  } else if (unlikely(c->cmd->proc == discardCommand)) {
++    type = kDiscard;
 +  } else {
-+    zfree(request);
 +    return;
 +  }
 +
++  EmbeddedRequest *request = zmalloc(sizeof(EmbeddedRequest));
++  request->type = type;
 +  request->argc = c->original_argv ? c->original_argc : c->argc;
 +
 +  robj **orig_argv = c->original_argv ? c->original_argv : c->argv;

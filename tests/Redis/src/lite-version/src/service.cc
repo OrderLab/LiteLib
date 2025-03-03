@@ -82,9 +82,9 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleRequestForConnection(
     Logger *logger, bool flow_control) {
   const bool in_emergency = logger;
   auto req = req_packet->ToEmbeddedRequest();
-  if (Likely(!conn.is_in_transaction_))
+  if (likely(!conn.is_in_transaction_))
     return HandleSingleRequest(req, cache, false, logger, flow_control);
-  if (Unlikely(flow_control)) {
+  if (unlikely(flow_control)) {
     if (!logger->EraseConnectionLogs(conn.transactions.size() + 1)) {
       LOG(ERROR) << "Failed to undo log\n";
       logger->Log(abort_req_);
@@ -93,14 +93,14 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleRequestForConnection(
     return std::make_pair(RESPPacket::ResponseError("ERR flow control enabled"),
                           false);
   }
-  if (Unlikely(req->type == EmbeddedRequestType::kExec)) {
-    if (Unlikely(in_emergency &&
+  if (unlikely(req->type == EmbeddedRequestType::kExec)) {
+    if (unlikely(in_emergency &&
                  !logger->EraseConnectionLogs(conn.transactions.size() + 1))) {
       LOG(ERROR) << "Failed to undo log\n";
       logger->Log(abort_req_);
     }
     auto cache_lock = cache->TransactionLock();
-    if (Likely(!in_emergency)) {
+    if (likely(!in_emergency)) {
       for (const auto &r : conn.transactions) {
         HandleSingleRequest(r->ToEmbeddedRequest(), cache, true, logger, false);
       }
@@ -121,30 +121,30 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleRequestForConnection(
       conn.Reset();
       return std::make_pair(std::move(response), shutdown);
     }
-  } else if (Unlikely(req->type == EmbeddedRequestType::kDiscard)) {
-    if (Unlikely(!in_emergency &&
+  } else if (unlikely(req->type == EmbeddedRequestType::kDiscard)) {
+    if (unlikely(!in_emergency &&
                  !logger->EraseConnectionLogs(conn.transactions.size() + 1))) {
       LOG(ERROR) << "Failed to undo log\n";
       logger->Log(abort_req_);
     }
     conn.Reset();
-    if (Unlikely(in_emergency))
+    if (unlikely(in_emergency))
       return std::make_pair(RESPPacket::ResponseSimpleString("OK"), false);
     return std::nullopt;
-  } else if (Unlikely(req->type == EmbeddedRequestType::kMulti)) {
+  } else if (unlikely(req->type == EmbeddedRequestType::kMulti)) {
     conn.is_in_transaction_ = true;
-    if (Likely(!in_emergency)) {
+    if (likely(!in_emergency)) {
       return std::nullopt;
     }
     logger->Log(req_packet);
-    if (Unlikely(in_emergency))
+    if (unlikely(in_emergency))
       return std::make_pair(
           RESPPacket::ResponseSimpleString("OK", shm->get_segment_manager()),
           false);
     return std::nullopt;
   }
   conn.transactions.push_back(req_packet);
-  if (Likely(!in_emergency)) return std::nullopt;
+  if (likely(!in_emergency)) return std::nullopt;
   logger->Log(req_packet);
   return std::make_pair(RESPPacket::ResponseSimpleString("QUEUED"), false);
 }
@@ -153,13 +153,13 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
     EmbeddedRequest *req, Cache *cache, const bool in_transaction,
     Logger *logger, bool flow_control) {
   const bool in_emergency = logger;
-  if (Unlikely(req->type == EmbeddedRequestType::kUnknown)) {
+  if (unlikely(req->type == EmbeddedRequestType::kUnknown)) {
     if (in_emergency)
       return std::make_pair(RESPPacket::ResponseError("ERR unknown opcode"),
                             false);
     return std::nullopt;
   }
-  if (Unlikely(flow_control))
+  if (unlikely(flow_control))
     return std::make_pair(RESPPacket::ResponseError("ERR flow control enabled"),
                           false);
   CacheEntry cache_entry(shm->get_segment_manager());
@@ -172,7 +172,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
           ShmDeleter<MapType>(shm->get_segment_manager()));
       // get original value
       bool found = false;
-      if (Likely(cache->Get(cache_key, cache_entry, in_transaction))) {
+      if (likely(cache->Get(cache_key, cache_entry, in_transaction))) {
         map = cache_entry.map_value;
         found = true;
       } else {
@@ -192,7 +192,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
       }
       if (found) {
         // map is shared, so we don't need to reset it
-        if (Unlikely(in_emergency))
+        if (unlikely(in_emergency))
           return std::make_pair(RESPPacket::ResponseSimpleString(
                                     "OK", shm->get_segment_manager()),
                                 false);
@@ -200,14 +200,14 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
       }
       cache_entry.SetType(CacheEntryType::MAP);
       cache_entry.map_value = map;
-      if (Unlikely(!cache->Set(cache_key, cache_entry, in_transaction))) {
+      if (unlikely(!cache->Set(cache_key, cache_entry, in_transaction))) {
         LOG(ERROR) << "Failed to set key: " << cache_key << std::endl;
-        if (Unlikely(in_emergency))
+        if (unlikely(in_emergency))
           return std::make_pair(RESPPacket::ResponseError("ERR failed to set"),
                                 false);
         return std::nullopt;
       } else {
-        if (Unlikely(in_emergency))
+        if (unlikely(in_emergency))
           return std::make_pair(
               RESPPacket::ResponseSimpleString("OK", shm->get_segment_manager()),
               false);
@@ -218,7 +218,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
       assert(in_emergency);
       char *key = static_cast<char *>(req->argv[1]->ptr);
       CacheKey cache_key(key, req->argv_len[1], shm->get_segment_manager());
-      if (Likely(cache->Get(cache_key, cache_entry, in_transaction) &&
+      if (likely(cache->Get(cache_key, cache_entry, in_transaction) &&
                  cache_entry.map_value)) {
         auto resp =
             RESPPacket::ResponseArray(cache_entry.map_value->size() * 2);
@@ -232,7 +232,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
           RESPPacket::ResponseNull(shm->get_segment_manager()), false);
     }
     case EmbeddedRequestType::kQuit: {
-      if (Unlikely(in_emergency))
+      if (unlikely(in_emergency))
         return std::make_pair(
             RESPPacket::ResponseSimpleString("OK", shm->get_segment_manager()),
             true);
@@ -245,7 +245,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
       CacheKey cache_key(key, req->argv_len[1], shm->get_segment_manager());
       cache_entry.SetType(CacheEntryType::STRING);
       cache_entry.value = shm_value;
-      if (Likely(!cache->Set(cache_key, cache_entry, in_transaction))) {
+      if (likely(!cache->Set(cache_key, cache_entry, in_transaction))) {
         LOG(ERROR) << "Failed to set key: " << cache_key << std::endl;
         if (in_emergency)
           return std::make_pair(RESPPacket::ResponseError("ERR failed to set"),
@@ -261,7 +261,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
       assert(in_emergency);
       char *key = static_cast<char *>(req->argv[1]->ptr);
       CacheKey cache_key(key, req->argv_len[1], shm->get_segment_manager());
-      if (Likely(cache->Get(cache_key, cache_entry, in_transaction))) {
+      if (likely(cache->Get(cache_key, cache_entry, in_transaction))) {
         return std::make_pair(
             RESPPacket::ResponseBulkString(cache_entry.value.c_str(),
                                            cache_entry.value.size()),

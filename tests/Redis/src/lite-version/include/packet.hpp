@@ -43,7 +43,7 @@ struct RESPPacket {
   }
 
   ~RESPPacket() {
-    if (Likely(!is_generated_in_emergency_mode)) {
+    if (likely(!is_generated_in_emergency_mode)) {
       Redis::RequestDestructor(request);
     } else {
       FreeEmbeddedRequestGeneratedInEmergencyMode();
