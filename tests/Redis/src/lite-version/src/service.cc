@@ -242,6 +242,13 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
       return std::make_pair(
           RESPPacket::ResponseNull(shm->get_segment_manager()), false);
     }
+    case EmbeddedRequestType::kQuit: {
+      if (Unlikely(in_emergency))
+        return std::make_pair(
+            RESPPacket::ResponseSimpleString("OK", shm->get_segment_manager()),
+            true);
+      return std::nullopt;
+    }
     case EmbeddedRequestType::kSet: {
       char *key = static_cast<char *>(req->argv[1]->ptr);
       char *value = static_cast<char *>(req->argv[2]->ptr);
@@ -277,12 +284,6 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
       }
       return std::make_pair(
           RESPPacket::ResponseNull(shm->get_segment_manager()), false);
-    }
-    case EmbeddedRequestType::kQuit: {
-      assert(in_emergency);
-      return std::make_pair(
-          RESPPacket::ResponseSimpleString("OK", shm->get_segment_manager()),
-          true);
     }
     case EmbeddedRequestType::kPing: {
       assert(in_emergency);

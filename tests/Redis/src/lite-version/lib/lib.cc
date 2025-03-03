@@ -63,6 +63,12 @@ __attribute__((visibility("default"))) void LiteUnregisterClientFD(int fd) {
                            CacheKey, CacheEntry>(fd);
 }
 
+__attribute__((visibility("default"))) void LiteUnregisterClient(
+    void *conn_info) {
+  lite::UnregisterClient<Redis, RESPPacket, RESPPacket, ConnectionInfo,
+                         CacheKey, CacheEntry>(conn_info);
+}
+
 __attribute__((visibility("default"))) int LiteProcessRequest(void *conn_info,
                                                               void *request) {
   return lite::ProcessRequest<Redis, RESPPacket, RESPPacket, ConnectionInfo,

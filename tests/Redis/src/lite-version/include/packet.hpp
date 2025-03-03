@@ -94,10 +94,14 @@ struct RESPPacket {
     std::string cmd(argv[0]);
     std::transform(cmd.begin(), cmd.end(), cmd.begin(),
                    [](unsigned char c) { return std::tolower(c); });
-    if (cmd == "hset") {
+    if (cmd == "hmset") {
       request->type = EmbeddedRequestType::kHset;
     } else if (cmd == "hgetall") {
       request->type = EmbeddedRequestType::kHgetall;
+    } else if (cmd == "hset") {
+      request->type = EmbeddedRequestType::kHset;
+    } else if (cmd == "quit") {
+      request->type = EmbeddedRequestType::kQuit;
     } else if (cmd == "multi") {
       request->type = EmbeddedRequestType::kMulti;
     } else if (cmd == "exec") {

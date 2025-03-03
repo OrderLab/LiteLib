@@ -26,8 +26,9 @@ void LiteRegisterListenerFD(int fd, void *listener, int is_replay);
 void LiteUnregisterListenerFD(int fd);
 int LiteGetDummyListenerFD(void);
 
-void *LiteRegisterClientFD(int fd, void *client);
-void LiteUnregisterClientFD(int fd);
+void *LiteRegisterClientFD(int fd, void *client);  // new client{accept(conn)}
+void LiteUnregisterClientFD(int fd);               // close(conn)
+void LiteUnregisterClient(void *conn_info);        // delete client
 
 int LiteProcessRequest(void *conn_info, void *request);
 
