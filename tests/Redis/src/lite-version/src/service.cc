@@ -34,7 +34,7 @@ ShmSharedPtr<RESPPacket> CacheEntry::ToRequest(const CacheKey &key) const {
       ret->AddResponseArrayElement(key.c_str(), key.size());
       for (const auto &[field, value] : *map_value) {
         ret->AddResponseArrayElement(field.c_str(), field.size());
-        ret->AddResponseArrayElement(value->c_str(), value->size());
+        ret->AddResponseArrayElement(value.c_str(), value.size());
       }
       return ret;
     }
@@ -186,18 +186,9 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
         char *value = static_cast<char *>(req->argv[i + 1]->ptr);
         ShmString shm_field(field, req->argv_len[i],
                             shm->get_segment_manager());
-        auto new_value = ShmMakeUnique(
-            shm->get_segment_manager()->template construct<ShmString>(
-                bip::anonymous_instance)(value, req->argv_len[i + 1],
-                                         shm->get_segment_manager()),
-            *shm);
-
-        auto it = map->find(shm_field);
-        if (it != map->end()) {
-          it->second.reset(new_value.release());
-        } else {
-          map->insert(std::make_pair(shm_field, boost::move(new_value)));
-        }
+        ShmString shm_value(value, req->argv_len[i + 1],
+                            shm->get_segment_manager());
+        map->insert_or_assign(shm_field, shm_value);
       }
       if (found) {
         // map is shared, so we don't need to reset it
@@ -211,14 +202,16 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
       cache_entry.map_value = map;
       if (Unlikely(!cache->Set(cache_key, cache_entry, in_transaction))) {
         LOG(ERROR) << "Failed to set key: " << cache_key << std::endl;
-        if (in_emergency)
+        if (Unlikely(in_emergency))
           return std::make_pair(RESPPacket::ResponseError("ERR failed to set"),
                                 false);
         return std::nullopt;
       } else {
-        return std::make_pair(
-            RESPPacket::ResponseSimpleString("OK", shm->get_segment_manager()),
-            false);
+        if (Unlikely(in_emergency))
+          return std::make_pair(
+              RESPPacket::ResponseSimpleString("OK", shm->get_segment_manager()),
+              false);
+        return std::nullopt;
       }
     }
     case EmbeddedRequestType::kHgetall: {
@@ -231,7 +224,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
             RESPPacket::ResponseArray(cache_entry.map_value->size() * 2);
         for (const auto &[field, value] : *cache_entry.map_value) {
           resp.AddResponseArrayElement(field.c_str(), field.size());
-          resp.AddResponseArrayElement(value->c_str(), value->size());
+          resp.AddResponseArrayElement(value.c_str(), value.size());
         }
         return std::make_pair(std::move(resp), false);
       }

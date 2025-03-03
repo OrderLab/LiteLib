@@ -17,7 +17,7 @@ enum class CacheEntryType { STRING, MAP };
 
 extern SharedMemory *shm;
 
-using MapType = ShmMap<ShmString, ShmUniquePtr<ShmString>>;
+using MapType = ShmMap<ShmString, ShmString>;
 
 using CacheKey = ShmString;
 
