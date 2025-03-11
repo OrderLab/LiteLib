@@ -13,7 +13,7 @@ namespace lite {
 
 typedef void (*RequestDestructorFn)(void *request);
 
-#define Unreachable() __builtin_unreachable()
+#define unreachable __builtin_unreachable()
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
