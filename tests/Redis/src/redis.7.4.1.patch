@@ -198,7 +198,7 @@ index 000000000..e6c509727
 +
 +void LiteReinstallListenerEventHandler(void *c, int install);
 diff --git a/src/networking.c b/src/networking.c
-index 41af67f42..c3498b8f3 100644
+index 41af67f42..31cdb7ebe 100644
 --- a/src/networking.c
 +++ b/src/networking.c
 @@ -22,6 +22,8 @@
@@ -216,7 +216,7 @@ index 41af67f42..c3498b8f3 100644
      }
 +
 +    if (strcmp(c->conn->type->get_type(c->conn), CONN_TYPE_SOCKET) == 0) {
-+        c->litesys_data = LiteRegisterClientFD(c->conn->fd, c);
++        c->litesys_data = LiteRegisterClient(c->conn->fd, c);
 +    }
  }
  
@@ -226,21 +226,13 @@ index 41af67f42..c3498b8f3 100644
       * conn is already set to NULL. */
      if (c->conn) {
 +        if (strcmp(c->conn->type->get_type(c->conn), CONN_TYPE_SOCKET) == 0) {
-+            LiteUnregisterClientFD(c->conn->fd);
++            LiteUnregisterClient(c->conn->fd);
 +        }
 +
          /* Remove from the list of active clients. */
          if (c->client_list_node) {
              uint64_t id = htonu64(c->id);
-@@ -1732,6 +1742,7 @@ void freeClient(client *c) {
-     sdsfree(c->peerid);
-     sdsfree(c->sockname);
-     sdsfree(c->slave_addr);
-+    if (c->litesys_data) LiteUnregisterClient(c->litesys_data);
-     zfree(c);
- }
- 
-@@ -3716,7 +3727,7 @@ void securityWarningCommand(client *c) {
+@@ -3716,7 +3726,7 @@ void securityWarningCommand(client *c) {
  
  /* Keep track of the original command arguments so that we can generate
   * an accurate slowlog entry after the command has been executed. */
@@ -250,7 +242,7 @@ index 41af67f42..c3498b8f3 100644
      if (c->original_argv) return;
      c->original_argc = c->argc;
 diff --git a/src/server.c b/src/server.c
-index 1a7bf2700..d18371045 100644
+index 1a7bf2700..2bbcd80df 100644
 --- a/src/server.c
 +++ b/src/server.c
 @@ -43,6 +43,9 @@
@@ -267,7 +259,7 @@ index 1a7bf2700..d18371045 100644
  
          aeDeleteFileEvent(server.el, sfd->fd[j], AE_READABLE);
          close(sfd->fd[j]);
-+        LiteUnregisterListenerFD(sfd->fd[j]);
++        LiteUnregisterListener(sfd->fd[j]);
      }
  
      sfd->count = 0;
@@ -277,12 +269,12 @@ index 1a7bf2700..d18371045 100644
              /* Bind IPv6 address. */
 -            sfd->fd[sfd->count] = anetTcp6Server(server.neterr,port,addr,server.tcp_backlog);
 +            sfd->fd[sfd->count] = (!LiteIsNormalMode() && j != sfd->bindaddr_count - 1) ? LiteGetDummyListenerFD() : anetTcp6Server(server.neterr,port,addr,server.tcp_backlog);
-+            LiteRegisterListenerFD(sfd->fd[sfd->count], sfd, j == sfd->bindaddr_count - 1);
++            LiteRegisterListener(sfd->fd[sfd->count], sfd, j == sfd->bindaddr_count - 1);
          } else {
              /* Bind IPv4 address. */
 -            sfd->fd[sfd->count] = anetTcpServer(server.neterr,port,addr,server.tcp_backlog);
 +            sfd->fd[sfd->count] = (!LiteIsNormalMode() && j != sfd->bindaddr_count - 1) ? LiteGetDummyListenerFD() : anetTcpServer(server.neterr,port,addr,server.tcp_backlog);
-+            LiteRegisterListenerFD(sfd->fd[sfd->count], sfd, j == sfd->bindaddr_count - 1);
++            LiteRegisterListener(sfd->fd[sfd->count], sfd, j == sfd->bindaddr_count - 1);
          }
          if (sfd->fd[sfd->count] == ANET_ERR) {
              int net_errno = errno;

@@ -22,13 +22,12 @@ int LiteFullStartListening(void);
 
 int LiteSignalHandler(int sig);
 
-void LiteRegisterListenerFD(int fd, void *listener, int is_replay);
-void LiteUnregisterListenerFD(int fd);
+void LiteRegisterListener(int fd, void *listener, int is_replay);
+void LiteUnregisterListener(int fd);
 int LiteGetDummyListenerFD(void);
 
-void *LiteRegisterClientFD(int fd, void *client);  // new client{accept(conn)}
-void LiteUnregisterClientFD(int fd);               // close(conn)
-void LiteUnregisterClient(void *conn_info);        // delete client
+void *LiteRegisterClient(int fd, void *client);
+void LiteUnregisterClient(int fd);
 
 int LiteProcessRequest(void *conn_info, void *request);
 

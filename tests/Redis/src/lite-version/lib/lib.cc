@@ -36,15 +36,15 @@ __attribute__((visibility("default"))) int LiteSignalHandler(int sig) {
                              CacheKey, CacheEntry>(sig);
 }
 
-__attribute__((visibility("default"))) void LiteRegisterListenerFD(
+__attribute__((visibility("default"))) void LiteRegisterListener(
     int fd, void *listener, int is_replay) {
-  lite::RegisterListenerFD<Redis, RESPPacket, RESPPacket, ConnectionInfo,
-                           CacheKey, CacheEntry>(fd, listener, is_replay);
+  lite::RegisterListener<Redis, RESPPacket, RESPPacket, ConnectionInfo,
+                         CacheKey, CacheEntry>(fd, listener, is_replay);
 }
 
-__attribute__((visibility("default"))) void LiteUnregisterListenerFD(int fd) {
-  lite::UnregisterListenerFD<Redis, RESPPacket, RESPPacket, ConnectionInfo,
-                             CacheKey, CacheEntry>(fd);
+__attribute__((visibility("default"))) void LiteUnregisterListener(int fd) {
+  lite::UnregisterListener<Redis, RESPPacket, RESPPacket, ConnectionInfo,
+                           CacheKey, CacheEntry>(fd);
 }
 
 __attribute__((visibility("default"))) int LiteGetDummyListenerFD() {
@@ -52,21 +52,15 @@ __attribute__((visibility("default"))) int LiteGetDummyListenerFD() {
                                   CacheKey, CacheEntry>();
 }
 
-__attribute__((visibility("default"))) void *LiteRegisterClientFD(
-    int fd, void *client) {
-  return lite::RegisterClientFD<Redis, RESPPacket, RESPPacket, ConnectionInfo,
-                                CacheKey, CacheEntry>(fd, client);
+__attribute__((visibility("default"))) void *LiteRegisterClient(int fd,
+                                                                void *client) {
+  return lite::RegisterClient<Redis, RESPPacket, RESPPacket, ConnectionInfo,
+                              CacheKey, CacheEntry>(fd, client);
 }
 
-__attribute__((visibility("default"))) void LiteUnregisterClientFD(int fd) {
-  lite::UnregisterClientFD<Redis, RESPPacket, RESPPacket, ConnectionInfo,
-                           CacheKey, CacheEntry>(fd);
-}
-
-__attribute__((visibility("default"))) void LiteUnregisterClient(
-    void *conn_info) {
+__attribute__((visibility("default"))) void LiteUnregisterClient(int fd) {
   lite::UnregisterClient<Redis, RESPPacket, RESPPacket, ConnectionInfo,
-                         CacheKey, CacheEntry>(conn_info);
+                         CacheKey, CacheEntry>(fd);
 }
 
 __attribute__((visibility("default"))) int LiteProcessRequest(void *conn_info,

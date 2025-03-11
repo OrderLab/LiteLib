@@ -39,7 +39,7 @@ ShmSharedPtr<RESPPacket> CacheEntry::ToRequest(const CacheKey &key) const {
       return ret;
     }
   }
-  Unreachable();
+  unreachable;
 }
 
 std::optional<RESPPacket> Redis::EmergencyConnectionEstablishHook(
@@ -208,9 +208,9 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
         return std::nullopt;
       } else {
         if (unlikely(in_emergency))
-          return std::make_pair(
-              RESPPacket::ResponseSimpleString("OK", shm->get_segment_manager()),
-              false);
+          return std::make_pair(RESPPacket::ResponseSimpleString(
+                                    "OK", shm->get_segment_manager()),
+                                false);
         return std::nullopt;
       }
     }
@@ -289,5 +289,5 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
       LOG(ERROR) << "Unknown request type: " << int(req->type) << std::endl;
       return std::nullopt;
   }
-  Unreachable();
+  unreachable;
 }
