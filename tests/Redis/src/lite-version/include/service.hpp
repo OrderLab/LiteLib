@@ -39,8 +39,9 @@ struct CacheEntry {
     }
   }
 
-  void SetType(CacheEntryType type) {
-    type = type;
+  void SetType(CacheEntryType new_type) {
+    if (new_type == type) return;
+    type = new_type;
     value.clear();
     map_value.reset();
   }

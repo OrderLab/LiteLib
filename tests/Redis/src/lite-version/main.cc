@@ -20,7 +20,7 @@ void PrintHelp() {
 int main(int argc, char *argv[]) {
   try {
     // size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
-    size_t thread_pool_size = 1;
+    size_t thread_pool_size = 4;
     size_t cache_size(16384 * 8);
     size_t shared_memory_size(4ll * 1024 * 1024 * 1024);
     const char *const short_opts = "s:t:H";
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     lite::LiteServer<Redis, RESPPacket, RESPPacket, ConnectionInfo, CacheKey,
                      CacheEntry>
         s(thread_pool_size, shared_memory_size, cache_size, redis, backend_addr,
-          backend_port, 1000ms, 80000, 0.9, 2, "/tmp/lite_Redis");
+          backend_port, 1000ms, 80000, 0.9, 1, "/tmp/lite_Redis");
     shm = &s.lite_core_.shared_memory_;
     redis.DelayedConstructor();
     // Run the server until stopped.

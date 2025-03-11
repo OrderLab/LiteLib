@@ -50,6 +50,6 @@ for HOST in "$LITE_HOST" "$REPLICA_HOST" "$SENTINEL_HOST"; do
   "
 
   ssh "$HOST" "
-	taskset -c 30,31 $REDIS_SENTINEL \"$DEST_DIR/config/sentinel.conf\" > \"$DEST_DIR/logs/$MODE-sentinel-$HOST-$SUFFIX.log\" 2>&1 &
+	taskset -c 28,29 $REDIS_SENTINEL \"$DEST_DIR/config/sentinel.conf\" > \"$DEST_DIR/logs/$MODE-sentinel-$HOST-$SUFFIX.log\" 2>&1 &
   "
 done
