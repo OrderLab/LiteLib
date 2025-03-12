@@ -25,14 +25,18 @@ VANILLA_PORT=16379
 SENTINEL_PORT="26379"
 MASTER_NAME="vanilla_redis"
 
-CRASH_TIME=20
+CRASH_TIME=60
 
 # Function to kill processes by port
 kill_process_by_port() {
   local port=$1
-  local pids=$(lsof -t -i:$port)
+  local addr=0.0.0.0
+  if [ "$MODE" == "embedded" ]; then
+    addr="127.0.0.1"
+  fi
+  local pids=$(lsof -t -i @$addr:$port)
   if [ -n "$pids" ]; then
-    kill -9 $pids
+    kill -15 $pids
     echo "Killed processes on port $port: $pids"
   else
     echo "No processes found on port $port"
@@ -56,7 +60,11 @@ get_master_info() {
 
 alive_on_port() {
 	local port=$1
-	local if=$(lsof -t -i:$port)
+    local addr=0.0.0.0
+    if [ "$MODE" == "embedded" ]; then
+        addr="127.0.0.1"
+    fi
+	local if=$(lsof -t -i @$addr:$port)
 	if [ -n "$if" ]; then
 		return 0
 	else
@@ -67,9 +75,10 @@ alive_on_port() {
 # Function to handle the killing of the vanilla server and recovery
 kill_vanilla_server() {
     sleep $CRASH_TIME
-	
-	redis-cli -h $MASTER_HOST -p $VANILLA_PORT shutdown save &
-	echo "Attempting to kill vanilla server on port $VANILLA_PORT"
+
+	# redis-cli -h $MASTER_HOST -p $VANILLA_PORT shutdown save &
+    echo "`date '+%Y-%m-%d %H:%M:%S'` Attempting to kill vanilla server on port $VANILLA_PORT"
+    kill_process_by_port $VANILLA_PORT
     if [ "$MODE" == "lite" ]; then
         $LITE_DIR/Lite/lite_cli -t /tmp/lite_Redis -p /tmp/redis.sock -m 1
         echo "Entered emergency mode"
@@ -138,12 +147,13 @@ scp $SCRIPT_DIR/config/ycsb_workload $CLIENT_HOST:$YCSB_DIR/workloads/ycsb_workl
 get_master_info
 echo "Master host: $MASTER_HOST, Master port: $MASTER_PORT"
 
+echo "`date '+%Y-%m-%d %H:%M:%S'` Starting YCSB load"
 if [ "$MODE" == "lite" ] || [ "$MODE" == "vanilla" ] || [ "$MODE" == "embedded" ]; then
     ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" > $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
 elif [ "$MODE" == "replica" ]; then
     ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" > $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
 fi
-
+echo "`date '+%Y-%m-%d %H:%M:%S'` YCSB load completed"
 sleep 5
 
 # Kill vanilla server after the crash time
@@ -152,40 +162,18 @@ if [ "$CRASH" == "1" ]; then
     echo "Vanilla server will be killed in $CRASH_TIME seconds"
 fi
 
-# Run benchmarks in a loop
-while true; do
-    get_master_info
-    TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-    echo "[$TIMESTAMP] Starting benchmark" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log
+get_master_info
+TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
+echo "[$TIMESTAMP] Starting benchmark" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log
 
-    if [ "$MODE" == "replica" ]; then
-        ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
-    elif [ "$MODE" == "lite" ] || [ "$MODE" == "vanilla" ] || [ "$MODE" == "embedded" ]; then
-        ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
-    fi
-    STATUS=$?
-    
-    # Check for errors in the benchmark
-    if [[ $STATUS -eq 0 ]]; then
-        if grep -q "Connection error" $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log; then
-            STATUS=1
-        elif grep -q "Exception" $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log; then
-            STATUS=2
-        else
-            echo "Benchmark completed successfully"
-            break
-        fi
-    fi
-    
-    # Retry if there are issues
-    if [[ $STATUS -ne 0 && $MODE != "lite"  ]]; then
-        sleep 1
-        get_master_info
-        if [[ -z "$MASTER_HOST" || -z "$MASTER_PORT" ]]; then
-            exit 1
-        fi
-    fi
-done
+if [ "$MODE" == "replica" ]; then
+    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
+elif [ "$MODE" == "lite" ] || [ "$MODE" == "vanilla" ] || [ "$MODE" == "embedded" ]; then
+    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
+fi
+STATUS=$?
+
+echo "Benchmark completed with status $STATUS"
 
 # Copy the resulting CSV files from replica and sentinel hosts
 if [ "$MODE" == "replica" ]; then

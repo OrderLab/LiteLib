@@ -26,7 +26,8 @@ ssh "$REPLICA_HOST" "
 
   rm -f *.rdb
   rm -f $DEST_DIR/logs/*.log
-  taskset -c 36,37,38,39 $REDIS \"$DEST_DIR/config/replica.conf\" > \"$DEST_DIR/logs/$MODE-replica-$SUFFIX.log\" 2>&1 &
+  cp $SCRIPT_DIR/config/replica.conf $DEST_DIR/config/redis-tmp.conf
+  taskset -c 36,37,38,39 $REDIS \"$DEST_DIR/config/redis-tmp.conf\" > \"$DEST_DIR/logs/$MODE-replica-$SUFFIX.log\" 2>&1 &
 "
 
 ssh "$SENTINEL_HOST" "
@@ -50,6 +51,7 @@ for HOST in "$LITE_HOST" "$REPLICA_HOST" "$SENTINEL_HOST"; do
   "
 
   ssh "$HOST" "
-	taskset -c 28,29 $REDIS_SENTINEL \"$DEST_DIR/config/sentinel.conf\" > \"$DEST_DIR/logs/$MODE-sentinel-$HOST-$SUFFIX.log\" 2>&1 &
+    cp $SCRIPT_DIR/config/sentinel.conf $DEST_DIR/config/sentinel-tmp.conf
+    taskset -c 28,29 $REDIS_SENTINEL \"$DEST_DIR/config/sentinel-tmp.conf\" > \"$DEST_DIR/logs/$MODE-sentinel-$HOST-$SUFFIX.log\" 2>&1 &
   "
 done
