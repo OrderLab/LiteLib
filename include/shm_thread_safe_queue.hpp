@@ -22,6 +22,7 @@ class ShmThreadSafeQueue {
   void push_back(const T &value) {
     bip::scoped_lock<bip::interprocess_mutex> lock(mutex_);
     queue_.push_back(value);
+    cv_.notify_one();
   }
 
   T &front() {
@@ -31,6 +32,7 @@ class ShmThreadSafeQueue {
 
   [[nodiscard]] T pop_front() {
     bip::scoped_lock<bip::interprocess_mutex> lock(mutex_);
+    cv_.wait(lock, [&] { return !queue_.empty(); });
     T value = queue_.front();
     queue_.pop_front();
     if (queue_.empty()) {

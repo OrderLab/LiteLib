@@ -241,6 +241,16 @@ bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     return false;
   }
 
+  if (client_fd_ > 0) {
+    auto tcp_id = network::GetTCPID(client_fd_);
+    lite_core_.connection_state_storage_ptr_->replay_conns_.push_back(tcp_id);
+  } else {
+    auto tcp_id = network::TCPID::GetUUID();
+    lite_core_.connection_state_storage_ptr_->replay_conns_.push_back(tcp_id);
+    connection_state_entry_ptr_ =
+        lite_core_.connection_state_storage_ptr_->GetOrAdd(tcp_id);
+  }
+
   // remove previous event
   if (backend_event_.ev_base) event_del(&backend_event_);
 
@@ -251,16 +261,6 @@ bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   if (event_add(&backend_event_, 0) == -1) {
     PLOG(ERROR) << "backend event_add";
     throw std::runtime_error("backend event_add");
-  }
-
-  if (client_fd_ > 0) {
-    lite_core_.connection_state_storage_ptr_->replay_conns_.push_back(
-        network::GetTCPID(client_fd_));
-  } else {
-    auto tcp_id = network::TCPID::GetUUID();
-    lite_core_.connection_state_storage_ptr_->replay_conns_.push_back(tcp_id);
-    connection_state_entry_ptr_ =
-        lite_core_.connection_state_storage_ptr_->GetOrAdd(tcp_id);
   }
 
   return true;
