@@ -8,6 +8,7 @@
 #define ETH_P_IP    0x0800  /* Internet Protocol packet */ // ipv4
 #define ETH_HLEN    14      /* Total octets in header */
 #define SERVER_PORT 6379
+#define MAX_CMD_LEN 16
 
 #define ACCEPT 1
 #define CLOSE 2
@@ -43,14 +44,65 @@ struct {
     __type(value, __u64);    // Counter value
 } mode SEC(".maps");
 
-__u8 is_resp_message(char *data, __u32 len) {
-    if (len < 1)
-        return 0;
+struct connection_key {
+    __u32 ip;
+    __u16 port;
+};
 
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 10000);  // Support up to 10k concurrent connections
+    __type(key, struct connection_key);  // IP and port as composite key
+    __type(value, __u64);    // Response tracking value
+} write_response SEC(".maps");
+
+const char *write_commands[] SEC(".rodata") = {
+        "SET", "SETEX", "APPEND", "INCR", "INCRBY", "DECR", "DECRBY",
+        "LPUSH", "RPUSH", "LPOP", "RPOP", "SADD", "SREM", "HSET", "HDEL",
+        "DEL", "FLUSHDB", "FLUSHALL", "EXPIRE", NULL  // NULL-terminated
+};
+
+int bpf_strncmp(const char *s1, const char *s2, __u32 n) {
+    for (__u32 i = 0; i < n; i++) {
+        if (s1[i] != s2[i] || s1[i] == '\0' || s2[i] == '\0') 
+            return 1; // Strings are different
+    }
+    return 0; // Strings are equal
+}
+
+__u8 is_resp_message(char *data, __u32 len) {
+    if (!data || len < 1)
+        return 0;
+    
     char resp_marker = data[0];
     return (resp_marker == '+' || resp_marker == '-' || resp_marker == ':' ||
-            resp_marker == '$' || resp_marker == '*');
+        resp_marker == '$' || resp_marker == '*');
 }
+
+// static __inline int read_pkt_data(struct __sk_buff *skb, int offset, char *buf, int len) {
+//     if (len > 64)  // Ensure the buffer size is within verifier limits
+//         return -1;
+
+//     char tmp[64];  // Ensure the buffer is aligned and within limits
+//     if ()
+//         return -1;
+
+//     for (int i = 0; i < len; i++) {
+//         buf[i] = tmp[i];
+//     }
+//     return 0;
+// }
+
+// Extract the RESP bulk string (command) from packet data
+// static __inline int extract_resp_command(struct __sk_buff *skb, int offset, char *cmd) {
+    
+//     return cmd_len;
+// }
+
+// __u8 is_resp_write_request(struct __sk_buff *skb, int offset){
+    
+//     return 0;
+// }
 
 SEC("socket")
 int socket__filter_tcp(struct __sk_buff *skb)
@@ -75,16 +127,74 @@ int socket__filter_tcp(struct __sk_buff *skb)
     if (tcp_hdr.dest != bpf_htons(SERVER_PORT) && tcp_hdr.source != bpf_htons(SERVER_PORT))  // filter dest port
         return 0;
 
+
     char payload[120] = {0};
 
-    if (skb->len < ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4 + 7)
+    if (skb->len < ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4 + 1)
         return 0;
 
-    if (bpf_skb_load_bytes(skb, ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4, payload, 7) < 0)
+    if (bpf_skb_load_bytes(skb, ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4, payload, 1) < 0)
         return 0;
 
-    if (!is_resp_message(payload, 7))
+    if (!is_resp_message(payload, 1))
         return 0;
+    
+    if(tcp_hdr.dest == bpf_htons(SERVER_PORT) ){
+        struct connection_key key = {};  // Zero initialize
+        key.ip = ip_hdr.saddr;
+        key.port = bpf_ntohs(tcp_hdr.source);
+        // // __u64 *record = bpf_map_lookup_elem(&write_response, &key);
+        // int offset = ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4;
+        // char header[29]; // To read length prefix ($N\r\n)
+        // int payload_size = skb->len - offset;
+        // if (payload_size > 29) 
+        //     payload_size = 29;
+        // if (payload_size <= 0) 
+        //     return 0;
+        // if (skb->len < offset + payload_size)
+        //     return 0;
+        // if (bpf_skb_load_bytes(skb, offset, header, payload_size) < 0)
+        //     return 0;
+
+        // if (header[0] != '$') // Bulk string must start with $
+        //     return 0;
+
+        // int cmd_len = header[1] - '0'; // Convert ASCII to int (assuming single-digit length)
+        // if (cmd_len <= 0 || cmd_len >= MAX_CMD_LEN)
+        //     return 0;
+        // if (skb->len < offset + 3 + cmd_len)
+        //     return 0;    
+        // if (bpf_skb_load_bytes(skb, offset+3, cmd, cmd_len) < 0) // Skip "$N\r\n"
+        //     return 0;
+
+        // cmd[cmd_len] = '\0'; // Null-terminate
+
+        // for (int j = 0; write_commands[j] != NULL; j++) {
+        //     if (bpf_strncmp(cmd, write_commands[j], cmd_len) == 0) {
+        //         // if (record){
+        //         //     *record = 1;
+        //         // }
+        //         return -1; // Write request detected
+        //     }
+        // }
+        
+        // if (record){
+        //     *record = 0;
+        //     return 0;
+        // }
+        
+    }else{
+        struct connection_key key = {};  // Zero initialize
+        key.ip = ip_hdr.daddr;
+        key.port = bpf_ntohs(tcp_hdr.dest);
+        __u64 *record = bpf_map_lookup_elem(&write_response, &key);
+        if (record && *record != 1)
+            return 0;
+    }
+
+    
+    // bpf_printk("TCP Resp: %pI4:%d\n", &ip_hdr.saddr, bpf_ntohs(tcp_hdr.source));
+
 
     return -1;
 }
@@ -107,8 +217,8 @@ int bpf_call_inet_csk_accept(struct pt_regs *ctx) {
     
     if (sport != SERVER_PORT)
         return 0;
-    bpf_printk("Opening connection: saddr=%pI4 sport=%d -> daddr=%pI4\n",
-               &saddr, sport, &daddr);
+    // bpf_printk("Opening connection: saddr=%pI4 sport=%d -> daddr=%pI4\n",
+    //            &saddr, sport, &daddr);
 
     struct connection_event *event = bpf_ringbuf_reserve(&conn_ringbuf, sizeof(struct connection_event), 0);
     if (!event) {
@@ -143,8 +253,8 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
     
     if (sport != SERVER_PORT)
         return 0;
-    bpf_printk("Closing connection: saddr=%pI4 sport=%d -> dport=%d\n",
-               &saddr, sport, dport);
+    // bpf_printk("Closing connection: saddr=%pI4 sport=%d -> dport=%d\n",
+    //            &saddr, sport, dport);
     struct connection_event *event = bpf_ringbuf_reserve(&conn_ringbuf, sizeof(struct connection_event), 0);
     if (!event) {
         bpf_printk("close event ringbuf reserve failed\n");

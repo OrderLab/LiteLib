@@ -1,23 +1,42 @@
 #pragma once
 
 #include <pthread.h>
-
 #include <barrier>
 #include <bpf/bpf.h>
+#include <event2/event.h>
+#include <event2/util.h>
+#include <unordered_map>
+#include <utility>  // for std::pair
+#include <glog/logging.h>  // for PCHECK and LOG
 
 #include "litesys.skel.h"
 #include "connection.hpp"
 #include "core.hpp"
 #include "thread_safe_queue.hpp"
 #include "thread_safe_set.hpp"
+#include "worker.hpp"
+
+#define ACCEPT 1
+#define CLOSE 2
 
 namespace lite {
+
+// Add hash function for std::pair before the structs
+struct PairHash {
+  template <class T1, class T2>
+  std::size_t operator()(const std::pair<T1, T2>& p) const {
+    auto h1 = std::hash<T1>{}(p.first);
+    auto h2 = std::hash<T2>{}(p.second);
+    auto hash = h1 ^ (h2 << 1);
+    return hash;  // Combine the hash values
+  }
+};
 
 struct event_type_header {
     int kind;  // ACCEPT or CLOSE
 };
 
-struct socket_info {
+struct tcp_info {
     uint8_t proto;
     uint32_t saddr;
     uint16_t sport;
@@ -28,10 +47,14 @@ struct socket_info {
 
 struct ConnectionEvent {
     struct event_type_header header;
-    struct socket_info socket;
+    struct tcp_info connection;
 };
 
 struct ParseResult{
+    std::unique_ptr<char[]> src_ip;
+    uint16_t src_port;
+    std::unique_ptr<char[]> dst_ip;
+    uint16_t dst_port;
     unsigned char* payload;
     int len;
     bool request_dir;
@@ -41,11 +64,14 @@ struct ParseResult{
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-class EbpfWorker {
+class EbpfWorker : public Worker<Application, Request, Response,
+                                 ConnectionInfo, CacheKey, CacheEntry> {
   using ConnectionInstance = Connection<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>;
   using LiteCoreInstance = LiteCore<Application, Request, Response,
                                     ConnectionInfo, CacheKey, CacheEntry>;
+  using WorkerBase = Worker<Application, Request, Response,
+                            ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
   explicit EbpfWorker(LiteCoreInstance &lite_core,
@@ -58,19 +84,16 @@ class EbpfWorker {
 
 
   //Set Mode
-  static int SetMode(int mode);
+  int SetMode(int mode);
 
   /// The file descriptor used to signal the worker thread.
   evutil_socket_t notify_event_fd;
-
-  /// The queue used to store the notification.
-  ThreadSafeQueue<WorkerMessage> notify_queue_;
 
   /// The connections managed by the worker thread.
   ThreadSafeSet<ConnectionInstance *> conns_;
 
   /// Source Address, port to connection map
-  std::unordered_map<std::pair<uint32_t, uint16_t>, ConnectionInstance *> source_port_to_conn_;
+  std::unordered_map<std::pair<std::string, uint16_t>, ConnectionInstance *, PairHash> source_to_conn_;
 
  private:
   /// PID of the worker thread.
@@ -84,6 +107,11 @@ class EbpfWorker {
 
   struct litesys_bpf *skel;
 
+
+  struct ring_buffer *rb;
+
+  int prog_fd_;
+
   /// The underlying service implementation.
   LiteCoreInstance &lite_core_;
 
@@ -95,14 +123,19 @@ class EbpfWorker {
   /// Handle a new notification.
   static void NotifyHandler(evutil_socket_t fd, short which, void *arg_self);
 
+  /// Timer handler for ring buffer polling
+  static void TimerHandler(evutil_socket_t fd, short events, void* arg);
+
+  static int HandleConnection(void *ctx, void *data, size_t data_sz);
+
   /// Parse the TCP data.
-  static struct parse_result parse_tcp_data(unsigned char *buffer, int size);
+  static ParseResult parse_tcp_data(unsigned char *buffer, int size);
 
   /// Check the direction of the TCP data.
   static bool check_dir(char* src_ip, uint16_t sport, char* dst_ip, uint16_t dport);
 
   /// Convert the port to network order.
-  static uint16_t htons_custom(uint16_t i);
+  uint16_t htons_custom(uint16_t i);
 };
 
 }  // namespace lite

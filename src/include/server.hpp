@@ -22,6 +22,8 @@ class LiteServer {
                                     ConnectionInfo, CacheKey, CacheEntry>;
   using WorkerInstance = Worker<Application, Request, Response, ConnectionInfo,
                                 CacheKey, CacheEntry>;
+  using EbpfWorkerInstance = EbpfWorker<Application, Request, Response, ConnectionInfo,
+                                CacheKey, CacheEntry>;
   using CacheInstance = Cache<Application, Request, Response, ConnectionInfo,
                               CacheKey, CacheEntry>;
 
@@ -53,6 +55,8 @@ class LiteServer {
 
   /// The internal lite server
   LiteCoreInstance lite_core_;
+
+  std::unique_ptr<EbpfWorkerInstance> ebpf_worker_;
 
   /// The worker threads.
   std::vector<std::unique_ptr<WorkerInstance>> workers_;

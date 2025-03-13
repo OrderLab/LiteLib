@@ -67,6 +67,8 @@ class LiteCore : public Daemon {
 
   bool is_replaying_ = false;
 
+  bool is_ebpf_ = true;
+
   ThreadSafeSet<ConnectionInstance *> live_connections_;
 
   CacheInnerInstance cache_inner_;
