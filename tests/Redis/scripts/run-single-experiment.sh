@@ -126,6 +126,7 @@ kill_vanilla_server() {
 $SCRIPT_DIR/setup-experiment.sh $MODE $SUFFIX
 
 # Clean up previous logs and dump files
+rm -f $SCRIPT_DIR/logs/$MODE-$SUFFIX.log
 rm -f $SCRIPT_DIR/*.rdb
 
 # Start relevant monitoring processes

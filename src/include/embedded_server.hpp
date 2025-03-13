@@ -161,6 +161,8 @@ class EmbeddedServer {
         close(received_fds[i]);
       }
 
+      emergency_mode_ptr_->store(false);
+
       if (fd_to_listener_.size() != lens[1] - lens[0]) {
         LOG(ERROR) << "LiteSys: Number of listener FDs mismatch";
         close(epoll_fd);
@@ -180,8 +182,6 @@ class EmbeddedServer {
         ReinstallListenerEventHandler(listener, 1);
         close(received_fds[id - 1]);
       }
-
-      emergency_mode_ptr_->store(false);
 
       close(epoll_fd);
 
