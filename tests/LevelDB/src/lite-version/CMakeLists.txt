@@ -19,6 +19,11 @@ if(NOT GPERFTOOLS_LIBRARY)
     message(FATAL_ERROR "gperftools library not found")
 endif()
 
+find_library(LIBBPF_LIBRARY NAMES bpf libbpf)
+if(NOT LIBBPF_LIBRARY)
+    message(FATAL_ERROR "libbpf library not found")
+endif()
+
 add_subdirectory(Lite)
 
 add_executable(${PROJECT_NAME})
@@ -36,5 +41,6 @@ target_sources(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
 target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog tcmalloc)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBBPF_LIBRARY})
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

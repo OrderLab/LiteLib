@@ -57,6 +57,10 @@ class Connection {
 
   static void BackendHandler(evutil_socket_t fd, short which, void* arg_conn);
 
+  void RequestUpdate(uint8_t* buffer, int len);
+
+  void ResponseUpdate(uint8_t* buffer, int len);
+
   /// Try to connect to the backend and set event
   bool ConnectBackend();
 

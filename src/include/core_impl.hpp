@@ -55,7 +55,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                   const evutil_socket_t client_fd,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
                   LoggerInstance *logger, const bool forwarded) {
-  if (!emergency_mode_ && backend_fd <= 0) {
+  if (!emergency_mode_ && backend_fd <= 0 && !is_ebpf_) {
     LOG(WARNING) << "Core: Fall back and entering emergency mode "
                  << GetUNIXTimeStamp() << std::endl;
     TakeOver();
@@ -81,7 +81,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       return false;
     }
   } else {
-    if (!forwarded) {
+    if (!forwarded && !is_ebpf_) {
       const auto buffer = req->Serialize();
       if (!network::Write(backend_fd, buffer)) {
         LOG(ERROR) << "Failed to write request to backend" << std::endl;
@@ -109,7 +109,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   const auto [related_stateful_request, forward_resp] =
       app_.Match(resp, conn_info, pending_requests);
   if (forward_resp) {
-    if (!forwarded) {
+    if (!forwarded && !is_ebpf_) {
       const auto buffer = resp->Serialize();
       if (!network::Write(client_fd, buffer)) {
         LOG(ERROR) << "Failed to write response to client" << std::endl;

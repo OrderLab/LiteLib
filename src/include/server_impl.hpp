@@ -34,12 +34,18 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
   event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
   main_base_ = event_base_new_with_config(ev_config);
   event_config_free(ev_config);
- 
-  // for (int i = 0; i < nthreads; i++) {
-  //   workers_.emplace_back(new WorkerInstance(lite_core_, barrier_));
-  //   (**workers_.rbegin()).Run();
-  // }
-  // next_worker_ = workers_.begin();
+
+  if(lite_core_.is_ebpf_){
+    ebpf_worker_ = std::make_unique<EbpfWorkerInstance>(lite_core_, barrier_);
+    ebpf_worker_->Run();
+  } 
+  else{
+    for (int i = 0; i < nthreads; i++) {
+      workers_.emplace_back(new WorkerInstance(lite_core_, barrier_));
+      (**workers_.rbegin()).Run();
+    }
+    next_worker_ = workers_.begin();
+  }
 }
 
 template <typename Application, typename Request, typename Response,
@@ -48,7 +54,9 @@ template <typename Application, typename Request, typename Response,
 bool LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Run(const char* port) {
   signal(SIGPIPE, SIG_IGN);
-
+  while(lite_core_.is_ebpf_){
+    sleep(10);
+  }
   int sfd;
   struct linger ling = {0, 0};
   struct addrinfo* ai;

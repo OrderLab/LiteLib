@@ -120,6 +120,8 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
       return;
     }
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
+
+    std::cout<<opcode<<" "<<*(key->value)<<std::endl;
     if (key == nullptr) {
       LOG(ERROR) << "Invalid argument for set\n";
       return;
