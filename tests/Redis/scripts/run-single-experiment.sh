@@ -36,7 +36,11 @@ kill_process_by_port() {
   fi
   local pids=$(lsof -t -i @$addr:$port)
   if [ -n "$pids" ]; then
-    kill -15 $pids
+    if [ "$MODE" == "replica"]; then
+        kill -9 $pids # replica will use slave later, don't need to dump rdb
+    else
+        kill -15 $pids
+    fi
     echo "Killed processes on port $port: $pids"
   else
     echo "No processes found on port $port"

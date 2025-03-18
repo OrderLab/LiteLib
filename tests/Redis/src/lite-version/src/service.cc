@@ -171,10 +171,8 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
           nullptr, shm->get_segment_manager(),
           ShmDeleter<MapType>(shm->get_segment_manager()));
       // get original value
-      bool found = false;
       if (likely(cache->Get(cache_key, cache_entry, in_transaction))) {
         map = cache_entry.map_value;
-        found = true;
       } else {
         map = ShmMakeShared(
             shm->get_segment_manager()->template construct<MapType>(
@@ -190,16 +188,10 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
                             shm->get_segment_manager());
         map->insert_or_assign(shm_field, shm_value);
       }
-      if (found) {
-        // map is shared, so we don't need to reset it
-        if (unlikely(in_emergency))
-          return std::make_pair(RESPPacket::ResponseSimpleString(
-                                    "OK", shm->get_segment_manager()),
-                                false);
-        return std::nullopt;
-      }
       cache_entry.SetType(CacheEntryType::MAP);
       cache_entry.map_value = map;
+      // we still need to set the key even if the map is shared, because we need
+      // to update the dirty node
       if (unlikely(!cache->Set(cache_key, cache_entry, in_transaction))) {
         LOG(ERROR) << "Failed to set key: " << cache_key << std::endl;
         if (unlikely(in_emergency))

@@ -40,10 +40,10 @@ index cc84d09ad..713ccb0c4 100644
  REDIS_BENCHMARK_NAME=redis-benchmark$(PROG_SUFFIX)
 diff --git a/src/litesys.c b/src/litesys.c
 new file mode 100644
-index 000000000..f02883ca1
+index 000000000..642b6e036
 --- /dev/null
 +++ b/src/litesys.c
-@@ -0,0 +1,111 @@
+@@ -0,0 +1,109 @@
 +#include "litesys.h"
 +
 +#include <embedded_lite.h>
@@ -57,9 +57,7 @@ index 000000000..f02883ca1
 +}
 +
 +void LiteQueueEmbeddedRequest(client *c, int success) {
-+  if (!success) {
-+    return;  // TODO: handle failure in emergency mode
-+  }
++  if (likely(success) && unlikely(!LiteIsNormalMode())) return;
 +
 +  EmbeddedRequestType type;
 +  if (likely(c->cmd->proc == hgetallCommand)) {
@@ -91,7 +89,7 @@ index 000000000..f02883ca1
 +    request->argv_len[i] = sdslen(orig_argv[i]->ptr);
 +  }
 +
-+  LiteProcessRequest(c->litesys_data, request);
++  LiteProcessRequest(c->litesys_data, request, success);
 +}
 +
 +void LiteFreeEmbeddedRequest(void *arg) {
