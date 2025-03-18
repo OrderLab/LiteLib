@@ -29,7 +29,7 @@ int LiteGetDummyListenerFD(void);
 void *LiteRegisterClient(int fd, void *client);
 void LiteUnregisterClient(int fd);
 
-int LiteProcessRequest(void *conn_info, void *request);
+int LiteProcessRequest(void *conn_info, void *request, int is_success);
 
 #ifdef __cplusplus
 }

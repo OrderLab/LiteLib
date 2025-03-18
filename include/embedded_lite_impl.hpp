@@ -371,7 +371,7 @@ template <typename Application, typename Request, typename Response,
            IsProtocolMessage<Request> && IsProtocolMessage<Response> &&
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
-int ProcessRequest(void *conn_info, void *request) {
+int ProcessRequest(void *conn_info, void *request, bool is_success) {
   if (unlikely(!embedded_server_void_ptr)) {
     LOG(ERROR) << "ProcessRequest called after SignalHandler";
     return -1;
@@ -380,7 +380,8 @@ int ProcessRequest(void *conn_info, void *request) {
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
           embedded_server_void_ptr);
-  if (!embedded_server_ptr->emergency_mode_ptr_->load()) {
+  if (likely(!embedded_server_ptr->emergency_mode_ptr_->load())) {
+    if (unlikely(!is_success)) return 0;
     auto job =
         new EmbeddedNormalUpdateMessage<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>{
@@ -393,8 +394,7 @@ int ProcessRequest(void *conn_info, void *request) {
     embedded_server_ptr->SendMessageToNextWorker(msg);
     return 0;
   } else {
-    // TODO: process error during replay, and let TransitionToNormalMode wait
-    // for it
+    if (likely(!is_success)) LOG(ERROR) << "Replay request failed";
     return 0;
   }
 }
