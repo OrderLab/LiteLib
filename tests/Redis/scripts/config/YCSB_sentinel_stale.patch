@@ -1,27 +1,73 @@
-From 50dae09d7e77bb79e07cdd88c224dfcd4440818c Mon Sep 17 00:00:00 2001
-From: GuTaoZi <gutao.official@gmail.com>
-Date: Sun, 8 Dec 2024 05:53:28 -0600
-Subject: [PATCH] YCSB for Redis Sentinel
-
----
- core/src/main/java/site/ycsb/DBWrapper.java   |   6 +-
- core/src/main/java/site/ycsb/Status.java      |   8 +
- .../main/java/site/ycsb/db/RedisClient.java   | 232 ++++++++++--------
- workloads/ycsb_workload                       |  40 +++
- 4 files changed, 183 insertions(+), 103 deletions(-)
- create mode 100644 workloads/ycsb_workload
-
+diff --git a/core/src/main/java/site/ycsb/ClientThread.java b/core/src/main/java/site/ycsb/ClientThread.java
+index fcfc1326..10c88ae5 100644
+--- a/core/src/main/java/site/ycsb/ClientThread.java
++++ b/core/src/main/java/site/ycsb/ClientThread.java
+@@ -38,6 +38,7 @@ public class ClientThread implements Runnable {
+   private double targetOpsPerMs;
+ 
+   private int opsdone;
++  private int opsdoneLastSecond;
+   private int threadid;
+   private int threadcount;
+   private Object workloadstate;
+@@ -124,8 +125,8 @@ public class ClientThread implements Runnable {
+           }
+ 
+           opsdone++;
+-
+-          throttleNanos(startTimeNanos);
++          opsdoneLastSecond++;
++          startTimeNanos = throttleNanos(startTimeNanos);
+         }
+       } else {
+         long startTimeNanos = System.nanoTime();
+@@ -137,8 +138,9 @@ public class ClientThread implements Runnable {
+           }
+ 
+           opsdone++;
++          opsdoneLastSecond++;
+ 
+-          throttleNanos(startTimeNanos);
++          startTimeNanos = throttleNanos(startTimeNanos);
+         }
+       }
+     } catch (Exception e) {
+@@ -166,14 +168,20 @@ public class ClientThread implements Runnable {
+     }
+   }
+ 
+-  private void throttleNanos(long startTimeNanos) {
++  private long throttleNanos(long startTimeNanos) {
+     //throttle the operations
+     if (targetOpsPerMs > 0) {
+       // delay until next tick
+-      long deadline = startTimeNanos + opsdone * targetOpsTickNs;
++      long deadline = startTimeNanos + opsdoneLastSecond * targetOpsTickNs;
++      long now = System.nanoTime();
++      if (now >= startTimeNanos + 1000000000) {
++        startTimeNanos = now;
++        opsdoneLastSecond = 0;
++      }
+       sleepUntil(deadline);
+       measurements.setIntendedStartTimeNs(deadline);
+     }
++    return startTimeNanos;
+   }
+ 
+   /**
 diff --git a/core/src/main/java/site/ycsb/DBWrapper.java b/core/src/main/java/site/ycsb/DBWrapper.java
-index 60e96c20..01657432 100644
+index 60e96c20..28988130 100644
 --- a/core/src/main/java/site/ycsb/DBWrapper.java
 +++ b/core/src/main/java/site/ycsb/DBWrapper.java
-@@ -178,7 +178,11 @@ public class DBWrapper extends DB {
+@@ -178,7 +178,13 @@ public class DBWrapper extends DB {
            this.latencyTrackedErrors.contains(result.getName())) {
          measurementName = op + "-" + result.getName();
        } else {
 -        measurementName = op + "-FAILED";
 +        if (result.isMissed()) {
 +          measurementName = op + "-MISSED";
++        } else if (result.isStale()) {
++          measurementName = op + "-STALE";
 +        } else {
 +          measurementName = op + "-FAILED";
 +        }
@@ -29,10 +75,10 @@ index 60e96c20..01657432 100644
      }
      measurements.measure(measurementName,
 diff --git a/core/src/main/java/site/ycsb/Status.java b/core/src/main/java/site/ycsb/Status.java
-index 8a27cc93..a8ecd1ca 100644
+index 8a27cc93..2e62a96b 100644
 --- a/core/src/main/java/site/ycsb/Status.java
 +++ b/core/src/main/java/site/ycsb/Status.java
-@@ -93,8 +93,16 @@ public class Status {
+@@ -93,8 +93,24 @@ public class Status {
      return this == OK || this == BATCHED_OK;
    }
  
@@ -43,14 +89,22 @@ index 8a27cc93..a8ecd1ca 100644
 +    return this == MISSED;
 +  }
 +
++  /**
++   * Return true if the status is STALE.
++   */
++  public boolean isStale() {
++    return this == STALE;
++  }
++
    public static final Status OK = new Status("OK", "The operation completed successfully.");
    public static final Status ERROR = new Status("ERROR", "The operation failed.");
-+  public static final Status MISSED = new Status("MISSED", "Cache Miss.");
++  public static final Status MISSED = new Status("MISSED", "The operation failed because the data is missed.");
++  public static final Status STALE = new Status("STALE", "The operation failed because the data is stale.");
    public static final Status NOT_FOUND = new Status("NOT_FOUND", "The requested record was not found.");
    public static final Status NOT_IMPLEMENTED = new Status("NOT_IMPLEMENTED", "The operation is not " +
        "implemented for the current binding.");
 diff --git a/redis/src/main/java/site/ycsb/db/RedisClient.java b/redis/src/main/java/site/ycsb/db/RedisClient.java
-index 2de9ad23..8440c0f9 100644
+index 2de9ad23..c5d98936 100644
 --- a/redis/src/main/java/site/ycsb/db/RedisClient.java
 +++ b/redis/src/main/java/site/ycsb/db/RedisClient.java
 @@ -1,27 +1,3 @@
@@ -81,7 +135,7 @@ index 2de9ad23..8440c0f9 100644
  package site.ycsb.db;
  
  import site.ycsb.ByteIterator;
-@@ -29,23 +5,24 @@ import site.ycsb.DB;
+@@ -29,23 +5,26 @@ import site.ycsb.DB;
  import site.ycsb.DBException;
  import site.ycsb.Status;
  import site.ycsb.StringByteIterator;
@@ -105,13 +159,15 @@ index 2de9ad23..8440c0f9 100644
  import java.util.Set;
  import java.util.Vector;
 +import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.locks.ReentrantLock;
 +
-+import java.util.logging.Level;
-+import java.util.logging.Logger;
++// import java.util.logging.Level;
++// import java.util.logging.Logger;
  
  /**
   * YCSB binding for <a href="http://redis.io/">Redis</a>.
-@@ -54,17 +31,26 @@ import java.util.Vector;
+@@ -54,17 +33,65 @@ import java.util.Vector;
   */
  public class RedisClient extends DB {
  
@@ -129,22 +185,63 @@ index 2de9ad23..8440c0f9 100644
    public static final String TIMEOUT_PROPERTY = "redis.timeout";
  
    public static final String INDEX_KEY = "_indices";
- 
++  
++  // Lock timeout in milliseconds
++  private static final long LOCK_TIMEOUT_MS = 1000;
++  
++  // Changed from AtomicLong to Long since we're using locks for thread safety
 +  private static final Map<String, Long> KEY_VERSIONS = new ConcurrentHashMap<>();
-+  private static final Map<String, Object> KEY_LOCKS = new ConcurrentHashMap<>();
++  // Map to store locks for each key
++  private static final ConcurrentHashMap<String, ReentrantLock> KEY_LOCKS = new ConcurrentHashMap<>();
 +
++  // Helper method to get or create a lock for a key
++  private ReentrantLock getLockForKey(String key) {
++    return KEY_LOCKS.computeIfAbsent(key, k -> new ReentrantLock());
++  }
++  
++  // Helper method to acquire a lock with timeout
++  private boolean acquireLock(String key) {
++    ReentrantLock lock = getLockForKey(key);
++    try {
++      return lock.tryLock(LOCK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
++    } catch (InterruptedException e) {
++      Thread.currentThread().interrupt();
++      return false;
++    }
++  }
++  
++  // Helper method to release a lock
++  private void releaseLock(String key) {
++    ReentrantLock lock = KEY_LOCKS.get(key);
++    if (lock != null && lock.isHeldByCurrentThread()) {
++      lock.unlock();
++    }
++  }
++
++  // Changed to return Long instead of AtomicLong
++  private Long getVersionCounter(String key) {
++    return KEY_VERSIONS.computeIfAbsent(key, k -> 0L);
++  }
++
++  // Helper to update version
++  private void setVersionCounter(String key, Long version) {
++    KEY_VERSIONS.put(key, version);
++  }
+ 
    public void init() throws DBException {
-+    Logger logger = Logger.getLogger("redis.clients.jedis");
-+    logger.setLevel(Level.WARNING);
++    // Logger logger = Logger.getLogger("redis.clients.jedis");
++    // logger.setLevel(Level.WARNING);
 +
      Properties props = getProperties();
      int port;
  
-@@ -75,108 +61,150 @@ public class RedisClient extends DB {
+@@ -75,108 +102,235 @@ public class RedisClient extends DB {
        port = Protocol.DEFAULT_PORT;
      }
      String host = props.getProperty(HOST_PROPERTY);
--
++    String sentinel = props.getProperty(SENTINEL_PROPERTY);
++    String sentinelMaster = props.getProperty(SENTINEL_MASTER_PROPERTY);
+ 
 -    boolean clusterEnabled = Boolean.parseBoolean(props.getProperty(CLUSTER_PROPERTY));
 -    if (clusterEnabled) {
 -      Set<HostAndPort> jedisClusterNodes = new HashSet<>();
@@ -156,9 +253,6 @@ index 2de9ad23..8440c0f9 100644
 -        jedis = new Jedis(host, port, Integer.parseInt(redisTimeout));
 -      } else {
 -        jedis = new Jedis(host, port);
-+    String sentinel = props.getProperty(SENTINEL_PROPERTY);
-+    String sentinelMaster = props.getProperty(SENTINEL_MASTER_PROPERTY);
-+
 +    if (sentinel != null && sentinelMaster != null) {
 +      useSentinel = true;
 +      Set<String> sentinels = Set.of(sentinel.split(","));
@@ -231,10 +325,7 @@ index 2de9ad23..8440c0f9 100644
    }
  
 -  // XXX jedis.select(int index) to switch to `table`
-+  private Object getLockForKey(String key) {
-+    return KEY_LOCKS.computeIfAbsent(key, k -> new Object());
-+  }
- 
+-
    @Override
 -  public Status read(String table, String key, Set<String> fields,
 -      Map<String, ByteIterator> result) {
@@ -245,27 +336,49 @@ index 2de9ad23..8440c0f9 100644
 -          (String[]) fields.toArray(new String[fields.size()]);
 -      List<String> values = jedis.hmget(key, fieldArray);
 +  public Status read(String table, String key, Set<String> fields, Map<String, ByteIterator> result) {
++    // Acquire Java lock before proceeding
++    if (!acquireLock(key)) {
++      return Status.ERROR;
++    }
++    
 +    try (Jedis jedis = getJedisResource()) {
 +      if (fields == null) {
-+        long expectedVersion;
-+        synchronized (getLockForKey(key)) {
-+          expectedVersion = KEY_VERSIONS.getOrDefault(key, 0L);
++        long expectedVersion = getVersionCounter(key);
++        Map<String, String> values = jedis.hgetAll(key);
++        if (values.isEmpty()) {
++          return Status.MISSED;
 +        }
-+        StringByteIterator.putAllAsByteIterators(result, jedis.hgetAll(key));
-+
-+        // Check version if we have expected values
-+        if (!result.isEmpty()) {
-+          ByteIterator versionIterator = result.get("_version");
-+          String versionStr = versionIterator == null ? null : versionIterator.toString();
-+          long actualVersion = versionStr == null ? 0 : Long.parseLong(versionStr);
++        
++        // Check version consistency
++        String versionStr = values.get("_version");
++        long actualVersion = 0;
++        if (versionStr != null) {
++          actualVersion = Long.parseLong(versionStr);
++        }
 +          
-+          if (actualVersion < expectedVersion) {
-+            return Status.MISSED;
-+          }
++        // If the version in Redis is older than what we expect, it's stale data
++        if (actualVersion < expectedVersion) {
++          return Status.STALE;
 +        }
++        
++        StringByteIterator.putAllAsByteIterators(result, values);
 +      } else {
 +        String[] fieldArray = fields.toArray(new String[0]);
++        long expectedVersion = getVersionCounter(key);
 +        List<String> values = jedis.hmget(key, fieldArray);
++        
++        // Check if all values are null (key doesn't exist)
++        boolean allNull = true;
++        for (String value : values) {
++          if (value != null) {
++            allNull = false;
++            break;
++          }
++        }
++        
++        if (allNull) {
++          return Status.MISSED;
++        }
  
 -      Iterator<String> fieldIterator = fields.iterator();
 -      Iterator<String> valueIterator = values.iterator();
@@ -276,13 +389,43 @@ index 2de9ad23..8440c0f9 100644
 -        result.put(fieldIterator.next(),
 -            new StringByteIterator(valueIterator.next()));
 +        while (fieldIterator.hasNext() && valueIterator.hasNext()) {
-+          result.put(fieldIterator.next(), new StringByteIterator(valueIterator.next()));
++          String field = fieldIterator.next();
++          String value = valueIterator.next();
++          if (value != null) {
++            result.put(field, new StringByteIterator(value));
++          }
++        }
++
++        if (result.isEmpty()) {
++          return Status.MISSED;
++        }
++        
++        // If we're selecting specific fields, check if _version is among them
++        // If not, we need to fetch it separately to verify consistency
++        long actualVersion = 0;
++        if (fields.contains("_version")) {
++          String versionStr = result.get("_version").toString();
++          if (versionStr != null) {
++            actualVersion = Long.parseLong(versionStr);
++          }
++        } else {
++          String versionStr = jedis.hget(key, "_version");
++          if (versionStr != null) {
++            actualVersion = Long.parseLong(versionStr);
++          }
++        }
++            
++        if (actualVersion < expectedVersion) {
++          return Status.STALE;
 +        }
        }
 -      assert !fieldIterator.hasNext() && !valueIterator.hasNext();
-+      return result.isEmpty() ? Status.MISSED : Status.OK;
++      return Status.OK;
 +    } catch (Exception e) {
 +      return Status.ERROR;
++    } finally {
++      // Always release the lock when done
++      releaseLock(key);
      }
 -    return result.isEmpty() ? Status.ERROR : Status.OK;
    }
@@ -295,13 +438,27 @@ index 2de9ad23..8440c0f9 100644
 -      jedis.zadd(INDEX_KEY, hash(key), key);
 -      return Status.OK;
 +  public Status insert(String table, String key, Map<String, ByteIterator> values) {
++    // Acquire Java lock before proceeding
++    if (!acquireLock(key)) {
++      return Status.ERROR;
++    }
++    
 +    try (Jedis jedis = getJedisResource()) {
++      // Set initial version for new keys
++      long newVersion = 1L;
++      values.put("_version", new StringByteIterator(String.valueOf(newVersion)));
++      
 +      if (jedis.hmset(key, StringByteIterator.getStringMap(values)).equals("OK")) {
++        // Update our local version tracking
++        setVersionCounter(key, newVersion);
 +        return Status.OK;
 +      }
 +      return Status.ERROR;
 +    } catch (Exception e) {
 +      return Status.ERROR;
++    } finally {
++      // Always release the lock when done
++      releaseLock(key);
      }
 -    return Status.ERROR;
    }
@@ -310,10 +467,26 @@ index 2de9ad23..8440c0f9 100644
    public Status delete(String table, String key) {
 -    return jedis.del(key) == 0 && jedis.zrem(INDEX_KEY, key) == 0 ? Status.ERROR
 -        : Status.OK;
++    // Acquire Java lock before proceeding
++    if (!acquireLock(key)) {
++      return Status.ERROR;
++    }
++    
 +    try (Jedis jedis = getJedisResource()) {
-+      return jedis.del(key) == 0 ? Status.ERROR : Status.OK;
++      long result = jedis.del(key);
++      if (result > 0) {
++        // Remove from version tracking
++        KEY_VERSIONS.remove(key);
++        // Also remove the lock for this key
++        KEY_LOCKS.remove(key);
++        return Status.OK;
++      }
++      return Status.ERROR;
 +    } catch (Exception e) {
 +      return Status.ERROR;
++    } finally {
++      // Always release the lock when done
++      releaseLock(key);
 +    }
    }
  
@@ -323,21 +496,28 @@ index 2de9ad23..8440c0f9 100644
 -    return jedis.hmset(key, StringByteIterator.getStringMap(values))
 -        .equals("OK") ? Status.OK : Status.ERROR;
 +  public Status update(String table, String key, Map<String, ByteIterator> values) {
++    // Acquire Java lock before proceeding
++    if (!acquireLock(key)) {
++      return Status.ERROR;
++    }
++    
 +    try (Jedis jedis = getJedisResource()) {
-+      long newVersion;
-+      synchronized (getLockForKey(key)) {
-+        newVersion = KEY_VERSIONS.getOrDefault(key, 0L) + 1;
-+        // Add version to values
-+        values.put("_version", new StringByteIterator(String.valueOf(newVersion)));
-+        
-+        if (jedis.hmset(key, StringByteIterator.getStringMap(values)).equals("OK")) {
-+          KEY_VERSIONS.put(key, newVersion);
-+          return Status.OK;
-+        }
++      // Increment version
++      long currentVersion = getVersionCounter(key);
++      long newVersion = currentVersion + 1;
++      values.put("_version", new StringByteIterator(String.valueOf(newVersion)));
++      
++      if (jedis.hmset(key, StringByteIterator.getStringMap(values)).equals("OK")) {
++        // Update our local version tracking
++        setVersionCounter(key, newVersion);
++        return Status.OK;
 +      }
 +      return Status.ERROR;
 +    } catch (Exception e) {
 +      return Status.ERROR;
++    } finally {
++      // Always release the lock when done
++      releaseLock(key);
 +    }
    }
  
@@ -363,52 +543,3 @@ index 2de9ad23..8440c0f9 100644
 -}
 +}
 \ No newline at end of file
-diff --git a/workloads/ycsb_workload b/workloads/ycsb_workload
-new file mode 100644
-index 00000000..2bc9b8fc
---- /dev/null
-+++ b/workloads/ycsb_workload
-@@ -0,0 +1,40 @@
-+# Copyright (c) 2010 Yahoo! Inc. All rights reserved.                                                                                                                             
-+#                                                                                                                                                                                 
-+# Licensed under the Apache License, Version 2.0 (the "License"); you                                                                                                             
-+# may not use this file except in compliance with the License. You                                                                                                                
-+# may obtain a copy of the License at                                                                                                                                             
-+#                                                                                                                                                                                 
-+# http://www.apache.org/licenses/LICENSE-2.0                                                                                                                                      
-+#                                                                                                                                                                                 
-+# Unless required by applicable law or agreed to in writing, software                                                                                                             
-+# distributed under the License is distributed on an "AS IS" BASIS,                                                                                                               
-+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or                                                                                                                 
-+# implied. See the License for the specific language governing                                                                                                                    
-+# permissions and limitations under the License. See accompanying                                                                                                                 
-+# LICENSE file.                                                                                                                                                                   
-+
-+
-+# Yahoo! Cloud System Benchmark
-+# Workload A: Update heavy workload
-+#   Application example: Session store recording recent actions
-+#                        
-+#   Read/update ratio: 50/50
-+#   Default data size: 1 KB records (10 fields, 100 bytes each, plus key)
-+#   Request distribution: zipfian
-+
-+recordcount=500000
-+operationcount=10000000
-+workload=site.ycsb.workloads.CoreWorkload
-+
-+status.interval=1
-+
-+readallfields=true
-+
-+threadcount=30
-+readproportion=0.5
-+updateproportion=0.5
-+scanproportion=0
-+insertproportion=0
-+
-+requestdistribution=zipfian
-+
--- 
-2.34.1
-

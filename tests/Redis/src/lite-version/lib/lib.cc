@@ -16,9 +16,10 @@ __attribute__((visibility("default"))) int LiteInit(
     ReinstallListenerEventHandlerFn ReinstallListenerEventHandler) {
   auto ret = lite::Init<Redis, RESPPacket, RESPPacket, ConnectionInfo, CacheKey,
                         CacheEntry>(
-      argv_0, 1, 4ll * 1024 * 1024 * 1024, 16384 * 2, 1000ms, "/tmp/lite_Redis",
-      RequestDestructor, FlushWriteBuffer, ReinstallClientEventHandler,
-      ReinstallListenerEventHandler, &Redis::EmbeddedNormalUpdate);
+      argv_0, 1, 4ll * 1024 * 1024 * 1024, 16384 * 2 * 2, 1000ms,
+      "/tmp/lite_Redis", RequestDestructor, FlushWriteBuffer,
+      ReinstallClientEventHandler, ReinstallListenerEventHandler,
+      &Redis::EmbeddedNormalUpdate);
   shm = &static_cast<lite::EmbeddedServer<
       Redis, RESPPacket, RESPPacket, ConnectionInfo, CacheKey, CacheEntry> *>(
              lite::embedded_server_void_ptr)
@@ -64,8 +65,10 @@ __attribute__((visibility("default"))) void LiteUnregisterClient(int fd) {
 }
 
 __attribute__((visibility("default"))) int LiteProcessRequest(void *conn_info,
-                                                              void *request) {
+                                                              void *request,
+                                                              int is_success) {
   return lite::ProcessRequest<Redis, RESPPacket, RESPPacket, ConnectionInfo,
-                              CacheKey, CacheEntry>(conn_info, request);
+                              CacheKey, CacheEntry>(conn_info, request,
+                                                    is_success);
 }
 }  // extern "C"

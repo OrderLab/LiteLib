@@ -40,3 +40,5 @@ insertproportion=0
 
 requestdistribution=zipfian
 
+# main.cc: size_t cache_size(16384 * 8);
+# lib.cc: argv_0, 1, 4ll * 1024 * 1024 * 1024, 16384 * 2, 1000ms, "/tmp/lite_Redis",
