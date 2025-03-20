@@ -147,12 +147,9 @@ services:
       - jaeger-agent
       - jaeger-query
     hostname: post-storage-memcached
-    image: memcached
-    command:
-      - "-m 16384"
-      - "-t 8"
-      - "-I 32m"
-      - "-c 4096"
+    build:
+      context: ./docker/lite-memcached
+      dockerfile: Dockerfile
 
   post-storage-mongodb:
     depends_on:
