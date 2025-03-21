@@ -23,7 +23,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     depends_on:
       - jaeger-collector
 
@@ -37,7 +37,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["ComposePostService"]
     hostname: compose-post-service
     image: deathstarbench/social-network-microservices:latest
@@ -58,7 +58,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   home-timeline-service:
     depends_on:
@@ -70,7 +70,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["HomeTimelineService"]
     hostname: home-timeline-service
     image: deathstarbench/social-network-microservices:latest
@@ -88,7 +88,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     hostname: media-frontend
     image: yg397/media-frontend:xenial
     ports:
@@ -111,7 +111,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   media-mongodb:
     depends_on:
@@ -127,7 +127,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   media-service:
     depends_on:
@@ -140,7 +140,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["MediaService"]
     hostname: media-service
     image: deathstarbench/social-network-microservices:latest
@@ -158,7 +158,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     hostname: nginx-web-server
     image: yg397/openresty-thrift:xenial
     ports:
@@ -177,13 +177,11 @@ services:
       - jaeger-agent
       - jaeger-query
     hostname: post-storage-memcached
-    build:
-      context: ./docker/lite-memcached
-      dockerfile: Dockerfile
+    image: lite-memcached:latest
     deploy:
       placement:
         constraints:
-          - node.hostname==node3
+          - node.hostname==${NODE3_HOSTNAME}
 
   post-storage-mongodb:
     depends_on:
@@ -199,7 +197,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   post-storage-service:
     depends_on:
@@ -212,7 +210,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["PostStorageService"]
     hostname: post-storage-service
     image: deathstarbench/social-network-microservices:latest
@@ -234,7 +232,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   social-graph-redis:
     depends_on:
@@ -249,7 +247,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   social-graph-service:
     depends_on:
@@ -262,7 +260,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["SocialGraphService"]
     hostname: social-graph-service
     image: deathstarbench/social-network-microservices:latest
@@ -280,7 +278,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["TextService"]
     hostname: text-service
     image: deathstarbench/social-network-microservices:latest
@@ -298,7 +296,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["UniqueIdService"]
     hostname: unique-id-service
     image: deathstarbench/social-network-microservices:latest
@@ -320,7 +318,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   url-shorten-mongodb:
     depends_on:
@@ -336,7 +334,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   url-shorten-service:
     depends_on:
@@ -349,7 +347,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["UrlShortenService"]
     hostname: url-shorten-service
     image: deathstarbench/social-network-microservices:latest
@@ -371,7 +369,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   user-mention-service:
     depends_on:
@@ -383,7 +381,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["UserMentionService"]
     hostname: user-mention-service
     image: deathstarbench/social-network-microservices:latest
@@ -405,7 +403,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   user-service:
     depends_on:
@@ -418,7 +416,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["UserService"]
     hostname: user-service
     image: deathstarbench/social-network-microservices:latest
@@ -440,7 +438,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   user-timeline-redis:
     depends_on:
@@ -455,7 +453,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
   user-timeline-service:
     depends_on:
@@ -467,7 +465,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     command: ["UserTimelineService"]
     hostname: user-timeline-service
     image: deathstarbench/social-network-microservices:latest
@@ -491,7 +489,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     depends_on:
       - cassandra-schema
 
@@ -506,7 +504,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     depends_on:
       - cassandra-schema
 
@@ -517,7 +515,7 @@ services:
         condition: on-failure
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
     depends_on:
       - cassandra
 
@@ -526,7 +524,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.hostname==node2
+          - node.hostname==${NODE2_HOSTNAME}
 
 networks:
   default:

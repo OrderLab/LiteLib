@@ -5,6 +5,7 @@ LABEL maintainer="DeathStarBench"
 LABEL description="Memcached service with LiteSys"
 
 # Install bash for scripting
+USER root
 RUN apt-get update && apt-get install -y \
     bash \
     procps \
