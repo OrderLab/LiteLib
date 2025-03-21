@@ -26,3 +26,6 @@ pip3 aiohttp
 
 apt install -y lua5.1 luarocks
 luarocks install luasocket
+
+# Add current user to docker group to run docker without sudo
+usermod -aG docker $USER
