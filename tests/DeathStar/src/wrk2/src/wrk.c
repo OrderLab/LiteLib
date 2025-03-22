@@ -38,6 +38,13 @@ static struct {
     pthread_mutex_t mutex;
 } statistics;
 
+static struct {
+    struct hdr_histogram* current_histogram;
+    uint64_t current_second;
+    uint64_t current_requests;
+    uint64_t start_time;
+    pthread_mutex_t mutex;
+} combined_stats;
 
 static struct sock sock = {
     .connect  = sock_connect,
@@ -87,6 +94,8 @@ static void usage() {
            "  Time arguments may include a time unit (2s, 2m, 2h)            \n");
 }
 
+static void print_second_stats(struct hdr_histogram* hist, uint64_t throughput, uint64_t second);
+
 int main(int argc, char **argv) {
     char *url, **headers = zmalloc(argc * sizeof(char *));
     struct http_parser_url parts = {};
@@ -98,6 +107,13 @@ int main(int argc, char **argv) {
         usage();
         exit(1);
     }
+
+    // Initialize combined stats
+    pthread_mutex_init(&combined_stats.mutex, NULL);
+    hdr_init(1, MAX_LATENCY, 3, &combined_stats.current_histogram);
+    combined_stats.current_second = 0;
+    combined_stats.current_requests = 0;
+    combined_stats.start_time = time_us();
 
     thread *threads = zcalloc(cfg.num_urls * cfg.threads * sizeof(thread));
     uint64_t connections = cfg.connections / cfg.threads;
@@ -709,6 +725,29 @@ static int response_complete(http_parser *parser) {
         uint64_t actual_latency_timing = now - c->actual_latency_start[c->complete & MAXO];
         hdr_record_value(thread->latency_histogram, actual_latency_timing);
         hdr_record_value(thread->real_latency_histogram, actual_latency_timing);
+            
+        if (status == 200) {
+            pthread_mutex_lock(&combined_stats.mutex);
+            
+            uint64_t current_second = (now - combined_stats.start_time) / 1000000;
+            
+            if (current_second != combined_stats.current_second) {
+                // Only the first thread to see a new second will print
+                if (combined_stats.current_second > 0 && current_second > combined_stats.current_second) {
+                    print_second_stats(combined_stats.current_histogram, 
+                                    combined_stats.current_requests,
+                                    combined_stats.current_second);
+                    hdr_reset(combined_stats.current_histogram);
+                    combined_stats.current_requests = 0;
+                }
+                combined_stats.current_second = current_second;
+            }
+            
+            combined_stats.current_requests++;
+            hdr_record_value(combined_stats.current_histogram, actual_latency_timing);
+            
+            pthread_mutex_unlock(&combined_stats.mutex);
+        }
 
         thread->monitored++;
         thread->accum_latency += actual_latency_timing;
@@ -1049,6 +1088,22 @@ static void print_stats_latency(stats *stats) {
         uint64_t n = stats_percentile(stats, p);
         printf("%7.3Lf%%", p);
         print_units(n, format_time_us, 10);
+        printf("\n");
+    }
+}
+
+static void print_second_stats(struct hdr_histogram* hist, uint64_t throughput, uint64_t second) {    
+    printf("[%4"PRIu64"s] Throughput: %"PRIu64" req/s", 
+           second,
+           throughput);
+    
+    if (throughput > 0) {
+        printf(", Latency(ms): min=%.2f, mean=%.2f, max=%.2f, p95=%.2f\n",
+               hdr_min(hist) / 1000.0,
+               hdr_mean(hist) / 1000.0,
+               hdr_max(hist) / 1000.0,
+               hdr_value_at_percentile(hist, 95.0) / 1000.0);
+    } else {
         printf("\n");
     }
 }
