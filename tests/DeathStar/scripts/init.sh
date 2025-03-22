@@ -22,7 +22,7 @@ apt-get update
 
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-pip3 aiohttp
+pip3 install aiohttp
 
 apt install -y lua5.1 luarocks
 luarocks install luasocket

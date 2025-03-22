@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Hardcoded memcached configuration parameters
-MEMCACHED_PARAMS="-m 16384 -t 8 -I 32m -c 4096"
+MEMCACHED_PARAMS="-m 16384 -t 8 -I 32m -c 4096 -u root"
 
 # Start memcached with the hardcoded parameters
 echo "Starting memcached with parameters: ${MEMCACHED_PARAMS}"
