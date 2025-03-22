@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# If it is modified, please also update $repo_root/tests/DeathStar/src/socialNetwork/docker/lite-memcached/litesys_dependency.sh
+# If it is modified, please also update $repo_root/scripts/litesys_dependency.sh
 
 set -e
 set -x
@@ -8,10 +8,9 @@ set -x
 BOOST_VERSION=1.87.0
 LIBEVENT_VERSION=2.1.12
 NUM_JOBS=32
-FREQUENCY=2.2
 
 install_dependencies() {
-  apt-get install -y --no-install-recommends \
+  apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     software-properties-common \
     autoconf \
@@ -73,26 +72,16 @@ install_libevent() {
   make install
 }
 
-configure_ssh() {
-  apt-get install -y --no-install-recommends ssh
-  mkdir -p ${HOME}/.ssh
-  chmod 700 ${HOME}/.ssh
-  touch ${HOME}/.ssh/authorized_keys
-  # echo "#PasswordAuthentication no" >>/etc/ssh/sshd_config
-  # echo "PermitRootLogin yes" >>/etc/ssh/sshd_config
-}
-
-set_cpu_frequency() {
-  cpupower frequency-set -g performance
-  cpupower frequency-set -d ${FREQUENCY}GHz -u ${FREQUENCY}GHz
+docker_cleanup() {
+  apt-get clean
+  rm -rf /var/lib/apt/lists/*
 }
 
 main() {
   install_dependencies
-  set_cpu_frequency
   install_boost
   install_libevent
-  configure_ssh
+  docker_cleanup
 
   echo "Dependencies installed successfully!"
 }

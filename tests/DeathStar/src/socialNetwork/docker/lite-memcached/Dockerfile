@@ -1,15 +1,22 @@
-FROM memcached:latest
+FROM ubuntu:22.04
 
 # Set labels for better container management
 LABEL maintainer="DeathStarBench"
 LABEL description="Memcached service with LiteSys"
 
-# Install bash for scripting
-USER root
-RUN apt-get update && apt-get install -y \
-    bash \
-    procps \
-    && rm -rf /var/lib/apt/lists/*
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Copy the dependency script
+COPY litesys_dependency.sh /tmp/litesys_dependency.sh
+
+# Install dependencies using the script
+RUN chmod +x /tmp/litesys_dependency.sh && \
+    /tmp/litesys_dependency.sh
+
+# Install memcached
+RUN apt-get update && apt-get install -y memcached && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create a startup script
 COPY start-memcached.sh /usr/local/bin/

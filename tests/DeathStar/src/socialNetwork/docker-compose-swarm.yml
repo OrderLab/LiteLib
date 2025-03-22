@@ -182,6 +182,8 @@ services:
       placement:
         constraints:
           - node.hostname==${NODE3_HOSTNAME}
+    volumes:
+      - ../../../..:/workspace
 
   post-storage-mongodb:
     depends_on:
