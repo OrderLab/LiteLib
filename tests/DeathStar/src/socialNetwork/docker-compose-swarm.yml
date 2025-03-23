@@ -185,21 +185,25 @@ services:
     volumes:
       - ../../../..:/workspace
 
-  post-storage-mongodb:
-    depends_on:
-      - jaeger-agent
-      - jaeger-query
-    hostname: post-storage-mongodb
-    image: mongo:4.4.6
-    command: "mongod --nojournal --quiet --config /social-network-microservices/config/mongod.conf"
-    # command: "mongod --serviceExecutor adaptive --listenBacklog 1024 --syncdelay 3600 --wiredTigerCacheSizeGB 75"
-    volumes:
-      - ./config:/social-network-microservices/config
-      - ./keys:/keys
-    deploy:
-      placement:
-        constraints:
-          - node.hostname==${NODE2_HOSTNAME}
+  # post-storage-mongodb:
+  #   depends_on:
+  #     - jaeger-agent
+  #     - jaeger-query
+  #   hostname: post-storage-mongodb
+  #   image: mongo-with-cgroup:latest
+  #   command: "mongod --nojournal --quiet --config /social-network-microservices/config/mongod.conf"
+  #   # command: "mongod --serviceExecutor adaptive --listenBacklog 1024 --syncdelay 3600 --wiredTigerCacheSizeGB 75"
+  #   volumes:
+  #     - ./config:/social-network-microservices/config
+  #     - ./keys:/keys
+  #   privileged: true
+  #   pid: host
+  #   security_opt:
+  #     - cgroupns=host
+  #   deploy:
+  #     placement:
+  #       constraints:
+  #         - node.hostname==${NODE2_HOSTNAME}
 
   post-storage-service:
     depends_on:
@@ -532,6 +536,7 @@ services:
 networks:
   default:
     driver: overlay
+    attachable: true
     ipam:
       driver: default
       config:

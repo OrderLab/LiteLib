@@ -5,13 +5,20 @@ set -x
 DeathStarDir=$(cd "$(dirname "$0")/.." && pwd)
 
 function down() {
+    echo "Removing MongoDB container on node2..."
+    ssh node2 "docker stop post-storage-mongodb || true; docker rm -f post-storage-mongodb || true"
+
     echo "Removing stack..."
     docker stack rm socialnetwork
-    
+
     echo "Cleaning up networks..."
     docker network rm socialnetwork_default || true
-    ssh node2 "docker network rm socialnetwork_default" || true
-    ssh node3 "docker network rm socialnetwork_default" || true
+    
+    echo "Node2 leaving swarm and rejoining..."
+    JOIN_TOKEN=$(docker swarm join-token worker -q)
+    MANAGER_IP=$(hostname -i)
+    ssh node2 "docker swarm leave --force"
+    ssh node2 "docker swarm join --token $JOIN_TOKEN $MANAGER_IP:2377"
     
     echo "Cleanup completed"
 }
@@ -29,15 +36,8 @@ function up() {
     
     # Verify swarm status on all nodes
     echo "Verifying swarm status..."
-    echo "Node1 status:"
     docker node ls
-    
-    echo "Node2 status:"
-    ssh node2 "docker node ls"
-    
-    echo "Node3 status:"
-    ssh node3 "docker node ls"
-    
+
     # Build lite-memcached on node3
     echo "Building lite-memcached image on node3"
     ssh node3 "cd $DeathStarDir/src/socialNetwork/docker/lite-memcached && docker build -t lite-memcached:latest ."
@@ -46,10 +46,35 @@ function up() {
     echo "Building modified-social-network image on node2"
     ssh node2 "cd $DeathStarDir/src/socialNetwork && docker build -t modified-social-network:latest ."
 
+    # Build mongo-with-cgroup on node2
+    echo "Building mongo-with-cgroup image on node2"
+    ssh node2 "cd $DeathStarDir/src/socialNetwork/docker/mongo-with-cgroup && docker build -t mongo-with-cgroup:latest ."
+
     # Deploy the stack
     echo "Deploying stack..."
     NODE2_HOSTNAME=$NODE2_HOSTNAME NODE3_HOSTNAME=$NODE3_HOSTNAME docker stack deploy --compose-file=$DeathStarDir/src/socialNetwork/docker-compose-swarm.yml socialnetwork
     
+    # Wait for network to be created
+    sleep 5
+
+    # Remove MongoDB service from swarm and run it manually with required privileges
+    echo "Setting up MongoDB container with special privileges..."
+    # docker service rm socialnetwork_post-storage-mongodb || true
+    ssh node2 "cd $DeathStarDir/src/socialNetwork && \
+        docker run -d \
+        --name post-storage-mongodb \
+        --network socialnetwork_default \
+        --network-alias post-storage-mongodb \
+        --network-alias post-storage-mongodb.socialnetwork_default \
+        --hostname post-storage-mongodb \
+        --privileged \
+        --cgroupns host \
+        -v \$(pwd)/config:/social-network-microservices/config \
+        -v \$(pwd)/keys:/keys \
+        -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+        mongo-with-cgroup:latest \
+        sh -c 'cgcreate -g cpu:/cpulimited && cgset -r cpu.max=\"50000 100000\" cpulimited && cgexec -g cpu:cpulimited mongod --bind_ip_all --nojournal --quiet --config /social-network-microservices/config/mongod.conf'"
+        # --pid host \
     # Check service status
     echo "Service status:"
     docker stack services socialnetwork
