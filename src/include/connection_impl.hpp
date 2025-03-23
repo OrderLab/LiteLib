@@ -172,7 +172,9 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   if (!conn->lite_core_.emergency_mode_) {
     forwarded = true;
     if (!network::Write(conn->client_fd_, conn->buffer_, bytes_transferred)) {
-      LOG(ERROR) << "Failed to write request to backend" << std::endl;
+      // LOG(ERROR) << "Failed to write request to backend" << std::endl;
+      // NOTE: temporarily disable this error message as it is not necessary for
+      // Memcached if there's a quit command
       delete conn;
       return;
     }

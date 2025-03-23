@@ -142,13 +142,13 @@ std::pair<Packet, bool> Memcached::EmergencyServe(std::shared_ptr<Packet> p,
         resp.extra = entry.flags;
         resp.header.extras_length = 4;
       }
-      resp.header.key_length = resp.key->size();
+      resp.header.key_length = resp.key ? resp.key->size() : 0;
       resp.header.total_body_length = resp.value->size() +
                                       resp.header.key_length +
                                       resp.header.extras_length;
       break;
     case Header::Opcode::kQuit:
-      break;
+      return {Packet(nullptr), true};
     default:
       // TODO: more operations
       // NOTE: when adding support for DELETE, we need to modify Match and
@@ -156,9 +156,11 @@ std::pair<Packet, bool> Memcached::EmergencyServe(std::shared_ptr<Packet> p,
       // supporting DELETE
       LOG(ERROR) << "Unsupported Opcode:\n" << req << std::endl;
   }
-  const auto buffer = resp.Serialize();
-  conn_info.response_buffer->insert(conn_info.response_buffer->end(),
-                                    buffer->begin(), buffer->end());
+  if (!(opcode == Header::Opcode::kGetKQ && resp.header.status == 0x0001)) {
+    const auto buffer = resp.Serialize();
+    conn_info.response_buffer->insert(conn_info.response_buffer->end(),
+                                      buffer->begin(), buffer->end());
+  }
   if (!is_quite) {
     Packet p(std::move(conn_info.response_buffer));
     conn_info.response_buffer = std::make_unique<std::vector<uint8_t>>();
