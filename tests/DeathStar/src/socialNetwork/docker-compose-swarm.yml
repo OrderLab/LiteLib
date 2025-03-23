@@ -203,7 +203,7 @@ services:
   #   deploy:
   #     placement:
   #       constraints:
-  #         - node.hostname==${NODE2_HOSTNAME}
+  #         - node.hostname==${NODE0_HOSTNAME}
 
   post-storage-service:
     depends_on:
