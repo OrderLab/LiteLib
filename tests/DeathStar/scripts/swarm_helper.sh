@@ -19,10 +19,13 @@ function down() {
     MANAGER_IP=$(hostname -i)
     ssh node0 "docker swarm leave --force"
     ssh node0 "docker swarm join --token $JOIN_TOKEN $MANAGER_IP:2377"
+
+    sleep 5
     
     # Remove any down nodes from the swarm
     echo "Removing down nodes from swarm..."
-    for node in $(docker node ls -q --filter "status=down"); do
+    for node in $(docker node ls -q --filter "role=worker" --format "{{if ne .Status \"Ready\"}}{{.ID}}{{end}}"); do
+        echo "Removing node $node from swarm..."
         docker node rm --force $node || true
     done
     

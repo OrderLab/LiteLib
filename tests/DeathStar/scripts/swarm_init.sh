@@ -1,5 +1,11 @@
 #!/bin/bash
 
+for node in node0 node2 node3; do
+    echo "Leaving $node from the swarm..."
+    ssh $node "docker swarm leave --force"
+done
+docker swarm leave --force
+
 # Initialize the swarm on local machine
 echo "Initializing Docker Swarm on local machine..."
 docker swarm init --advertise-addr $(hostname -i)

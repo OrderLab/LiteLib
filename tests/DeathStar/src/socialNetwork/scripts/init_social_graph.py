@@ -138,7 +138,7 @@ if __name__ == '__main__':
       '--port', help='IP port of socialNetwork NGINX web server.', default=8080)
   parser.add_argument('--compose', action='store_true',
                       help='intialize with up to 20 posts per user', default=False)
-  parser.add_argument('--limit', type=int, help='total number simultaneous connections', default=200)
+  parser.add_argument('--limit', type=int, help='total number simultaneous connections', default=400)
   args = parser.parse_args()
 
   with open(os.path.join('datasets/social-graph', args.graph, f'{args.graph}.nodes'), 'r') as f:
