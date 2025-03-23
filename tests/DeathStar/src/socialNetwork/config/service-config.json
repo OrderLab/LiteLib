@@ -60,7 +60,8 @@
     "addr": "post-storage-service",
     "timeout_ms": 10000,
     "port": 9090,
-    "connections": 512
+    "connections": 512,
+    "offline_memcached_patch": true
   },
   "compose-post-redis": {
     "keepalive_ms": 10000,

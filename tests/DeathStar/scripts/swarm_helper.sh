@@ -42,6 +42,10 @@ function up() {
     echo "Building lite-memcached image on node3"
     ssh node3 "cd $DeathStarDir/src/socialNetwork/docker/lite-memcached && docker build -t lite-memcached:latest ."
 
+    # Build modified-social-network on node2
+    echo "Building modified-social-network image on node2"
+    ssh node2 "cd $DeathStarDir/src/socialNetwork && docker build -t modified-social-network:latest ."
+
     # Deploy the stack
     echo "Deploying stack..."
     NODE2_HOSTNAME=$NODE2_HOSTNAME NODE3_HOSTNAME=$NODE3_HOSTNAME docker stack deploy --compose-file=$DeathStarDir/src/socialNetwork/docker-compose-swarm.yml socialnetwork

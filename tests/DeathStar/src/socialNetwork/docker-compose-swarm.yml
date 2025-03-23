@@ -215,7 +215,8 @@ services:
           - node.hostname==${NODE2_HOSTNAME}
     command: ["PostStorageService"]
     hostname: post-storage-service
-    image: deathstarbench/social-network-microservices:latest
+    # image: deathstarbench/social-network-microservices:latest
+    image: modified-social-network:latest
     volumes:
       - ./config:/social-network-microservices/config
       - ./keys:/keys

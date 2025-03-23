@@ -15,6 +15,8 @@
 #include "../logger.h"
 #include "../tracing.h"
 
+extern bool offline_memcached_patch;
+
 namespace social_network {
 using json = nlohmann::json;
 
@@ -175,122 +177,48 @@ void PostStorageHandler::ReadPost(
 
   std::string post_id_str = std::to_string(post_id);
 
+  bool memcached_online = true;
   memcached_return_t memcached_rc;
   memcached_st *memcached_client =
       memcached_pool_pop(_memcached_client_pool, true, &memcached_rc);
   if (!memcached_client) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
-    se.message = "Failed to pop a client from memcached pool";
-    throw se;
-  }
-
-  size_t post_mmc_size;
-  uint32_t memcached_flags;
-  auto get_span = opentracing::Tracer::Global()->StartSpan(
-      "post_storage_mmc_get_client", {opentracing::ChildOf(&span->context())});
-  char *post_mmc =
-      memcached_get(memcached_client, post_id_str.c_str(), post_id_str.length(),
-                    &post_mmc_size, &memcached_flags, &memcached_rc);
-  if (!post_mmc && memcached_rc != MEMCACHED_NOTFOUND) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
-    se.message = memcached_strerror(memcached_client, memcached_rc);
-    memcached_pool_push(_memcached_client_pool, memcached_client);
-    throw se;
-  }
-  memcached_pool_push(_memcached_client_pool, memcached_client);
-  get_span->Finish();
-
-  if (post_mmc) {
-    LOG(debug) << "Get post " << post_id << " cache hit from Memcached";
-    json post_json =
-        json::parse(std::string(post_mmc, post_mmc + post_mmc_size));
-    _return.req_id = post_json["req_id"];
-    _return.timestamp = post_json["timestamp"];
-    _return.post_id = post_json["post_id"];
-    _return.creator.user_id = post_json["creator"]["user_id"];
-    _return.creator.username = post_json["creator"]["username"];
-    _return.post_type = post_json["post_type"];
-    _return.text = post_json["text"];
-    for (auto &item : post_json["media"]) {
-      Media media;
-      media.media_id = item["media_id"];
-      media.media_type = item["media_type"];
-      _return.media.emplace_back(media);
-    }
-    for (auto &item : post_json["user_mentions"]) {
-      UserMention user_mention;
-      user_mention.username = item["username"];
-      user_mention.user_id = item["user_id"];
-      _return.user_mentions.emplace_back(user_mention);
-    }
-    for (auto &item : post_json["urls"]) {
-      Url url;
-      url.shortened_url = item["shortened_url"];
-      url.expanded_url = item["expanded_url"];
-      _return.urls.emplace_back(url);
-    }
-    free(post_mmc);
-  } else {
-    // If not cached in memcached
-    mongoc_client_t *mongodb_client =
-        mongoc_client_pool_pop(_mongodb_client_pool);
-    if (!mongodb_client) {
+    if (offline_memcached_patch) {
+      memcached_online = false;
+    } else {
       ServiceException se;
-      se.errorCode = ErrorCode::SE_MONGODB_ERROR;
-      se.message = "Failed to pop a client from MongoDB pool";
+      se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
+      se.message = "Failed to pop a client from memcached pool";
       throw se;
     }
+  }
 
-    auto collection =
-        mongoc_client_get_collection(mongodb_client, "post", "post");
-    if (!collection) {
-      ServiceException se;
-      se.errorCode = ErrorCode::SE_MONGODB_ERROR;
-      se.message = "Failed to create collection user from DB user";
-      mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
-      throw se;
-    }
-
-    bson_t *query = bson_new();
-    BSON_APPEND_INT64(query, "post_id", post_id);
-    auto find_span = opentracing::Tracer::Global()->StartSpan(
-        "post_storage_mongo_find_client",
-        {opentracing::ChildOf(&span->context())});
-    mongoc_cursor_t *cursor =
-        mongoc_collection_find_with_opts(collection, query, nullptr, nullptr);
-    const bson_t *doc;
-    bool found = mongoc_cursor_next(cursor, &doc);
-    find_span->Finish();
-    if (!found) {
-      bson_error_t error;
-      if (mongoc_cursor_error(cursor, &error)) {
-        LOG(warning) << error.message;
-        bson_destroy(query);
-        mongoc_cursor_destroy(cursor);
-        mongoc_collection_destroy(collection);
-        mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
-        ServiceException se;
-        se.errorCode = ErrorCode::SE_MONGODB_ERROR;
-        se.message = error.message;
-        throw se;
+  for (bool i = true; i == memcached_online; i = false) {
+    size_t post_mmc_size;
+    uint32_t memcached_flags;
+    auto get_span = opentracing::Tracer::Global()->StartSpan(
+        "post_storage_mmc_get_client", {opentracing::ChildOf(&span->context())});
+    char *post_mmc =
+        memcached_get(memcached_client, post_id_str.c_str(), post_id_str.length(),
+                      &post_mmc_size, &memcached_flags, &memcached_rc);
+    if (!post_mmc && memcached_rc != MEMCACHED_NOTFOUND) {
+      if (offline_memcached_patch) {
+        memcached_online = false;
+        break;
       } else {
-        LOG(warning) << "Post_id: " << post_id << " doesn't exist in MongoDB";
-        bson_destroy(query);
-        mongoc_cursor_destroy(cursor);
-        mongoc_collection_destroy(collection);
-        mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
         ServiceException se;
-        se.errorCode = ErrorCode::SE_THRIFT_HANDLER_ERROR;
-        se.message =
-            "Post_id: " + std::to_string(post_id) + " doesn't exist in MongoDB";
+        se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
+        se.message = memcached_strerror(memcached_client, memcached_rc);
+        memcached_pool_push(_memcached_client_pool, memcached_client);
         throw se;
       }
-    } else {
-      LOG(debug) << "Post_id: " << post_id << " found in MongoDB";
-      auto post_json_char = bson_as_json(doc, nullptr);
-      json post_json = json::parse(post_json_char);
+    }
+    memcached_pool_push(_memcached_client_pool, memcached_client);
+    get_span->Finish();
+
+    if (post_mmc) {
+      LOG(debug) << "Get post " << post_id << " cache hit from Memcached";
+      json post_json =
+          json::parse(std::string(post_mmc, post_mmc + post_mmc_size));
       _return.req_id = post_json["req_id"];
       _return.timestamp = post_json["timestamp"];
       _return.post_id = post_json["post_id"];
@@ -316,19 +244,115 @@ void PostStorageHandler::ReadPost(
         url.expanded_url = item["expanded_url"];
         _return.urls.emplace_back(url);
       }
+      free(post_mmc);
+
+      span->Finish();
+      return;
+    }
+  }
+      
+  // If not cached in memcached
+  mongoc_client_t *mongodb_client =
+      mongoc_client_pool_pop(_mongodb_client_pool);
+  if (!mongodb_client) {
+    ServiceException se;
+    se.errorCode = ErrorCode::SE_MONGODB_ERROR;
+    se.message = "Failed to pop a client from MongoDB pool";
+    throw se;
+  }
+
+  auto collection =
+      mongoc_client_get_collection(mongodb_client, "post", "post");
+  if (!collection) {
+    ServiceException se;
+    se.errorCode = ErrorCode::SE_MONGODB_ERROR;
+    se.message = "Failed to create collection user from DB user";
+    mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
+    throw se;
+  }
+
+  bson_t *query = bson_new();
+  BSON_APPEND_INT64(query, "post_id", post_id);
+  auto find_span = opentracing::Tracer::Global()->StartSpan(
+      "post_storage_mongo_find_client",
+      {opentracing::ChildOf(&span->context())});
+  mongoc_cursor_t *cursor =
+      mongoc_collection_find_with_opts(collection, query, nullptr, nullptr);
+  const bson_t *doc;
+  bool found = mongoc_cursor_next(cursor, &doc);
+  find_span->Finish();
+  if (!found) {
+    bson_error_t error;
+    if (mongoc_cursor_error(cursor, &error)) {
+      LOG(warning) << error.message;
       bson_destroy(query);
       mongoc_cursor_destroy(cursor);
       mongoc_collection_destroy(collection);
       mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
+      ServiceException se;
+      se.errorCode = ErrorCode::SE_MONGODB_ERROR;
+      se.message = error.message;
+      throw se;
+    } else {
+      LOG(warning) << "Post_id: " << post_id << " doesn't exist in MongoDB";
+      bson_destroy(query);
+      mongoc_cursor_destroy(cursor);
+      mongoc_collection_destroy(collection);
+      mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
+      ServiceException se;
+      se.errorCode = ErrorCode::SE_THRIFT_HANDLER_ERROR;
+      se.message =
+          "Post_id: " + std::to_string(post_id) + " doesn't exist in MongoDB";
+      throw se;
+    }
+  } else {
+    LOG(debug) << "Post_id: " << post_id << " found in MongoDB";
+    auto post_json_char = bson_as_json(doc, nullptr);
+    json post_json = json::parse(post_json_char);
+    _return.req_id = post_json["req_id"];
+    _return.timestamp = post_json["timestamp"];
+    _return.post_id = post_json["post_id"];
+    _return.creator.user_id = post_json["creator"]["user_id"];
+    _return.creator.username = post_json["creator"]["username"];
+    _return.post_type = post_json["post_type"];
+    _return.text = post_json["text"];
+    for (auto &item : post_json["media"]) {
+      Media media;
+      media.media_id = item["media_id"];
+      media.media_type = item["media_type"];
+      _return.media.emplace_back(media);
+    }
+    for (auto &item : post_json["user_mentions"]) {
+      UserMention user_mention;
+      user_mention.username = item["username"];
+      user_mention.user_id = item["user_id"];
+      _return.user_mentions.emplace_back(user_mention);
+    }
+    for (auto &item : post_json["urls"]) {
+      Url url;
+      url.shortened_url = item["shortened_url"];
+      url.expanded_url = item["expanded_url"];
+      _return.urls.emplace_back(url);
+    }
+    bson_destroy(query);
+    mongoc_cursor_destroy(cursor);
+    mongoc_collection_destroy(collection);
+    mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
 
-      // upload post to memcached
+    // upload post to memcached
+    if (memcached_online) {
       memcached_client =
           memcached_pool_pop(_memcached_client_pool, true, &memcached_rc);
       if (!memcached_client) {
-        ServiceException se;
-        se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
-        se.message = "Failed to pop a client from memcached pool";
-        throw se;
+        if (offline_memcached_patch) {
+          span->Finish();
+          return;
+        } else {
+          ServiceException se;
+          se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
+          se.message = "Failed to pop a client from memcached pool";
+          throw se;
+        }
       }
       auto set_span = opentracing::Tracer::Global()->StartSpan(
           "post_storage_mmc_set_client",
@@ -340,7 +364,7 @@ void PostStorageHandler::ReadPost(
           static_cast<uint32_t>(0));
       if (memcached_rc != MEMCACHED_SUCCESS) {
         LOG(warning) << "Failed to set post to Memcached: "
-                     << memcached_strerror(memcached_client, memcached_rc);
+                      << memcached_strerror(memcached_client, memcached_rc);
       }
       set_span->Finish();
       bson_free(post_json_char);
@@ -377,14 +401,19 @@ void PostStorageHandler::ReadPosts(
     throw se;
   }
   std::map<int64_t, Post> return_map;
+  bool memcached_online = true;
   memcached_return_t memcached_rc;
   auto memcached_client =
       memcached_pool_pop(_memcached_client_pool, true, &memcached_rc);
   if (!memcached_client) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
-    se.message = "Failed to pop a client from memcached pool";
-    throw se;
+    if (offline_memcached_patch) {
+      memcached_online = false;
+    } else {
+      ServiceException se;
+      se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
+      se.message = "Failed to pop a client from memcached pool";
+      throw se;
+    }
   }
 
   char **keys;
@@ -399,16 +428,23 @@ void PostStorageHandler::ReadPosts(
     key_sizes[idx] = key_str.length();
     idx++;
   }
-  memcached_rc =
-      memcached_mget(memcached_client, keys, key_sizes, post_ids.size());
-  if (memcached_rc != MEMCACHED_SUCCESS) {
-    LOG(error) << "Cannot get post_ids of request " << req_id << ": "
-               << memcached_strerror(memcached_client, memcached_rc);
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
-    se.message = memcached_strerror(memcached_client, memcached_rc);
-    memcached_pool_push(_memcached_client_pool, memcached_client);
-    throw se;
+  if (memcached_online) {
+    memcached_rc =
+        memcached_mget(memcached_client, keys, key_sizes, post_ids.size());
+    if (memcached_rc != MEMCACHED_SUCCESS) {
+      if (offline_memcached_patch) {
+        memcached_online = false;
+        LOG(info) << "Memcached is offline of request " << req_id;
+      } else {
+        LOG(error) << "Cannot get post_ids of request " << req_id << ": "
+                  << memcached_strerror(memcached_client, memcached_rc);
+        ServiceException se;
+        se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
+        se.message = memcached_strerror(memcached_client, memcached_rc);
+        memcached_pool_push(_memcached_client_pool, memcached_client);
+        throw se;
+      }
+    }
   }
 
   char return_key[MEMCACHED_MAX_KEY];
@@ -419,10 +455,10 @@ void PostStorageHandler::ReadPosts(
   auto get_span = opentracing::Tracer::Global()->StartSpan(
       "post_storage_mmc_mget_client", {opentracing::ChildOf(&span->context())});
 
-  while (true) {
+  while (memcached_online) {
     return_value =
         memcached_fetch(memcached_client, return_key, &return_key_length,
-                        &return_value_length, &flags, &memcached_rc);
+                        &return_value_length, &flags, &memcached_rc); 
     if (return_value == nullptr) {
       LOG(debug) << "Memcached mget finished";
       break;
@@ -431,11 +467,17 @@ void PostStorageHandler::ReadPosts(
       free(return_value);
       memcached_quit(memcached_client);
       memcached_pool_push(_memcached_client_pool, memcached_client);
-      LOG(error) << "Cannot get posts of request " << req_id;
-      ServiceException se;
-      se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
-      se.message = "Cannot get posts of request " + std::to_string(req_id);
-      throw se;
+      if (offline_memcached_patch) {
+        memcached_online = false;
+        LOG(info) << "Memcached is offline of request " << req_id;
+        break;
+      } else {
+        LOG(error) << "Cannot get posts of request " << req_id;
+        ServiceException se;
+        se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
+        se.message = "Cannot get posts of request " + std::to_string(req_id);
+        throw se;
+      }
     }
     Post new_post;
     json post_json = json::parse(
@@ -578,28 +620,35 @@ void PostStorageHandler::ReadPosts(
     mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
 
     // upload posts to memcached
-    set_futures.emplace_back(std::async(std::launch::async, [&]() {
-      memcached_return_t _rc;
-      auto _memcached_client =
-          memcached_pool_pop(_memcached_client_pool, true, &_rc);
-      if (!_memcached_client) {
-        LOG(error) << "Failed to pop a client from memcached pool";
-        ServiceException se;
-        se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
-        se.message = "Failed to pop a client from memcached pool";
-        throw se;
-      }
-      auto set_span = opentracing::Tracer::Global()->StartSpan(
-          "mmc_set_client", {opentracing::ChildOf(&span->context())});
-      for (auto &it : post_json_map) {
-        std::string id_str = std::to_string(it.first);
-        _rc = memcached_set(_memcached_client, id_str.c_str(), id_str.length(),
-                            it.second.c_str(), it.second.length(),
-                            static_cast<time_t>(0), static_cast<uint32_t>(0));
-      }
-      memcached_pool_push(_memcached_client_pool, _memcached_client);
-      set_span->Finish();
-    }));
+    if (memcached_online) {
+      set_futures.emplace_back(std::async(std::launch::async, [&]() {
+        memcached_return_t _rc;
+        auto _memcached_client =
+            memcached_pool_pop(_memcached_client_pool, true, &_rc);
+        if (!_memcached_client) {
+          if (offline_memcached_patch) {
+            memcached_online = false;
+            LOG(info) << "Memcached is offline of request " << req_id;
+          } else {
+            LOG(error) << "Failed to pop a client from memcached pool";
+            ServiceException se;
+            se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
+            se.message = "Failed to pop a client from memcached pool";
+            throw se;
+          }
+        }
+        auto set_span = opentracing::Tracer::Global()->StartSpan(
+            "mmc_set_client", {opentracing::ChildOf(&span->context())});
+        for (auto &it : post_json_map) {
+          std::string id_str = std::to_string(it.first);
+          _rc = memcached_set(_memcached_client, id_str.c_str(), id_str.length(),
+                              it.second.c_str(), it.second.length(),
+                              static_cast<time_t>(0), static_cast<uint32_t>(0));
+        }
+        memcached_pool_push(_memcached_client_pool, _memcached_client);
+        set_span->Finish();
+      }));
+    }
   }
 
   if (return_map.size() != post_ids.size()) {

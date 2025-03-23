@@ -18,6 +18,7 @@ using namespace social_network;
 
 static memcached_pool_st* memcached_client_pool;
 static mongoc_client_pool_t* mongodb_client_pool;
+bool offline_memcached_patch = false;
 
 void sigintHandler(int sig) {
   if (memcached_client_pool != nullptr) {
@@ -46,6 +47,10 @@ int main(int argc, char* argv[]) {
 
   int memcached_conns = config_json["post-storage-memcached"]["connections"];
   int memcached_timeout = config_json["post-storage-memcached"]["timeout_ms"];
+
+  offline_memcached_patch = config_json["post-storage-service"]["offline_memcached_patch"];
+
+  LOG(info) << "Offline memcached patch: " << offline_memcached_patch;
 
   memcached_client_pool = init_memcached_client_pool(
       config_json, "post-storage", 32, memcached_conns);
