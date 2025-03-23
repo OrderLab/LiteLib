@@ -22,11 +22,13 @@
 ```bash
 # init
 time python3 scripts/init_social_graph.py --graph=socfb-Reed98 --ip node2 --compose
+# set cpu limit to inf
 ../wrk2/wrk -D zipf -t 40 -c 40 -d 600 -L -s ./wrk2/scripts/social-network/compose-post.lua http://node2:8080/wrk2-api/post/compose -R 2000
 
 # run
-../wrk2/wrk -D zipf -t 40 -c 40 -d 300 -L -s ./wrk2/scripts/social-network/read-home-timeline.lua http://node2:8080/wrk2-api/home-timeline/read -R 2000
-../wrk2/wrk -D zipf -t 40 -c 40 -d 300 -L -s ./wrk2/scripts/social-network/compose-post.lua http://node2:8080/wrk2-api/post/compose -R 2000
+# set cpu limit to 50%
+../wrk2/wrk -D zipf -t 40 -c 40 -d 300 -L -s ./wrk2/scripts/social-network/read-home-timeline.lua http://node2:8080/wrk2-api/home-timeline/read -R 1500
+# ../wrk2/wrk -D zipf -t 40 -c 40 -d 300 -L -s ./wrk2/scripts/social-network/compose-post.lua http://node2:8080/wrk2-api/post/compose -R 2000
 
 # crash
 # go to socialnetwork_post-storage-memcached service
@@ -42,4 +44,15 @@ Modify the config in `src/socialNetwork/docker/modified-social-network/config.js
 ```bash
 docker service update --force socialnetwork_post-storage-service
 docker service logs -f --since 0s socialnetwork_post-storage-service
+```
+
+# Change cgroup
+
+```bash
+# go to post-storage-mongodb in node2
+cd /workspace/tests/DeathStar/src/socialNetwork/docker/mongo-with-cgroup
+
+# change cgroup
+cgset -r cpu.max="50000 100000" cpulimited
+cgget -g cpu:/cpulimited
 ```
