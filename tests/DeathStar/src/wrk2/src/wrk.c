@@ -42,6 +42,7 @@ static struct {
     struct hdr_histogram* current_histogram;
     uint64_t current_second;
     uint64_t current_requests;
+    uint64_t current_errors;
     uint64_t start_time;
     pthread_mutex_t mutex;
 } combined_stats;
@@ -94,7 +95,22 @@ static void usage() {
            "  Time arguments may include a time unit (2s, 2m, 2h)            \n");
 }
 
-static void print_second_stats(struct hdr_histogram* hist, uint64_t throughput, uint64_t second);
+static void print_second_stats(struct hdr_histogram* hist, uint64_t throughput, uint64_t errors, uint64_t second) {    
+    printf("[%4"PRIu64"s] Throughput: %"PRIu64" req/s, Errors: %"PRIu64" req/s", 
+           second,
+           throughput,
+           errors);
+    
+    if (throughput > 0) {
+        printf(", Latency(ms): min=%.2f, mean=%.2f, max=%.2f, p95=%.2f\n",
+               hdr_min(hist) / 1000.0,
+               hdr_mean(hist) / 1000.0,
+               hdr_max(hist) / 1000.0,
+               hdr_value_at_percentile(hist, 95.0) / 1000.0);
+    } else {
+        printf("\n");
+    }
+}
 
 int main(int argc, char **argv) {
     char *url, **headers = zmalloc(argc * sizeof(char *));
@@ -113,6 +129,7 @@ int main(int argc, char **argv) {
     hdr_init(1, MAX_LATENCY, 3, &combined_stats.current_histogram);
     combined_stats.current_second = 0;
     combined_stats.current_requests = 0;
+    combined_stats.current_errors = 0;
     combined_stats.start_time = time_us();
 
     thread *threads = zcalloc(cfg.num_urls * cfg.threads * sizeof(thread));
@@ -498,7 +515,7 @@ static int reconnect_socket(thread *thread, connection *c) {
     aeDeleteFileEvent(thread->loop, c->fd, AE_WRITABLE | AE_READABLE);
     sock.close(c);
     close(c->fd);
-    printf("reconnect_socket\n");
+    // printf("reconnect_socket\n"); // NOTE: prevent from printing too many times
     return connect_socket(thread, c);
 }
 
@@ -530,9 +547,10 @@ static int calibrate(aeEventLoop *loop, long long id, void *data) {
     uint64_t id_url = thread->tid / cfg.threads;
     uint64_t id_thread = thread->tid % cfg.threads;
     
-    printf("  Thread calibration: mean lat.: %.3fms, rate sampling interval: %dms\n",
-            (thread->mean)/1000.0,
-            thread->interval);
+    // printf("  Thread calibration: mean lat.: %.3fms, rate sampling interval: %dms\n",
+    //         (thread->mean)/1000.0,
+    //         thread->interval);
+    // NOTE: prevent from printing too many times
 
     aeCreateTimeEvent(loop, thread->interval, sample_rate, thread, NULL);
 
@@ -703,8 +721,10 @@ static int response_complete(http_parser *parser) {
     thread->complete++;
     thread->requests++;
 
+    bool is_error = false;
     if (status > 399) {
         thread->errors.status++;
+        is_error = true;
     }
 
     if (c->headers.buffer) {
@@ -726,28 +746,28 @@ static int response_complete(http_parser *parser) {
         hdr_record_value(thread->latency_histogram, actual_latency_timing);
         hdr_record_value(thread->real_latency_histogram, actual_latency_timing);
             
-        if (status == 200) {
-            pthread_mutex_lock(&combined_stats.mutex);
-            
-            uint64_t current_second = (now - combined_stats.start_time) / 1000000;
-            
-            if (current_second != combined_stats.current_second) {
-                // Only the first thread to see a new second will print
-                if (combined_stats.current_second > 0 && current_second > combined_stats.current_second) {
-                    print_second_stats(combined_stats.current_histogram, 
-                                    combined_stats.current_requests,
-                                    combined_stats.current_second);
-                    hdr_reset(combined_stats.current_histogram);
-                    combined_stats.current_requests = 0;
-                }
-                combined_stats.current_second = current_second;
-            }
-            
+        pthread_mutex_lock(&combined_stats.mutex);
+        uint64_t current_second = (now - combined_stats.start_time) / 1000000;
+        if (!is_error) {
             combined_stats.current_requests++;
             hdr_record_value(combined_stats.current_histogram, actual_latency_timing);
-            
-            pthread_mutex_unlock(&combined_stats.mutex);
+        } else {
+            combined_stats.current_errors++;
         }
+        if (current_second != combined_stats.current_second) {
+            // Only the first thread to see a new second will print
+            if (combined_stats.current_second > 0 && current_second > combined_stats.current_second) {
+                print_second_stats(combined_stats.current_histogram, 
+                                combined_stats.current_requests,
+                                combined_stats.current_errors,
+                                combined_stats.current_second);
+                hdr_reset(combined_stats.current_histogram);
+                combined_stats.current_requests = 0;
+                combined_stats.current_errors = 0;
+            }
+            combined_stats.current_second = current_second;
+        }
+        pthread_mutex_unlock(&combined_stats.mutex);
 
         thread->monitored++;
         thread->accum_latency += actual_latency_timing;
@@ -1088,22 +1108,6 @@ static void print_stats_latency(stats *stats) {
         uint64_t n = stats_percentile(stats, p);
         printf("%7.3Lf%%", p);
         print_units(n, format_time_us, 10);
-        printf("\n");
-    }
-}
-
-static void print_second_stats(struct hdr_histogram* hist, uint64_t throughput, uint64_t second) {    
-    printf("[%4"PRIu64"s] Throughput: %"PRIu64" req/s", 
-           second,
-           throughput);
-    
-    if (throughput > 0) {
-        printf(", Latency(ms): min=%.2f, mean=%.2f, max=%.2f, p95=%.2f\n",
-               hdr_min(hist) / 1000.0,
-               hdr_mean(hist) / 1000.0,
-               hdr_max(hist) / 1000.0,
-               hdr_value_at_percentile(hist, 95.0) / 1000.0);
-    } else {
         printf("\n");
     }
 }
