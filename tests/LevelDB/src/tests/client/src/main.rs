@@ -15,6 +15,7 @@ enum ExperimentType {
     Full,
     Checkpoint(usize),
     Lite(usize, String),
+    Ebpf(usize, String),
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -274,6 +275,7 @@ async fn main() {
                             ExperimentType::Full => "Full",
                             ExperimentType::Checkpoint(_) => "Checkpoint",
                             ExperimentType::Lite(_, _) => "Lite",
+                            ExperimentType::Ebpf(_, _) => "Ebpf",
                         },
                         remote_script_config.write_buffer_size,
                         cfg.benchmark.file_prefix,
@@ -281,10 +283,12 @@ async fn main() {
                         cfg.benchmark.work_dir,
                         match &remote_script_config.experiment_type {
                             ExperimentType::Lite(num_threads, _) => num_threads,
+                            ExperimentType::Ebpf(num_threads, _) => num_threads,
                             _ => &0,
                         },
                         match &remote_script_config.experiment_type {
                             ExperimentType::Lite(_, memory_size) => memory_size,
+                            ExperimentType::Ebpf(_, memory_size) => memory_size,
                             _ => "0G",
                         },
                     ),
@@ -314,6 +318,7 @@ async fn main() {
         values.push(Arc::new(Mutex::new(0 as usize)));
         stales.push(Arc::new(AtomicBool::new(false)));
     }
+
     for iter in 0..cfg.benchmark.inital_iter_count {
         println!("Initializing database for the {}th time", iter);
         let bar = ProgressBar::new(cfg.benchmark.num_keys as u64).with_prefix("Initializing");
@@ -323,13 +328,17 @@ async fn main() {
             )
             .unwrap(),
         );
+
         let mut handles = Vec::new();
         let start_time = Instant::now();
+
         for i in (1..cfg.benchmark.num_keys + 1).rev() {
+            let iter_end_time = start_time + interval * ((cfg.benchmark.num_keys - i + 1) as u32);
             let pool = pool.clone();
-            let i = i; // Copy i into the closure
+            let i = i;
             let value = format!("{}_{}_{}", base_value, i, 0);
             let bar = bar.clone();
+            
             let handle = tokio::spawn(async move {
                 let mut conn = pool.get().await.unwrap_or_else(|e| {
                     panic!("Initialize failed i: {}, error: {}", i, e);
@@ -344,6 +353,7 @@ async fn main() {
             });
             handles.push(handle);
         }
+
         for handle in handles {
             handle.await.unwrap();
         }
@@ -418,6 +428,7 @@ async fn main() {
                             ExperimentType::Full => "Full",
                             ExperimentType::Checkpoint(_) => "Checkpoint",
                             ExperimentType::Lite(_, _) => "Lite",
+                            ExperimentType::Ebpf(_, _) => "Ebpf",
                         },
                         cfg.benchmark.test_duration.as_secs(),
                         file_prefix,
