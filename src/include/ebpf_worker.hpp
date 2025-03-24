@@ -55,7 +55,7 @@ struct ParseResult{
     uint16_t src_port;
     std::unique_ptr<char[]> dst_ip;
     uint16_t dst_port;
-    unsigned char* payload;
+    std::unique_ptr<uint8_t[]> payload;
     int len;
     bool request_dir;
     // connection
@@ -93,7 +93,9 @@ class EbpfWorker : public Worker<Application, Request, Response,
   ThreadSafeSet<ConnectionInstance *> conns_;
 
   /// Source Address, port to connection map
-  std::unordered_map<std::pair<std::string, uint16_t>, ConnectionInstance *, PairHash> source_to_conn_;
+  std::unordered_map<std::pair<uint32_t, uint16_t>, ConnectionInstance *, PairHash> source_to_conn_;
+
+  int count;
 
  private:
   /// PID of the worker thread.
@@ -136,6 +138,9 @@ class EbpfWorker : public Worker<Application, Request, Response,
 
   /// Convert the port to network order.
   uint16_t htons_custom(uint16_t i);
+
+  /// Convert the IP address to uint32_t.
+  uint32_t ipToUint32(const std::string& ip);
 };
 
 }  // namespace lite

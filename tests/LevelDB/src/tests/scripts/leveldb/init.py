@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser(description="Init experiment")
 parser.add_argument(
     "-t",
     "--experiment_type",
-    choices=["Full", "Checkpoint", "Lite", "eBPF"],
+    choices=["Full", "Checkpoint", "Lite", "Ebpf"],
     required=True,
     help="The type of the experiment",
 )
@@ -77,33 +77,7 @@ if args.experiment_type == "Full":
     utils.StartBackgroundProcess(
         boot_command, args.work_dir + "/" + args.file_prefix + ".log"
     )
-elif args.experiment_type == "eBPF":
-    os.system(r"rm -rf " + args.work_dir + "/full-data")
-    os.system(r"mkdir -p " + args.work_dir + "/full-data")
-    boot_command = [
-        "cgexec",
-        "-g",
-        "cpu:cpulimited",
-        args.root_dir +"/tests/LevelDB/src/socket",
-    ]
-    utils.StartBackgroundProcess(
-        boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-1.txt"
-    )
-    boot_command = [
-        "cgexec",
-        "-g",
-        "cpu:cpulimited",
-        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
-        "-D",
-        args.work_dir + "/full-data",
-        "-P",
-        "6379",
-        "-B",
-        str(args.write_buffer_size),
-    ]
-    utils.StartBackgroundProcess(
-        boot_command, args.work_dir + "/" + args.file_prefix + ".log"
-    )
+    
 elif args.experiment_type == "Checkpoint":
     os.system(r"rm -rf " + args.work_dir + "/checkpoint-data")
     os.system(r"mkdir -p " + args.work_dir + "/checkpoint-data/foo")
@@ -162,5 +136,41 @@ elif args.experiment_type == "Lite":
         False,
         env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"},
     )
+elif args.experiment_type == "Ebpf":
+    os.system(r"rm -rf " + args.work_dir + "/ebpf-data")
+    os.system(r"mkdir -p " + args.work_dir + "/ebpf-data")
+    # boot_command = ["redis-server", "--port", "60000", "--protected-mode", "no"]
+    boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        "-D",
+        args.work_dir + "/ebpf-data",
+        "-P",
+        "6379",
+        "-B",
+        str(args.write_buffer_size),
+    ]
+    utils.StartBackgroundProcess(
+        boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-1.txt"
+    )
+
+    # boot_command = [
+    #     "cgexec",
+    #     "-g",
+    #     "cpu:cpulimited",
+    #     args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
+    #     "-t",
+    #     str(args.num_threads),
+    #     "-s",
+    #     args.memory_size,
+    # ]
+    # utils.StartBackgroundProcess(
+    #     boot_command,
+    #     args.work_dir + "/" + args.file_prefix + ".log",
+    #     False,
+    #     env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"},
+    # )
 else:
     raise ValueError("Invalid experiment type")
