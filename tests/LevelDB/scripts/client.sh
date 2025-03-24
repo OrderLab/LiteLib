@@ -11,7 +11,20 @@ check_not_root() {
 }
 
 install_rust() {
-  sudo apt-get install -y --no-install-recommends rust-all
+  # Remove existing rust installation
+    sudo apt remove -y rust-all
+    
+    # Install curl if not already installed
+    sudo apt install -y curl
+    
+    # Install rustup (the recommended way to install Rust)
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    
+    # Add cargo to path for current session
+    source "$HOME/.cargo/env"
+    
+    # Update to latest stable Rust
+    rustup default stable
 }
 
 compile_client() {
