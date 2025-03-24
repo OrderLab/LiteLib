@@ -47,6 +47,8 @@ EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
   struct bpf_program *prog;
   int err;
 
+  count=0;
+
   skel = litesys_bpf__open_and_load();
   if (!skel) {
     fprintf(stderr, "Failed to open and load BPF skeleton\n");
@@ -64,6 +66,25 @@ EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
     perror("Socket creation failed");
     return;
   }
+
+  int rcvbuf_size = 100 * 1024 * 1024;  // 70MB
+  if (setsockopt(notify_event_fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(rcvbuf_size)) < 0) {
+      perror("Failed to set SO_RCVBUF");
+      close(notify_event_fd);
+      return;
+  }
+
+  // struct tpacket_req req = {
+  //     .tp_block_size = 4096,  // Memory block size
+  //     .tp_block_nr = 64,      // Number of blocks
+  //     .tp_frame_size = 2048,  // Frame size
+  //     .tp_frame_nr = 128      // Number of frames
+  // };
+  // if (setsockopt(notify_event_fd, SOL_PACKET, PACKET_RX_RING, &req, sizeof(req)) < 0) {
+  //     perror("Failed to set PACKET_RX_RING");
+  //     close(notify_event_fd);
+  //     return;
+  // }
 
   prog_fd_ = bpf_program__fd(skel->progs.socket__filter_tcp);
 
@@ -147,22 +168,45 @@ template <typename Application, typename Request, typename Response,
 void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::NotifyHandler(evutil_socket_t fd, short which,
                                        void *arg_conn) {
+  // printf("Next message\n");
   auto *self = static_cast<EbpfWorker<Application, Request, Response,
                           ConnectionInfo, CacheKey, CacheEntry>*>(arg_conn);
+  self->count++;
   unsigned char *buffer = (unsigned char *)malloc(BUFFER_SIZE);
   struct sockaddr_in sender_addr;
   socklen_t addr_len = sizeof(sender_addr);
   ssize_t n = recvfrom(fd, buffer, BUFFER_SIZE - 1, 0, (struct sockaddr *)&sender_addr, &addr_len);
-
+  // printf("Received buffer: ");
+  // for (ssize_t i = 0; i < n; i++) {
+  //   if (isprint(buffer[i])) {
+  //     printf("%c", buffer[i]);
+  //   } else {
+  //     printf("%02X ", buffer[i]);
+  //   }
+  // }
+  // printf("\n");
+  // printf("n: %zd\n", n);
+  
   if (n > 0) {
+    // printf("Parsing buffer\n");
     ParseResult result = parse_tcp_data(buffer, n);
+    // printf("%pI4:%d: %s\n", result.request_dir ? result.src_ip.get() : result.dst_ip.get(), result.request_dir ? result.src_port : result.dst_port, result.request_dir ? "Request" : "Response");
+    // printf("Received buffer: ");
+  // for (ssize_t i = 0; i < result.len; i++) {
+  //   if (isprint(result.payload[i])) {
+  //     printf("%c", result.payload[i]);
+  //   } else {
+  //     printf("%02X ", result.payload[i]);
+  //   }
+  // }
+  // printf("\n");
     if (result.request_dir){
       // check if the connection exists
       std::string src_str(result.src_ip.get(), INET_ADDRSTRLEN);
-      if(self->source_to_conn_.find(std::make_pair(src_str, result.src_port)) == self->source_to_conn_.end()){
+      if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(src_str), result.src_port)) == self->source_to_conn_.end()){
         // Add the connection to the connection map
         //print src_str and result.src_port
-        printf("Adding connection to the connection map: %s:%u\n", src_str.c_str(), result.src_port);
+        // printf("Adding connection to the connection map during request update: %s:%u\n", src_str.c_str(), result.src_port);
         auto new_connection =
             new ConnectionInstance(0,                    // socket fd
                                   0,                      // event flags
@@ -172,18 +216,19 @@ void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
                                   self->lite_core_,      // lite core instance
                                   false,                 // is_server
                                   self);                 // worker instance
-        self->source_to_conn_[std::make_pair(src_str, result.src_port)] = new_connection;
+        self->source_to_conn_[std::make_pair(self->ipToUint32(src_str), result.src_port)] = new_connection;
         self->lite_core_.live_connections_.insert(new_connection);
         self->conns_.insert(new_connection);
       }
-      self->source_to_conn_[std::make_pair(src_str, result.src_port)]->RequestUpdate(result.payload, result.len);
+      // print payload here
+      self->source_to_conn_[std::make_pair(self->ipToUint32(src_str), result.src_port)]->RequestUpdate(result.payload.get(), result.len);
     } else {
       std::string dst_str(result.dst_ip.get(), INET_ADDRSTRLEN);
-      if(self->source_to_conn_.find(std::make_pair(dst_str, result.dst_port)) == self->source_to_conn_.end()){
+      if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dst_str), result.dst_port)) == self->source_to_conn_.end()){
         //error
         return;
       }
-      self->source_to_conn_[std::make_pair(dst_str, result.dst_port)]->ResponseUpdate(result.payload, result.len);
+      self->source_to_conn_[std::make_pair(self->ipToUint32(dst_str), result.dst_port)]->ResponseUpdate(result.payload.get(), result.len);
     }
   } else if (n == 0) {
     printf("Connection closed by peer\n");
@@ -204,23 +249,19 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
     char ip_str[INET_ADDRSTRLEN];
     uint16_t port;
     if(event->header.kind == ACCEPT){
-        if (inet_ntop(AF_INET, &event->connection.saddr, ip_str, sizeof(ip_str))) {
-            std::cout << "Captured IP: " << ip_str << std::endl;
-        } else {
+        if (!inet_ntop(AF_INET, &event->connection.saddr, ip_str, sizeof(ip_str))) {
             perror("inet_ntop");
             return -1;
         }
         std::string src_str(ip_str);
-        if (inet_ntop(AF_INET, &event->connection.daddr, ip_str, sizeof(ip_str))) {
-            std::cout << "Captured IP: " << ip_str << std::endl;
-        } else {
+        if (!inet_ntop(AF_INET, &event->connection.daddr, ip_str, sizeof(ip_str))) {
             perror("inet_ntop");
             return -1;
         }
         std::string dst_str(ip_str);
-        if(self->source_to_conn_.find(std::make_pair(dst_str, event->connection.dport)) == self->source_to_conn_.end()){
+        if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dst_str), event->connection.dport)) == self->source_to_conn_.end()){
           //print dst_str and event->connection.dport
-          printf("Adding connection to the connection map: %s:%u\n", dst_str.c_str(), event->connection.dport);
+          // printf("Adding connection to the connection map during accept update: %s:%u\n", dst_str.c_str(), event->connection.dport);
           auto new_connection =
             new ConnectionInstance(0,                    // socket fd
                                   0,                      // event flags
@@ -230,30 +271,26 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
                                   self->lite_core_,      // lite core instance
                                   false,                 // is_server
                                   self);                 // worker instance
-        self->source_to_conn_[std::make_pair(dst_str, event->connection.dport)] = new_connection;
+        self->source_to_conn_[std::make_pair(self->ipToUint32(dst_str), event->connection.dport)] = new_connection;
         self->lite_core_.live_connections_.insert(new_connection);
         self->conns_.insert(new_connection);
         }
     } else{
-        if (inet_ntop(AF_INET, &event->connection.saddr, ip_str, sizeof(ip_str))) {
-            std::cout << "Captured IP: " << ip_str << std::endl;
-        } else {
+        if (!inet_ntop(AF_INET, &event->connection.saddr, ip_str, sizeof(ip_str))) {
             perror("inet_ntop");
             return -1;
         }
         std::string src_str(ip_str);
-        if (inet_ntop(AF_INET, &event->connection.daddr, ip_str, sizeof(ip_str))) {
-            std::cout << "Captured IP: " << ip_str << std::endl;
-        } else {
+        if (!inet_ntop(AF_INET, &event->connection.daddr, ip_str, sizeof(ip_str))) {
             perror("inet_ntop");
             return -1;
         }
         std::string dest_str(ip_str);
-        if(self->source_to_conn_.find(std::make_pair(dest_str, event->connection.dport)) != self->source_to_conn_.end()){
+        if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dest_str), event->connection.dport)) != self->source_to_conn_.end()){
           //print dest_str and event->connection.dport
-          printf("Removing connection from the connection map: %s:%u\n", dest_str.c_str(), event->connection.dport);
-          auto connection = self->source_to_conn_[std::make_pair(dest_str, event->connection.dport)];
-          self->source_to_conn_[std::make_pair(dest_str, event->connection.dport)] = nullptr;
+          // printf("Removing connection from the connection map: %s:%u\n", dest_str.c_str(), event->connection.dport);
+          auto connection = self->source_to_conn_[std::make_pair(self->ipToUint32(dest_str), event->connection.dport)];
+          self->source_to_conn_[std::make_pair(self->ipToUint32(dest_str), event->connection.dport)] = nullptr;
           // self->lite_core_.live_connections_.erase(new_connection);
           // self->conns_.erase(new_connection);
           delete connection;
@@ -296,10 +333,11 @@ ParseResult EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
     int ip_header_len = ip->ihl * 4;   // Length of IP header in bytes
     int tcp_header_len = tcp->doff * 4; // Length of TCP header in bytes
     int headers_total_len = sizeof(struct ethhdr) + ip_header_len + tcp_header_len;
+    std::unique_ptr<uint8_t[]> payload = std::make_unique<uint8_t[]>(size - headers_total_len);
 
     if (size > headers_total_len) {
         int payload_size = size - headers_total_len;
-        unsigned char *payload = buffer + headers_total_len;
+        memcpy(payload.get(), buffer + headers_total_len, payload_size);
         // printf("new tcp data, %s:%d -> %s:%d\n", 
         //    src_ip.get(), ntohs(tcp->source),
         //    dst_ip.get(), ntohs(tcp->dest));
@@ -308,7 +346,7 @@ ParseResult EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         result.src_port = ntohs(tcp->source);
         result.dst_ip=std::move(dst_ip);
         result.dst_port = ntohs(tcp->dest);
-        result.payload = payload;
+        result.payload = std::move(payload);
         result.len = payload_size;
         // fwrite(payload, sizeof(char), payload_size, stdout);
         return result;
@@ -349,6 +387,18 @@ template <typename Application, typename Request, typename Response,
 uint16_t EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::htons_custom(uint16_t i) {
     return (i << 8) | (i >> 8);
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+uint32_t EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::ipToUint32(const std::string& ip) {
+    struct in_addr addr;
+    if (inet_pton(AF_INET, ip.c_str(), &addr) == 1) {
+        return ntohl(addr.s_addr);  // Convert from network byte order to host byte order
+    } else {
+        throw std::invalid_argument("Invalid IP address format");
+    }
 }
 
 }  // namespace lite
