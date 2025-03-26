@@ -5,6 +5,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <errno.h>
 
 #include <fstream>
 
@@ -417,9 +418,9 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
           std::cout << "Sent " << sent << " bytes." << std::endl;
         }
 
-        std::string BlockPath = "/workspace/data/dfs/data/current/" +
+        std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" +
                                 TargetBlock.poolid() +
-                                "/current/finalized/subdir0/subdir1/blk_" +
+                                "/current/finalized/subdir0/subdir2/blk_" +
                                 std::to_string(TargetBlock.blockid());
         std::string MetaPath = BlockPath + "_" +
                                std::to_string(TargetBlock.generationstamp()) +
@@ -668,7 +669,7 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
 
         std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" +
                       target.poolid() +
-                      "/current/finalized/subdir0/subdir0/blk_" +
+                      "/current/finalized/subdir0/subdir2/blk_" +
                       std::to_string(target.blockid());
         std::string MetaPath = BlockPath + "_" +
                               std::to_string(target.generationstamp()) +
@@ -814,20 +815,30 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
 
           unsigned char pipelineAckBuffer[1 + pipelineAck.ByteSizeLong() + 5];
 
-          pipelineAckBuffer[0] = 0x09;
           pipelineAck.SerializeToArray(pipelineAckBuffer + 1, pipelineAck.ByteSizeLong());
+          if (static_cast<uint8_t>(pipelineAck.ByteSizeLong()) + 5 > 255) {
+            std::cerr << "Warning: ByteSizeLong() too large to store in one byte!" << std::endl;
+          } else {
+            pipelineAckBuffer[0] = static_cast<uint8_t>(pipelineAck.ByteSizeLong() + 5);
+          }
           unsigned char additionalData[5] = {0x18, 0x00, 0x22, 0x01, 0x00};
+
           std::memcpy(&pipelineAckBuffer[pipelineAck.ByteSizeLong() + 1], additionalData, sizeof(additionalData));
+          
+          std::cout << "pipelineAck: " << pipelineAck.DebugString();
 
           sent = send(conn.client_fd, pipelineAckBuffer, sizeof(pipelineAckBuffer), 0);
 
-          if (sent < 0) {
-            LOG(ERROR) << "Failed to send pipelineAck" << std::endl;
-            WriteErrorResponse(resp.buffer);
-            return std::make_pair(resp, false);
-          } else {
-            std::cout << "sent " << sent << " bytes" << std::endl;
+          int err_count = 0;
+          while (sent < 0 and err_count < 5) {
+            LOG(ERROR) << "Failed to send pipelineAck" << "send() failed with error code: " << errno << std::endl;
+            // WriteErrorResponse(resp.buffer);
+            // return std::make_pair(resp, false);
+            sent = send(conn.client_fd, pipelineAckBuffer, sizeof(pipelineAckBuffer), 0);
+            err_count += 1;
           }
+          
+          std::cout << "sent " << sent << " bytes" << std::endl;
 
           if(packet_header.lastpacketinblock()) {
             break;
@@ -844,7 +855,7 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
         auto* datanodeID = registration->mutable_datanodeid();
         datanodeID->set_ipaddr("10.10.1.2");
         datanodeID->set_hostname("node1");
-        datanodeID->set_datanodeuuid("9675a363-9430-46a7-b90b-554d919a07f4");
+        datanodeID->set_datanodeuuid("3bf08c18-f4f8-42ef-8f5a-86ca8885b7b8");
         datanodeID->set_xferport(9866);
         datanodeID->set_infoport(9864);
         datanodeID->set_ipcport(9867);
@@ -852,9 +863,9 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
 
         auto* storageInfo = registration->mutable_storageinfo();
         storageInfo->set_layoutversion(-66);
-        storageInfo->set_namespceid(508935736);
-        storageInfo->set_clusterid("CID-066a572c-d4f0-4f2c-b6c5-905e230df5d9");
-        storageInfo->set_ctime(1738680776488);
+        storageInfo->set_namespceid(459736184);
+        storageInfo->set_clusterid("CID-ae8e7a4b-3ac0-4870-b876-f0f89c83cf03");
+        storageInfo->set_ctime(1741568254745);
 
         auto* keys = registration->mutable_keys();
         keys->set_isblocktokenenabled(false);
@@ -1039,9 +1050,9 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
       auto target = OpWriteBlock.header().baseheader().block();
 
       if (!packet_header.lastpacketinblock()) {
-        std::string BlockPath = "/workspace/data/dfs/data/current/" +
+        std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" +
                                 target.poolid() +
-                                "/current/finalized/subdir0/subdir1/blk_" +
+                                "/current/finalized/subdir0/subdir2/blk_" +
                                 std::to_string(target.blockid());
         std::string MetaPath = BlockPath + "_" +
                                std::to_string(target.generationstamp()) +
