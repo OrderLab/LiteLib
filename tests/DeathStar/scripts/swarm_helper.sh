@@ -84,7 +84,7 @@ function up() {
         -v \$(pwd)/keys:/keys \
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         mongo-with-cgroup:latest \
-        sh -c 'cgcreate -g cpu:/cpulimited && cgset -r cpu.max=\"400000 100000\" cpulimited && cgexec -g cpu:cpulimited mongod --bind_ip_all --nojournal --quiet --config /social-network-microservices/config/mongod.conf'"
+        sh -c 'cgcreate -g cpu:/deathstar_cpulimited && cgset -r cpu.max=\"400000 100000\" deathstar_cpulimited && cgexec -g cpu:deathstar_cpulimited mongod --bind_ip_all --nojournal --quiet --config /social-network-microservices/config/mongod.conf'"
         # --pid host \
 
     # Check service status

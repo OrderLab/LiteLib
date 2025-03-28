@@ -8,7 +8,7 @@ local max_user_index = tonumber(os.getenv("max_user_index")) or 962
 
 request = function()
   local user_id = tostring(math.random(0, max_user_index - 1))
-  local start = tostring(math.random(0, 100))
+  local start = tostring(math.random(0, 1000))
   local stop = tostring(start + 10)
 
   local args = "user_id=" .. user_id .. "&start=" .. start .. "&stop=" .. stop
