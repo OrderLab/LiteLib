@@ -255,6 +255,7 @@ int socket__filter_tcp(struct __sk_buff *skb)
         // bpf_printk("record: %d", *record);
         if (*record != 1)
             return 0;
+        *record = 0;
         return -1;
     }
 

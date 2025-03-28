@@ -15,10 +15,6 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
     lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
         &pending_requests) const {
-  if (pending_requests.empty()) {
-    LOG(ERROR) << "No pending requests\n";
-    // return std::make_pair(std::vector<std::shared_ptr<Packet>>(), false);
-  }
   auto [req, is_not_replay] = pending_requests.pop_front();
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());
   auto opcode_resp = dynamic_cast<RESPBulkString *>(command->value[0].get());
@@ -125,7 +121,6 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
     }
     const auto key = dynamic_cast<RESPString *>(req->GetArg(0));
 
-    // std::cout<<opcode<<" "<<*(key->value)<<std::endl;
     if (key == nullptr) {
       LOG(ERROR) << "Invalid argument for set\n";
       return;
@@ -137,6 +132,7 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
     }
     entry.value = value->value;
     cache->Set(*(key->value), entry, in_transaction);
+    // std::cout<<*(key->value)<<" "<<entry.value<<std::endl;
   } else if (opcode != "get" &&
              opcode != "ping") {  // TODO: update states using get
     LOG(ERROR) << "Unknow opcode: " << opcode << std::endl;

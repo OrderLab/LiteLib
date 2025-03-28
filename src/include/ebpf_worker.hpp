@@ -112,6 +112,8 @@ class EbpfWorker : public Worker<Application, Request, Response,
 
   struct ring_buffer *rb;
 
+  unsigned char *buffer;
+
   int prog_fd_;
 
   /// The underlying service implementation.
