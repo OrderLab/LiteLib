@@ -23,6 +23,7 @@
 #include <event2/event.h>
 #include <event2/util.h>
 #include <bpf/bpf.h>
+#include <sys/ioctl.h>
 #include "litesys.skel.h"
 
 #include "ebpf_worker.hpp"
@@ -67,7 +68,7 @@ EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
     return;
   }
 
-  int rcvbuf_size = 100 * 1024 * 1024;  // 70MB
+  int rcvbuf_size = 20 * 1024 * 1024;  // 70MB
   if (setsockopt(notify_event_fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(rcvbuf_size)) < 0) {
       perror("Failed to set SO_RCVBUF");
       close(notify_event_fd);
@@ -101,6 +102,8 @@ EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
     return;
   }
 
+  buffer = (unsigned char *)malloc(BUFFER_SIZE);
+
   struct event_config *ev_config;
   ev_config = event_config_new();
   event_config_set_flag(ev_config, EVENT_BASE_FLAG_NOLOCK);
@@ -133,6 +136,7 @@ EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
   litesys_bpf__destroy(skel);
   event_del(&notify_event_);
   event_base_free(base_);
+  free(buffer);
 
   conns_.visit_all([](const auto &conn) { delete conn; });
 }
@@ -169,37 +173,28 @@ void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::NotifyHandler(evutil_socket_t fd, short which,
                                        void *arg_conn) {
   // printf("Next message\n");
+  int dropped;
+  socklen_t len = sizeof(dropped);
+  if (getsockopt(fd, SOL_SOCKET, SO_RXQ_OVFL, &dropped, &len) == 0) {
+    std::cout << "Received queue overflowed packets: " << dropped << std::endl;
+  }
   auto *self = static_cast<EbpfWorker<Application, Request, Response,
                           ConnectionInfo, CacheKey, CacheEntry>*>(arg_conn);
+
+  int bytes_available;
+  if (ioctl(fd, FIONREAD, &bytes_available) < 0) {
+      perror("ioctl FIONREAD failed");
+      return;
+  }
+  // printf("Bytes available: %d\n", bytes_available);
   self->count++;
-  unsigned char *buffer = (unsigned char *)malloc(BUFFER_SIZE);
   struct sockaddr_in sender_addr;
   socklen_t addr_len = sizeof(sender_addr);
-  ssize_t n = recvfrom(fd, buffer, BUFFER_SIZE - 1, 0, (struct sockaddr *)&sender_addr, &addr_len);
-  // printf("Received buffer: ");
-  // for (ssize_t i = 0; i < n; i++) {
-  //   if (isprint(buffer[i])) {
-  //     printf("%c", buffer[i]);
-  //   } else {
-  //     printf("%02X ", buffer[i]);
-  //   }
-  // }
-  // printf("\n");
-  // printf("n: %zd\n", n);
+  ssize_t n = recvfrom(fd, self->buffer, BUFFER_SIZE - 1, 0, (struct sockaddr *)&sender_addr, &addr_len);
+  
   
   if (n > 0) {
-    // printf("Parsing buffer\n");
-    ParseResult result = parse_tcp_data(buffer, n);
-    // printf("%pI4:%d: %s\n", result.request_dir ? result.src_ip.get() : result.dst_ip.get(), result.request_dir ? result.src_port : result.dst_port, result.request_dir ? "Request" : "Response");
-    // printf("Received buffer: ");
-  // for (ssize_t i = 0; i < result.len; i++) {
-  //   if (isprint(result.payload[i])) {
-  //     printf("%c", result.payload[i]);
-  //   } else {
-  //     printf("%02X ", result.payload[i]);
-  //   }
-  // }
-  // printf("\n");
+    ParseResult result = parse_tcp_data(self->buffer, n);
     if (result.request_dir){
       // check if the connection exists
       std::string src_str(result.src_ip.get(), INET_ADDRSTRLEN);
@@ -236,7 +231,6 @@ void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
   } else {
       perror("recvfrom error");
   }
-  free(buffer);
 }
 
 template <typename Application, typename Request, typename Response,
