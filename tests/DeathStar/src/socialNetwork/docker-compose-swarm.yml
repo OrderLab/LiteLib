@@ -515,23 +515,23 @@ services:
     depends_on:
       - cassandra-schema
 
-  cassandra-schema:
-    image: jaegertracing/jaeger-cassandra-schema
-    deploy:
-      restart_policy:
-        condition: on-failure
-      placement:
-        constraints:
-          - node.hostname==${NODE2_HOSTNAME}
-    depends_on:
-      - cassandra
+  # cassandra-schema:
+  #   image: jaegertracing/jaeger-cassandra-schema
+  #   deploy:
+  #     restart_policy:
+  #       condition: on-failure
+  #     placement:
+  #       constraints:
+  #         - node.hostname==${NODE2_HOSTNAME}
+  #   depends_on:
+  #     - cassandra
 
-  cassandra:
-    image: cassandra:3.9
-    deploy:
-      placement:
-        constraints:
-          - node.hostname==${NODE2_HOSTNAME}
+  # cassandra:
+  #   image: cassandra:3.9
+  #   deploy:
+  #     placement:
+  #       constraints:
+  #         - node.hostname==${NODE2_HOSTNAME}
 
 networks:
   default:

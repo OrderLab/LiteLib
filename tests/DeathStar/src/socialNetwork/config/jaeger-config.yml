@@ -1,4 +1,4 @@
-disabled: false
+disabled: true
 reporter:
   logSpans: false
   localAgentHostPort: "jaeger-agent:6831"
