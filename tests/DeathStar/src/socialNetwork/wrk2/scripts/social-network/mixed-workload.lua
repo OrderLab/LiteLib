@@ -1,5 +1,9 @@
 local socket = require("socket")
 local time = socket.gettime()*1000
+local start_time = 0
+local read_home_timeline_ratio = 0.60
+local read_user_timeline_ratio = 0.30
+local compose_post_ratio       = 0.10
 math.randomseed(time)
 math.random(); math.random(); math.random()
 
@@ -13,6 +17,10 @@ local decset = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'}
 
 -- load env vars
 local max_user_index = tonumber(os.getenv("max_user_index")) or 962
+local init_user_post_count = tonumber(os.getenv("init_user_post_count")) or 1000
+local rps = tonumber(os.getenv("rps")) or 1500
+local compose_post_rps = rps * compose_post_ratio
+local compose_post_rps_per_user = compose_post_rps / max_user_index
 
 local function stringRandom(length)
   if length > 0 then
@@ -84,7 +92,8 @@ end
 
 local function read_user_timeline()
   local user_id = tostring(math.random(0, max_user_index - 1))
-  local start = tostring(math.random(0, 1000))
+  local time_past_exp_start = socket.gettime() - start_time
+  local start = tostring(math.random(0, 1000 + compose_post_rps_per_user * time_past_exp_start))
   local stop = tostring(start + 10)
 
   local args = "user_id=" .. user_id .. "&start=" .. start .. "&stop=" .. stop
@@ -97,7 +106,8 @@ end
 
 local function read_home_timeline()
     local user_id = tostring(math.random(0, max_user_index - 1))
-    local start = tostring(math.random(0, 1000))
+    local time_past_exp_start = socket.gettime() - start_time
+    local start = tostring(math.random(0, 1000 + compose_post_rps_per_user * time_past_exp_start))
     local stop = tostring(start + 10)
 
     local args = "user_id=" .. user_id .. "&start=" .. start .. "&stop=" .. stop
@@ -109,10 +119,11 @@ local function read_home_timeline()
   end
 
 request = function()
+    if start_time == 0 then
+      start_time = socket.gettime()
+    end
+
     cur_time = math.floor(socket.gettime())
-    local read_home_timeline_ratio = 0.60
-    local read_user_timeline_ratio = 0.30
-    local compose_post_ratio       = 0.10
 
     local coin = math.random()
     if coin < read_home_timeline_ratio then
