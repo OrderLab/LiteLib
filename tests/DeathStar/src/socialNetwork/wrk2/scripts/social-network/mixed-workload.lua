@@ -22,6 +22,50 @@ local rps = tonumber(os.getenv("rps")) or 1500
 local compose_post_rps = rps * compose_post_ratio
 local compose_post_rps_per_user = compose_post_rps / max_user_index
 
+-- Zipf distribution implementation
+local function zeta(n, theta)
+    local sum = 0
+    for i = 1, n do
+        sum = sum + (1 / math.pow(i, theta))
+    end
+    return sum
+end
+
+local function init_zipf(n, theta)
+    local z = zeta(n, theta)
+    local dist = {}
+    for i = 1, n do
+        dist[i] = (1 / math.pow(i, theta)) / z
+    end
+    
+    -- Calculate cumulative probabilities
+    local cum_prob = {}
+    cum_prob[1] = dist[1]
+    for i = 2, n do
+        cum_prob[i] = cum_prob[i-1] + dist[i]
+    end
+    
+    return cum_prob
+end
+
+-- Initialize Zipf distribution with theta = 0.648 to get roughly 5% users making 30% requests, assuming max_user_index is 1000
+local zipf_dist = init_zipf(max_user_index, 0.648)
+
+-- The if the duration of the experiment is about 100s, the scale factor is always close to 1
+local function sample_zipf(dist, scale_factor)
+  local r = math.random()
+  for i = 1, #dist do
+      if r <= dist[i] then
+          return math.floor((i - 1) * scale_factor)
+      end
+  end
+  return math.floor((#dist - 1) * scale_factor)
+end
+
+local function sample_zipf_start(max_val)
+  return sample_zipf(zipf_dist, max_val / max_user_index)
+end
+
 local function stringRandom(length)
   if length > 0 then
     return stringRandom(length - 1) .. charset[math.random(1, #charset)]
@@ -39,7 +83,7 @@ local function decRandom(length)
 end
 
 local function compose_post()
-  local user_index = math.random(0, max_user_index - 1)
+  local user_index = sample_zipf_start(max_user_index)
   local username = "username_" .. tostring(user_index)
   local user_id = tostring(user_index)
   local text = stringRandom(256)
@@ -91,23 +135,25 @@ local function compose_post()
 end
 
 local function read_user_timeline()
-  local user_id = tostring(math.random(0, max_user_index - 1))
-  local time_past_exp_start = socket.gettime() - start_time
-  local start = tostring(math.random(0, 1000 + compose_post_rps_per_user * time_past_exp_start))
-  local stop = tostring(start + 10)
+    local user_id = tostring(sample_zipf_start(max_user_index))
+    local time_past_exp_start = socket.gettime() - start_time
+    local max_start = 1000 + compose_post_rps_per_user * time_past_exp_start
+    local start = tostring(sample_zipf_start(max_start))
+    local stop = tostring(start + 10)
 
-  local args = "user_id=" .. user_id .. "&start=" .. start .. "&stop=" .. stop
-  local method = "GET"
-  local headers = {}
-  headers["Content-Type"] = "application/x-www-form-urlencoded"
-  local path = "http://localhost:8080/wrk2-api/user-timeline/read?" .. args
-  return wrk.format(method, path, headers, nil)
+    local args = "user_id=" .. user_id .. "&start=" .. start .. "&stop=" .. stop
+    local method = "GET"
+    local headers = {}
+    headers["Content-Type"] = "application/x-www-form-urlencoded"
+    local path = "http://localhost:8080/wrk2-api/user-timeline/read?" .. args
+    return wrk.format(method, path, headers, nil)
 end
 
 local function read_home_timeline()
-    local user_id = tostring(math.random(0, max_user_index - 1))
+    local user_id = tostring(sample_zipf_start(max_user_index))
     local time_past_exp_start = socket.gettime() - start_time
-    local start = tostring(math.random(0, 1000 + compose_post_rps_per_user * time_past_exp_start))
+    local max_start = 1000 + compose_post_rps_per_user * time_past_exp_start
+    local start = tostring(sample_zipf_start(max_start))
     local stop = tostring(start + 10)
 
     local args = "user_id=" .. user_id .. "&start=" .. start .. "&stop=" .. stop
@@ -116,7 +162,7 @@ local function read_home_timeline()
     headers["Content-Type"] = "application/x-www-form-urlencoded"
     local path = "http://localhost:8080/wrk2-api/home-timeline/read?" .. args
     return wrk.format(method, path, headers, nil)
-  end
+end
 
 request = function()
     if start_time == 0 then

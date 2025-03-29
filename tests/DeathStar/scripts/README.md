@@ -29,7 +29,7 @@ time python3 scripts/init_social_graph.py --graph=socfb-Reed98 --ip node2 --comp
 ../wrk2/wrk -D exp -t 40 -c 40 -d 120 -L -s ./wrk2/scripts/social-network/read-home-timeline.lua http://node2:8080/wrk2-api/home-timeline/read -R 1500
 # run
 # set cpu limit to 100%
-../wrk2/wrk -D exp -t 40 -c 40 -d 300 -L -s ./wrk2/scripts/social-network/mixed-workload.lua http://node2:8080 -R 1500
+../wrk2/wrk -D exp -t 40 -c 40 -d 60 -L -s ./wrk2/scripts/social-network/mixed-workload.lua http://node2:8080 -R 1500
 # crash
 # go to socialnetwork_post-storage-memcached service in node4
 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/crash.sh
