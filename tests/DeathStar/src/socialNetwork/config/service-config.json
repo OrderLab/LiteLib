@@ -153,7 +153,7 @@
     "timeout_ms": 10000,
     "port": 11211,
     "connections": 512,
-    "binary_protocol": 1
+    "binary_protocol": 0
   },
   "user-mention-service": {
     "keepalive_ms": 10000,

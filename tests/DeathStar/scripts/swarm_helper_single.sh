@@ -63,7 +63,7 @@ function up() {
 
     # Deploy the stack
     echo "Deploying stack..."
-    NODE0_HOSTNAME=$NODE0_HOSTNAME NODE2_HOSTNAME=$NODE2_HOSTNAME NODE3_HOSTNAME=$NODE3_HOSTNAME docker stack deploy --compose-file=$DeathStarDir/src/socialNetwork/docker-compose-swarm.yml socialnetwork
+    NODE0_HOSTNAME=$NODE0_HOSTNAME NODE2_HOSTNAME=$NODE2_HOSTNAME NODE3_HOSTNAME=$NODE3_HOSTNAME docker stack deploy --compose-file=$DeathStarDir/src/socialNetwork/docker-compose-swarm-single.yml socialnetwork
     
     # Wait for network to be created
     sleep 5
@@ -85,7 +85,6 @@ function up() {
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         mongo-with-cgroup:latest \
         sh -c 'cgcreate -g cpu:/deathstar_cpulimited && cgset -r cpu.max=\"400000 100000\" deathstar_cpulimited && cgexec -g cpu:deathstar_cpulimited mongod --bind_ip_all --nojournal --quiet --config /social-network-microservices/config/mongod.conf'"
-        # --pid host \
 
     # Check service status
     echo "Service status:"

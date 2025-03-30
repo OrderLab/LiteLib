@@ -1,0 +1,22 @@
+{
+  "pools": {
+     "A": {
+        "servers": [
+          "post-storage-memcached-1:11211",
+          "post-storage-memcached-2:11211"
+        ]
+     }
+  },
+  "route": {
+    "type": "OperationSelectorRoute",
+    "operation_policies": {
+      "add": "AllFastestRoute|Pool|A",
+      "delete": "AllFastestRoute|Pool|A",
+      "get": {
+        "type": "LoadBalancerRoute",
+        "children": ["Pool|A"]
+      },
+      "set": "AllFastestRoute|Pool|A"
+    }
+  }
+}
