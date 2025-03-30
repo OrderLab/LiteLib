@@ -10,13 +10,13 @@
 ## Run
 
 ```bash
-./swarm_helper-single.sh up
+./swarm_helper_single.sh up
 ```
 
 ## Stop
 
 ```bash
-./swarm_helper-single.sh down
+./swarm_helper_single.sh down
 ```
 
 ## Exp
@@ -72,13 +72,13 @@ cgget -g cpu:/deathstar_cpulimited
 ## Run
 
 ```bash
-./swarm_helper-replica.sh up
+./swarm_helper_replica.sh up
 ```
 
 ## Stop
 
 ```bash
-./swarm_helper-replica.sh down
+./swarm_helper_replica.sh down
 ```
 
 ## Exp
