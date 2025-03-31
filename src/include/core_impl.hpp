@@ -169,8 +169,10 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   app_.NormalToEmergencyHook();
 
   barrier_.arrive_and_wait();  // unblock worker threads
+
   if (!crash_recover_) {
     // add all cache nodes to the log
+    size_t dirty_cnt = 0;
     crash_conn_head_ = new LogEntryInstance(
         nullptr, nullptr, std::shared_ptr<ConnectionInstance *>());
     cache_inner_.VisitAllState(
@@ -180,9 +182,11 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                 state, nullptr, crash_conn_head_->backend_conn_ptr);
             logger_inner_.Log(dirty, crash_conn_head_);
             state->dirty_node = dirty;
+            dirty_cnt++;
           }
         },
         false);
+    LOG(INFO) << "Initial dirty cache nodes: " << dirty_cnt << std::endl;
   }
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
