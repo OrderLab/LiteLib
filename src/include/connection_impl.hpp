@@ -145,9 +145,18 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
-                CacheEntry>::RequestUpdate(uint8_t* buffer, int len) {
+                CacheEntry>::RequestUpdate(uint8_t* buffer, int len, uint32_t seq_num) {
   bool forwarded = false;
   // check if the buffer is large enough
+  // printf("Buffer request: %s\n", buffer);
+  if (seq_num != expected_request_seq_num_) {
+    LOG(ERROR) << "RequestUpdate: sequence number is out of order" << " expected: " << expected_request_seq_num_ << " got: " << seq_num << std::endl;
+    // return;
+  } else {
+    LOG(INFO) << "RequestUpdate: in-order packet" << " expected: " << expected_request_seq_num_ << " got: " << seq_num << std::endl;
+  }
+  expected_request_seq_num_ = seq_num + len;
+  // LOG(INFO) << "Next expected request sequence number: " << expected_request_seq_num_ << std::endl;
   if (len > 131072) {
     LOG(ERROR) << "RequestUpdate: buffer is too large" << std::endl;
     return;
@@ -238,8 +247,17 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
-                CacheEntry>::ResponseUpdate(uint8_t* buffer, int len) {
+                CacheEntry>::ResponseUpdate(uint8_t* buffer, int len, uint32_t seq_num) {
   // check if the buffer is large enough
+  // printf("Buffer response: %s\n", buffer);
+  if (seq_num != expected_response_seq_num_) {
+    LOG(ERROR) << "ResponseUpdate: sequence number is out of order" << " expected: " << expected_response_seq_num_ << " got: " << seq_num << std::endl;
+    // return;
+  } else {
+    LOG(INFO) << "ResponseUpdate: in-order packet" << " expected: " << expected_response_seq_num_ << " got: " << seq_num << std::endl;
+  }
+  expected_response_seq_num_ = seq_num + len;
+  // LOG(INFO) << "Next expected response sequence number: " << expected_response_seq_num_ << std::endl;
   bool forwarded = false;
   if (len > 131072) {
     LOG(ERROR) << "ResponseUpdate: buffer is too large" << std::endl;

@@ -4,6 +4,13 @@
 #include <memory>
 #include <queue>
 #include <string>
+#include <filesystem>
+#include <regex>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <unistd.h>
 
 #include "connection.hpp"
 #include "core.hpp"
@@ -55,6 +62,7 @@ class LiteServer {
 
   /// The internal lite server
   LiteCoreInstance lite_core_;
+
 
   std::unique_ptr<EbpfWorkerInstance> ebpf_worker_;
 

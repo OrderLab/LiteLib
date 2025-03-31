@@ -40,9 +40,8 @@ args = parser.parse_args()
 
 os.system(r"mkdir -p " + args.work_dir)
 os.system(r"chmod 777 " + args.work_dir)
-
 os.system(r'pgrep "redis-leveldb" | xargs kill -9')
-os.system(r'pgrep "LiteLevelDB" | xargs kill -9')
+# os.system(r'pgrep "LiteLevelDB" | xargs kill -9')
 os.system(r'pgrep "lite_cli" | xargs kill -9')
 os.system(r'pgrep "socket" | xargs kill -9')
 os.system(r'pgrep "redis-server" | xargs kill -9')

@@ -8,6 +8,13 @@
 #include <unordered_map>
 #include <utility>  // for std::pair
 #include <glog/logging.h>  // for PCHECK and LOG
+#include <filesystem>
+#include <regex>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <memory>
+#include <sstream>
 
 #include "litesys.skel.h"
 #include "connection.hpp"
@@ -58,6 +65,7 @@ struct ParseResult{
     std::unique_ptr<uint8_t[]> payload;
     int len;
     bool request_dir;
+    uint32_t seq_num;
     // connection
 };
 
@@ -112,6 +120,8 @@ class EbpfWorker : public Worker<Application, Request, Response,
 
   struct ring_buffer *rb;
 
+  struct ring_buffer *pb;
+
   unsigned char *buffer;
 
   int prog_fd_;
@@ -120,6 +130,10 @@ class EbpfWorker : public Worker<Application, Request, Response,
   LiteCoreInstance &lite_core_;
 
   std::barrier<std::function<void()>> &barrier_;
+
+  evutil_socket_t findSocketFD(int port);
+  
+  std::string executeCommand(const std::string& command);
 
   /// The entry point for the worker thread.
   static void *ThreadBody(void *arg_self);

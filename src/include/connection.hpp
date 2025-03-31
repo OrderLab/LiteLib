@@ -32,6 +32,8 @@ class Connection {
  public:
   Connection(const Connection&) = delete;
   Connection& operator=(const Connection&) = delete;
+  uint32_t expected_request_seq_num_ = 0;
+  uint32_t expected_response_seq_num_ = 0;
 
   /// Construct a connection with the given socket fd and add it to the specific
   /// event_base.
@@ -57,9 +59,9 @@ class Connection {
 
   static void BackendHandler(evutil_socket_t fd, short which, void* arg_conn);
 
-  void RequestUpdate(uint8_t* buffer, int len);
+  void RequestUpdate(uint8_t* buffer, int len, uint32_t seq_num);
 
-  void ResponseUpdate(uint8_t* buffer, int len);
+  void ResponseUpdate(uint8_t* buffer, int len, uint32_t seq_num);
 
   /// Try to connect to the backend and set event
   bool ConnectBackend();

@@ -36,6 +36,8 @@
 
 namespace lite {
 
+// Define a callback function for the perf buffer
+
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
@@ -89,16 +91,27 @@ EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
 
   prog_fd_ = bpf_program__fd(skel->progs.socket__filter_tcp);
 
-  if (setsockopt(notify_event_fd, SOL_SOCKET, SO_ATTACH_BPF, &prog_fd_, sizeof(prog_fd_)) < 0) {
-    perror("Error attaching BPF program");
-    close(notify_event_fd);
-    return;
-  }
+  // if (setsockopt(notify_event_fd, SOL_SOCKET, SO_ATTACH_BPF, &prog_fd_, sizeof(prog_fd_)) < 0) {
+  //   perror("Error attaching BPF program");
+  //   close(notify_event_fd);
+  //   return;
+  // }
+  __u32 key = notify_event_fd;
+  bpf_map_update_elem(bpf_map__fd(skel->maps.sock_map), &key, &notify_event_fd, BPF_ANY);
   SetMode(0);
 
   rb = ring_buffer__new(bpf_map__fd(skel->maps.conn_ringbuf), HandleConnection, this, NULL);
   if (!rb) {
     printf("Failed to create ring buffer\n");
+    return;
+  }
+  // struct perf_buffer_opts pb_opts = {};
+  // pb_opts.sample_cb = HandleConnection;
+  // pb_opts.ctx = this;
+
+  pb = ring_buffer__new(bpf_map__fd(skel->maps.events), HandleConnection, this, NULL);
+  if (!pb) {
+    printf("Failed to create perf buffer\n");
     return;
   }
 
@@ -162,6 +175,11 @@ void *EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
              CacheEntry>::ThreadBody(void *arg_self) {
   auto *self = static_cast<EbpfWorker<Application, Request, Response, 
                           ConnectionInfo, CacheKey, CacheEntry>*>(arg_self);
+  
+  while (true) {
+    ring_buffer__poll(self->pb, 100);
+    ring_buffer__poll(self->rb, 100);
+  }
   event_base_loop(self->base_, 0);
   event_base_free(self->base_);
   return NULL;
@@ -216,14 +234,14 @@ void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         self->conns_.insert(new_connection);
       }
       // print payload here
-      self->source_to_conn_[std::make_pair(self->ipToUint32(src_str), result.src_port)]->RequestUpdate(result.payload.get(), result.len);
+      self->source_to_conn_[std::make_pair(self->ipToUint32(src_str), result.src_port)]->RequestUpdate(result.payload.get(), result.len, result.seq_num);
     } else {
       std::string dst_str(result.dst_ip.get(), INET_ADDRSTRLEN);
       if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dst_str), result.dst_port)) == self->source_to_conn_.end()){
         //error
         return;
       }
-      self->source_to_conn_[std::make_pair(self->ipToUint32(dst_str), result.dst_port)]->ResponseUpdate(result.payload.get(), result.len);
+      self->source_to_conn_[std::make_pair(self->ipToUint32(dst_str), result.dst_port)]->ResponseUpdate(result.payload.get(), result.len, result.seq_num);
     }
   } else if (n == 0) {
     printf("Connection closed by peer\n");
@@ -342,6 +360,7 @@ ParseResult EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         result.dst_port = ntohs(tcp->dest);
         result.payload = std::move(payload);
         result.len = payload_size;
+        result.seq_num = ntohl(tcp->seq);
         // fwrite(payload, sizeof(char), payload_size, stdout);
         return result;
     } 

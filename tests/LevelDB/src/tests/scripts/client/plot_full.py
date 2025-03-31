@@ -204,78 +204,78 @@ for i in range(cnt):
             "before crash avg latency_server_p95",
             np.nanmean(stat["p95_server_lat"][:idx]),
         )
-    if not np.isnan(stat["reboot_time"]):
-        if not np.isnan(stat["replay_time"]):
-            xlim = stat["replay_time"]
-        else:
-            xlim = stat["reboot_time"]
-        idx = int(xlim) + 1
-        print(
-            "after reboot/replay avg latency_client_avg",
-            np.nanmean(stat["avg_agg_lat"][idx:]),
-        )
-        print(
-            "after reboot/replay avg latency_client_p95",
-            np.nanmean(stat["p95_agg_lat"][idx:]),
-        )
-        print(
-            "after reboot/replay avg latency_server_avg",
-            np.nanmean(stat["avg_server_lat"][idx:]),
-        )
-        print(
-            "after reboot/replay avg latency_server_p95",
-            np.nanmean(stat["p95_server_lat"][idx:]),
-        )
-        duration = 30
-        print(
-            f"{duration}s after reboot/replay avg client error rate",
-            np.nanmean(
-                np.array(stat["ClientError"][idx : idx + duration])
-                / (
-                    np.array(stat["ClientSuccess"][idx : idx + duration])
-                    + np.array(stat["ClientError"][idx : idx + duration])
-                )
-            ),
-        )
-    if not np.isnan(stat["replay_time"]):
-        crash_time = int(stat["crash_time"]) + 1
-        reboot_time = int(stat["reboot_time"])
-        replay_time = int(stat["replay_time"])
-        server_success = np.array(stat["ServerSuccess"])
-        server_miss = np.array(stat["ServerMiss"])
-        hit_rate = server_success / (server_success + server_miss)
-        print(
-            f"avg hit rate from crash to replay: {np.nanmean(hit_rate[crash_time:replay_time])}"
-        )
-        print(
-            "admission control rate: ",
-            stat["ServerError"][reboot_time]
-            / (stat["ServerSuccess"][reboot_time] + stat["ServerError"][reboot_time]),
-        )
-        print(
-            "admission control rate (+1s): ",
-            stat["ServerError"][reboot_time + 1]
-            / (
-                stat["ServerSuccess"][reboot_time + 1]
-                + stat["ServerError"][reboot_time + 1]
-            ),
-        )
-        print(
-            "emergency mode avg latency_server_avg",
-            np.nanmean(stat["avg_server_lat"][crash_time:replay_time]),
-        )
-        print(
-            "emergency mode avg latency_server_p95",
-            np.nanmean(stat["p95_server_lat"][crash_time:replay_time]),
-        )
-        print(
-            "emergency mode avg latency_client_avg",
-            np.nanmean(stat["avg_agg_lat"][crash_time:replay_time]),
-        )
-        print(
-            "emergency mode avg latency_client_p95",
-            np.nanmean(stat["p95_agg_lat"][crash_time:replay_time]),
-        )
+    # if not np.isnan(stat["reboot_time"]):
+    #     if not np.isnan(stat["replay_time"]):
+    #         xlim = stat["replay_time"]
+    #     else:
+    #         xlim = stat["reboot_time"]
+    #     idx = int(xlim) + 1
+    #     print(
+    #         "after reboot/replay avg latency_client_avg",
+    #         np.nanmean(stat["avg_agg_lat"][idx:]),
+    #     )
+    #     print(
+    #         "after reboot/replay avg latency_client_p95",
+    #         np.nanmean(stat["p95_agg_lat"][idx:]),
+    #     )
+    #     print(
+    #         "after reboot/replay avg latency_server_avg",
+    #         np.nanmean(stat["avg_server_lat"][idx:]),
+    #     )
+    #     print(
+    #         "after reboot/replay avg latency_server_p95",
+    #         np.nanmean(stat["p95_server_lat"][idx:]),
+    #     )
+    #     duration = 30
+    #     print(
+    #         f"{duration}s after reboot/replay avg client error rate",
+    #         np.nanmean(
+    #             np.array(stat["ClientError"][idx : idx + duration])
+    #             / (
+    #                 np.array(stat["ClientSuccess"][idx : idx + duration])
+    #                 + np.array(stat["ClientError"][idx : idx + duration])
+    #             )
+    #         ),
+    #     )
+    # if not np.isnan(stat["replay_time"]):
+    #     crash_time = int(stat["crash_time"]) + 1
+    #     reboot_time = int(stat["reboot_time"])
+    #     replay_time = int(stat["replay_time"])
+    #     server_success = np.array(stat["ServerSuccess"])
+    #     server_miss = np.array(stat["ServerMiss"])
+    #     hit_rate = server_success / (server_success + server_miss)
+    #     print(
+    #         f"avg hit rate from crash to replay: {np.nanmean(hit_rate[crash_time:replay_time])}"
+    #     )
+    #     print(
+    #         "admission control rate: ",
+    #         stat["ServerError"][reboot_time]
+    #         / (stat["ServerSuccess"][reboot_time] + stat["ServerError"][reboot_time]),
+    #     )
+    #     print(
+    #         "admission control rate (+1s): ",
+    #         stat["ServerError"][reboot_time + 1]
+    #         / (
+    #             stat["ServerSuccess"][reboot_time + 1]
+    #             + stat["ServerError"][reboot_time + 1]
+    #         ),
+    #     )
+    #     print(
+    #         "emergency mode avg latency_server_avg",
+    #         np.nanmean(stat["avg_server_lat"][crash_time:replay_time]),
+    #     )
+    #     print(
+    #         "emergency mode avg latency_server_p95",
+    #         np.nanmean(stat["p95_server_lat"][crash_time:replay_time]),
+    #     )
+    #     print(
+    #         "emergency mode avg latency_client_avg",
+    #         np.nanmean(stat["avg_agg_lat"][crash_time:replay_time]),
+    #     )
+    #     print(
+    #         "emergency mode avg latency_client_p95",
+    #         np.nanmean(stat["p95_agg_lat"][crash_time:replay_time]),
+    #     )
     stats.append(stat)
 
 
