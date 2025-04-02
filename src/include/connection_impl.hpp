@@ -145,7 +145,16 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
-                CacheEntry>::RequestUpdate(uint8_t* buffer, int len) {
+                CacheEntry>::RequestUpdate(uint8_t* buffer, int len, int seq_num) {
+  if (seq_num != expected_request_seq_num_) {
+    LOG(ERROR) << "RequestUpdate: seq_num mismatch. Expected " << expected_request_seq_num_
+               << " but got " << seq_num << std::endl;
+    // return;
+  } else {
+    LOG(INFO) << "RequestUpdate: seq_num matched. Expected " << expected_request_seq_num_
+              << " got " << seq_num << std::endl;
+  }
+  expected_request_seq_num_ = seq_num + len;
   bool forwarded = false;
   // check if the buffer is large enough
   if (len > 131072) {
@@ -238,8 +247,17 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
-                CacheEntry>::ResponseUpdate(uint8_t* buffer, int len) {
+                CacheEntry>::ResponseUpdate(uint8_t* buffer, int len, int seq_num) {
   // check if the buffer is large enough
+  if (seq_num != expected_response_seq_num_) {
+    LOG(ERROR) << "ResponseUpdate: seq_num mismatch. Expected " << expected_response_seq_num_
+               << " but got " << seq_num << std::endl;
+    // return;
+  } else {
+    LOG(INFO) << "ResponseUpdate: seq_num matched. Expected " << expected_response_seq_num_
+              << " got " << seq_num << std::endl;
+  }
+  expected_response_seq_num_ = seq_num + len;
   bool forwarded = false;
   if (len > 131072) {
     LOG(ERROR) << "ResponseUpdate: buffer is too large" << std::endl;

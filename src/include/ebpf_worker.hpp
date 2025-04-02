@@ -8,6 +8,16 @@
 #include <unordered_map>
 #include <utility>  // for std::pair
 #include <glog/logging.h>  // for PCHECK and LOG
+#include <filesystem>
+#include <regex>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <memory>
+#include <sstream>
+#include <sys/syscall.h>
+#include <unistd.h>
+#include <dirent.h>
 
 #include "litesys.skel.h"
 #include "connection.hpp"
@@ -18,7 +28,7 @@
 
 #define ACCEPT 1
 #define CLOSE 2
-
+#define MAX_PKT_SIZE 4096
 namespace lite {
 
 // Add hash function for std::pair before the structs
@@ -58,7 +68,13 @@ struct ParseResult{
     std::unique_ptr<uint8_t[]> payload;
     int len;
     bool request_dir;
+    int seq_num;
     // connection
+};
+
+struct packet_data {
+    uint32_t len;
+    unsigned char data[MAX_PKT_SIZE];
 };
 
 
@@ -112,6 +128,8 @@ class EbpfWorker : public Worker<Application, Request, Response,
 
   struct ring_buffer *rb;
 
+  struct ring_buffer *pb;
+
   unsigned char *buffer;
 
   int prog_fd_;
@@ -120,6 +138,14 @@ class EbpfWorker : public Worker<Application, Request, Response,
   LiteCoreInstance &lite_core_;
 
   std::barrier<std::function<void()>> &barrier_;
+
+  evutil_socket_t findSocketFD(int port);
+  
+  std::string executeCommand(const std::string& command);
+
+  int get_pid_by_port(int port);
+
+  int get_socket_fd_from_pid(int pid, int target_fd);
 
   /// The entry point for the worker thread.
   static void *ThreadBody(void *arg_self);
@@ -130,8 +156,12 @@ class EbpfWorker : public Worker<Application, Request, Response,
   /// Timer handler for ring buffer polling
   static void TimerHandler(evutil_socket_t fd, short events, void* arg);
 
+  void MakeUpdate(struct ParseResult result, void *arg);
+
   static int HandleConnection(void *ctx, void *data, size_t data_sz);
 
+  static int HandlePacket(void *ctx, void *data, size_t data_sz);
+  
   /// Parse the TCP data.
   static ParseResult parse_tcp_data(unsigned char *buffer, int size);
 

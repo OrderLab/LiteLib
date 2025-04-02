@@ -9,7 +9,7 @@
 #define ETH_HLEN    14      /* Total octets in header */
 #define SERVER_PORT 6379
 #define MAX_CMD_LEN 16
-
+#define MAX_PKT_SIZE 4096
 #define ACCEPT 1
 #define CLOSE 2
 
@@ -29,6 +29,11 @@ struct socket_info {
 struct connection_event {
     struct event_type_header header;
     struct socket_info socket;
+};
+
+struct packet_data {
+    __u32 len;
+    unsigned char data[MAX_PKT_SIZE];
 };
 
 // Define a BPF ring buffer map for passing connection events
@@ -56,19 +61,20 @@ struct {
     __type(value, __u64);    // Response tracking value
 } write_response SEC(".maps");
 
-const char *write_commands[] SEC(".rodata") = {
-        "SET", "SETEX", "APPEND", "INCR", "INCRBY", "DECR", "DECRBY",
-        "LPUSH", "RPUSH", "LPOP", "RPOP", "SADD", "SREM", "HSET", "HDEL",
-        "DEL", "FLUSHDB", "FLUSHALL", "EXPIRE", NULL  // NULL-terminated
-};
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 1 << 16);  // 64KB ring buffer
+} msgs_ringbuf SEC(".maps");
 
-int bpf_strncmp(const char *s1, const char *s2, __u32 n) {
-    for (__u32 i = 0; i < n; i++) {
-        if (s1[i] != s2[i] || s1[i] == '\0' || s2[i] == '\0') 
-            return 1; // Strings are different
-    }
-    return 0; // Strings are equal
-}
+
+struct {
+    __uint(type, BPF_MAP_TYPE_SOCKMAP);
+    __uint(max_entries, 1024);
+    __type(key, __u32);
+    __type(value, __u64);
+} sock_map SEC(".maps");
+
+
 
 __u8 is_resp_message(char *data, __u32 len) {
     if (!data || len < 1)
@@ -79,35 +85,10 @@ __u8 is_resp_message(char *data, __u32 len) {
         resp_marker == '$' || resp_marker == '*');
 }
 
-// static __inline int read_pkt_data(struct __sk_buff *skb, int offset, char *buf, int len) {
-//     if (len > 64)  // Ensure the buffer size is within verifier limits
-//         return -1;
-
-//     char tmp[64];  // Ensure the buffer is aligned and within limits
-//     if ()
-//         return -1;
-
-//     for (int i = 0; i < len; i++) {
-//         buf[i] = tmp[i];
-//     }
-//     return 0;
-// }
-
-// Extract the RESP bulk string (command) from packet data
-// static __inline int extract_resp_command(struct __sk_buff *skb, int offset, char *cmd) {
-    
-//     return cmd_len;
-// }
-
-// __u8 is_resp_write_request(struct __sk_buff *skb, int offset){
-    
-//     return 0;
-// }
 
 SEC("socket")
 int socket__filter_tcp(struct __sk_buff *skb)
 {
-    // bpf_printk("Packet received");
     u16 h_proto;
     if (bpf_skb_load_bytes(skb, offsetof(struct ethhdr, h_proto), &h_proto,
                            sizeof(h_proto)) < 0)
@@ -120,6 +101,7 @@ int socket__filter_tcp(struct __sk_buff *skb)
         return 0;
     if (ip_hdr.protocol != IPPROTO_TCP) // not tcp
         return 0;
+    // bpf_printk("Packet received1");
 
     struct tcphdr tcp_hdr;
     if (bpf_skb_load_bytes(skb, ETH_HLEN + sizeof(struct iphdr), &tcp_hdr,
@@ -129,7 +111,7 @@ int socket__filter_tcp(struct __sk_buff *skb)
         return 0;
 
 
-    char payload[120] = {0};
+    char payload[5] = {0};
 
     if (skb->len < ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4 + 1)
         return 0;
@@ -139,125 +121,184 @@ int socket__filter_tcp(struct __sk_buff *skb)
 
     if (!is_resp_message(payload, 1))
         return 0;
+    // bpf_printk("Size: %d", skb->len);
     
-    if(tcp_hdr.dest == bpf_htons(SERVER_PORT) ){
-        struct connection_key key = {};  // Zero initialize
-        key.ip = ip_hdr.saddr;
-        key.port = bpf_ntohs(tcp_hdr.source);
-        __u64 *record = bpf_map_lookup_elem(&write_response, &key);
-        // print key
-        // bpf_printk("key: %pI4:%d", &key.ip, key.port);
-        int offset = ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4;
-        char header[29]; // To read length prefix ($N\r\n)
-        if (skb->len < offset + 4){
-            if (record){
-                *record = 0;
-            } 
-            return 0;
-        }
-        if (bpf_skb_load_bytes(skb, offset, header, 4) < 0){
-            if (record){
-                *record = 0;
-            }
-            return 0;
-        }
-        // bpf_printk("header: %c%c%c", header[1], header[2], header[3]);
-        if (header[0] != '*' || header[1] != '3' || header[2] != '\r' || header[3] != '\n') {
-            if (record){
-                *record = 0;
-            }
-            return 0;
-        }
+    // bpf_printk("Packet received4");
+
+    // get seq_num from tcp header
+    // __u32 cur_seq_num = bpf_ntohl(tcp_hdr.seq);
+    // struct connection_key_2 key = {};  // Zero initialize
+    //     key.src_ip = ip_hdr.saddr;
+    //     key.src_port = bpf_ntohs(tcp_hdr.source);
+    //     key.dst_ip = ip_hdr.daddr;
+    //     key.dst_port = bpf_ntohs(tcp_hdr.dest);
+    // __u32 *last_seq = bpf_map_lookup_elem(&seq_map, &key);
+
+    // if (!last_seq) {
+    //     // Store initial sequence number
+    //     cur_seq_num = 0;
+    //     bpf_map_update_elem(&seq_map, &key, &cur_seq_num, BPF_ANY);
+    // } else {
         
-        if (skb->len < offset + 4 + 4){
-            if (record){
-                *record = 0;
-            }
-            return 0;
-        }
-        if (bpf_skb_load_bytes(skb, offset + 4, header, 4) < 0){
-            if (record){
-                *record = 0;
-            }
-            return 0;
-        }
-        // bpf_printk("header: %c%c%c", header[1], header[2], header[3]);
+    //     if (*last_seq != cur_seq_num) {
+    //         bpf_printk("src_ip: %pI4 src_port: %d", &key.src_ip, key.src_port);
+    //         bpf_printk("dst_ip: %pI4 dst_port: %d", &key.dst_ip, key.dst_port);
+    //         bpf_printk("Out-of-order packet: expected %u, got %u", *last_seq, cur_seq_num);
+    //         bpf_printk("Payload: %s", payload);
+    //     } else {
+    //         bpf_printk("In-order packet: expected %u, got %u", *last_seq, cur_seq_num);
+    //     }
+    
+    // // Update the expected sequence number based on TCP payload size
+    //     int payload_len = skb->len - (ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4);
+    //     __u32 next_seq = cur_seq_num + (payload_len > 0 ? payload_len : 1); // Ensure it progresses
 
-        if (header[0] != '$' || (header[1] != '3' && header[1] != '6' ) || header[2] != '\r' || header[3] != '\n') {
-            if (record){
-                *record = 0;
-            }
-            return 0;
-        }
+    //     bpf_map_update_elem(&seq_map, &key, &next_seq, BPF_ANY);
+    // }
+    
+    __u32 pkt_len = (__u32) skb->len;
 
-        if (header[1] == '3'){
-            if (skb->len < offset + 4 + 4 + 3){
-                if (record){
-                    *record = 0;
-                }
-                return 0;
-            }
-            char cmd[3];
-            if (bpf_skb_load_bytes(skb, offset + 4 + 4, cmd, 3) < 0){
-                if (record){
-                    *record = 0;
-                }
-                return 0;
-            }
-            // bpf_printk("cmd: %c%c%c", cmd[0], cmd[1], cmd[2]);
-            if (cmd[0] != 'S' && cmd[0] != 's' || cmd[1] != 'E' && cmd[1] != 'e' || cmd[2] != 'T' && cmd[2] != 't'){
-                if (record){
-                    *record = 0;
-                }
-                return 0;
-            }
-            
-        }
-        if (header[1] == '6'){
-            if (skb->len < offset + 4 + 4 + 6){
-                if (record){
-                    *record = 0;
-                }
-                return 0;
-            }
-            char cmd[6];
-            if (bpf_skb_load_bytes(skb, offset + 4 + 4, cmd, 6) < 0){
-                if (record){
-                    *record = 0;
-                }
-                return 0;
-            }
-            // bpf_printk("cmd: %c%c%c", cmd[0], cmd[1], cmd[2] );
-            if (cmd[0] != 'G' && cmd[0] != 'g' || cmd[1] != 'E' && cmd[1] != 'e' || cmd[2] != 'T' && cmd[2] != 't' || cmd[3] != 'S' && cmd[3] != 's' || cmd[4] != 'E' && cmd[4] != 'e' || cmd[5] != 'T' && cmd[5] != 't'){
-                if (record){
-                    *record = 0;
-                }
-                return 0;
-            }
-        }
-        if (record){
-            *record = 1;
-        } else {
-            __u64 value = 1;
-            bpf_map_update_elem(&write_response, &key, &value, BPF_ANY);
-        }
-        return -1;
-    }else{
-        struct connection_key key = {};  // Zero initialize
-        key.ip = ip_hdr.daddr;
-        key.port = bpf_ntohs(tcp_hdr.dest);
-        // print key
-        // bpf_printk("key: %pI4:%d", &key.ip, key.port);
-        __u64 *record = bpf_map_lookup_elem(&write_response, &key);
-        if (!record){
-            return 0;
-        }
-        // bpf_printk("record: %d", *record);
-        if (*record != 1)
-            return 0;
-        *record = 0;
-        return -1;
+    // Ensure at least 1 byte is read
+    if (pkt_len == 0)
+        return 0;
+    if (pkt_len > MAX_PKT_SIZE)
+        pkt_len = MAX_PKT_SIZE;
+
+    struct packet_data *p = bpf_ringbuf_reserve(&msgs_ringbuf, sizeof(*p), 0);
+    if (!p)
+        return 0;
+
+    p->len = pkt_len;
+    // bpf_printk("Packet received2");
+    // Load at least 1 byte to avoid zero-size read
+    if (bpf_skb_load_bytes(skb, 0, p->data, pkt_len) < 0) {
+        bpf_ringbuf_discard(p, 0);
+        return 0;
     }
+
+    bpf_ringbuf_submit(p, 0);
+    
+    // bpf_printk("Packet received3");
+    return 0;
+    
+    // if(tcp_hdr.dest == bpf_htons(SERVER_PORT) ){
+    //     struct connection_key key = {};  // Zero initialize
+    //     key.ip = ip_hdr.saddr;
+    //     key.port = bpf_ntohs(tcp_hdr.source);
+    //     __u64 *record = bpf_map_lookup_elem(&write_response, &key);
+    //     // print key
+    //     // bpf_printk("key: %pI4:%d", &key.ip, key.port);
+    //     int offset = ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4;
+    //     char header[29]; // To read length prefix ($N\r\n)
+    //     if (skb->len < offset + 4){
+    //         if (record){
+    //             *record = 0;
+    //         } 
+    //         return 0;
+    //     }
+    //     if (bpf_skb_load_bytes(skb, offset, header, 4) < 0){
+    //         if (record){
+    //             *record = 0;
+    //         }
+    //         return 0;
+    //     }
+    //     // bpf_printk("header: %c%c%c", header[1], header[2], header[3]);
+    //     if (header[0] != '*' || header[1] != '3' || header[2] != '\r' || header[3] != '\n') {
+    //         if (record){
+    //             *record = 0;
+    //         }
+    //         return 0;
+    //     }
+        
+    //     if (skb->len < offset + 4 + 4){
+    //         if (record){
+    //             *record = 0;
+    //         }
+    //         return 0;
+    //     }
+    //     if (bpf_skb_load_bytes(skb, offset + 4, header, 4) < 0){
+    //         if (record){
+    //             *record = 0;
+    //         }
+    //         return 0;
+    //     }
+    //     // bpf_printk("header: %c%c%c", header[1], header[2], header[3]);
+
+    //     if (header[0] != '$' || (header[1] != '3' && header[1] != '6' ) || header[2] != '\r' || header[3] != '\n') {
+    //         if (record){
+    //             *record = 0;
+    //         }
+    //         return 0;
+    //     }
+
+    //     if (header[1] == '3'){
+    //         if (skb->len < offset + 4 + 4 + 3){
+    //             if (record){
+    //                 *record = 0;
+    //             }
+    //             return 0;
+    //         }
+    //         char cmd[3];
+    //         if (bpf_skb_load_bytes(skb, offset + 4 + 4, cmd, 3) < 0){
+    //             if (record){
+    //                 *record = 0;
+    //             }
+    //             return 0;
+    //         }
+    //         // bpf_printk("cmd: %c%c%c", cmd[0], cmd[1], cmd[2]);
+    //         if (cmd[0] != 'S' && cmd[0] != 's' || cmd[1] != 'E' && cmd[1] != 'e' || cmd[2] != 'T' && cmd[2] != 't'){
+    //             if (record){
+    //                 *record = 0;
+    //             }
+    //             return 0;
+    //         }
+            
+    //     }
+    //     if (header[1] == '6'){
+    //         if (skb->len < offset + 4 + 4 + 6){
+    //             if (record){
+    //                 *record = 0;
+    //             }
+    //             return 0;
+    //         }
+    //         char cmd[6];
+    //         if (bpf_skb_load_bytes(skb, offset + 4 + 4, cmd, 6) < 0){
+    //             if (record){
+    //                 *record = 0;
+    //             }
+    //             return 0;
+    //         }
+    //         // bpf_printk("cmd: %c%c%c", cmd[0], cmd[1], cmd[2] );
+    //         if (cmd[0] != 'G' && cmd[0] != 'g' || cmd[1] != 'E' && cmd[1] != 'e' || cmd[2] != 'T' && cmd[2] != 't' || cmd[3] != 'S' && cmd[3] != 's' || cmd[4] != 'E' && cmd[4] != 'e' || cmd[5] != 'T' && cmd[5] != 't'){
+    //             if (record){
+    //                 *record = 0;
+    //             }
+    //             return 0;
+    //         }
+    //     }
+    //     if (record){
+    //         *record = 1;
+    //     } else {
+    //         __u64 value = 1;
+    //         bpf_map_update_elem(&write_response, &key, &value, BPF_ANY);
+    //     }
+    //     return -1;
+    // }else{
+    //     struct connection_key key = {};  // Zero initialize
+    //     key.ip = ip_hdr.daddr;
+    //     key.port = bpf_ntohs(tcp_hdr.dest);
+    //     // print key
+    //     // bpf_printk("key: %pI4:%d", &key.ip, key.port);
+    //     __u64 *record = bpf_map_lookup_elem(&write_response, &key);
+    //     if (!record){
+    //         return 0;
+    //     }
+    //     // bpf_printk("record: %d", *record);
+    //     if (*record != 1)
+    //         return 0;
+    //     *record = 0;
+    //     return -1;
+    // }
 
     // Print payload data
     // char payload[64];
@@ -370,24 +411,4 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
     return 0;
 }
 
-
-
-char _license[] SEC("license") = "GPL";
-// int cmd_len = header[1] - '0'; // Convert ASCII to int (assuming single-digit length)
-        // if (cmd_len <= 0 || cmd_len >= MAX_CMD_LEN)
-        //     return 0;
-        // if (skb->len < offset + 3 + cmd_len)
-        //     return 0;    
-        // if (bpf_skb_load_bytes(skb, offset+3, cmd, cmd_len) < 0) // Skip "$N\r\n"
-        //     return 0;
-
-        // cmd[cmd_len] = '\0'; // Null-terminate
-
-        // for (int j = 0; write_commands[j] != NULL; j++) {
-        //     if (bpf_strncmp(cmd, write_commands[j], cmd_len) == 0) {
-        //         // if (record){
-        //         //     *record = 1;
-        //         // }
-        //         return -1; // Write request detected
-        //     }
-        // }
+char LICENSE[] SEC("license") = "GPL";

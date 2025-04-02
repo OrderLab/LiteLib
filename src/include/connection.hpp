@@ -57,9 +57,9 @@ class Connection {
 
   static void BackendHandler(evutil_socket_t fd, short which, void* arg_conn);
 
-  void RequestUpdate(uint8_t* buffer, int len);
+  void RequestUpdate(uint8_t* buffer, int len, int seq_num);
 
-  void ResponseUpdate(uint8_t* buffer, int len);
+  void ResponseUpdate(uint8_t* buffer, int len, int seq_num);
 
   /// Try to connect to the backend and set event
   bool ConnectBackend();
@@ -68,6 +68,10 @@ class Connection {
 
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;
+
+  int expected_request_seq_num_=0;
+
+  int expected_response_seq_num_=0;
 
   /// The pending requests
   ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> pending_requests_;
