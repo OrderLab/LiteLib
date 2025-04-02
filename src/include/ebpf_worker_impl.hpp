@@ -214,7 +214,7 @@ void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   prog_fd_ = bpf_program__fd(skel->progs.socket__filter_tcp);
-
+  // Comment out lines 218-229 if you want to run the program attached directly to redis socket. litesys.bpf.c file also needs change to remove eth, ip header parse.
   socket_fd = socket(AF_PACKET, SOCK_RAW, htons_custom(ETH_P_ALL));
   if (socket_fd < 0) {
     perror("Socket creation failed");
