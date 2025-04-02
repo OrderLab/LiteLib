@@ -45,62 +45,24 @@ EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
       lite_core_(lite_core), 
       barrier_(barrier) {
 
-  struct bpf_program *prog;
-  int err;
 
   count=0;
 
-  skel = litesys_bpf__open_and_load();
-  if (!skel) {
-    fprintf(stderr, "Failed to open and load BPF skeleton\n");
-    return;
-  }
+  
+  // notify_event_fd = socket(AF_PACKET, SOCK_RAW, htons_custom(ETH_P_ALL));
+  // if (notify_event_fd < 0) {
+  //   perror("Socket creation failed");
+  //   return;
+  // }
 
-  err = litesys_bpf__attach(skel);
-  if (err) {
-    fprintf(stderr, "Failed to attach BPF skeleton\n");
-    return;
-  }
-
-  notify_event_fd = socket(AF_PACKET, SOCK_RAW, htons_custom(ETH_P_ALL));
-  if (notify_event_fd < 0) {
-    perror("Socket creation failed");
-    return;
-  }
-
-  int rcvbuf_size = 20 * 1024 * 1024;  // 70MB
-  if (setsockopt(notify_event_fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(rcvbuf_size)) < 0) {
-      perror("Failed to set SO_RCVBUF");
-      close(notify_event_fd);
-      return;
-  }
-
-  // struct tpacket_req req = {
-  //     .tp_block_size = 4096,  // Memory block size
-  //     .tp_block_nr = 64,      // Number of blocks
-  //     .tp_frame_size = 2048,  // Frame size
-  //     .tp_frame_nr = 128      // Number of frames
-  // };
-  // if (setsockopt(notify_event_fd, SOL_PACKET, PACKET_RX_RING, &req, sizeof(req)) < 0) {
-  //     perror("Failed to set PACKET_RX_RING");
+  // int rcvbuf_size = 20 * 1024 * 1024;  // 70MB
+  // if (setsockopt(notify_event_fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(rcvbuf_size)) < 0) {
+  //     perror("Failed to set SO_RCVBUF");
   //     close(notify_event_fd);
   //     return;
   // }
 
-  prog_fd_ = bpf_program__fd(skel->progs.socket__filter_tcp);
-
-  if (setsockopt(notify_event_fd, SOL_SOCKET, SO_ATTACH_BPF, &prog_fd_, sizeof(prog_fd_)) < 0) {
-    perror("Error attaching BPF program");
-    close(notify_event_fd);
-    return;
-  }
-  SetMode(0);
-
-  rb = ring_buffer__new(bpf_map__fd(skel->maps.conn_ringbuf), HandleConnection, this, NULL);
-  if (!rb) {
-    printf("Failed to create ring buffer\n");
-    return;
-  }
+  
 
   buffer = (unsigned char *)malloc(BUFFER_SIZE);
 
@@ -143,8 +105,149 @@ EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::get_socket_fd_from_pid(int pid, int target_fd) {
+    int pidfd = syscall(SYS_pidfd_open, pid, 0);
+    if (pidfd < 0) {
+        perror("pidfd_open failed");
+        return -1;
+    }
+
+    int sockfd = syscall(SYS_pidfd_getfd, pidfd, target_fd, 0);
+    if (sockfd < 0) {
+        perror("pidfd_getfd failed");
+        close(pidfd);
+        return -1;
+    }
+    // printf("Socket fd: %d\n", sockfd);
+
+    close(pidfd);
+    return sockfd;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+std::string EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::executeCommand(const std::string& command) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
+    
+    if (!pipe) {
+        std::cerr << "Failed to run command: " << command << std::endl;
+        return "";
+    }
+
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+evutil_socket_t EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::findSocketFD(int port) {
+    std::ostringstream command;
+    command << "sudo lsof -i :" << port;
+
+    std::string output = executeCommand(command.str());
+    if (output.empty()) {
+        std::cerr << "No output from lsof. Ensure the port is in use and you have root access." << std::endl;
+        return -1;
+    }
+
+    std::istringstream stream(output);
+    std::string line;
+    std::getline(stream, line); // Skip header
+
+    std::regex pattern(R"(\S+\s+(\d+)\s+\S+\s+(\d+)u\s+)");
+    bool found = false;
+
+    while (std::getline(stream, line)) {
+        std::smatch match;
+        if (std::regex_search(line, match, pattern)) {
+            std::string pid = match[1];
+            std::string fd = match[2];
+
+            std::cout << "Found socket: PID = " << pid << ", FD = " << fd << std::endl;
+            found = true;
+            int socket_fd = std::stoi(fd);
+            int pid_int = std::stoi(pid);
+            return get_socket_fd_from_pid(pid_int, socket_fd);
+        }
+    }
+
+    if (!found) {
+        std::cerr << "No matching socket found on port " << port << std::endl;
+    }
+    return -1;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Run(const char name[]) {
+
+  evutil_socket_t socket_fd = findSocketFD(SERVER_PORT);
+  while(socket_fd == -1){
+    sleep(1);
+    LOG(INFO) << "Waiting for socket to be created" << std::endl;
+    socket_fd = findSocketFD(SERVER_PORT);
+  }
+
+  LOG(INFO) << "Redis socket fd: " << socket_fd << std::endl;
+
+  struct bpf_program *prog;
+  int err;
+
+  skel = litesys_bpf__open_and_load();
+  if (!skel) {
+    fprintf(stderr, "Failed to open and load BPF skeleton\n");
+    return;
+  }
+
+  err = litesys_bpf__attach(skel);
+  if (err) {
+    fprintf(stderr, "Failed to attach BPF skeleton\n");
+    return;
+  }
+
+  prog_fd_ = bpf_program__fd(skel->progs.socket__filter_tcp);
+
+  socket_fd = socket(AF_PACKET, SOCK_RAW, htons_custom(ETH_P_ALL));
+  if (socket_fd < 0) {
+    perror("Socket creation failed");
+    return;
+  }
+
+  int rcvbuf_size = 20 * 1024 * 1024;  // 70MB
+  if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(rcvbuf_size)) < 0) {
+      perror("Failed to set SO_RCVBUF");
+      close(socket_fd);
+      return;
+  }
+
+  if (setsockopt(socket_fd, SOL_SOCKET, SO_ATTACH_BPF, &prog_fd_, sizeof(prog_fd_)) < 0) {
+    perror("Error attaching BPF program");
+    close(socket_fd);
+    return;
+  }
+  
+  SetMode(0);
+
+  rb = ring_buffer__new(bpf_map__fd(skel->maps.conn_ringbuf), HandleConnection, this, NULL);
+  if (!rb) {
+    printf("Failed to create ring buffer\n");
+    return;
+  }
+
+  pb = ring_buffer__new(bpf_map__fd(skel->maps.msgs_ringbuf), HandlePacket, this, NULL);
+  if (!pb) {
+    printf("Failed to create perf buffer\n");
+    return;
+  }
+  
   pthread_attr_t attr;
 
   pthread_attr_init(&attr);
@@ -162,9 +265,51 @@ void *EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
              CacheEntry>::ThreadBody(void *arg_self) {
   auto *self = static_cast<EbpfWorker<Application, Request, Response, 
                           ConnectionInfo, CacheKey, CacheEntry>*>(arg_self);
+  while(true){
+    ring_buffer__poll(self->rb, 100);
+    ring_buffer__poll(self->pb, 100);
+  }
   event_base_loop(self->base_, 0);
   event_base_free(self->base_);
   return NULL;
+}
+
+template <typename Application, typename Request, typename Response,  
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::MakeUpdate(struct ParseResult result, void *arg) {
+  auto *self = static_cast<EbpfWorker<Application, Request, Response,
+                          ConnectionInfo, CacheKey, CacheEntry>*>(arg);
+  if (result.request_dir){
+      // check if the connection exists
+      std::string src_str(result.src_ip.get(), INET_ADDRSTRLEN);
+      if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(src_str), result.src_port)) == self->source_to_conn_.end()){
+        // Add the connection to the connection map
+        //print src_str and result.src_port
+        // printf("Adding connection to the connection map during request update: %s:%u\n", src_str.c_str(), result.src_port);
+        auto new_connection =
+            new ConnectionInstance(0,                    // socket fd
+                                  0,                      // event flags
+                                  self->base_,           // event base
+                                  ConnectionInstance::ClientHandler,
+                                  nullptr,               // argument for handler
+                                  self->lite_core_,      // lite core instance
+                                  false,                 // is_server
+                                  self);                 // worker instance
+        self->source_to_conn_[std::make_pair(self->ipToUint32(src_str), result.src_port)] = new_connection;
+        self->lite_core_.live_connections_.insert(new_connection);
+        self->conns_.insert(new_connection);
+      }
+      // print payload here
+      self->source_to_conn_[std::make_pair(self->ipToUint32(src_str), result.src_port)]->RequestUpdate(result.payload.get(), result.len, result.seq_num);
+    } else {
+      std::string dst_str(result.dst_ip.get(), INET_ADDRSTRLEN);
+      if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dst_str), result.dst_port)) == self->source_to_conn_.end()){
+        //error
+        return;
+      }
+      self->source_to_conn_[std::make_pair(self->ipToUint32(dst_str), result.dst_port)]->ResponseUpdate(result.payload.get(), result.len, result.seq_num);
+    }
 }
 
 template <typename Application, typename Request, typename Response,
@@ -191,46 +336,41 @@ void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
   struct sockaddr_in sender_addr;
   socklen_t addr_len = sizeof(sender_addr);
   ssize_t n = recvfrom(fd, self->buffer, BUFFER_SIZE - 1, 0, (struct sockaddr *)&sender_addr, &addr_len);
-  
-  
   if (n > 0) {
-    ParseResult result = parse_tcp_data(self->buffer, n);
-    if (result.request_dir){
-      // check if the connection exists
-      std::string src_str(result.src_ip.get(), INET_ADDRSTRLEN);
-      if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(src_str), result.src_port)) == self->source_to_conn_.end()){
-        // Add the connection to the connection map
-        //print src_str and result.src_port
-        // printf("Adding connection to the connection map during request update: %s:%u\n", src_str.c_str(), result.src_port);
-        auto new_connection =
-            new ConnectionInstance(0,                    // socket fd
-                                  0,                      // event flags
-                                  self->base_,           // event base
-                                  ConnectionInstance::ClientHandler,
-                                  nullptr,               // argument for handler
-                                  self->lite_core_,      // lite core instance
-                                  false,                 // is_server
-                                  self);                 // worker instance
-        self->source_to_conn_[std::make_pair(self->ipToUint32(src_str), result.src_port)] = new_connection;
-        self->lite_core_.live_connections_.insert(new_connection);
-        self->conns_.insert(new_connection);
-      }
-      // print payload here
-      self->source_to_conn_[std::make_pair(self->ipToUint32(src_str), result.src_port)]->RequestUpdate(result.payload.get(), result.len);
-    } else {
-      std::string dst_str(result.dst_ip.get(), INET_ADDRSTRLEN);
-      if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dst_str), result.dst_port)) == self->source_to_conn_.end()){
-        //error
-        return;
-      }
-      self->source_to_conn_[std::make_pair(self->ipToUint32(dst_str), result.dst_port)]->ResponseUpdate(result.payload.get(), result.len);
-    }
+    self->MakeUpdate(std::move(parse_tcp_data(self->buffer, n)), self);
   } else if (n == 0) {
     printf("Connection closed by peer\n");
-    // event_base_loopbreak((struct event_base *)arg); // Break the event loop
   } else {
       perror("recvfrom error");
   }
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
+            CacheEntry>::HandlePacket(void *ctx, void *data, size_t data_sz){
+    auto *self = static_cast<EbpfWorker<Application, Request, Response,
+                          ConnectionInfo, CacheKey, CacheEntry>*>(ctx);
+    struct packet_data *packet = (struct packet_data *)data;
+    // std::cout << "Received packet: " << packet->len << std::endl;
+    // //print every packet in char if it is printable else hex
+    // for(int i = 0; i < packet->len; i++){
+    //   if(isprint(packet->data[i])){
+    //     std::cout << packet->data[i];
+    //   } else {
+    //     std::cout << std::hex << (int)packet->data[i];
+    //   }
+    // }
+    // std::cout << std::endl;
+    
+    // Use std::move to transfer ownership
+    ParseResult result = std::move(parse_tcp_data(packet->data, packet->len));
+    // printf("Received packet: %s:%d -> %s:%d\n", result.src_ip.get(), result.src_port, result.dst_ip.get(), result.dst_port);
+    // printf("Payload: %s\n", result.payload.get());
+    
+    // Use std::move when passing result
+    self->MakeUpdate(std::move(result), self);
+    return 0;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -255,7 +395,7 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         std::string dst_str(ip_str);
         if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dst_str), event->connection.dport)) == self->source_to_conn_.end()){
           //print dst_str and event->connection.dport
-          // printf("Adding connection to the connection map during accept update: %s:%u\n", dst_str.c_str(), event->connection.dport);
+          printf("Adding connection to the connection map during accept update: %s:%u\n", dst_str.c_str(), event->connection.dport);
           auto new_connection =
             new ConnectionInstance(0,                    // socket fd
                                   0,                      // event flags
@@ -282,7 +422,7 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         std::string dest_str(ip_str);
         if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dest_str), event->connection.dport)) != self->source_to_conn_.end()){
           //print dest_str and event->connection.dport
-          // printf("Removing connection from the connection map: %s:%u\n", dest_str.c_str(), event->connection.dport);
+          printf("Removing connection from the connection map: %s:%u\n", dest_str.c_str(), event->connection.dport);
           auto connection = self->source_to_conn_[std::make_pair(self->ipToUint32(dest_str), event->connection.dport)];
           self->source_to_conn_[std::make_pair(self->ipToUint32(dest_str), event->connection.dport)] = nullptr;
           // self->lite_core_.live_connections_.erase(new_connection);
@@ -341,6 +481,7 @@ ParseResult EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         result.dst_ip=std::move(dst_ip);
         result.dst_port = ntohs(tcp->dest);
         result.payload = std::move(payload);
+        result.seq_num = ntohl(tcp->seq);
         result.len = payload_size;
         // fwrite(payload, sizeof(char), payload_size, stdout);
         return result;

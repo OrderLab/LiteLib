@@ -156,21 +156,21 @@ elif args.experiment_type == "Ebpf":
         boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-1.txt"
     )
 
-    # boot_command = [
-    #     "cgexec",
-    #     "-g",
-    #     "cpu:cpulimited",
-    #     args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
-    #     "-t",
-    #     str(args.num_threads),
-    #     "-s",
-    #     args.memory_size,
-    # ]
-    # utils.StartBackgroundProcess(
-    #     boot_command,
-    #     args.work_dir + "/" + args.file_prefix + ".log",
-    #     False,
-    #     env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"},
-    # )
+    boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
+        args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
+        "-t",
+        str(args.num_threads),
+        "-s",
+        args.memory_size,
+    ]
+    utils.StartBackgroundProcess(
+        boot_command,
+        args.work_dir + "/" + args.file_prefix + ".log",
+        False,
+        env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"},
+    )
 else:
     raise ValueError("Invalid experiment type")
