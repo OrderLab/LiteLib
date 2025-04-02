@@ -19,56 +19,30 @@ if(NOT GPERFTOOLS_LIBRARY)
     message(FATAL_ERROR "gperftools library not found")
 endif()
 
-# Find libbpf
-find_path(LIBBPF_INCLUDE_DIR
-    NAMES bpf/libbpf.h bpf/bpf.h
-    PATHS /usr/include /usr/local/include
-)
+# Use pkg-config to find libbpf
+find_package(PkgConfig REQUIRED)
+set(ENV{PKG_CONFIG_PATH} "/usr/lib64/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+pkg_check_modules(LIBBPF REQUIRED libbpf)
 
-find_library(LIBBPF_LIBRARY
-    NAMES bpf libbpf
-    PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu /usr/lib64
-)
-
-if(NOT LIBBPF_INCLUDE_DIR OR NOT LIBBPF_LIBRARY)
-    message(STATUS "libbpf include dir: ${LIBBPF_INCLUDE_DIR}")
-    message(STATUS "libbpf library: ${LIBBPF_LIBRARY}")
-    
-    # Instead of failing, let's provide instructions
-    message(WARNING "libbpf not found. Installing libbpf...")
-    
-    # You can add commands to install libbpf automatically
-    execute_process(
-        COMMAND sudo apt-get update
-        COMMAND sudo apt-get install -y libbpf-dev
-        RESULT_VARIABLE LIBBPF_INSTALL_RESULT
-    )
-    
-    if(NOT LIBBPF_INSTALL_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to install libbpf. Please install manually with: sudo apt-get install libbpf-dev")
-    endif()
-    
-    # Try finding it again
-    find_path(LIBBPF_INCLUDE_DIR
-        NAMES bpf/libbpf.h bpf/bpf.h
-        PATHS /usr/include /usr/local/include
-    )
-    
-    find_library(LIBBPF_LIBRARY
-        NAMES bpf libbpf
-        PATHS /usr/lib /usr/local/lib /usr/lib64
-    )
-    
-    if(NOT LIBBPF_INCLUDE_DIR OR NOT LIBBPF_LIBRARY)
-        message(FATAL_ERROR "libbpf still not found after installation attempt. Please install manually.")
-    endif()
+if(NOT LIBBPF_FOUND)
+    message(FATAL_ERROR "libbpf not found via pkg-config")
 endif()
 
-message(STATUS "Found libbpf: ${LIBBPF_LIBRARY}")
-message(STATUS "Found libbpf include: ${LIBBPF_INCLUDE_DIR}")
+# Force using the specific libbpf from /usr/lib64
+set(LIBBPF_LIBRARY "/usr/lib64/libbpf.so.1")
+if(NOT EXISTS ${LIBBPF_LIBRARY})
+    message(FATAL_ERROR "Cannot find libbpf at ${LIBBPF_LIBRARY}")
+endif()
 
-# Add the include directory
-include_directories(${LIBBPF_INCLUDE_DIR})
+# Set RPATH
+set(CMAKE_INSTALL_RPATH "/usr/lib64")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+message(STATUS "Using libbpf from: ${LIBBPF_LIBRARY}")
+
+# Remove any potential default paths
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-as-needed -Wl,-rpath,/usr/lib64")
 
 add_subdirectory(Lite)
 
@@ -87,6 +61,11 @@ target_sources(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
 target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog tcmalloc)
+# Use the absolute path to libbpf
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBBPF_LIBRARY})
 
-target_include_directories(${PROJECT_NAME} PRIVATE include)
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        include
+        ${CMAKE_CURRENT_SOURCE_DIR}/Lite/include
+)

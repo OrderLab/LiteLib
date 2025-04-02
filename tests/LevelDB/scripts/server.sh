@@ -67,18 +67,43 @@ install_criu() {
 }
 
 build_redis_leveldb() {
-  cd ../src/tests/redis-leveldb
-  git apply ../scripts/leveldb/redis-leveldb.patch
+  echo "LevelDB git version is wrong, please checkout manually"
+  # cd ../src/tests/redis-leveldb
+  # git apply ../scripts/leveldb/redis-leveldb.patch
+  # make -j${NUM_JOBS}
+  # make test
+}
+
+build_libbpf() {
+  CURRENT_DIR=$(pwd)
+  mkdir -p ${HOME}/dependencies/libbpf
+  cd ${HOME}/dependencies/libbpf
+  wget https://github.com/libbpf/libbpf/archive/refs/tags/v1.5.0.tar.gz
+  tar -xazf v1.5.0.tar.gz
+  cd libbpf-1.5.0/src
   make -j${NUM_JOBS}
-  make test
+  sudo make install
+  cd $CURRENT_DIR
+}
+
+get_bpf_tools() {
+  CURRENT_DIR=$(pwd)
+  mkdir -p ${HOME}/dependencies/bpf-tools
+  cd ${HOME}/dependencies/bpf-tools
+  wget https://github.com/libbpf/bpftool/releases/download/v7.5.0/bpftool-v7.5.0-amd64.tar.gz
+  tar -xazf bpftool-v7.5.0-amd64.tar.gz
+  echo "Please add ${HOME}/dependencies/bpf-tools/ to your PATH"
+  export PATH=${HOME}/dependencies/bpf-tools/:$PATH
 }
 
 main() {
   check_not_root
-  build_lite_version
   install_dependencies
   install_criu
   build_redis_leveldb
+  build_libbpf
+  get_bpf_tools
+  build_lite_version
 
   echo "Please do ssh-copy-id to the client node"
   echo "LevelDB server initialization is done."
