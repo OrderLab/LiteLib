@@ -1,14 +1,14 @@
+// Redis eBPF Monitor - Cleaned Up Version
 #include "vmlinux.h"
 
-#include <bpf/bpf_helpers.h>
-#include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_endian.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
 
-#define ETH_P_IP    0x0800  /* Internet Protocol packet */ // ipv4
-#define ETH_HLEN    14      /* Total octets in header */
+char LICENSE[] SEC("license") = "GPL";
+
 #define SERVER_PORT 6379
-#define MAX_CMD_LEN 16
 #define MAX_PKT_SIZE 4096
 #define ACCEPT 1
 #define CLOSE 2
@@ -23,18 +23,24 @@ struct socket_info {
     u16 sport;
     u32 daddr;
     u16 dport;
-    u8 state;  
-};
+    u8 state;
+} __attribute__((packed));
 
 struct connection_event {
     struct event_type_header header;
     struct socket_info socket;
-};
+} __attribute__((packed));
 
 struct packet_data {
-    __u32 len;
-    unsigned char data[MAX_PKT_SIZE];
-};
+  u32 len;
+  u32 saddr;
+  u32 daddr;
+  u16 sport;
+  u16 dport;
+  u32 seq_num;
+  char direction;  // 'R' for recv, 'S' for send
+  unsigned char data[MAX_PKT_SIZE];
+} __attribute__((packed));
 
 // Define a BPF ring buffer map for passing connection events
 struct {
@@ -43,298 +49,65 @@ struct {
 } conn_ringbuf SEC(".maps");
 
 struct {
-    __uint(type, BPF_MAP_TYPE_ARRAY); 
+    __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, 1);  // element 0: application mode
     __type(key, __u32);      // Array index
     __type(value, __u64);    // Counter value
 } mode SEC(".maps");
 
-struct connection_key {
-    __u32 ip;
-    __u16 port;
+struct conn_key {
+  u64 pid_tgid;
+} __attribute__((packed));
+
+struct conn_args {
+  struct sock *sk;
+  void *user_buf;
+};
+
+struct send_args_t {
+  struct sock *sk;
+  void *user_buf;
+  size_t size;
+};
+
+struct {
+  __uint(type, BPF_MAP_TYPE_RINGBUF);
+  __uint(max_entries, 1 << 16);
+} msgs_ringbuf SEC(".maps");
+
+struct {
+  __uint(type, BPF_MAP_TYPE_HASH);
+  __uint(max_entries, 1 << 16);
+  __type(key, struct conn_key);
+  __type(value, struct conn_args);
+} active_recv SEC(".maps");
+
+struct {
+  __uint(type, BPF_MAP_TYPE_HASH);
+  __uint(max_entries, 1 << 16);
+  __type(key, struct conn_key);
+  __type(value, struct send_args_t);
+} active_send SEC(".maps");
+
+struct {
+  __uint(type, BPF_MAP_TYPE_HASH);
+  __uint(max_entries, 1 << 16);
+  __type(key, u64);
+  __type(value, void *);
+} tid_to_buf SEC(".maps");
+
+// Add after other map definitions
+struct seq_info {
+    u32 next_send_seq;
+    u32 next_recv_seq;
 };
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 10000);  // Support up to 10k concurrent connections
-    __type(key, struct connection_key);  // IP and port as composite key
-    __type(value, __u64);    // Response tracking value
-} write_response SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_RINGBUF);
-    __uint(max_entries, 1 << 16);  // 64KB ring buffer
-} msgs_ringbuf SEC(".maps");
-
-
-struct {
-    __uint(type, BPF_MAP_TYPE_SOCKMAP);
-    __uint(max_entries, 1024);
-    __type(key, __u32);
-    __type(value, __u64);
-} sock_map SEC(".maps");
-
-
-
-__u8 is_resp_message(char *data, __u32 len) {
-    if (!data || len < 1)
-        return 0;
-    
-    char resp_marker = data[0];
-    return (resp_marker == '+' || resp_marker == '-' || resp_marker == ':' ||
-        resp_marker == '$' || resp_marker == '*');
-}
-
-
-SEC("socket")
-int socket__filter_tcp(struct __sk_buff *skb)
-{
-    u16 h_proto;
-    if (bpf_skb_load_bytes(skb, offsetof(struct ethhdr, h_proto), &h_proto,
-                           sizeof(h_proto)) < 0)
-        return 0;
-    if (bpf_ntohs(h_proto) != ETH_P_IP) // not ipv4
-        return 0;
-
-    struct iphdr ip_hdr;
-    if (bpf_skb_load_bytes(skb, ETH_HLEN, &ip_hdr, sizeof(ip_hdr)) < 0)
-        return 0;
-    if (ip_hdr.protocol != IPPROTO_TCP) // not tcp
-        return 0;
-    // bpf_printk("Packet received1");
-
-    struct tcphdr tcp_hdr;
-    if (bpf_skb_load_bytes(skb, ETH_HLEN + sizeof(struct iphdr), &tcp_hdr,
-                           sizeof(tcp_hdr)) < 0)
-        return 0;
-    if (tcp_hdr.dest != bpf_htons(SERVER_PORT) && tcp_hdr.source != bpf_htons(SERVER_PORT))  // filter dest port
-        return 0;
-
-
-    char payload[5] = {0};
-
-    if (skb->len < ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4 + 1)
-        return 0;
-
-    if (bpf_skb_load_bytes(skb, ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4, payload, 1) < 0)
-        return 0;
-
-    if (!is_resp_message(payload, 1))
-        return 0;
-    // bpf_printk("Size: %d", skb->len);
-    
-    // bpf_printk("Packet received4");
-
-    // get seq_num from tcp header
-    // __u32 cur_seq_num = bpf_ntohl(tcp_hdr.seq);
-    // struct connection_key_2 key = {};  // Zero initialize
-    //     key.src_ip = ip_hdr.saddr;
-    //     key.src_port = bpf_ntohs(tcp_hdr.source);
-    //     key.dst_ip = ip_hdr.daddr;
-    //     key.dst_port = bpf_ntohs(tcp_hdr.dest);
-    // __u32 *last_seq = bpf_map_lookup_elem(&seq_map, &key);
-
-    // if (!last_seq) {
-    //     // Store initial sequence number
-    //     cur_seq_num = 0;
-    //     bpf_map_update_elem(&seq_map, &key, &cur_seq_num, BPF_ANY);
-    // } else {
-        
-    //     if (*last_seq != cur_seq_num) {
-    //         bpf_printk("src_ip: %pI4 src_port: %d", &key.src_ip, key.src_port);
-    //         bpf_printk("dst_ip: %pI4 dst_port: %d", &key.dst_ip, key.dst_port);
-    //         bpf_printk("Out-of-order packet: expected %u, got %u", *last_seq, cur_seq_num);
-    //         bpf_printk("Payload: %s", payload);
-    //     } else {
-    //         bpf_printk("In-order packet: expected %u, got %u", *last_seq, cur_seq_num);
-    //     }
-    
-    // // Update the expected sequence number based on TCP payload size
-    //     int payload_len = skb->len - (ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4);
-    //     __u32 next_seq = cur_seq_num + (payload_len > 0 ? payload_len : 1); // Ensure it progresses
-
-    //     bpf_map_update_elem(&seq_map, &key, &next_seq, BPF_ANY);
-    // }
-    
-    __u32 pkt_len = (__u32) skb->len;
-
-    // Ensure at least 1 byte is read
-    if (pkt_len == 0)
-        return 0;
-    if (pkt_len > MAX_PKT_SIZE)
-        pkt_len = MAX_PKT_SIZE;
-
-    struct packet_data *p = bpf_ringbuf_reserve(&msgs_ringbuf, sizeof(*p), 0);
-    if (!p)
-        return 0;
-
-    p->len = pkt_len;
-    // bpf_printk("Packet received2");
-    // Load at least 1 byte to avoid zero-size read
-    if (bpf_skb_load_bytes(skb, 0, p->data, pkt_len) < 0) {
-        bpf_ringbuf_discard(p, 0);
-        return 0;
-    }
-
-    bpf_ringbuf_submit(p, 0);
-    
-    // bpf_printk("Packet received3");
-    return 0;
-    
-    // if(tcp_hdr.dest == bpf_htons(SERVER_PORT) ){
-    //     struct connection_key key = {};  // Zero initialize
-    //     key.ip = ip_hdr.saddr;
-    //     key.port = bpf_ntohs(tcp_hdr.source);
-    //     __u64 *record = bpf_map_lookup_elem(&write_response, &key);
-    //     // print key
-    //     // bpf_printk("key: %pI4:%d", &key.ip, key.port);
-    //     int offset = ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4;
-    //     char header[29]; // To read length prefix ($N\r\n)
-    //     if (skb->len < offset + 4){
-    //         if (record){
-    //             *record = 0;
-    //         } 
-    //         return 0;
-    //     }
-    //     if (bpf_skb_load_bytes(skb, offset, header, 4) < 0){
-    //         if (record){
-    //             *record = 0;
-    //         }
-    //         return 0;
-    //     }
-    //     // bpf_printk("header: %c%c%c", header[1], header[2], header[3]);
-    //     if (header[0] != '*' || header[1] != '3' || header[2] != '\r' || header[3] != '\n') {
-    //         if (record){
-    //             *record = 0;
-    //         }
-    //         return 0;
-    //     }
-        
-    //     if (skb->len < offset + 4 + 4){
-    //         if (record){
-    //             *record = 0;
-    //         }
-    //         return 0;
-    //     }
-    //     if (bpf_skb_load_bytes(skb, offset + 4, header, 4) < 0){
-    //         if (record){
-    //             *record = 0;
-    //         }
-    //         return 0;
-    //     }
-    //     // bpf_printk("header: %c%c%c", header[1], header[2], header[3]);
-
-    //     if (header[0] != '$' || (header[1] != '3' && header[1] != '6' ) || header[2] != '\r' || header[3] != '\n') {
-    //         if (record){
-    //             *record = 0;
-    //         }
-    //         return 0;
-    //     }
-
-    //     if (header[1] == '3'){
-    //         if (skb->len < offset + 4 + 4 + 3){
-    //             if (record){
-    //                 *record = 0;
-    //             }
-    //             return 0;
-    //         }
-    //         char cmd[3];
-    //         if (bpf_skb_load_bytes(skb, offset + 4 + 4, cmd, 3) < 0){
-    //             if (record){
-    //                 *record = 0;
-    //             }
-    //             return 0;
-    //         }
-    //         // bpf_printk("cmd: %c%c%c", cmd[0], cmd[1], cmd[2]);
-    //         if (cmd[0] != 'S' && cmd[0] != 's' || cmd[1] != 'E' && cmd[1] != 'e' || cmd[2] != 'T' && cmd[2] != 't'){
-    //             if (record){
-    //                 *record = 0;
-    //             }
-    //             return 0;
-    //         }
-            
-    //     }
-    //     if (header[1] == '6'){
-    //         if (skb->len < offset + 4 + 4 + 6){
-    //             if (record){
-    //                 *record = 0;
-    //             }
-    //             return 0;
-    //         }
-    //         char cmd[6];
-    //         if (bpf_skb_load_bytes(skb, offset + 4 + 4, cmd, 6) < 0){
-    //             if (record){
-    //                 *record = 0;
-    //             }
-    //             return 0;
-    //         }
-    //         // bpf_printk("cmd: %c%c%c", cmd[0], cmd[1], cmd[2] );
-    //         if (cmd[0] != 'G' && cmd[0] != 'g' || cmd[1] != 'E' && cmd[1] != 'e' || cmd[2] != 'T' && cmd[2] != 't' || cmd[3] != 'S' && cmd[3] != 's' || cmd[4] != 'E' && cmd[4] != 'e' || cmd[5] != 'T' && cmd[5] != 't'){
-    //             if (record){
-    //                 *record = 0;
-    //             }
-    //             return 0;
-    //         }
-    //     }
-    //     if (record){
-    //         *record = 1;
-    //     } else {
-    //         __u64 value = 1;
-    //         bpf_map_update_elem(&write_response, &key, &value, BPF_ANY);
-    //     }
-    //     return -1;
-    // }else{
-    //     struct connection_key key = {};  // Zero initialize
-    //     key.ip = ip_hdr.daddr;
-    //     key.port = bpf_ntohs(tcp_hdr.dest);
-    //     // print key
-    //     // bpf_printk("key: %pI4:%d", &key.ip, key.port);
-    //     __u64 *record = bpf_map_lookup_elem(&write_response, &key);
-    //     if (!record){
-    //         return 0;
-    //     }
-    //     // bpf_printk("record: %d", *record);
-    //     if (*record != 1)
-    //         return 0;
-    //     *record = 0;
-    //     return -1;
-    // }
-
-    // Print payload data
-    // char payload[64];
-    // if (skb->len < ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4 + 7){
-    //     int payload_len = bpf_skb_load_bytes(skb, ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4, payload, 10);
-    //     if (payload_len >= 0) {
-    //         bpf_printk("Payload: ");
-    //         for (int i = 0; i < 10; i++) {
-    //             if (i >= 10) break;
-    //             if (payload[i] >= 32 && payload[i] <= 126) {
-    //                 bpf_printk("%c", payload[i]);
-    //             } else {
-    //                 bpf_printk("%02X ", payload[i]);
-    //             }
-    //         }
-    //         bpf_printk("\n");
-    //     }
-    // }
-
-    // if (skb->len >= ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4 + 4){
-    //     if (bpf_skb_load_bytes(skb, ETH_HLEN + sizeof(struct iphdr) + tcp_hdr.doff * 4, payload, 4) < 0)
-    //         return 0;
-        
-    //     bpf_printk("Payload: %s", payload);
-        
-    // }
-        
-    
-
-    
-    
-    // bpf_printk("TCP packet: %pI4:%d \n", &ip_hdr.daddr, bpf_ntohs(tcp_hdr.dest));
-
-
-    return -1;
-}
+    __uint(max_entries, 1 << 16);
+    __type(key, struct socket_info);
+    __type(value, struct seq_info);
+} seq_tracker SEC(".maps");
 
 // Hook for accepting new TCP connections
 SEC("kretprobe/inet_csk_accept")
@@ -344,14 +117,18 @@ int bpf_call_inet_csk_accept(struct pt_regs *ctx) {
         return 0;
 
     struct sock_common sc;
-    bpf_core_read(&sc, sizeof(sc), &sk->__sk_common);
+    int err = bpf_core_read(&sc, sizeof(sc), &sk->__sk_common);
+    if (err < 0) {
+        bpf_printk("inet_csk_accept: bpf_core_read failed (err: %d)\n", err);
+        return 0;
+    }
 
     __u32 saddr = sc.skc_rcv_saddr;
     __u16 sport = sc.skc_num;
     __u32 daddr = sc.skc_daddr;
     __u16 dport = bpf_ntohs(sc.skc_dport);
 
-    
+
     if (sport != SERVER_PORT)
         return 0;
     // bpf_printk("Opening connection: saddr=%pI4 sport=%d -> daddr=%pI4\n",
@@ -362,7 +139,7 @@ int bpf_call_inet_csk_accept(struct pt_regs *ctx) {
         bpf_printk("accept event ringbuf reserve failed\n");
         return 0;
     }
-    
+
     event->header.kind = ACCEPT;
     event->socket.proto = 6; // TCP
     event->socket.saddr = saddr;
@@ -382,23 +159,27 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
     if (!sk)
         return 0;
     struct sock_common sc;
-    bpf_core_read(&sc, sizeof(sc), &sk->__sk_common);
+    int err = bpf_core_read(&sc, sizeof(sc), &sk->__sk_common);
+    if (err < 0) {
+        bpf_printk("tcp_close: bpf_core_read failed (err: %d)\n", err);
+        return 0;
+    }
     __u32 saddr = sc.skc_rcv_saddr;
     __u16 sport = sc.skc_num;
     __u32 daddr = sc.skc_daddr;
     __u16 dport = bpf_ntohs(sc.skc_dport);
-    
+
     if (sport != SERVER_PORT)
         return 0;
     // bpf_printk("Closing connection: saddr=%pI4 sport=%d -> dport=%d\n",
     //            &saddr, sport, dport);
     struct connection_event *event = bpf_ringbuf_reserve(&conn_ringbuf, sizeof(struct connection_event), 0);
     if (!event) {
-        bpf_printk("close event ringbuf reserve failed\n");
+        bpf_printk("close event ringbuf reserve failed (err: %d)\n", err);
         return 0;
     }
-    
-    
+
+
     event->header.kind = CLOSE;
     event->socket.proto = 6; // TCP
     event->socket.saddr = saddr;
@@ -406,9 +187,371 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
     event->socket.daddr = daddr;
     event->socket.dport = dport;
     event->socket.state = sc.skc_state;
-    
+
     bpf_ringbuf_submit(event, 0);
+
+    struct socket_info sock_key = {
+        .proto = 6,
+        .saddr = saddr,
+        .sport = sport,
+        .daddr = daddr,
+        .dport = dport
+    };
+
+    // Clean up sequence tracking
+    err = bpf_map_delete_elem(&seq_tracker, &sock_key);
+    if (err < 0) {
+        bpf_printk("seq_tracker map delete elem failed (err: %d)\n", err);
+    }
+
     return 0;
 }
 
-char LICENSE[] SEC("license") = "GPL";
+// Syscall tracepoints to track userspace buffers
+SEC("tracepoint/syscalls/sys_enter_recvfrom")
+int trace_enter_recvfrom(struct trace_event_raw_sys_enter *ctx) {
+  u64 tid = bpf_get_current_pid_tgid();
+  void *buf = (void *)ctx->args[1];
+  int err = bpf_map_update_elem(&tid_to_buf, &tid, &buf, BPF_ANY);
+  if (err < 0) {
+    bpf_printk("trace_enter_recvfrom: map update elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("tracepoint/syscalls/sys_exit_recvfrom")
+int trace_exit_recvfrom(struct trace_event_raw_sys_exit *ctx) {
+  u64 tid = bpf_get_current_pid_tgid();
+  int err = bpf_map_delete_elem(&tid_to_buf, &tid);
+  if (err < 0) {
+    bpf_printk("trace_exit_recvfrom: map delete elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_recvmsg")
+int trace_enter_recvmsg(struct trace_event_raw_sys_enter *ctx) {
+  u64 tid = bpf_get_current_pid_tgid();
+  void *buf = (void *)ctx->args[1];
+  int err = bpf_map_update_elem(&tid_to_buf, &tid, &buf, BPF_ANY);
+  if (err < 0) {
+    bpf_printk("trace_enter_recvmsg: map update elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("tracepoint/syscalls/sys_exit_recvmsg")
+int trace_exit_recvmsg(struct trace_event_raw_sys_exit *ctx) {
+  u64 tid = bpf_get_current_pid_tgid();
+  int err = bpf_map_delete_elem(&tid_to_buf, &tid);
+  if (err < 0) {
+    bpf_printk("trace_exit_recvmsg: map delete elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_read")
+int trace_enter_read(struct trace_event_raw_sys_enter *ctx) {
+  u64 tid = bpf_get_current_pid_tgid();
+  void *buf = (void *)ctx->args[1];
+  int err = bpf_map_update_elem(&tid_to_buf, &tid, &buf, BPF_ANY);
+  if (err < 0) {
+    bpf_printk("trace_enter_read: map update elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("tracepoint/syscalls/sys_exit_read")
+int trace_exit_read(struct trace_event_raw_sys_exit *ctx) {
+  u64 tid = bpf_get_current_pid_tgid();
+  int err = bpf_map_delete_elem(&tid_to_buf, &tid);
+  if (err < 0) {
+    bpf_printk("trace_exit_read: map delete elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_sendto")
+int trace_enter_sendto(struct trace_event_raw_sys_enter *ctx) {
+  u64 tid = bpf_get_current_pid_tgid();
+  void *buf = (void *)ctx->args[1];
+  int err = bpf_map_update_elem(&tid_to_buf, &tid, &buf, BPF_ANY);
+  if (err < 0) {
+    bpf_printk("trace_enter_sendto: map update elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("tracepoint/syscalls/sys_exit_sendto")
+int trace_exit_sendto(struct trace_event_raw_sys_exit *ctx) {
+  u64 tid = bpf_get_current_pid_tgid();
+  int err = bpf_map_delete_elem(&tid_to_buf, &tid);
+  if (err < 0) {
+    bpf_printk("trace_exit_sendto: map delete elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_sendmsg")
+int trace_enter_sendmsg(struct trace_event_raw_sys_enter *ctx) {
+  u64 tid = bpf_get_current_pid_tgid();
+  void *buf = (void *)ctx->args[1];
+  int err = bpf_map_update_elem(&tid_to_buf, &tid, &buf, BPF_ANY);
+  if (err < 0) {
+    bpf_printk("trace_enter_sendmsg: map update elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("tracepoint/syscalls/sys_exit_sendmsg")
+int trace_exit_sendmsg(struct trace_event_raw_sys_exit *ctx) {
+  u64 tid = bpf_get_current_pid_tgid();
+  int err = bpf_map_delete_elem(&tid_to_buf, &tid);
+  if (err < 0) {
+    bpf_printk("trace_exit_sendmsg: map delete elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("tracepoint/syscalls/sys_enter_write")
+int trace_enter_write(struct trace_event_raw_sys_enter *ctx) {
+    __u64 tid = bpf_get_current_pid_tgid();
+    void *buf = (void *)ctx->args[1];
+    int err = bpf_map_update_elem(&tid_to_buf, &tid, &buf, BPF_ANY);
+    if (err < 0) {
+        bpf_printk("trace_enter_write: map update elem failed (err: %d)\n", err);
+    }
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_exit_write")
+int trace_exit_write(struct trace_event_raw_sys_exit *ctx) {
+    __u64 tid = bpf_get_current_pid_tgid();
+    int err = bpf_map_delete_elem(&tid_to_buf, &tid);
+    if (err < 0) {
+        bpf_printk("trace_exit_write: map delete elem failed (err: %d)\n", err);
+    }
+    return 0;
+}
+
+// TCP-level probes for Redis traffic
+SEC("kprobe/tcp_sendmsg")
+int BPF_KPROBE(tcp_sendmsg_entry, struct sock *sk, struct msghdr *msg,
+               size_t size) {
+  if (BPF_CORE_READ(sk, __sk_common.skc_num) != SERVER_PORT) return 0;
+
+  u64 tid = bpf_get_current_pid_tgid();
+  void **buf_ptr = bpf_map_lookup_elem(&tid_to_buf, &tid);
+  if (!buf_ptr) return 0;
+
+  struct conn_key key = {.pid_tgid = tid};
+  struct send_args_t val = {.sk = sk, .size = size, .user_buf = *buf_ptr};
+
+  int err = bpf_map_update_elem(&active_send, &key, &val, BPF_ANY);
+  if (err < 0) {
+    bpf_printk("tcp_sendmsg: map update elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("kretprobe/tcp_sendmsg")
+int BPF_KRETPROBE(tcp_sendmsg_exit, ssize_t ret) {
+    if (ret <= 0) return 0;
+    u64 tid = bpf_get_current_pid_tgid();
+    struct conn_key key = {.pid_tgid = tid};
+    struct send_args_t *args = bpf_map_lookup_elem(&active_send, &key);
+    if (!args) return 0;
+
+    struct packet_data *p = bpf_ringbuf_reserve(&msgs_ringbuf, sizeof(*p), 0);
+    if (!p) goto cleanup;
+
+    struct sock *sk = args->sk;
+    struct tcp_sock *tp = bpf_core_cast(sk, struct tcp_sock);
+
+    // Create socket_info key for sequence tracking
+    struct socket_info sock_key = {
+        .proto = 6,
+        .saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr),
+        .sport = BPF_CORE_READ(sk, __sk_common.skc_num),
+        .daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr),
+        .dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport))
+    };
+
+    // Get or initialize sequence tracking
+    struct seq_info new_seq = {0};
+    struct seq_info *seq = bpf_map_lookup_elem(&seq_tracker, &sock_key);
+    if (!seq) {
+        // bpf_printk("tcp_sendmsg: no seq tracking\n");
+        new_seq.next_send_seq = BPF_CORE_READ(tp, write_seq) - ret;
+        int err = bpf_map_update_elem(&seq_tracker, &sock_key, &new_seq, BPF_ANY);
+        if (err < 0) {
+            bpf_printk("tcp_sendmsg: seq_tracker map update elem failed (err: %d)\n", err);
+        }
+        seq = &new_seq;
+    }
+
+    // Verify sequence number
+    u32 current_seq = BPF_CORE_READ(tp, write_seq) - ret;
+    // bpf_printk("send sock_key: proto=%d saddr=%u sport=%d daddr=%u dport=%d",
+    //            sock_key.proto, sock_key.saddr, sock_key.sport, sock_key.daddr, sock_key.dport);
+    if (current_seq != seq->next_send_seq) {
+        bpf_printk("Unexpected send seq: expected %u, got %u, ret: %d",
+                   seq->next_send_seq, current_seq, ret);
+    // } else {
+    //     bpf_printk("expected send seq: %u, got %u, ret: %d",
+    //                seq->next_send_seq, current_seq, ret);
+    }
+
+    // Update next expected sequence number
+    struct seq_info updated_seq = *seq;
+    updated_seq.next_send_seq = current_seq + ret;
+    // bpf_printk("send updated_seq: %u\n", updated_seq.next_send_seq);
+    int err = bpf_map_update_elem(&seq_tracker, &sock_key, &updated_seq, BPF_ANY);
+    if (err < 0) {
+        bpf_printk("tcp_sendmsg: seq_tracker map update elem failed (err: %d)\n", err);
+    }
+
+    // Ensure length is bounded
+    size_t len = ret;
+    if (len > MAX_PKT_SIZE) {
+        len = MAX_PKT_SIZE;
+        bpf_printk("tcp_sendmsg: len > MAX_PKT_SIZE\n");
+    }
+
+    p->len = len;
+    p->direction = 'S';
+    p->saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+    p->daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+    p->sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+    p->dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
+    p->seq_num = BPF_CORE_READ(tp, write_seq);
+
+    // Use the bounded length for reading
+    if (bpf_probe_read_user(p->data, len, args->user_buf) < 0) {
+        bpf_ringbuf_discard(p, 0);
+        bpf_printk("tcp_sendmsg: read_user failed\n");
+        goto cleanup;
+    }
+
+    bpf_ringbuf_submit(p, 0);
+
+
+cleanup:
+    err = bpf_map_delete_elem(&active_send, &key);
+    if (err < 0) {
+        bpf_printk("tcp_sendmsg: map delete elem failed (err: %d)\n", err);
+    }
+    return 0;
+}
+
+SEC("kprobe/tcp_recvmsg")
+int BPF_KPROBE(tcp_recvmsg_entry, struct sock *sk, struct msghdr *msg,
+               size_t len, int flags, int *addr_len) {
+  if (BPF_CORE_READ(sk, __sk_common.skc_num) != SERVER_PORT) return 0;
+
+  u64 tid = bpf_get_current_pid_tgid();
+  void **buf_ptr = bpf_map_lookup_elem(&tid_to_buf, &tid);
+  if (!buf_ptr) return 0;
+
+  struct conn_key key = {.pid_tgid = tid};
+  struct conn_args val = {.sk = sk, .user_buf = *buf_ptr};
+
+  int err = bpf_map_update_elem(&active_recv, &key, &val, BPF_ANY);
+  if (err < 0) {
+    bpf_printk("tcp_recvmsg: map update elem failed (err: %d)\n", err);
+  }
+  return 0;
+}
+
+SEC("kretprobe/tcp_recvmsg")
+int BPF_KRETPROBE(tcp_recvmsg_exit, ssize_t ret) {
+    if (ret <= 0) return 0;
+    u64 tid = bpf_get_current_pid_tgid();
+    struct conn_key key = {.pid_tgid = tid};
+    struct conn_args *args = bpf_map_lookup_elem(&active_recv, &key);
+    if (!args) return 0;
+
+    struct packet_data *p = bpf_ringbuf_reserve(&msgs_ringbuf, sizeof(*p), 0);
+    if (!p) goto cleanup;
+
+    struct sock *sk = args->sk;
+    struct tcp_sock *tp = bpf_core_cast(sk, struct tcp_sock);
+
+    // Create socket_info key for sequence tracking
+    struct socket_info sock_key = {
+        .proto = 6,
+        .saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr),
+        .sport = BPF_CORE_READ(sk, __sk_common.skc_num),
+        .daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr),
+        .dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport))
+    };
+
+    // Get or initialize sequence tracking
+    struct seq_info new_seq = {0};
+    struct seq_info *seq = bpf_map_lookup_elem(&seq_tracker, &sock_key);
+    if (!seq) {
+        // bpf_printk("tcp_recvmsg: no seq tracking\n");
+        new_seq.next_recv_seq = BPF_CORE_READ(tp, copied_seq) - ret;
+        int err = bpf_map_update_elem(&seq_tracker, &sock_key, &new_seq, BPF_ANY);
+        if (err < 0) {
+            bpf_printk("tcp_recvmsg: seq_tracker map update elem failed (err: %d)\n", err);
+        }
+        seq = &new_seq;
+    }
+
+    // Verify sequence number
+    u32 current_seq = BPF_CORE_READ(tp, copied_seq) - ret;
+    // bpf_printk("recv sock_key: proto=%d saddr=%u sport=%d daddr=%u dport=%d",
+    //            sock_key.proto, sock_key.saddr, sock_key.sport, sock_key.daddr, sock_key.dport);
+    if (current_seq != seq->next_recv_seq) {
+        bpf_printk("Unexpected recv seq: expected %u, got %u, ret: %d",
+                   seq->next_recv_seq, current_seq, ret);
+    // } else {
+    //     bpf_printk("expected recv seq: %u, got %u, ret: %d",
+    //                seq->next_recv_seq, current_seq, ret);
+    }
+
+    // Update next expected sequence number
+    struct seq_info updated_seq = *seq;
+    updated_seq.next_recv_seq = current_seq + ret;
+    // bpf_printk("recv updated_seq: %u\n", updated_seq.next_recv_seq);
+    int err = bpf_map_update_elem(&seq_tracker, &sock_key, &updated_seq, BPF_ANY);
+    if (err < 0) {
+        bpf_printk("tcp_recvmsg: seq_tracker map update elem failed (err: %d)\n", err);
+    }
+
+
+    // Ensure length is bounded
+    size_t len = ret;
+    if (len > MAX_PKT_SIZE) {
+        len = MAX_PKT_SIZE;
+        bpf_printk("tcp_recvmsg: len > MAX_PKT_SIZE\n");
+    }
+
+    p->len = len;
+    p->direction = 'R';
+    // intentionally reverse the direction of the packet, the def in kernel is strange
+    // after the swapping the source is the client, and the destination is the server
+    p->daddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+    p->saddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+    p->dport = BPF_CORE_READ(sk, __sk_common.skc_num);
+    p->sport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
+    p->seq_num = BPF_CORE_READ(tp, copied_seq);
+
+    // Use the bounded length for reading
+    if (bpf_probe_read_user(p->data, len, args->user_buf) < 0) {
+        bpf_ringbuf_discard(p, 0);
+        bpf_printk("tcp_recvmsg: read_user failed\n");
+        goto cleanup;
+    }
+
+    bpf_ringbuf_submit(p, 0);
+
+
+cleanup:
+    err = bpf_map_delete_elem(&active_recv, &key);
+    if (err < 0) {
+        bpf_printk("tcp_recvmsg: map delete elem failed (err: %d)\n", err);
+    }
+    return 0;
+}

@@ -53,12 +53,12 @@ struct tcp_info {
     uint32_t daddr;
     uint16_t dport;
     uint8_t state;  // TCP connection state
-};
+} __attribute__((packed));
 
 struct ConnectionEvent {
     struct event_type_header header;
     struct tcp_info connection;
-};
+} __attribute__((packed));
 
 struct ParseResult{
     std::unique_ptr<char[]> src_ip;
@@ -73,10 +73,15 @@ struct ParseResult{
 };
 
 struct packet_data {
-    uint32_t len;
-    unsigned char data[MAX_PKT_SIZE];
-};
-
+  uint32_t len;
+  uint32_t saddr;
+  uint32_t daddr;
+  uint16_t sport;
+  uint16_t dport;
+  uint32_t seq_num;
+  char direction;  // 'R' for recv, 'S' for send
+  unsigned char data[MAX_PKT_SIZE];
+} __attribute__((packed));
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
@@ -155,8 +160,6 @@ class EbpfWorker : public Worker<Application, Request, Response,
 
   /// Timer handler for ring buffer polling
   static void TimerHandler(evutil_socket_t fd, short events, void* arg);
-
-  void MakeUpdate(struct ParseResult result, void *arg);
 
   static int HandleConnection(void *ctx, void *data, size_t data_sz);
 
