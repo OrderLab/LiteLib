@@ -4,6 +4,20 @@ set -x
 
 DeathStarDir=$(cd "$(dirname "$0")/.." && pwd)
 
+function build_docker_images() {
+    # Build lite-memcached on node3
+    echo "Building lite-memcached image on node3"
+    ssh node3 "cd $DeathStarDir/src/socialNetwork/docker/lite-memcached && docker build -t lite-memcached:latest ."
+
+    # Build modified-social-network on node2
+    echo "Building modified-social-network image on node2"
+    ssh node2 "cd $DeathStarDir/src/socialNetwork && docker build -t modified-social-network:latest ."
+
+    # Build mongo-with-cgroup on node0
+    echo "Building mongo-with-cgroup image on node0"
+    ssh node0 "cd $DeathStarDir/src/socialNetwork/docker/mongo-with-cgroup && docker build -t mongo-with-cgroup:latest ."
+}
+
 function down() {
     echo "Removing MongoDB container on node0..."
     ssh node0 "docker stop post-storage-mongodb || true; docker rm -f post-storage-mongodb || true"
@@ -38,10 +52,12 @@ function up() {
     
     # Get full hostnames from node2 and node3
     export NODE0_HOSTNAME=$(ssh node0 hostname)
+    export NODE1_HOSTNAME=$(ssh node1 hostname)
     export NODE2_HOSTNAME=$(ssh node2 hostname)
     export NODE3_HOSTNAME=$(ssh node3 hostname)
     
     echo "Using NODE0_HOSTNAME: $NODE0_HOSTNAME"
+    echo "Using NODE1_HOSTNAME: $NODE1_HOSTNAME"
     echo "Using NODE2_HOSTNAME: $NODE2_HOSTNAME"
     echo "Using NODE3_HOSTNAME: $NODE3_HOSTNAME"
     
@@ -49,21 +65,9 @@ function up() {
     echo "Verifying swarm status..."
     docker node ls
 
-    # Build lite-memcached on node3
-    echo "Building lite-memcached image on node3"
-    ssh node3 "cd $DeathStarDir/src/socialNetwork/docker/lite-memcached && docker build -t lite-memcached:latest ."
-
-    # Build modified-social-network on node2
-    echo "Building modified-social-network image on node2"
-    ssh node2 "cd $DeathStarDir/src/socialNetwork && docker build -t modified-social-network:latest ."
-
-    # Build mongo-with-cgroup on node0
-    echo "Building mongo-with-cgroup image on node0"
-    ssh node0 "cd $DeathStarDir/src/socialNetwork/docker/mongo-with-cgroup && docker build -t mongo-with-cgroup:latest ."
-
     # Deploy the stack
     echo "Deploying stack..."
-    NODE0_HOSTNAME=$NODE0_HOSTNAME NODE2_HOSTNAME=$NODE2_HOSTNAME NODE3_HOSTNAME=$NODE3_HOSTNAME docker stack deploy --compose-file=$DeathStarDir/src/socialNetwork/docker-compose-swarm-single.yml socialnetwork
+    NODE0_HOSTNAME=$NODE0_HOSTNAME NODE1_HOSTNAME=$NODE1_HOSTNAME NODE2_HOSTNAME=$NODE2_HOSTNAME NODE3_HOSTNAME=$NODE3_HOSTNAME docker stack deploy --compose-file=$DeathStarDir/src/socialNetwork/docker-compose-swarm-single.yml socialnetwork
     
     # Wait for network to be created
     sleep 5
@@ -105,8 +109,11 @@ case "$1" in
     down)
         down
         ;;
+    build)
+        build_docker_images
+        ;;
     *)
-        echo "Invalid parameter. Use 'up' or 'down'"
+        echo "Invalid parameter. Use 'up' or 'down' or 'build'"
         exit 1
         ;;
 esac

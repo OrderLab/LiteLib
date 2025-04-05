@@ -18,8 +18,9 @@ function start_memcached() {
     docker service update --force socialnetwork_post-storage-service
 }
 
+# 200MB for memcached
 function warmup_memcached() {
-    ../src/wrk2/wrk -D exp -t 40 -c 40 -d 120 -L -s ../src/socialNetwork/wrk2/scripts/social-network/read-home-timeline.lua http://node2:8080/wrk2-api/home-timeline/read -R 1500
+    ../src/wrk2/wrk -D exp -t 80 -c 512 -d 60 -L -s ../src/socialNetwork/wrk2/scripts/social-network/read-home-timeline.lua http://node2:8080/wrk2-api/home-timeline/read -R 3000
 }
 
 function crash_memcached() {
@@ -32,7 +33,7 @@ function mcrouter_logging() {
 }
 
 function run_workload() {
-    ../src/wrk2/wrk -D exp -t 40 -c 40 -d 90 -L -s ../src/socialNetwork/wrk2/scripts/social-network/mixed-workload.lua http://node2:8080 -R 1500
+    ../src/wrk2/wrk -D exp -t 80 -c 256 -d 90 -L -s ../src/socialNetwork/wrk2/scripts/social-network/mixed-workload.lua http://node2:8080 -R 2500
 }
 
 # Run the experiment

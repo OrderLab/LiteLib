@@ -10,13 +10,14 @@
   "route": {
     "type": "OperationSelectorRoute",
     "operation_policies": {
-      "add": "AllFastestRoute|Pool|A",
-      "delete": "AllFastestRoute|Pool|A",
       "get": {
-        "type": "LoadBalancerRoute",
-        "children": ["Pool|A"]
-      },
-      "set": "AllFastestRoute|Pool|A"
-    }
+        "type": "FailoverRoute",
+        "children": [
+          "HashRoute|Pool|A",
+          "Pool|A"
+        ]
+      }
+    },
+    "default_policy": "AllFastestRoute|Pool|A"
   }
 }

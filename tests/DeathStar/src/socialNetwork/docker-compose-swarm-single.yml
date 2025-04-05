@@ -158,7 +158,7 @@ services:
         condition: any
       placement:
         constraints:
-          - node.hostname==${NODE2_HOSTNAME}
+          - node.hostname==${NODE1_HOSTNAME}
     hostname: nginx-web-server
     image: yg397/openresty-thrift:xenial
     ports:

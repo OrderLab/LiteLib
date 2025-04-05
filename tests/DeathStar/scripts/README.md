@@ -7,6 +7,12 @@
 
 # Single node
 
+## Update docker images
+
+```bash
+./swarm_helper_single.sh build
+```
+
 ## Run
 
 ```bash
@@ -27,36 +33,15 @@ time python3 scripts/init_social_graph.py --graph=socfb-Reed98 --ip node2 --comp
 # set cpu limit to inf
 ../wrk2/wrk -D exp -t 40 -c 40 -d 600 -L -s ./wrk2/scripts/social-network/compose-post.lua http://node2:8080/wrk2-api/post/compose -R 2000
 
-# warm up (200MB for memcached)
-../wrk2/wrk -D exp -t 40 -c 40 -d 120 -L -s ./wrk2/scripts/social-network/read-home-timeline.lua http://node2:8080/wrk2-api/home-timeline/read -R 1500
 # run
 # set mongodb cpu limit to 100%
-../wrk2/wrk -D exp -t 40 -c 40 -d 60 -L -s ./wrk2/scripts/social-network/mixed-workload.lua http://node2:8080 -R 1500
-# crash
-# go to socialnetwork_post-storage-memcached service in node4
-/workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/crash.sh
+ssh node0 "docker exec post-storage-mongodb cgset -r cpu.max=\"100000 100000\" deathstar_cpulimited"
+./run_exp_single.sh vanilla
+./run_exp_single.sh vanilla+
+./run_exp_single.sh litesys
 ```
 
-```bash
-# go to socialnetwork_post-storage-memcached service in node4
-# start litesys
-/workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-litesys.sh
-docker service update --force socialnetwork_post-storage-service # and check if memcached is connected to post-storage-service
-# start vanilla
-/workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla.sh
-docker service update --force socialnetwork_post-storage-service # and check if memcached is connected to post-storage-service
-```
-
-## Change config
-
-Modify the config in `src/socialNetwork/docker/modified-social-network/config.json` in node2 (e.g. post-storage-service.offline_memcached_patch)
-
-```bash
-docker service update --force socialnetwork_post-storage-service
-docker service logs -f --since 0s socialnetwork_post-storage-service
-```
-
-## Change cgroup
+## Change cgroup manually
 
 ```bash
 # go to post-storage-mongodb in node2
@@ -68,6 +53,12 @@ cgget -g cpu:/deathstar_cpulimited
 ```
 
 # Replica
+
+## Update docker images
+
+```bash
+./swarm_helper_replica.sh build
+```
 
 ## Run
 
@@ -89,36 +80,13 @@ time python3 scripts/init_social_graph.py --graph=socfb-Reed98 --ip node2 --comp
 # set cpu limit to inf
 ../wrk2/wrk -D exp -t 40 -c 40 -d 600 -L -s ./wrk2/scripts/social-network/compose-post.lua http://node2:8080/wrk2-api/post/compose -R 2000
 
-# warm up (200MB for memcached)
-../wrk2/wrk -D exp -t 40 -c 40 -d 120 -L -s ./wrk2/scripts/social-network/read-home-timeline.lua http://node2:8080/wrk2-api/home-timeline/read -R 1500
-# run
 # set mongodb cpu limit to 100%
-../wrk2/wrk -D exp -t 40 -c 40 -d 60 -L -s ./wrk2/scripts/social-network/mixed-workload.lua http://node2:8080 -R 1500
-# crash
-# go to socialnetwork_post-storage-memcached service in node4
-/workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/crash.sh
+ssh node0 "docker exec post-storage-mongodb cgset -r cpu.max=\"100000 100000\" deathstar_cpulimited"
+./run_exp_replica.sh vanilla
+./run_exp_replica.sh litesys
 ```
 
-```bash
-# go to post-storage-memcached-1 in node4
-# start litesys
-/workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-litesys-with-cgroup.sh 1
-docker service update --force socialnetwork_post-storage-memcached # and check if memcached is connected to mcrouter
-# start vanilla
-/workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 1
-docker service update --force socialnetwork_post-storage-memcached # and check if memcached is connected to mcrouter
-```
-
-## Change config
-
-Modify the config in `src/socialNetwork/docker/modified-social-network/config.json` in node2 (e.g. post-storage-service.offline_memcached_patch)
-
-```bash
-docker service update --force socialnetwork_post-storage-service
-docker service logs -f --since 0s socialnetwork_post-storage-service
-```
-
-## Change cgroup
+## Change cgroup manually
 
 ### MongoDB
 
