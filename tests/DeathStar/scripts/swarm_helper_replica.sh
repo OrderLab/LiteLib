@@ -64,6 +64,10 @@ function up() {
     echo "Building lite-memcached image on node3"
     ssh node3 "cd $DeathStarDir/src/socialNetwork/docker/lite-memcached && docker build -t lite-memcached:latest ."
 
+    # Build mcrouter on node3
+    echo "Building mcrouter image on node3"
+    ssh node3 "cd $DeathStarDir/src/socialNetwork/docker/mcrouter && docker build -t modified-mcrouter:latest ."
+
     # Build modified-social-network on node2
     echo "Building modified-social-network image on node2"
     ssh node2 "cd $DeathStarDir/src/socialNetwork && docker build -t modified-social-network:latest ."

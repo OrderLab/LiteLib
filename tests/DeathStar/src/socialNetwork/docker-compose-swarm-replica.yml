@@ -177,14 +177,15 @@ services:
       - jaeger-agent
       - jaeger-query
     hostname: post-storage-memcached
-    image: anchorfree/mcrouter:latest
+    image: modified-mcrouter:latest
     deploy:
       placement:
         constraints:
           - node.hostname==${NODE3_HOSTNAME}
     volumes:
       - ./config:/social-network-microservices/config
-    command: "mcrouter -p 11211 -f /social-network-microservices/config/mcrouter.json"
+      - ./:/workspace
+    entrypoint: ["workspace/docker/mcrouter/entrypoint.sh"]
 
   # post-storage-mongodb:
   #   depends_on:
