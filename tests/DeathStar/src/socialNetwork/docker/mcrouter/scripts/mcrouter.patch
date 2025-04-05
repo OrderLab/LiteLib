@@ -1,0 +1,13 @@
+diff --git a/mcrouter/stats.h b/mcrouter/stats.h
+index b8eaf32f..6777a5ef 100644
+--- a/mcrouter/stats.h
++++ b/mcrouter/stats.h
+@@ -22,7 +22,7 @@ namespace mcrouter {
+ // make sure MOVING_AVERAGE_WINDOW_SIZE_IN_SECOND can be exactly divided by
+ // MOVING_AVERAGE_BIN_SIZE_IN_SECOND
+ // the window size within which average stat rate is calculated
+-#define MOVING_AVERAGE_WINDOW_SIZE_IN_SECOND (60 * 4)
++#define MOVING_AVERAGE_WINDOW_SIZE_IN_SECOND (1)
+ 
+ // the bin size for average stat rate
+ #define MOVING_AVERAGE_BIN_SIZE_IN_SECOND (1)
