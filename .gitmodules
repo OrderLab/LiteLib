@@ -8,3 +8,6 @@
 [submodule "tests/DeathStar/wrk2/deps/luajit"]
 	path = tests/DeathStar/src/wrk2/deps/luajit
 	url = https://github.com/LuaJIT/LuaJIT.git
+[submodule "tests/Memcached/src/memcached"]
+	path = tests/Memcached/src/memcached
+	url = git@github.com:memcached/memcached.git
