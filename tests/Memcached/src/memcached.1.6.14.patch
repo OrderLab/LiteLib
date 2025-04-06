@@ -1,0 +1,168 @@
+diff --git a/Makefile.am b/Makefile.am
+index e2c1bd8..9b7bbda 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -29,7 +29,8 @@ memcached_SOURCES = memcached.c memcached.h \
+                     authfile.c authfile.h \
+                     restart.c restart.h \
+                     proto_text.c proto_text.h \
+-                    proto_bin.c proto_bin.h
++                    proto_bin.c proto_bin.h \
++                    litesys.c litesys.h
+ 
+ if BUILD_SOLARIS_PRIVS
+ memcached_SOURCES += solaris_priv.c
+diff --git a/configure.ac b/configure.ac
+index a0851f2..9863cce 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -235,6 +235,10 @@ if test "x$enable_proxy_uring" = "xyes"; then
+     CPPFLAGS="-Ivendor/liburing/src/include $CPPFLAGS"
+ fi
+ 
++# Add vendor/LiteSys include directory and linker flags
++CPPFLAGS="-Ivendor/LiteSys $CPPFLAGS"
++LIBS="-Wl,-rpath,vendor/LiteSys/build -Lvendor/LiteSys/build -lembedded_lite_memcached -lstdc++ -lglog $LIBS"
++
+ AM_CONDITIONAL([BUILD_DTRACE],[test "$build_dtrace" = "yes"])
+ AM_CONDITIONAL([DTRACE_INSTRUMENT_OBJ],[test "$dtrace_instrument_obj" = "yes"])
+ AM_CONDITIONAL([ENABLE_SASL],[test "$enable_sasl" = "yes"])
+diff --git a/litesys.c b/litesys.c
+new file mode 100644
+index 0000000..fe9d994
+--- /dev/null
++++ b/litesys.c
+@@ -0,0 +1,25 @@
++#include "litesys.h"
++#include "memcached.h"
++
++void LiteFlushWriteBuffer(void *conn) {
++    // TODO: Implement
++}
++
++void LiteReinstallClientEventHandler(void *client, int install) {
++    // TODO
++}
++
++void LiteReinstallListenerEventHandler(void *listener, int install) {
++    // TODO
++}
++
++void LiteQueueEmbeddedRequest(void *conn_info, void *it, int is_success) {
++  item *it_ = (item *)it;
++  refcount_incr(it_);
++  LiteProcessRequest(conn_info, it_, is_success);
++}
++
++void LiteRequestDestructor(void *request) {
++  item *it = (item *)request;
++  refcount_decr(it);
++}
+diff --git a/litesys.h b/litesys.h
+new file mode 100644
+index 0000000..7111dcd
+--- /dev/null
++++ b/litesys.h
+@@ -0,0 +1,13 @@
++#include "embedded_lite.h"
++
++void LiteFlushWriteBuffer(void *conn);
++
++void LiteRequestDestructor(void *request);
++
++// uninstall is 0 if the event handler is being uninstalled, 1 if it is being
++// installed
++void LiteReinstallClientEventHandler(void *client, int install);
++
++void LiteReinstallListenerEventHandler(void *listener, int install);
++
++void LiteQueueEmbeddedRequest(void *conn_info, void *it, int is_success);
+\ No newline at end of file
+diff --git a/memcached.c b/memcached.c
+index 743a75a..6f59dfd 100644
+--- a/memcached.c
++++ b/memcached.c
+@@ -62,6 +62,8 @@
+ #include <sys/sysctl.h>
+ #endif
+ 
++#include "litesys.h"
++
+ /*
+  * forward declarations
+  */
+@@ -938,6 +940,7 @@ static void conn_close(conn *c) {
+     }
+ #endif
+     close(c->sfd);
++    LiteUnregisterClient(c->sfd);
+     c->close_reason = 0;
+     pthread_mutex_lock(&conn_lock);
+     allow_new_conns = true;
+@@ -1712,6 +1715,8 @@ enum store_item_type do_store_item(item *it, int comm, conn *c, const uint32_t h
+             stored, comm, ITEM_key(it), it->nkey, it->nbytes, it->exptime,
+             ITEM_clsid(it), c->sfd);
+ 
++    LiteProcessRequest(c, it, 1);
++
+     return stored;
+ }
+ 
+@@ -3061,6 +3066,7 @@ static void drive_machine(conn *c) {
+ 
+                 dispatch_conn_new(sfd, conn_new_cmd, EV_READ | EV_PERSIST,
+                                      READ_BUFFER_CACHED, c->transport, ssl_v);
++                LiteRegisterClient(c->sfd, c);
+             }
+ 
+             stop = true;
+@@ -3618,6 +3624,7 @@ static int server_socket(const char *interface,
+ #endif
+             listen_conn_add->next = listen_conn;
+             listen_conn = listen_conn_add;
++            LiteRegisterListener(sfd, listen_conn, 0); // TODO: replay
+         }
+     }
+ 
+@@ -4203,6 +4210,7 @@ static void remove_pidfile(const char *pid_file) {
+ }
+ 
+ static void sig_handler(const int sig) {
++    LiteSignalHandler(sig);
+     stop_main_loop = EXIT_NORMALLY;
+     printf("Signal handled: %s.\n", strsignal(sig));
+ }
+@@ -4656,6 +4664,8 @@ static int _mc_meta_load_cb(const char *tag, void *ctx, void *data) {
+ }
+ 
+ int main (int argc, char **argv) {
++    LiteInit(argv[0], LiteRequestDestructor, LiteFlushWriteBuffer,
++             LiteReinstallClientEventHandler, LiteReinstallListenerEventHandler);
+     int c;
+     bool lock_memory = false;
+     bool do_daemonize = false;
+@@ -6129,6 +6139,8 @@ int main (int argc, char **argv) {
+     /* Initialize the uriencode lookup table. */
+     uriencode_init();
+ 
++    LiteFullStartListening();
++
+     /* enter the event loop */
+     while (!stop_main_loop) {
+         if (event_base_loop(main_base, EVLOOP_ONCE) != 0) {
+diff --git a/vendor/LiteSys/build b/vendor/LiteSys/build
+new file mode 120000
+index 0000000..ae81360
+--- /dev/null
++++ b/vendor/LiteSys/build
+@@ -0,0 +1 @@
++../../../lite-version-ascii-embedded/build/
+\ No newline at end of file
+diff --git a/vendor/LiteSys/embedded_lite.h b/vendor/LiteSys/embedded_lite.h
+new file mode 120000
+index 0000000..87eae16
+--- /dev/null
++++ b/vendor/LiteSys/embedded_lite.h
+@@ -0,0 +1 @@
++../../../lite-version-ascii-embedded/Lite/include/embedded_lite.h
+\ No newline at end of file

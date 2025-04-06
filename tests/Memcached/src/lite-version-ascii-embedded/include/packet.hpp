@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <lite.hpp>
 
+extern SharedMemory *shm;
+
 struct Packet {
   size_t len = 0, current_line_start = 0;
   enum class Operation {
@@ -17,11 +19,15 @@ struct Packet {
   } operation = Operation::kUnknown;
   static const uint8_t uninitialized_line_cnt = -1;
   uint8_t line_cnt = 0, expected_line_cnt = uninitialized_line_cnt;
-  std::shared_ptr<std::vector<uint8_t>> buffer;
+  ShmSharedPtr<ShmVector<uint8_t>> buffer;
 
-  Packet() : buffer(std::make_shared<std::vector<uint8_t>>()) {}
+  Packet(ShmVoidAllocator allocator = shm->get_segment_manager())
+      : buffer(ShmMakeShared(
+            shm->get_segment_manager()->template construct<ShmVector<uint8_t>>(
+                bip::anonymous_instance)(allocator),
+            *shm)) {}
 
-  Packet(std::shared_ptr<std::vector<uint8_t>> buffer) : buffer(buffer) {}
+  Packet(ShmSharedPtr<ShmVector<uint8_t>> buffer) : buffer(buffer) {}
 
  private:
   lite::DeserializeResult GetLine(uint8_t *&begin, uint8_t *end) {
@@ -43,7 +49,7 @@ struct Packet {
     return lite::DeserializeResult::kGood;
   }
 
-  bool VecPartialCmp(const std::vector<uint8_t> &a, int start_idx,
+  bool VecPartialCmp(const ShmVector<uint8_t> &a, int start_idx,
                      const char b[]) {
     auto len = strlen(b);
     if (a.size() - start_idx < len) return false;
@@ -113,5 +119,5 @@ struct Packet {
     return lite::DeserializeResult::kGood;
   }
 
-  std::shared_ptr<std::vector<uint8_t>> Serialize() const { return buffer; }
+  ShmSharedPtr<ShmVector<uint8_t>> Serialize() const { return buffer; }
 };

@@ -33,12 +33,11 @@ int main(int argc, char* argv[]) {
     google::InitGoogleLogging(argv[0]);
     size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t cache_size(1024);
-    const char* port = "11211";
+    size_t shared_memory_size(1ll * 1024 * 1024 * 1024);
 
-    const char* const short_opts = "t:s:p:a:h";
+    const char* const short_opts = "t:s:a:h";
     const option long_opts[] = {{"thread_num", required_argument, nullptr, 't'},
                                 {"size", required_argument, nullptr, 's'},
-                                {"port", required_argument, nullptr, 'p'},
                                 {"address", required_argument, nullptr, 'a'},
                                 {"help", no_argument, nullptr, 'h'},
                                 {0, 0, 0, 0}};
@@ -52,9 +51,6 @@ int main(int argc, char* argv[]) {
         case 's':
           cache_size = boost::lexical_cast<size_t>(optarg);
           break;
-        case 'p':
-          port = optarg;
-          break;
         case 'a':
           break;
         case 'h':
@@ -65,24 +61,21 @@ int main(int argc, char* argv[]) {
     }
 
     LOG(INFO) << "LiteMemcached starts" << std::endl;
-    LOG(INFO) << "\tlistening on port: " << port << std::endl;
     LOG(INFO) << "\tthread_pool_size: " << thread_pool_size << std::endl;
     LOG(INFO) << "\tsize: " << cache_size << std::endl;
 
     // Initialise the server.
-    // TODO: make address and port configurable.
-    std::string backend_addr = "";
-    std::string backend_port = "/tmp/memcached.sock";
-    // std::string backend_addr = "127.0.0.1";
-    // std::string backend_port = "60000";
+    std::string backend_addr = "127.0.0.1";
+    std::string backend_port = "11211";
     Memcached memcached;
-    lite::LiteServer<Memcached, Packet, Packet, ConnectionInfo,
-                     std::vector<uint8_t>, CacheEntry>
-        s(thread_pool_size, cache_size, memcached, backend_addr, backend_port,
-          1000ms, 10000, 0.9, 1, "/tmp/lite_memcached", false);
-
+    lite::LiteServer<Memcached, Packet, Packet, ConnectionInfo, CacheKey,
+                     CacheEntry>
+        s(thread_pool_size, shared_memory_size, cache_size, memcached,
+          backend_addr, backend_port, 1000ms, 10000, 0.9, 1,
+          "/tmp/lite_memcached", false);
+    shm = &s.lite_core_.shared_memory_;
     // Run the server until stopped.
-    s.Run(port);
+    s.Run();
   } catch (std::exception& e) {
     std::cerr << "exception: " << e.what() << "\n";
   }

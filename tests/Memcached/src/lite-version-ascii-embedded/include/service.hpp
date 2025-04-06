@@ -8,18 +8,25 @@
 
 #include "packet.hpp"
 
+using CacheKey = ShmVector<uint8_t>;
+
 struct CacheEntry {
-  std::shared_ptr<std::vector<uint8_t>> value = nullptr;
-  std::shared_ptr<std::vector<uint8_t>> flags = nullptr;
+  ShmVector<uint8_t> value;
+  ShmVector<uint8_t> flags;
 
-  size_t GetSize() const {
-    return (value ? value->size() : 0) + (flags ? flags->size() : 0);
-  }
+  CacheEntry(ShmVoidAllocator allocator = shm->get_segment_manager())
+      : value(ShmVector<uint8_t>(allocator)),
+        flags(ShmVector<uint8_t>(allocator)) {}
 
-  std::shared_ptr<Packet> ToRequest(const std::vector<uint8_t> &key) const {
-    auto req = std::make_shared<Packet>();
-    const auto size_str = std::to_string(value->size());
-    req->buffer->reserve(key.size() + flags->size() + value->size() +
+  size_t GetSize() const { return value.size() + flags.size(); }
+
+  ShmSharedPtr<Packet> ToRequest(const CacheKey &key) const {
+    auto req =
+        ShmMakeShared(shm->get_segment_manager()->template construct<Packet>(
+                          bip::anonymous_instance)(),
+                      *shm);
+    const auto size_str = std::to_string(value.size());
+    req->buffer->reserve(key.size() + flags.size() + value.size() +
                          size_str.size() + 11);
     req->buffer->push_back('s');
     req->buffer->push_back('e');
@@ -27,13 +34,13 @@ struct CacheEntry {
     req->buffer->push_back(' ');
     req->buffer->insert(req->buffer->end(), key.begin(), key.end());
     req->buffer->push_back(' ');
-    req->buffer->insert(req->buffer->end(), flags->begin(), flags->end());
+    req->buffer->insert(req->buffer->end(), flags.begin(), flags.end());
     req->buffer->push_back('0');
     req->buffer->push_back(' ');
     req->buffer->insert(req->buffer->end(), size_str.begin(), size_str.end());
     req->buffer->push_back('\r');
     req->buffer->push_back('\n');
-    req->buffer->insert(req->buffer->end(), value->begin(), value->end());
+    req->buffer->insert(req->buffer->end(), value.begin(), value.end());
     req->buffer->push_back('\r');
     req->buffer->push_back('\n');
     return req;
@@ -41,51 +48,43 @@ struct CacheEntry {
 };
 
 struct ConnectionInfo {
-  std::unique_ptr<std::vector<uint8_t>> response_buffer;
-  ConnectionInfo()
-      : response_buffer(std::make_unique<std::vector<uint8_t>>()) {}
+  ConnectionInfo(ShmVoidAllocator allocator = shm->get_segment_manager()) {}
 };
 
 class Memcached {
-  using Cache = lite::Cache<Memcached, Packet, Packet, ConnectionInfo,
-                            std::vector<uint8_t>, CacheEntry>;
+  using Cache = lite::Cache<Memcached, Packet, Packet, ConnectionInfo, CacheKey,
+                            CacheEntry>;
   using Logger = lite::Logger<Memcached, Packet, Packet, ConnectionInfo,
-                              std::vector<uint8_t>, CacheEntry>;
+                              CacheKey, CacheEntry>;
 
  public:
-  Memcached();
+  static void DelayedConstructor();
 
-  std::pair<std::vector<std::shared_ptr<Packet>>, bool> Match(
-      const std::shared_ptr<Packet> &resp, ConnectionInfo &_,
-      lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
-          &pending_requests) const;
+  static int EmbeddedNormalUpdate(void *request, ConnectionInfo &conn,
+                                  Cache *cache,
+                                  RequestDestructorFn RequestDestructor);
 
-  void NormalUpdate(const std::shared_ptr<Packet> &resp,
-                    std::vector<std::shared_ptr<Packet>> requests,
-                    ConnectionInfo &_, Cache *cache);
+  static std::pair<Packet, bool> EmergencyServe(ShmSharedPtr<Packet> p,
+                                                ConnectionInfo &conn_info,
+                                                Cache *cache, Logger *logger,
+                                                bool flow_control);
 
-  void HandleReplayResponse(const std::shared_ptr<Packet> &resp,
-                            std::vector<std::shared_ptr<Packet>> requests,
-                            ConnectionInfo &_, Cache *cache) const;
+  static std::pair<Packet, bool> EmergencyServeImpl(ShmSharedPtr<Packet> p,
+                                                    Cache *cache,
+                                                    Logger *logger,
+                                                    bool flow_control);
 
-  std::pair<Packet, bool> EmergencyServe(std::shared_ptr<Packet> p,
-                                         ConnectionInfo &conn_info,
-                                         Cache *cache, Logger *logger,
-                                         bool flow_control) const;
+  static void NormalToEmergencyHook() {}
 
-  std::pair<Packet, bool> EmergencyServeImpl(std::shared_ptr<Packet> p,
-                                             Cache *cache, Logger *logger,
-                                             bool flow_control) const;
+  static void EmergencyToNormalHook() {}
 
-  void NormalToEmergencyHook() {}
-
-  void EmergencyToNormalHook() {}
-
-  std::optional<Packet> EmergencyConnectionEstablishHook(
+  static std::optional<Packet> EmergencyConnectionEstablishHook(
       ConnectionInfo &conn_info) {
     return std::nullopt;
   }
 
+  static RequestDestructorFn RequestDestructor;
+
  private:
-  Packet stored, not_stored, null_resp, version;
+  static Packet *stored, *not_stored, *null_resp, *version;
 };
