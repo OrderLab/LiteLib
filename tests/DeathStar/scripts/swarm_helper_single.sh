@@ -84,6 +84,7 @@ function up() {
         --hostname post-storage-mongodb \
         --privileged \
         --cgroupns host \
+        --shm-size 6g \
         -v \$(pwd)/config:/social-network-microservices/config \
         -v \$(pwd)/keys:/keys \
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
