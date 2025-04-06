@@ -29,34 +29,66 @@ index a0851f2..9863cce 100644
  AM_CONDITIONAL([ENABLE_SASL],[test "$enable_sasl" = "yes"])
 diff --git a/litesys.c b/litesys.c
 new file mode 100644
-index 0000000..fe9d994
+index 0000000..fe06183
 --- /dev/null
 +++ b/litesys.c
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,57 @@
 +#include "litesys.h"
++
++#include <stdlib.h>
++#include <string.h>
++
 +#include "memcached.h"
 +
++typedef struct lite_item {
++  uint8_t nkey;
++  uint8_t *key;
++  uint8_t flags[2];
++  uint8_t *value;
++  uint32_t nbytes;
++} lite_item;
++
 +void LiteFlushWriteBuffer(void *conn) {
-+    // TODO: Implement
++  // TODO: Implement
 +}
 +
 +void LiteReinstallClientEventHandler(void *client, int install) {
-+    // TODO
++  // TODO
 +}
 +
 +void LiteReinstallListenerEventHandler(void *listener, int install) {
-+    // TODO
++  // TODO
 +}
 +
-+void LiteQueueEmbeddedRequest(void *conn_info, void *it, int is_success) {
-+  item *it_ = (item *)it;
-+  refcount_incr(it_);
-+  LiteProcessRequest(conn_info, it_, is_success);
++void LiteQueueEmbeddedRequest(void *conn_info, void *it_, int is_success) {
++  item *it = (item *)it_;
++  lite_item *req = malloc(sizeof(lite_item));
++
++  req->nkey = it->nkey;
++  const char *key = ITEM_key(it);
++  while (!key[req->nkey - 1]) req->nkey--;
++  req->key = malloc(req->nkey);
++  memcpy(req->key, key, req->nkey);
++
++  itoa_u32(*((uint32_t *) ITEM_suffix(it)), (char *)req->flags);
++
++  if ((it->it_flags & ITEM_CHUNKED) != 0) {
++    fprintf(stderr, "Chunked item not supported by embedded mode\n");
++    return;
++  }
++
++  req->nbytes = it->nbytes - 2;
++  req->value = malloc(req->nbytes);
++  memcpy(req->value, ITEM_data(it), req->nbytes);
++
++  LiteProcessRequest(conn_info, req, is_success);
 +}
 +
 +void LiteRequestDestructor(void *request) {
-+  item *it = (item *)request;
-+  refcount_decr(it);
++  lite_item *it = (lite_item *)request;
++  free(it->key);
++  free(it->value);
++  free(it);
 +}
 diff --git a/litesys.h b/litesys.h
 new file mode 100644
@@ -79,7 +111,7 @@ index 0000000..7111dcd
 +void LiteQueueEmbeddedRequest(void *conn_info, void *it, int is_success);
 \ No newline at end of file
 diff --git a/memcached.c b/memcached.c
-index 743a75a..6f59dfd 100644
+index 743a75a..0b95c49 100644
 --- a/memcached.c
 +++ b/memcached.c
 @@ -62,6 +62,8 @@
@@ -103,20 +135,12 @@ index 743a75a..6f59dfd 100644
              stored, comm, ITEM_key(it), it->nkey, it->nbytes, it->exptime,
              ITEM_clsid(it), c->sfd);
  
-+    LiteProcessRequest(c, it, 1);
++    LiteQueueEmbeddedRequest(c->lite_data, it, 1);
 +
      return stored;
  }
  
-@@ -3061,6 +3066,7 @@ static void drive_machine(conn *c) {
- 
-                 dispatch_conn_new(sfd, conn_new_cmd, EV_READ | EV_PERSIST,
-                                      READ_BUFFER_CACHED, c->transport, ssl_v);
-+                LiteRegisterClient(c->sfd, c);
-             }
- 
-             stop = true;
-@@ -3618,6 +3624,7 @@ static int server_socket(const char *interface,
+@@ -3618,6 +3623,7 @@ static int server_socket(const char *interface,
  #endif
              listen_conn_add->next = listen_conn;
              listen_conn = listen_conn_add;
@@ -124,7 +148,7 @@ index 743a75a..6f59dfd 100644
          }
      }
  
-@@ -4203,6 +4210,7 @@ static void remove_pidfile(const char *pid_file) {
+@@ -4203,6 +4209,7 @@ static void remove_pidfile(const char *pid_file) {
  }
  
  static void sig_handler(const int sig) {
@@ -132,7 +156,7 @@ index 743a75a..6f59dfd 100644
      stop_main_loop = EXIT_NORMALLY;
      printf("Signal handled: %s.\n", strsignal(sig));
  }
-@@ -4656,6 +4664,8 @@ static int _mc_meta_load_cb(const char *tag, void *ctx, void *data) {
+@@ -4656,6 +4663,8 @@ static int _mc_meta_load_cb(const char *tag, void *ctx, void *data) {
  }
  
  int main (int argc, char **argv) {
@@ -141,7 +165,7 @@ index 743a75a..6f59dfd 100644
      int c;
      bool lock_memory = false;
      bool do_daemonize = false;
-@@ -6129,6 +6139,8 @@ int main (int argc, char **argv) {
+@@ -6129,6 +6138,8 @@ int main (int argc, char **argv) {
      /* Initialize the uriencode lookup table. */
      uriencode_init();
  
@@ -150,6 +174,40 @@ index 743a75a..6f59dfd 100644
      /* enter the event loop */
      while (!stop_main_loop) {
          if (event_base_loop(main_base, EVLOOP_ONCE) != 0) {
+diff --git a/memcached.h b/memcached.h
+index 7a577f4..93a1387 100644
+--- a/memcached.h
++++ b/memcached.h
+@@ -776,6 +776,8 @@ struct _io_pending_t {
+  * The structure representing a connection into memcached.
+  */
+ struct conn {
++    void *lite_data;
++
+     sasl_conn_t *sasl_conn;
+     int    sfd;
+     bool sasl_started;
+diff --git a/thread.c b/thread.c
+index dc59062..d05c858 100644
+--- a/thread.c
++++ b/thread.c
+@@ -29,6 +29,8 @@
+ #include <openssl/ssl.h>
+ #endif
+ 
++#include "litesys.h"
++
+ #define ITEMS_PER_ALLOC 64
+ 
+ /* An item in the connection queue. */
+@@ -588,6 +590,7 @@ static void thread_libevent_process(evutil_socket_t fd, short which, void *arg)
+                 } else {
+                     c->thread = me;
+                     conn_io_queue_setup(c);
++                    c->lite_data = LiteRegisterClient(c->sfd, c);
+ #ifdef TLS
+                     if (settings.ssl_enabled && c->ssl != NULL) {
+                         assert(c->thread && c->thread->ssl_wbuf);
 diff --git a/vendor/LiteSys/build b/vendor/LiteSys/build
 new file mode 120000
 index 0000000..ae81360

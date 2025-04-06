@@ -97,6 +97,7 @@ bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
                             bool in_transaction, bool log) {
   bip::offset_ptr<LogEntryInstance> dirty = nullptr;
   bip::offset_ptr<CacheStateInstance> state = nullptr;
+
   if (cache_inner_ptr_->emergency_mode_ptr_->load() && log) {
     dirty = cache_inner_ptr_->log_entry_allocator_.allocate_one();
     new (dirty.get()) LogEntryInstance(nullptr, ShmSharedPtr<Request>{},

@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     google::InitGoogleLogging(argv[0]);
     size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t cache_size(1024);
-    size_t shared_memory_size(1ll * 1024 * 1024 * 1024);
+    size_t shared_memory_size(2ll * 1024 * 1024 * 1024);
 
     const char* const short_opts = "t:s:a:h";
     const option long_opts[] = {{"thread_num", required_argument, nullptr, 't'},
@@ -74,6 +74,7 @@ int main(int argc, char* argv[]) {
           backend_addr, backend_port, 1000ms, 10000, 0.9, 1,
           "/tmp/lite_memcached", false);
     shm = &s.lite_core_.shared_memory_;
+    memcached.DelayedConstructor();
     // Run the server until stopped.
     s.Run();
   } catch (std::exception& e) {

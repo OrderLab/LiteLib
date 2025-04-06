@@ -47,51 +47,33 @@ void Memcached::DelayedConstructor() {
 int Memcached::EmbeddedNormalUpdate(void *request, ConnectionInfo &conn,
                                     Cache *cache,
                                     RequestDestructorFn RequestDestructor) {
-  item *it = (item *)request;
-  char *buf = new char[it->nkey + it->nbytes + 6 + 1];
-  char *cur = buf;
-  memcpy(cur, "set ", 4);
-  cur += 4;
+  lite_item *it = static_cast<lite_item *>(request);
 
-  memcpy(cur, ITEM_key(it), it->nkey);
-  cur += it->nkey;
+  // LOG(INFO) << "key_len: " << (int)it->nkey << " key: ";
+  // for (int i = 0; i < it->nkey; i++) {
+  //   fprintf(stderr, "%c", it->key[i]);
+  // }
+  // fprintf(stderr, "\n");
 
-  memcpy(cur, "0 ", 2); // TODO: exptime
-  cur += 2;
+  // LOG(INFO) << "flags: " << it->flags << std::endl;
 
-  if ((it->it_flags & ITEM_CHUNKED) != 0) {
-    fprintf(stderr, "Chunked item not supported by embedded mode\n");
-    return 0;
-  }
+  // LOG(INFO) << "value_len: " << it->nbytes << " value: ";
+  // for (int i = 0; i < it->nbytes; i++) {
+  //   fprintf(stderr, "%d ", it->value[i]);
+  // }
+  // fprintf(stderr, "\n");
 
-  memcpy(cur, ITEM_data(it), it->nbytes);
-  cur += it->nbytes;
-  *cur = 0;
-  LOG(INFO) << "buf: " << buf << std::endl;
+  CacheKey key(shm->get_segment_manager());
+  key.assign(it->key, it->key + it->nkey);
+
+  CacheEntry entry;
+  entry.flags.assign(it->flags, it->flags + 2);
+  entry.value.assign(it->value, it->value + it->nbytes);
+
+  cache->Set(key, entry);
 
   RequestDestructor(request);
   return 0;
-  // if (requests.empty()) return;
-
-  // for (const auto &req : requests) {
-  //   switch (req->operation) {
-  //     case Packet::Operation::kSet:
-  //       if ((*resp->buffer)[0] == 'N' && (*resp->buffer)[1] == 'O' &&
-  //           (*resp->buffer)[2] == 'T')
-  //         break;
-  //       EmergencyServeImpl(req, cache, nullptr, false);
-  //       break;
-  //     case Packet::Operation::kGet:
-  //     case Packet::Operation::kQuit:
-  //       break;
-  //     case Packet::Operation::kVersion:
-  //       version.buffer = resp->buffer;
-  //       break;
-  //     default:
-  //       std::string buffer_str(req->buffer->begin(), req->buffer->end());
-  //       LOG(ERROR) << "Unknown operation: " << buffer_str << std::endl;
-  //   }
-  // }
 }
 
 std::pair<Packet, bool> Memcached::EmergencyServe(ShmSharedPtr<Packet> p,
