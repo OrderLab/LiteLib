@@ -3,6 +3,8 @@
 # === Configuration ===
 NODES=(node0 node1 node2 node3)
 MYNAME=$(hostname)
+SSH_USER="toga"  # Change this to your SSH user
+SSH_KEY="/users/toga/.ssh/id_ed25519"  # Path to your SSH private key
 
 # === Parse CLI Arguments ===
 IFACE="${1:-eno1}"
@@ -36,22 +38,32 @@ print_state() {
 
 # === Function: Block other node IPs ===
 block_other_node_ips() {
-  echo "🚫 Blocking IPs of other nodes..."
+  echo "🚫 Blocking non-10.* IPs of other nodes..."
   for NODE in "${NODES[@]}"; do
     if [ "$NODE" == "$MYNAME" ]; then continue; fi
     if [[ "$MYNAME" == "$NODE"* ]]; then continue; fi
     echo "🔍 Getting IPs from $NODE..."
-    IPS=$(ssh -o ConnectTimeout=3 $NODE "hostname -I" 2>/dev/null)
-    if [ -z "$IPS" ]; then
-      echo "⚠️  Could not reach $NODE"
-      continue
+    
+    # Get IPs and ensure proper handling of the output
+    IPS=$(ssh -o ConnectTimeout=3 -i "$SSH_KEY" ${SSH_USER}@$NODE "hostname -I" 2>/dev/null)
+    if [ $? -eq 0 ] && [ ! -z "$IPS" ]; then
+      echo "📡 Found IPs: $IPS"
+      for IP in $IPS; do
+        if [[ ! "$IP" == 10.* ]]; then
+          echo "⛔ Blocking $IP"
+          # First remove any existing rule for this IP
+          iptables -D OUTPUT -d "$IP" -j REJECT 2>/dev/null || true
+          # Then insert at the beginning of the chain
+          iptables -I OUTPUT 1 -d "$IP" -j REJECT
+        else
+          echo "✅ Allowing $IP (10.* network)"
+        fi
+      done
+    else
+      echo "⚠️  Could not get IPs from $NODE"
     fi
-    for IP in $IPS; do
-      echo "⛔ Blocking $IP"
-      iptables -C OUTPUT -d "$IP" -j REJECT 2>/dev/null || iptables -A OUTPUT -d "$IP" -j REJECT
-    done
   done
-  echo "✅ Peer node IPs blocked"
+  echo "✅ Peer node non-10.* IPs blocked"
   echo ""
 }
 
@@ -59,27 +71,26 @@ block_other_node_ips() {
 set_packet_rate_limit() {
   echo "📤 Setting OUTPUT packet rate limit..."
 
-  # Allow loopback and private networks
-  iptables -C OUTPUT -o lo -j ACCEPT 2>/dev/null || iptables -A OUTPUT -o lo -j ACCEPT
-  iptables -C OUTPUT -d 10.0.0.0/8 -j ACCEPT 2>/dev/null || iptables -A OUTPUT -d 10.0.0.0/8 -j ACCEPT
-  iptables -C OUTPUT -d 172.16.0.0/12 -j ACCEPT 2>/dev/null || iptables -A OUTPUT -d 172.16.0.0/12 -j ACCEPT
-  iptables -C OUTPUT -d 192.168.0.0/16 -j ACCEPT 2>/dev/null || iptables -A OUTPUT -d 192.168.0.0/16 -j ACCEPT
+  # First remove any existing rules
+  iptables -D OUTPUT -o lo -j ACCEPT 2>/dev/null || true
+  iptables -D OUTPUT -d 10.0.0.0/8 -j ACCEPT 2>/dev/null || true
+  iptables -D OUTPUT -d 172.16.0.0/12 -j ACCEPT 2>/dev/null || true
+  iptables -D OUTPUT -d 192.168.0.0/16 -j ACCEPT 2>/dev/null || true
+  iptables -D OUTPUT -d 0.0.0.0/0 -m hashlimit --hashlimit "$PKTS_PER_SEC"/sec --hashlimit-burst "$PKTS_PER_SEC" --hashlimit-mode dstip --hashlimit-name limit_pub_pkts -j ACCEPT 2>/dev/null || true
+  iptables -D OUTPUT -d 0.0.0.0/0 -j REJECT 2>/dev/null || true
 
-  # Rate limit public destinations
-  iptables -C OUTPUT -d 0.0.0.0/0 -m hashlimit \
-    --hashlimit "$PKTS_PER_SEC"/sec \
-    --hashlimit-burst "$PKTS_PER_SEC" \
-    --hashlimit-mode dstip \
-    --hashlimit-name limit_pub_pkts \
-    -j ACCEPT 2>/dev/null || \
+  # Then insert rules in correct order
+  iptables -A OUTPUT -o lo -j ACCEPT
+  iptables -A OUTPUT -d 10.0.0.0/8 -j ACCEPT
+  iptables -A OUTPUT -d 172.16.0.0/12 -j ACCEPT
+  iptables -A OUTPUT -d 192.168.0.0/16 -j ACCEPT
   iptables -A OUTPUT -d 0.0.0.0/0 -m hashlimit \
     --hashlimit "$PKTS_PER_SEC"/sec \
     --hashlimit-burst "$PKTS_PER_SEC" \
     --hashlimit-mode dstip \
     --hashlimit-name limit_pub_pkts \
     -j ACCEPT
-
-  iptables -C OUTPUT -d 0.0.0.0/0 -j REJECT 2>/dev/null || iptables -A OUTPUT -d 0.0.0.0/0 -j REJECT
+  iptables -A OUTPUT -d 0.0.0.0/0 -j REJECT
 
   echo "✅ OUTPUT packet rate limited to $PKTS_PER_SEC pkts/sec"
   echo ""
