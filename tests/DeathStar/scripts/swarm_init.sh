@@ -8,11 +8,13 @@ docker swarm leave --force
 
 # Initialize the swarm on local machine
 echo "Initializing Docker Swarm on local machine..."
-docker swarm init --advertise-addr $(hostname -i)
+# Get the IP address of node0 using nslookup
+SWARM_IP=$(nslookup node1 | grep "Address:" | tail -n1 | awk '{print $2}')
+docker swarm init --advertise-addr $SWARM_IP
 
 # Get the join token for workers
 JOIN_TOKEN=$(docker swarm join-token worker -q)
-MANAGER_IP=$(hostname -i)
+MANAGER_IP=$SWARM_IP
 
 # Join worker nodes to the swarm
 for node in node0 node2 node3; do
