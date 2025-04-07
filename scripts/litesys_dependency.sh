@@ -47,8 +47,8 @@ install_dependencies() {
     libbpf-dev \
     clang \
     sysstat \
-    linux-image-generic-hwe-22.04=6.8.0-52.53~22.04.1 \
-    linux-headers-generic-hwe-22.04=6.8.0-52.53~22.04.1
+    linux-image-6.8.0-52-generic=6.8.0-52.53~22.04.1 \
+    linux-headers-6.8.0-52-generic=6.8.0-52.53~22.04.1
 }
 
 install_boost() {
