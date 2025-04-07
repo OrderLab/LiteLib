@@ -19,6 +19,9 @@ main() {
 
   prepare
 
+  # Setup network rate limit on shared control network
+  ./network_limit.sh
+
   # Remove /mydata and resize the root filesystem
   ./resize_rootfs.sh
 

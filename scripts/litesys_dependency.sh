@@ -11,6 +11,7 @@ FREQUENCY=2.2
 install_dependencies() {
   apt-get install -y --no-install-recommends \
     build-essential \
+    nuttcp \
     software-properties-common \
     autoconf \
     automake \
