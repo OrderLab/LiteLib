@@ -6,7 +6,7 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 
-LOG_PREFIX=$1
+LOG_FILE=$1
 DURATION=$2
 
 # Validate that duration is a positive number
@@ -25,7 +25,12 @@ chmod 777 "$LOG_DIR"
 START_TIME=$(date +%s.%N)
 
 # Create a single combined log file with timestamp
-COMBINED_LOG="$LOG_DIR/${LOG_PREFIX}_$(date '+%Y%m%d_%H%M%S').log"
+COMBINED_LOG="$LOG_DIR/${LOG_FILE}"
+
+echo "========================================= Starting to collect stats for $DURATION seconds =========================================" >> "$COMBINED_LOG"
+echo "========================================= Getting mcrouter stats =========================================" >> "$COMBINED_LOG"
+echo -e "get __mcrouter__.options\r\nquit\r\n" | nc 0 11211 >> "$COMBINED_LOG"
+echo -e "get __mcrouter__.preprocessed_config\r\nquit\r\n" | nc 0 11211 >> "$COMBINED_LOG"
 
 # Counter for elapsed seconds
 ELAPSED=0

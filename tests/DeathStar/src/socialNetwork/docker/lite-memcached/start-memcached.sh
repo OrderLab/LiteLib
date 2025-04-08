@@ -1,5 +1,5 @@
 #!/bin/bash
 
-/workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla.sh
+pip3 install psutil
 
 exec tail -f /dev/null

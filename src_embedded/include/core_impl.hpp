@@ -139,6 +139,7 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   if (!crash_recover_) {
     // add all cache nodes to the log
+    size_t log_entry_cnt = 0;
     crash_conn_head_ = cache_inner_ptr_->log_entry_allocator_.allocate_one();
     new (crash_conn_head_.get()) LogEntryInstance(
         nullptr, ShmSharedPtr<Request>{}, shared_memory_.get_segment_manager());
@@ -150,9 +151,11 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                 LogEntryInstance(state, {}, crash_conn_head_->backend_conn_ptr);
             logger_inner_ptr_->Log(dirty, crash_conn_head_);
             state->dirty_node = dirty;
+            log_entry_cnt++;
           }
         },
         false);
+    LOG(INFO) << "Cached nodes: " << log_entry_cnt << std::endl;
   }
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }

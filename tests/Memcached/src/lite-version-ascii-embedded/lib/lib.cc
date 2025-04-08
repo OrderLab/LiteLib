@@ -16,7 +16,7 @@ __attribute__((visibility("default"))) int LiteInit(
     ReinstallListenerEventHandlerFn ReinstallListenerEventHandler) {
   auto ret = lite::Init<Memcached, Packet, Packet, ConnectionInfo, CacheKey,
                         CacheEntry>(
-      argv_0, 1, 2ll * 1024 * 1024 * 1024, 10240, 1000ms, "/tmp/lite_memcached",
+      argv_0, 1, 2ll * 1024 * 1024 * 1024, 20480, 1000ms, "/tmp/lite_memcached",
       RequestDestructor, FlushWriteBuffer, ReinstallClientEventHandler,
       ReinstallListenerEventHandler, &Memcached::EmbeddedNormalUpdate);
   shm = &static_cast<lite::EmbeddedServer<
