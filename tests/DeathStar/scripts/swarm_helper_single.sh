@@ -22,6 +22,9 @@ function down() {
     echo "Removing MongoDB container on node0..."
     ssh node0 "docker stop post-storage-mongodb || true; docker rm -f post-storage-mongodb || true"
 
+    echo "Removing Memcached instances on node3..."
+    ssh node3 "docker stop post-storage-memcached || true; docker rm -f post-storage-memcached || true"
+
     echo "Removing stack..."
     docker stack rm socialnetwork
 
@@ -30,9 +33,15 @@ function down() {
     
     echo "Node0 leaving swarm and rejoining..."
     JOIN_TOKEN=$(docker swarm join-token worker -q)
-    MANAGER_IP=$(hostname -i)
+    MANAGER_IP=$(nslookup node1 | grep "Address:" | tail -n1 | awk '{print $2}')
     ssh node0 "docker swarm leave --force"
     ssh node0 "docker swarm join --token $JOIN_TOKEN $MANAGER_IP:2377"
+
+    echo "Node3 leaving swarm and rejoining..."
+    JOIN_TOKEN=$(docker swarm join-token worker -q)
+    MANAGER_IP=$(nslookup node1 | grep "Address:" | tail -n1 | awk '{print $2}')
+    ssh node3 "docker swarm leave --force"
+    ssh node3 "docker swarm join --token $JOIN_TOKEN $MANAGER_IP:2377"
 
     sleep 5
     
@@ -65,6 +74,9 @@ function up() {
     echo "Verifying swarm status..."
     docker node ls
 
+    docker node update --label-add nginx=true ${NODE0_HOSTNAME}
+    docker node update --label-add nginx=true ${NODE1_HOSTNAME}
+
     # Deploy the stack
     echo "Deploying stack..."
     NODE0_HOSTNAME=$NODE0_HOSTNAME NODE1_HOSTNAME=$NODE1_HOSTNAME NODE2_HOSTNAME=$NODE2_HOSTNAME NODE3_HOSTNAME=$NODE3_HOSTNAME docker stack deploy --compose-file=$DeathStarDir/src/socialNetwork/docker-compose-swarm-single.yml socialnetwork
@@ -90,6 +102,22 @@ function up() {
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         mongo-with-cgroup:latest \
         sh -c 'cgcreate -g cpu:/deathstar_cpulimited && cgset -r cpu.max=\"400000 100000\" deathstar_cpulimited && cgexec -g cpu:deathstar_cpulimited mongod --bind_ip_all --nojournal --quiet --config /social-network-microservices/config/mongod.conf'"
+
+    echo "Setting up Memcached on node3"
+    ssh node3 "cd $DeathStarDir/../../ && \
+        docker run -d \
+        --name post-storage-memcached \
+        --network socialnetwork_default \
+        --network-alias post-storage-memcached \
+        --network-alias post-storage-memcached.socialnetwork_default \
+        --hostname post-storage-memcached \
+        --privileged \
+        --cgroupns host \
+        --shm-size 6g \
+        -v \$(pwd):/workspace \
+        -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+        lite-memcached:latest \
+        /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-memcached-with-cgroup.sh 1"
 
     # Check service status
     echo "Service status:"

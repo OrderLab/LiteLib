@@ -39,13 +39,13 @@ function down() {
     
     echo "Node0 leaving swarm and rejoining..."
     JOIN_TOKEN=$(docker swarm join-token worker -q)
-    MANAGER_IP=$(hostname -i)
+    MANAGER_IP=$(nslookup node1 | grep "Address:" | tail -n1 | awk '{print $2}')
     ssh node0 "docker swarm leave --force"
     ssh node0 "docker swarm join --token $JOIN_TOKEN $MANAGER_IP:2377"
 
     echo "Node3 leaving swarm and rejoining..."
     JOIN_TOKEN=$(docker swarm join-token worker -q)
-    MANAGER_IP=$(hostname -i)
+    MANAGER_IP=$(nslookup node1 | grep "Address:" | tail -n1 | awk '{print $2}')
     ssh node3 "docker swarm leave --force"
     ssh node3 "docker swarm join --token $JOIN_TOKEN $MANAGER_IP:2377"
 
@@ -80,6 +80,9 @@ function up() {
     echo "Verifying swarm status..."
     docker node ls
 
+    docker node update --label-add nginx=true ${NODE0_HOSTNAME}
+    docker node update --label-add nginx=true ${NODE1_HOSTNAME}
+
     # Deploy the stack
     echo "Deploying stack..."
     NODE0_HOSTNAME=$NODE0_HOSTNAME NODE1_HOSTNAME=$NODE1_HOSTNAME NODE2_HOSTNAME=$NODE2_HOSTNAME NODE3_HOSTNAME=$NODE3_HOSTNAME docker stack deploy --compose-file=$DeathStarDir/src/socialNetwork/docker-compose-swarm-replica.yml socialnetwork
@@ -104,6 +107,7 @@ function up() {
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         mongo-with-cgroup:latest \
         sh -c 'cgcreate -g cpu:/deathstar_cpulimited && cgset -r cpu.max=\"400000 100000\" deathstar_cpulimited && cgexec -g cpu:deathstar_cpulimited mongod --bind_ip_all --nojournal --quiet --config /social-network-microservices/config/mongod.conf'"
+    # the 400% limit here is way larger than the peak usage
 
     # Memcached instances on node3
     for i in {1..2}; do

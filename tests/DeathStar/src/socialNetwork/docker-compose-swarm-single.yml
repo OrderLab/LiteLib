@@ -153,12 +153,13 @@ services:
       - jaeger-agent
       - jaeger-query
     deploy:
-      replicas: 1
+      replicas: 2
       restart_policy:
         condition: any
       placement:
+        max_replicas_per_node: 1
         constraints:
-          - node.hostname==${NODE1_HOSTNAME}
+          - "node.labels.nginx==true"
     hostname: nginx-web-server
     image: yg397/openresty-thrift:xenial
     ports:
@@ -172,18 +173,18 @@ services:
       - ./docker/openresty-thrift/lua-thrift:/usr/local/openresty/lualib/thrift
       - ./keys:/keys
 
-  post-storage-memcached:
-    depends_on:
-      - jaeger-agent
-      - jaeger-query
-    hostname: post-storage-memcached
-    image: lite-memcached:latest
-    deploy:
-      placement:
-        constraints:
-          - node.hostname==${NODE3_HOSTNAME}
-    volumes:
-      - ../../../..:/workspace
+  # post-storage-memcached:
+  #   depends_on:
+  #     - jaeger-agent
+  #     - jaeger-query
+  #   hostname: post-storage-memcached
+  #   image: lite-memcached:latest
+  #   deploy:
+  #     placement:
+  #       constraints:
+  #         - node.hostname==${NODE3_HOSTNAME}
+  #   volumes:
+  #     - ../../../..:/workspace
 
   # post-storage-mongodb:
   #   depends_on:
