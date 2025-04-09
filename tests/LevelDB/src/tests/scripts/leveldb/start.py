@@ -166,23 +166,23 @@ if args.experiment_type == "Checkpoint":
     )
     sleep_for(checkpoint_start_time - time.time())
     checkpoint_thread.start()
-elif args.experiment_type == "Ebpf":
-    boot_command = [
-        "cgexec",
-        "-g",
-        "cpu:cpulimited",
-        args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
-        "-t",
-        "5",
-        "-s",
-        "536870912",
-    ]
-    utils.StartBackgroundProcess(
-        boot_command,
-        args.work_dir + "/" + args.file_prefix + ".log",
-        False,
-        env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"},
-    )
+# elif args.experiment_type == "Ebpf":
+#     boot_command = [
+#         "cgexec",
+#         "-g",
+#         "cpu:cpulimited",
+#         args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
+#         "-t",
+#         "5",
+#         "-s",
+#         "536870912",
+#     ]
+#     utils.StartBackgroundProcess(
+#         boot_command,
+#         args.work_dir + "/" + args.file_prefix + ".log",
+#         False,
+#         env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"},
+#     )
 
 sleep_for(crash_time - time.time())
 # ---------------------------------------------------------------- crashes
