@@ -146,28 +146,28 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::RequestUpdate(uint8_t* buffer, int len, uint32_t seq_num) {
-  std::stringstream packet_content;
-  for (size_t i = 0; i < len; i++) {
-    char c = buffer[i];
-    if (c != '\r' && c != '\n') {
-      packet_content << c;
-    } else if (c == '\r') {
-      packet_content << "\\r";
-    } else if (c == '\n') {
-      packet_content << "\\n";
-    }
-  }
+  // std::stringstream packet_content;
+  // for (size_t i = 0; i < len; i++) {
+  //   char c = buffer[i];
+  //   if (c != '\r' && c != '\n') {
+  //     packet_content << c;
+  //   } else if (c == '\r') {
+  //     packet_content << "\\r";
+  //   } else if (c == '\n') {
+  //     packet_content << "\\n";
+  //   }
+  // }
   
-  if (seq_num != expected_request_seq_num_) {
-    LOG(ERROR) << "RequestUpdate: seq_num mismatch. Expected " << expected_request_seq_num_
-               << " but got " << seq_num << " len: " << len 
-               << " packet: " << packet_content.str() << std::endl;
-  //   // return;
-  // } else {
-  //   LOG(INFO) << "RequestUpdate: seq_num matched. Expected " << expected_request_seq_num_
-  //             << " got " << seq_num << " len: " << len 
-  //             << " packet: " << packet_content.str() << std::endl;
-  }
+  // if (seq_num != expected_request_seq_num_) {
+  //   LOG(ERROR) << "RequestUpdate: seq_num mismatch. Expected " << expected_request_seq_num_
+  //              << " but got " << seq_num << " len: " << len 
+  //              << " packet: " << packet_content.str() << std::endl;
+  // //   // return;
+  // // } else {
+  // //   LOG(INFO) << "RequestUpdate: seq_num matched. Expected " << expected_request_seq_num_
+  // //             << " got " << seq_num << " len: " << len 
+  // //             << " packet: " << packet_content.str() << std::endl;
+  // }
   expected_request_seq_num_ = seq_num + len;
   bool forwarded = false;
   // check if the buffer is large enough
@@ -175,25 +175,25 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     LOG(ERROR) << "RequestUpdate: buffer is too large" << std::endl;
     return;
   }
-  // uint8_t* begin = buffer;
-  // uint8_t* end = begin + len;
-  // while (begin != end) {
-  //   const auto result = request_->Deserialize(begin, end);
-  //   if (result == kGood) {
-  //     if (!lite_core_.HandleRequest(
-  //             std::move(request_), extra_app_info_,
-  //             pending_requests_, client_fd_, backend_fd_,
-  //             &cache_, &logger_, forwarded)) {
-  //       return;
-  //     }
-  //     request_ = std::make_unique<Request>();
-  //   } else if (result == kIndeterminate) {
-  //     continue;
-  //   } else if (result == kBad) {
-  //     LOG(ERROR) << "failed to parse request" << std::endl;
-  //     return;
-  //   }
-  // }
+  uint8_t* begin = buffer;
+  uint8_t* end = begin + len;
+  while (begin != end) {
+    const auto result = request_->Deserialize(begin, end);
+    if (result == kGood) {
+      if (!lite_core_.HandleRequest(
+              std::move(request_), extra_app_info_,
+              pending_requests_, client_fd_, backend_fd_,
+              &cache_, &logger_, forwarded)) {
+        return;
+      }
+      request_ = std::make_unique<Request>();
+    } else if (result == kIndeterminate) {
+      continue;
+    } else if (result == kBad) {
+      LOG(ERROR) << "failed to parse request" << std::endl;
+      return;
+    }
+  }
   
 }
 
@@ -262,53 +262,53 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::ResponseUpdate(uint8_t* buffer, int len, uint32_t seq_num) {
-  std::stringstream packet_content;
-  for (size_t i = 0; i < len; i++) {
-    char c = buffer[i];
-    if (c != '\r' && c != '\n') {
-      packet_content << c;
-    } else if (c == '\r') {
-      packet_content << "\\r";
-    } else if (c == '\n') {
-      packet_content << "\\n";
-    }
-  }
+  // std::stringstream packet_content;
+  // for (size_t i = 0; i < len; i++) {
+  //   char c = buffer[i];
+  //   if (c != '\r' && c != '\n') {
+  //     packet_content << c;
+  //   } else if (c == '\r') {
+  //     packet_content << "\\r";
+  //   } else if (c == '\n') {
+  //     packet_content << "\\n";
+  //   }
+  // }
 
-  if (seq_num != expected_response_seq_num_) {
-    LOG(ERROR) << "ResponseUpdate: seq_num mismatch. Expected " << expected_response_seq_num_
-               << " but got " << seq_num << " len: " << len 
-               << " packet: " << packet_content.str() << std::endl;
-  //   // return;
-  // } else {
-  //   LOG(INFO) << "ResponseUpdate: seq_num matched. Expected " << expected_response_seq_num_
-  //             << " got " << seq_num << " len: " << len 
-  //             << " packet: " << packet_content.str() << std::endl;
-  }
+  // if (seq_num != expected_response_seq_num_) {
+  //   LOG(ERROR) << "ResponseUpdate: seq_num mismatch. Expected " << expected_response_seq_num_
+  //              << " but got " << seq_num << " len: " << len 
+  //              << " packet: " << packet_content.str() << std::endl;
+  // //   // return;
+  // // } else {
+  // //   LOG(INFO) << "ResponseUpdate: seq_num matched. Expected " << expected_response_seq_num_
+  // //             << " got " << seq_num << " len: " << len 
+  // //             << " packet: " << packet_content.str() << std::endl;
+  // }
   expected_response_seq_num_ = seq_num + len;
   bool forwarded = false;
   if (len > 131072) {
     LOG(ERROR) << "ResponseUpdate: buffer is too large" << std::endl;
     return;
   }
-  // uint8_t* begin = buffer;
-  // uint8_t* end = begin + len;
-  // while (begin != end) {
-  //   const auto result = response_->Deserialize(begin, end);
-  //   if (result == kGood) {
-  //     if (!lite_core_.HandleResponse(
-  //             std::move(response_), extra_app_info_,
-  //             pending_requests_, client_fd_, &cache_,
-  //             forwarded)) {
-  //       return;
-  //     }
-  //     response_ = std::make_unique<Response>();
-  //   } else if (result == kIndeterminate) {
-  //     continue;
-  //   } else if (result == kBad) {
-  //     LOG(ERROR) << "failed to parse response" << std::endl;
-  //     return;
-  //   }
-  // }
+  uint8_t* begin = buffer;
+  uint8_t* end = begin + len;
+  while (begin != end) {
+    const auto result = response_->Deserialize(begin, end);
+    if (result == kGood) {
+      if (!lite_core_.HandleResponse(
+              std::move(response_), extra_app_info_,
+              pending_requests_, client_fd_, &cache_,
+              forwarded)) {
+        return;
+      }
+      response_ = std::make_unique<Response>();
+    } else if (result == kIndeterminate) {
+      continue;
+    } else if (result == kBad) {
+      LOG(ERROR) << "failed to parse response" << std::endl;
+      return;
+    }
+  }
   
 }
 

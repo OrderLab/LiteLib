@@ -38,7 +38,15 @@ install_dependencies() {
     tcpdump \
     cgroup-tools \
     google-perftools \
-    libgoogle-perftools-dev
+    libgoogle-perftools-dev \
+    linux-tools-common \
+    linux-tools-generic \
+    linux-tools-$(uname -r) \
+    libbpf-dev \
+    clang \
+    sysstat \
+    linux-image-6.8.0-52-generic=6.8.0-52.53~22.04.1 \
+    linux-image-6.8.0-52-generic=6.8.0-52.53~22.04.1
 }
 
 install_boost() {
