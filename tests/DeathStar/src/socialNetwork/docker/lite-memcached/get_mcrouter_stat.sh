@@ -43,7 +43,14 @@ while [ $ELAPSED -lt $DURATION ]; do
 
     # Write timestamp and stats to the combined log file
     echo "========================================= Seconds Elapsed: $ELAPSED (at $TIMESTAMP, Unix: $UNIX_TIMESTAMP, Relative: $RELATIVE_TIME) =========================================" >> "$COMBINED_LOG"
-    (echo -e "stats all\r\nquit\r\n" | nc 0 11211) >> "$COMBINED_LOG"
+    
+    # Read the current content of the stats file
+    if [ -f "/var/mcrouter/stats/libmcrouter.mcrouter.11211.stats" ]; then
+        cat "/var/mcrouter/stats/libmcrouter.mcrouter.11211.stats" >> "$COMBINED_LOG"
+    else
+        echo "Stats file not found at /var/mcrouter/stats/libmcrouter.mcrouter.11211.stats" >> "$COMBINED_LOG"
+    fi
+    
     echo "" >> "$COMBINED_LOG"  # Add a blank line between entries
 
     # Busy wait until next second

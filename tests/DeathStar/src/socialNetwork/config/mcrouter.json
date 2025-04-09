@@ -2,7 +2,11 @@
   "pools": {
      "A": {
         "servers": [
-          "post-storage-memcached-1:11211",
+          "post-storage-memcached-1:11211"
+        ]
+     },
+     "B": {
+        "servers": [
           "post-storage-memcached-2:11211"
         ]
      }
@@ -13,11 +17,24 @@
       "get": {
         "type": "FailoverRoute",
         "children": [
-          "HashRoute|Pool|A",
-          "Pool|A"
+          {
+            "type": "HashRoute",
+            "children": [
+              "Pool|A",
+              "Pool|B"
+            ]
+          },
+          "Pool|A",
+          "Pool|B"
         ]
       }
     },
-    "default_policy": "AllFastestRoute|Pool|A"
+    "default_policy": {
+      "type": "AllFastestRoute",
+      "children": [
+        "Pool|A",
+        "Pool|B"
+      ]
+    }
   }
 }
