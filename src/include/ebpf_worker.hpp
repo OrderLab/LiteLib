@@ -28,6 +28,7 @@
 
 #define ACCEPT 1
 #define CLOSE 2
+#define MAX_MSG_SIZE 256
 #define MAX_PKT_SIZE 4096
 namespace lite {
 
@@ -83,6 +84,24 @@ struct packet_data {
   unsigned char data[MAX_PKT_SIZE];
 } __attribute__((packed));
 
+struct socket_info {
+  uint64_t socket_fd;
+  uint64_t pid;
+  uint64_t ref_socket_fd;
+};
+
+struct socket_data_event_t
+{
+  unsigned int pid;
+  int fd;
+  bool is_connection;
+  int socket_fd;
+  bool is_read;
+  unsigned int msg_size;
+  unsigned long long pos;
+  char msg[MAX_MSG_SIZE];
+};
+
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 class EbpfWorker : public Worker<Application, Request, Response,
@@ -106,6 +125,9 @@ class EbpfWorker : public Worker<Application, Request, Response,
 
   //Set Mode
   int SetMode(int mode);
+
+  //Set Socket Info
+  int SetSocketInfo(uint64_t socket_fd, uint64_t pid);
 
   /// The file descriptor used to signal the worker thread.
   evutil_socket_t notify_event_fd;
@@ -144,7 +166,7 @@ class EbpfWorker : public Worker<Application, Request, Response,
 
   std::barrier<std::function<void()>> &barrier_;
 
-  evutil_socket_t findSocketFD(int port);
+  socket_info findSocketFD(int port);
   
   std::string executeCommand(const std::string& command);
 
