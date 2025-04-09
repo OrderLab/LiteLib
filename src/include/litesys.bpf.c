@@ -213,13 +213,12 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
 
 struct socket_data_event_t
 {
-  unsigned int pid;
-  int fd;
+  uint64_t pid;
+  uint64_t fd;
   bool is_connection;
-  int socket_fd;
+  uint64_t socket_fd;
   bool is_read;
-  unsigned int msg_size;
-  unsigned long long pos;
+  uint64_t msg_size;
   char msg[MAX_MSG_SIZE];
 };
 
@@ -335,17 +334,17 @@ int sys_exit_accept(struct trace_event_raw_sys_exit *ctx)
     __u64 pid_fd = ((__u64)pid << 32) | (u32)ret_fd;
     bpf_map_update_elem(&conn_info_map, &pid_fd, &conn_info, BPF_ANY);
 
-    // struct socket_data_event_t *open_event = bpf_ringbuf_reserve(&msgs_ringbuf, sizeof(struct socket_data_event_t), 0);
-    // if (!open_event) {
-    //     return 0;
-    // }
+    struct socket_data_event_t *open_event = bpf_ringbuf_reserve(&msgs_ringbuf, sizeof(struct socket_data_event_t), 0);
+    if (!open_event) {
+        return 0;
+    }
     
-    // open_event->pid = conn_info.conn_id.pid;
-    // open_event->fd = conn_info.conn_id.fd;
-    // open_event->socket_fd = conn_info.listen_fd;
-    // open_event->is_connection = true;
+    open_event->pid = conn_info.conn_id.pid;
+    open_event->fd = conn_info.conn_id.fd;
+    open_event->socket_fd = conn_info.listen_fd;
+    open_event->is_connection = true;
 
-    // bpf_ringbuf_submit(open_event, 0);
+    bpf_ringbuf_submit(open_event, 0);
     // bpf_printk("open_event key: %llu\n", pid_fd);
 
     bpf_map_delete_elem(&active_accept_args_map, &id);

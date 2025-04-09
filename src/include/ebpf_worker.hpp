@@ -84,21 +84,14 @@ struct packet_data {
   unsigned char data[MAX_PKT_SIZE];
 } __attribute__((packed));
 
-struct socket_info {
-  uint64_t socket_fd;
-  uint64_t pid;
-  uint64_t ref_socket_fd;
-};
-
 struct socket_data_event_t
 {
-  unsigned int pid;
-  int fd;
+  uint64_t pid;
+  uint64_t fd;
   bool is_connection;
-  int socket_fd;
+  uint64_t socket_fd;
   bool is_read;
-  unsigned int msg_size;
-  unsigned long long pos;
+  uint64_t msg_size;
   char msg[MAX_MSG_SIZE];
 };
 
@@ -136,7 +129,7 @@ class EbpfWorker : public Worker<Application, Request, Response,
   ThreadSafeSet<ConnectionInstance *> conns_;
 
   /// Source Address, port to connection map
-  std::unordered_map<std::pair<uint32_t, uint16_t>, ConnectionInstance *, PairHash> source_to_conn_;
+  std::unordered_map<uint64_t, ConnectionInstance *> source_to_conn_;
 
   int count;
 
@@ -161,12 +154,16 @@ class EbpfWorker : public Worker<Application, Request, Response,
 
   int prog_fd_;
 
+  uint64_t main_pid_;
+
+  uint64_t main_socket_fd_;
+
   /// The underlying service implementation.
   LiteCoreInstance &lite_core_;
 
   std::barrier<std::function<void()>> &barrier_;
 
-  socket_info findSocketFD(int port);
+  uint64_t findSocketFD(int port);
   
   std::string executeCommand(const std::string& command);
 

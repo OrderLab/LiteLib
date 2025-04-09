@@ -146,16 +146,15 @@ std::string EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-socket_info EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
+uint64_t EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::findSocketFD(int port) {
-    socket_info info={0, 0, 0};
     std::ostringstream command;
     command << "sudo lsof -i :" << port;
 
     std::string output = executeCommand(command.str());
     if (output.empty()) {
         std::cerr << "No output from lsof. Ensure the port is in use and you have root access." << std::endl;
-        return info;
+        return 0;
     }
 
     std::istringstream stream(output);
@@ -176,15 +175,16 @@ socket_info EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
             uint64_t socket_fd = std::stoull(fd);
             uint64_t pid_int = std::stoull(pid);
             uint64_t ref_socket_fd = get_socket_fd_from_pid(pid_int, socket_fd);
-            info = {socket_fd, pid_int, ref_socket_fd};
-            return info;
+            main_pid_ = pid_int;
+            main_socket_fd_ = socket_fd;
+            return ref_socket_fd;
         }
     }
 
     if (!found) {
         std::cerr << "No matching socket found on port " << port << std::endl;
     }
-    return info;
+    return 0;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -192,14 +192,14 @@ template <typename Application, typename Request, typename Response,
 void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Run(const char name[]) {
             
-  socket_info info = findSocketFD(SERVER_PORT);
-  while(info.socket_fd == 0){
+  uint64_t info = findSocketFD(SERVER_PORT);
+  while(info == 0){
     sleep(1);
     LOG(INFO) << "Waiting for socket to be created" << std::endl;
     info = findSocketFD(SERVER_PORT);
   }
 
-  LOG(INFO) << "Redis- pid: " << info.pid << " socket_fd: " << info.socket_fd << " ref_socket_fd: " << info.ref_socket_fd << std::endl;
+  LOG(INFO) << "Redis- pid: " << main_pid_ << " socket_fd: " << main_socket_fd_  << " ref_socket_fd: " << info << std::endl;
 
   // Remove socket creation and setup code
   skel = litesys_bpf__open_and_load();
@@ -217,13 +217,7 @@ void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
 
   SetMode(0);
 
-  SetSocketInfo(info.socket_fd, info.pid);
-
-  rb = ring_buffer__new(bpf_map__fd(skel->maps.conn_ringbuf), HandleConnection, this, NULL);
-  if (!rb) {
-    printf("Failed to create ring buffer\n");
-    return;
-  }
+  SetSocketInfo(main_socket_fd_, main_pid_);
 
   pb = ring_buffer__new(bpf_map__fd(skel->maps.msgs_ringbuf), HandlePacket, this, NULL);
   if (!pb) {
@@ -262,21 +256,13 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
     auto *self = static_cast<EbpfWorker<Application, Request, Response,
                           ConnectionInfo, CacheKey, CacheEntry>*>(ctx);
     struct socket_data_event_t *event = (struct socket_data_event_t *)data;
-    bool is_request = event->is_read;  // true for read (request), false for write (response)
-    // Create a local buffer for the message data
+    bool is_request = event->is_read;  
     size_t msg_size = strlen(event->msg);
     memcpy(self->buffer, event->msg, msg_size);
-    self->buffer[msg_size] = '\0';  // Ensure null termination
-    
-    if (is_request) {
-        
-        // std::cout << "Received request: " << self->buffer << std::endl;
-
-        // Check if the connection exists
-        uint16_t sport = 0;
-        if (self->source_to_conn_.find(std::make_pair(event->fd, sport)) 
+    self->buffer[msg_size] = '\0'; 
+    if(event->is_connection){
+        if (self->source_to_conn_.find(event->fd) 
             == self->source_to_conn_.end()) {
-            // Add the connection to the connection map
             auto new_connection =
                 new ConnectionInstance(0,                    // socket fd
                                     0,                      // event flags
@@ -286,28 +272,42 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
                                     self->lite_core_,      // lite core instance
                                     false,                 // is_server
                                     self);                 // worker instance
-            self->source_to_conn_[std::make_pair(event->fd, sport)] = new_connection;
+            self->source_to_conn_[event->fd] = new_connection;
+            self->lite_core_.live_connections_.insert(new_connection);
+            self->conns_.insert(new_connection);
+        }
+        return 0;
+    }
+    if (is_request) {
+        // std::cout << "Received request: " << self->buffer << std::endl;
+        if (self->source_to_conn_.find(event->fd) 
+            == self->source_to_conn_.end()) {
+            auto new_connection =
+                new ConnectionInstance(0,                    // socket fd
+                                    0,                      // event flags
+                                    self->base_,           // event base
+                                    ConnectionInstance::ClientHandler,
+                                    nullptr,               // argument for handler
+                                    self->lite_core_,      // lite core instance
+                                    false,                 // is_server
+                                    self);                 // worker instance
+            self->source_to_conn_[event->fd] = new_connection;
             self->lite_core_.live_connections_.insert(new_connection);
             self->conns_.insert(new_connection);
         }
         
         // Update the connection with request data
-        self->source_to_conn_[std::make_pair(event->fd, sport)]
+        self->source_to_conn_[event->fd]
             ->RequestUpdate(self->buffer, event->msg_size, 1);  // Using 0 for seq_num as it's not in packet_data
     } else {
-        // Convert destination IP to string for response handling
-        // cannot bind packed field to uint16_t &
-        uint16_t dport = 0;
         // std::cout << "Received response: " << self->buffer << std::endl;
 
-        if (self->source_to_conn_.find(std::make_pair(event->fd, dport)) 
+        if (self->source_to_conn_.find(event->fd) 
             == self->source_to_conn_.end()) {
-            // Connection not found for response
-            printf("Connection not found for response: %d\n", event->fd);
+            printf("Connection not found for response: %ld\n", event->fd);
             return 0;
         }
-        // Update the connection with response data
-        self->source_to_conn_[std::make_pair(event->fd, dport)]
+        self->source_to_conn_[event->fd]
             ->ResponseUpdate(self->buffer, event->msg_size, 1);  // Using 0 for seq_num as it's not in packet_data
     }
     return 0;
@@ -322,56 +322,56 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
     struct ConnectionEvent *event = (struct ConnectionEvent *)data;
     char ip_str[INET_ADDRSTRLEN];
     uint16_t dport = event->connection.dport; // cannot bind packed field to uint16_t &
-    if(event->header.kind == ACCEPT){
-        if (!inet_ntop(AF_INET, &event->connection.saddr, ip_str, sizeof(ip_str))) {
-            perror("inet_ntop");
-            return -1;
-        }
-        std::string src_str(ip_str);
-        if (!inet_ntop(AF_INET, &event->connection.daddr, ip_str, sizeof(ip_str))) {
-            perror("inet_ntop");
-            return -1;
-        }
-        std::string dst_str(ip_str);
-        if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dst_str), dport)) == self->source_to_conn_.end()){
-          //print dst_str and event->connection.dport
-          printf("Adding connection to the connection map during accept update: %s:%u\n", dst_str.c_str(), event->connection.dport);
-          return 0;
-          auto new_connection =
-            new ConnectionInstance(0,                    // socket fd
-                                  0,                      // event flags
-                                  self->base_,           // event base
-                                  ConnectionInstance::ClientHandler,
-                                  nullptr,               // argument for handler
-                                  self->lite_core_,      // lite core instance
-                                  false,                 // is_server
-                                  self);                 // worker instance
-        self->source_to_conn_[std::make_pair(self->ipToUint32(dst_str), dport)] = new_connection;
-        self->lite_core_.live_connections_.insert(new_connection);
-        self->conns_.insert(new_connection);
-        }
-    } else{
-        if (!inet_ntop(AF_INET, &event->connection.saddr, ip_str, sizeof(ip_str))) {
-            perror("inet_ntop");
-            return -1;
-        }
-        std::string src_str(ip_str);
-        if (!inet_ntop(AF_INET, &event->connection.daddr, ip_str, sizeof(ip_str))) {
-            perror("inet_ntop");
-            return -1;
-        }
-        std::string dest_str(ip_str);
-        if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dest_str), dport)) != self->source_to_conn_.end()){
-          //print dest_str and event->connection.dport
-          printf("Removing connection from the connection map: %s:%u\n", dest_str.c_str(), dport);
-          return 0;
-          auto connection = self->source_to_conn_[std::make_pair(self->ipToUint32(dest_str), dport)];
-          self->source_to_conn_[std::make_pair(self->ipToUint32(dest_str), dport)] = nullptr;
-          // self->lite_core_.live_connections_.erase(new_connection);
-          // self->conns_.erase(new_connection);
-          delete connection;
-        }
-    }
+    // if(event->header.kind == ACCEPT){
+    //     if (!inet_ntop(AF_INET, &event->connection.saddr, ip_str, sizeof(ip_str))) {
+    //         perror("inet_ntop");
+    //         return -1;
+    //     }
+    //     std::string src_str(ip_str);
+    //     if (!inet_ntop(AF_INET, &event->connection.daddr, ip_str, sizeof(ip_str))) {
+    //         perror("inet_ntop");
+    //         return -1;
+    //     }
+    //     std::string dst_str(ip_str);
+    //     if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dst_str), dport)) == self->source_to_conn_.end()){
+    //       //print dst_str and event->connection.dport
+    //       printf("Adding connection to the connection map during accept update: %s:%u\n", dst_str.c_str(), event->connection.dport);
+    //       return 0;
+    //       auto new_connection =
+    //         new ConnectionInstance(0,                    // socket fd
+    //                               0,                      // event flags
+    //                               self->base_,           // event base
+    //                               ConnectionInstance::ClientHandler,
+    //                               nullptr,               // argument for handler
+    //                               self->lite_core_,      // lite core instance
+    //                               false,                 // is_server
+    //                               self);                 // worker instance
+    //     self->source_to_conn_[std::make_pair(self->ipToUint32(dst_str), dport)] = new_connection;
+    //     self->lite_core_.live_connections_.insert(new_connection);
+    //     self->conns_.insert(new_connection);
+    //     }
+    // } else{
+    //     if (!inet_ntop(AF_INET, &event->connection.saddr, ip_str, sizeof(ip_str))) {
+    //         perror("inet_ntop");
+    //         return -1;
+    //     }
+    //     std::string src_str(ip_str);
+    //     if (!inet_ntop(AF_INET, &event->connection.daddr, ip_str, sizeof(ip_str))) {
+    //         perror("inet_ntop");
+    //         return -1;
+    //     }
+    //     std::string dest_str(ip_str);
+    //     if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dest_str), dport)) != self->source_to_conn_.end()){
+    //       //print dest_str and event->connection.dport
+    //       printf("Removing connection from the connection map: %s:%u\n", dest_str.c_str(), dport);
+    //       return 0;
+    //       auto connection = self->source_to_conn_[std::make_pair(self->ipToUint32(dest_str), dport)];
+    //       self->source_to_conn_[std::make_pair(self->ipToUint32(dest_str), dport)] = nullptr;
+    //       // self->lite_core_.live_connections_.erase(new_connection);
+    //       // self->conns_.erase(new_connection);
+    //       delete connection;
+    //     }
+    // }
     return 0;
 
 }
