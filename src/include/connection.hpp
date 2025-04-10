@@ -69,9 +69,7 @@ class Connection {
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;
 
-  uint32_t expected_request_seq_num_=0;
-
-  uint32_t expected_response_seq_num_=0;
+  uint32_t expected_seq_num_=0;
 
   /// The pending requests
   ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> pending_requests_;

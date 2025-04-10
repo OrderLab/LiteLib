@@ -98,8 +98,8 @@ struct socket_data_event_t
   int socket_fd;
   bool is_read;
   unsigned int msg_size;
-  unsigned long long pos;
   char msg[MAX_MSG_SIZE];
+  uint32_t seq_num;
 };
 
 template <typename Application, typename Request, typename Response,
@@ -120,7 +120,7 @@ class EbpfWorker : public Worker<Application, Request, Response,
   ~EbpfWorker();
 
   /// Create the worker thread and start running the event loop.
-  void Run(const char name[] = "lite-worker");
+  int Run(const char name[] = "lite-worker");
 
 
   //Set Mode

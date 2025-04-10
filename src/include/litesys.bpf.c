@@ -31,16 +31,6 @@ struct connection_event {
     struct socket_info socket;
 } __attribute__((packed));
 
-struct packet_data {
-  u32 len;
-  u32 saddr;
-  u32 daddr;
-  u16 sport;
-  u16 dport;
-  u32 seq_num;
-  char direction;  // 'R' for recv, 'S' for send
-  unsigned char data[MAX_PKT_SIZE];
-} __attribute__((packed));
 
 // Define a BPF ring buffer map for passing connection events
 struct {
@@ -62,39 +52,11 @@ struct {
     __type(value, __u64);    // Counter value
 } mode SEC(".maps");
 
-struct conn_key {
-  u64 pid_tgid;
-} __attribute__((packed));
-
-struct conn_args {
-  struct sock *sk;
-  void *user_buf;
-};
-
-struct send_args_t {
-  struct sock *sk;
-  void *user_buf;
-  size_t size;
-};
 
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
   __uint(max_entries, 1 << 22);
 } msgs_ringbuf SEC(".maps");
-
-struct {
-  __uint(type, BPF_MAP_TYPE_HASH);
-  __uint(max_entries, 1 << 16);
-  __type(key, struct conn_key);
-  __type(value, struct conn_args);
-} active_recv SEC(".maps");
-
-struct {
-  __uint(type, BPF_MAP_TYPE_HASH);
-  __uint(max_entries, 1 << 16);
-  __type(key, struct conn_key);
-  __type(value, struct send_args_t);
-} active_send SEC(".maps");
 
 
 // Add after other map definitions
@@ -219,8 +181,8 @@ struct socket_data_event_t
   int socket_fd;
   bool is_read;
   unsigned int msg_size;
-  unsigned long long pos;
   char msg[MAX_MSG_SIZE];
+  u32 seq_num;
 };
 
 struct conn_id_t
@@ -242,8 +204,6 @@ struct conn_info_t
 // A struct describing the event that we send to the user mode upon a new connection.
 struct socket_open_event_t
 {
-    
-
     // A unique ID for the connection.
     struct conn_id_t conn_id;
 };
@@ -256,11 +216,6 @@ struct
     __type(value, struct conn_info_t);
 } conn_info_map SEC(".maps");
 
-// struct
-// {
-//     __uint(type, BPF_MAP_TYPE_RINGBUF);
-//     __uint(max_entries, 1 << 24);
-// } msgs_ringbuf SEC(".maps");
 
 struct
 {

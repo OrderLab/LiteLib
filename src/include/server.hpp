@@ -28,6 +28,7 @@ class LiteServer {
                               CacheKey, CacheEntry>;
 
  public:
+  int sfd;
   LiteServer& operator=(const LiteServer&) = delete;
 
   /// Construct the server with the given thread pool size and maximum.
