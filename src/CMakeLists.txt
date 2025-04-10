@@ -128,6 +128,7 @@ find_program(BPFTOOL bpftool)
 if(NOT BPFTOOL)
     message(FATAL_ERROR "bpftool not found, required for BPF skeleton generation")
 endif()
+message(STATUS "Using bpftool: ${BPFTOOL}")
 
 # Add custom command to generate vmlinux.h from BTF
 add_custom_command(
