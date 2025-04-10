@@ -158,14 +158,31 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   //   }
   // }
   
-  // if (seq_num != expected_seq_num_) {
-  //   LOG(ERROR) << "RequestUpdate: seq_num mismatch. Expected " << expected_seq_num_
-  //              << " but got " << seq_num << std::endl;
-  // } else {
+  if (seq_num != expected_seq_num_) {
+    LOG(ERROR) << "RequestUpdate: seq_num mismatch. Expected " << expected_seq_num_
+               << " but got " << seq_num << std::endl;
+  } 
+  // else {
   //   LOG(INFO) << "RequestUpdate: seq_num matched. Expected " << expected_seq_num_
   //             << " got " << seq_num << std::endl;
   // }
   expected_seq_num_ = seq_num + 1;
+  request_num_++;
+  if (request_num_ != response_num_ + 1) {
+    LOG(ERROR) << "RequestUpdate: request_num mismatch. Expected " << response_num_ + 1
+               << " but got " << request_num_ << std::endl;
+    std::cout << "Request buffer: ";
+    for (size_t i = 0; i < len; i++) {
+      std::cout << buffer[i];
+    }
+    std::cout << std::endl;
+    std::cout << "Last request buffer: ";
+    for (size_t i = 0; i < len; i++) {
+      std::cout << last_request_buffer_[i];
+    }
+    std::cout << std::endl;
+  }
+  memcpy(last_request_buffer_, buffer, len);
   bool forwarded = false;
   // check if the buffer is large enough
   if (len > 131072) {
@@ -271,14 +288,31 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   //   }
   // }
 
-  // if (seq_num != expected_seq_num_) {
-  //   LOG(ERROR) << "ResponseUpdate: seq_num mismatch. Expected " << expected_seq_num_
-  //              << " but got " << seq_num << std::endl;
-  // } else {
+  if (seq_num != expected_seq_num_) {
+    LOG(ERROR) << "ResponseUpdate: seq_num mismatch. Expected " << expected_seq_num_
+               << " but got " << seq_num << std::endl;
+  } 
+  // else {
   //   LOG(INFO) << "ResponseUpdate: seq_num matched. Expected " << expected_seq_num_
   //             << " got " << seq_num << std::endl;
   // }
   expected_seq_num_ = seq_num + 1;
+  response_num_++;
+  if (response_num_ != request_num_) {
+    LOG(ERROR) << "ResponseUpdate: response_num mismatch. Expected " << request_num_
+               << " but got " << response_num_ << std::endl;
+    std::cout << "Response buffer: ";
+    for (size_t i = 0; i < len; i++) {
+      std::cout << buffer[i];
+    }
+    std::cout << std::endl;
+    std::cout << "Last response buffer: ";
+    for (size_t i = 0; i < len; i++) {
+      std::cout << last_response_buffer_[i];
+    }
+    std::cout << std::endl;
+  }
+  memcpy(last_response_buffer_, buffer, len);
   bool forwarded = false;
   if (len > 131072) {
     LOG(ERROR) << "ResponseUpdate: buffer is too large" << std::endl;

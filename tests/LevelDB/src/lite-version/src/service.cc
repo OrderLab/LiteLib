@@ -17,7 +17,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
         &pending_requests) const {
   // std::cout << "Pending requests size: " << pending_requests.size() << std::endl;
   if (pending_requests.size() != 1) {
-    LOG(FATAL) << "Pending requests is not 1\n";
+    LOG(FATAL) << "Pending requests is not 1, it is " << pending_requests.size() << "\n";
     exit(1);
   }
   auto [req, is_not_replay] = pending_requests.pop_front();
@@ -137,7 +137,7 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
     }
     entry.value = value->value;
     cache->Set(*(key->value), entry, in_transaction);
-    std::cout<<*(key->value)<<" "<<entry.value->at(0)<<std::endl;
+    // std::cout<<*(key->value)<<" "<<entry.value->at(0)<<std::endl;
   } else if (opcode != "get" &&
              opcode != "ping") {  // TODO: update states using get
     LOG(ERROR) << "Unknow opcode: " << opcode << std::endl;

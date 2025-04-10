@@ -59,17 +59,11 @@ struct {
 } msgs_ringbuf SEC(".maps");
 
 
-// Add after other map definitions
-struct seq_info {
-    u32 next_send_seq;
-    u32 next_recv_seq;
-};
-
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 1 << 16);
-    __type(key, struct socket_info);
-    __type(value, struct seq_info);
+    __uint(max_entries, 1024);
+    __type(key, __u64);
+    __type(value, __u32);
 } seq_tracker SEC(".maps");
 
 
@@ -161,12 +155,6 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
         .daddr = daddr,
         .dport = dport
     };
-
-    // Clean up sequence tracking
-    err = bpf_map_delete_elem(&seq_tracker, &sock_key);
-    if (err < 0) {
-        bpf_printk("seq_tracker map delete elem failed (err: %d)\n", err);
-    }
 
     return 0;
 }
@@ -356,6 +344,17 @@ static inline void process_data(struct trace_event_raw_sys_exit *ctx,
         if (!event) {
             bpf_printk("ringbuf reserve failed\n");
             return;
+        }
+
+        __u64 key = args->fd;
+        __u32 *seq_num = bpf_map_lookup_elem(&seq_tracker, &key);
+        if (!seq_num) {
+            event->seq_num = 0;
+            __u32 next_seq_num = 1;
+            bpf_map_update_elem(&seq_tracker, &key, &next_seq_num, BPF_ANY);
+        } else {
+            event->seq_num = *seq_num;
+            *seq_num = *seq_num + 1;
         }
 
         event->is_connection = false;
