@@ -189,7 +189,7 @@ socket_info EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
+int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Run(const char name[]) {
             
   socket_info info = findSocketFD(SERVER_PORT);
@@ -205,13 +205,13 @@ void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
   skel = litesys_bpf__open_and_load();
   if (!skel) {
     fprintf(stderr, "Failed to open and load BPF skeleton\n");
-    return;
+    return -1;
   }
 
   auto err = litesys_bpf__attach(skel);
   if (err) {
     fprintf(stderr, "Failed to attach BPF skeleton\n");
-    return;
+    return -1;
   }
 
 
@@ -219,16 +219,10 @@ void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
 
   SetSocketInfo(info.socket_fd, info.pid);
 
-  rb = ring_buffer__new(bpf_map__fd(skel->maps.conn_ringbuf), HandleConnection, this, NULL);
-  if (!rb) {
-    printf("Failed to create ring buffer\n");
-    return;
-  }
-
   pb = ring_buffer__new(bpf_map__fd(skel->maps.msgs_ringbuf), HandlePacket, this, NULL);
   if (!pb) {
     printf("Failed to create perf buffer\n");
-    return;
+    return -1;
   }
 
   pthread_attr_t attr;
@@ -238,6 +232,7 @@ void EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
 
   pthread_setname_np(thread_id_, name);
   pthread_attr_destroy(&attr);
+  return info.ref_socket_fd;
 }
 
 template <typename Application, typename Request, typename Response,
@@ -293,7 +288,7 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         
         // Update the connection with request data
         self->source_to_conn_[std::make_pair(event->fd, sport)]
-            ->RequestUpdate(self->buffer, event->msg_size, 1);  // Using 0 for seq_num as it's not in packet_data
+            ->RequestUpdate(self->buffer, event->msg_size, event->seq_num);  // Using 0 for seq_num as it's not in packet_data
     } else {
         // Convert destination IP to string for response handling
         // cannot bind packed field to uint16_t &

@@ -37,7 +37,7 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
 
   if(lite_core_.is_ebpf_){
     ebpf_worker_ = std::make_unique<EbpfWorkerInstance>(lite_core_, barrier_);
-    ebpf_worker_->Run();
+    sfd = ebpf_worker_->Run();
   } 
   else{
     for (int i = 0; i < nthreads; i++) {
@@ -57,7 +57,6 @@ bool LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
   while(lite_core_.is_ebpf_){
     sleep(10);
   }
-  int sfd;
   struct linger ling = {0, 0};
   struct addrinfo* ai;
   struct addrinfo* next;

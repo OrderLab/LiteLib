@@ -158,17 +158,14 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   //   }
   // }
   
-  // if (seq_num != expected_request_seq_num_) {
-  //   LOG(ERROR) << "RequestUpdate: seq_num mismatch. Expected " << expected_request_seq_num_
-  //              << " but got " << seq_num << " len: " << len 
-  //              << " packet: " << packet_content.str() << std::endl;
-  // //   // return;
-  // // } else {
-  // //   LOG(INFO) << "RequestUpdate: seq_num matched. Expected " << expected_request_seq_num_
-  // //             << " got " << seq_num << " len: " << len 
-  // //             << " packet: " << packet_content.str() << std::endl;
+  // if (seq_num != expected_seq_num_) {
+  //   LOG(ERROR) << "RequestUpdate: seq_num mismatch. Expected " << expected_seq_num_
+  //              << " but got " << seq_num << std::endl;
+  // } else {
+  //   LOG(INFO) << "RequestUpdate: seq_num matched. Expected " << expected_seq_num_
+  //             << " got " << seq_num << std::endl;
   // }
-  expected_request_seq_num_ = seq_num + len;
+  expected_seq_num_ = seq_num + 1;
   bool forwarded = false;
   // check if the buffer is large enough
   if (len > 131072) {
@@ -274,17 +271,14 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   //   }
   // }
 
-  // if (seq_num != expected_response_seq_num_) {
-  //   LOG(ERROR) << "ResponseUpdate: seq_num mismatch. Expected " << expected_response_seq_num_
-  //              << " but got " << seq_num << " len: " << len 
-  //              << " packet: " << packet_content.str() << std::endl;
-  // //   // return;
-  // // } else {
-  // //   LOG(INFO) << "ResponseUpdate: seq_num matched. Expected " << expected_response_seq_num_
-  // //             << " got " << seq_num << " len: " << len 
-  // //             << " packet: " << packet_content.str() << std::endl;
+  // if (seq_num != expected_seq_num_) {
+  //   LOG(ERROR) << "ResponseUpdate: seq_num mismatch. Expected " << expected_seq_num_
+  //              << " but got " << seq_num << std::endl;
+  // } else {
+  //   LOG(INFO) << "ResponseUpdate: seq_num matched. Expected " << expected_seq_num_
+  //             << " got " << seq_num << std::endl;
   // }
-  expected_response_seq_num_ = seq_num + len;
+  expected_seq_num_ = seq_num + 1;
   bool forwarded = false;
   if (len > 131072) {
     LOG(ERROR) << "ResponseUpdate: buffer is too large" << std::endl;
