@@ -69,9 +69,10 @@ class Connection {
   /// Socket file descriptor for the client and backend.
   evutil_socket_t client_fd_, backend_fd_;
 
+  int to_be_closed_ = 0;
   uint32_t expected_seq_num_=0;
-  uint32_t response_num_=0;
-  uint32_t request_num_=0;
+  uint32_t response_num_=-1;
+  uint32_t request_num_=-1;
 
 
 
@@ -104,8 +105,10 @@ class Connection {
 
   /// Buffer for incoming data.
   alignas(16) uint8_t buffer_[131072];
-  alignas(16) uint8_t last_response_buffer_[131072];
-  alignas(16) uint8_t last_request_buffer_[131072];
+  size_t last_response_buffer_size_[3] = {0, 0, 0};
+  alignas(16) uint8_t last_response_buffer_[3][131072];
+  size_t last_request_buffer_size_[3] = {0, 0, 0};
+  alignas(16) uint8_t last_request_buffer_[3][131072];
 
   /// The incoming request.
   std::shared_ptr<Request> request_;
