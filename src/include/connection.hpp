@@ -70,6 +70,10 @@ class Connection {
   evutil_socket_t client_fd_, backend_fd_;
 
   uint32_t expected_seq_num_=0;
+  uint32_t response_num_=0;
+  uint32_t request_num_=0;
+
+
 
   /// The pending requests
   ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> pending_requests_;
@@ -100,6 +104,8 @@ class Connection {
 
   /// Buffer for incoming data.
   alignas(16) uint8_t buffer_[131072];
+  alignas(16) uint8_t last_response_buffer_[131072];
+  alignas(16) uint8_t last_request_buffer_[131072];
 
   /// The incoming request.
   std::shared_ptr<Request> request_;

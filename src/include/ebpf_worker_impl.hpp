@@ -303,7 +303,7 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         }
         // Update the connection with response data
         self->source_to_conn_[std::make_pair(event->fd, dport)]
-            ->ResponseUpdate(self->buffer, event->msg_size, 1);  // Using 0 for seq_num as it's not in packet_data
+            ->ResponseUpdate(self->buffer, event->msg_size, event->seq_num);  // Using 0 for seq_num as it's not in packet_data
     }
     return 0;
 }
