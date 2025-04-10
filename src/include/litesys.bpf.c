@@ -307,7 +307,15 @@ struct
     __uint(max_entries, 4096);
     __type(key, u64);
     __type(value, struct data_args_t);
-} active_args_map SEC(".maps");
+} active_read_args_map SEC(".maps");
+
+struct
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 4096);
+    __type(key, u64);
+    __type(value, struct data_args_t);
+} active_write_args_map SEC(".maps");
 
 
 static inline bool is_resp_connection(const char *line_buffer, u64 bytes_count)
@@ -385,9 +393,13 @@ int sys_enter_read(struct trace_event_raw_sys_enter *ctx)
     // bpf_printk("read: %llu\n", pid_fd);
     struct data_args_t read_args = {};
     read_args.fd = (int)fd;
-
     read_args.buf = (char *)BPF_CORE_READ(ctx, args[1]);
-    bpf_map_update_elem(&active_args_map, &id, &read_args, BPF_ANY);
+    struct data_args_t *read_args_prev = bpf_map_lookup_elem(&active_read_args_map, &id);
+    if (read_args_prev != NULL)
+    {
+        bpf_printk("read_args already exists\n");
+    }
+    bpf_map_update_elem(&active_read_args_map, &id, &read_args, BPF_ANY);
 
     return 0;
 }
@@ -402,13 +414,13 @@ int sys_exit_read(struct trace_event_raw_sys_exit *ctx)
         return 0;
     }
     u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t *read_args = bpf_map_lookup_elem(&active_args_map, &id);
+    struct data_args_t *read_args = bpf_map_lookup_elem(&active_read_args_map, &id);
     if (read_args != NULL)
     {
         process_data(ctx, id, read_args, bytes_count, true);
-    }
+    } 
 
-    bpf_map_delete_elem(&active_args_map, &id);
+    bpf_map_delete_elem(&active_read_args_map, &id);
 
     return 0;
 }
@@ -428,9 +440,13 @@ int sys_enter_recvmsg(struct trace_event_raw_sys_enter *ctx)
     // bpf_printk("recvmsg: %llu\n", pid_fd);
     struct data_args_t read_args = {};
     read_args.fd = (int)fd;
-
     read_args.buf = (char *)BPF_CORE_READ(ctx, args[1]);
-    bpf_map_update_elem(&active_args_map, &id, &read_args, BPF_ANY);
+    struct data_args_t *read_args_prev = bpf_map_lookup_elem(&active_read_args_map, &id);
+    if (read_args_prev != NULL)
+    {
+        bpf_printk("read_args already exists\n");
+    }
+    bpf_map_update_elem(&active_read_args_map, &id, &read_args, BPF_ANY);
 
     return 0;
 }
@@ -444,13 +460,13 @@ int sys_exit_recvmsg(struct trace_event_raw_sys_exit *ctx)
         return 0;
     }
     u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t *read_args = bpf_map_lookup_elem(&active_args_map, &id);
+    struct data_args_t *read_args = bpf_map_lookup_elem(&active_read_args_map, &id);
     if (read_args != NULL)
     {
         process_data(ctx, id, read_args, bytes_count, true);
     }
 
-    bpf_map_delete_elem(&active_args_map, &id);
+    bpf_map_delete_elem(&active_read_args_map, &id);
 
     return 0;
 }
@@ -470,9 +486,13 @@ int sys_enter_recvfrom(struct trace_event_raw_sys_enter *ctx)
     // bpf_printk("recvfrom: %llu\n", pid_fd);
     struct data_args_t read_args = {};
     read_args.fd = (int)fd;
-
     read_args.buf = (char *)BPF_CORE_READ(ctx, args[1]);
-    bpf_map_update_elem(&active_args_map, &id, &read_args, BPF_ANY);
+    struct data_args_t *read_args_prev = bpf_map_lookup_elem(&active_read_args_map, &id);
+    if (read_args_prev != NULL)
+    {
+        bpf_printk("read_args already exists\n");
+    }
+    bpf_map_update_elem(&active_read_args_map, &id, &read_args, BPF_ANY);
 
     return 0;
 }
@@ -486,13 +506,13 @@ int sys_exit_recvfrom(struct trace_event_raw_sys_exit *ctx)
         return 0;
     }
     u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t *read_args = bpf_map_lookup_elem(&active_args_map, &id);
+    struct data_args_t *read_args = bpf_map_lookup_elem(&active_read_args_map, &id);
     if (read_args != NULL)
     {
         process_data(ctx, id, read_args, bytes_count, true);
     }
 
-    bpf_map_delete_elem(&active_args_map, &id);
+    bpf_map_delete_elem(&active_read_args_map, &id);
 
     return 0;
 }
@@ -513,7 +533,12 @@ int sys_enter_write(struct trace_event_raw_sys_enter *ctx)
         return 0;
     }  
     // bpf_printk("write: %llu\n", pid_fd);
-    bpf_map_update_elem(&active_args_map, &id, &write_args, BPF_ANY);
+    struct data_args_t *write_args_prev = bpf_map_lookup_elem(&active_write_args_map, &id);
+    if (write_args_prev != NULL)
+    {
+        bpf_printk("write_args already exists\n");
+    }
+    bpf_map_update_elem(&active_write_args_map, &id, &write_args, BPF_ANY);
     return 0;
 }
 
@@ -526,12 +551,12 @@ int sys_exit_write(struct trace_event_raw_sys_exit *ctx)
         return 0;
     }
     u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t *write_args = bpf_map_lookup_elem(&active_args_map, &id);
+    struct data_args_t *write_args = bpf_map_lookup_elem(&active_write_args_map, &id);
     if (write_args != NULL)
     {
         process_data(ctx, id, write_args, bytes_count, false);
     }
-    bpf_map_delete_elem(&active_args_map, &id);
+    bpf_map_delete_elem(&active_write_args_map, &id);
     return 0;
 }
 
@@ -551,7 +576,12 @@ int sys_enter_sendmsg(struct trace_event_raw_sys_enter *ctx)
         return 0;
     }  
     // bpf_printk("sendmsg: %llu\n", pid_fd);
-    bpf_map_update_elem(&active_args_map, &id, &write_args, BPF_ANY);
+    struct data_args_t *write_args_prev = bpf_map_lookup_elem(&active_write_args_map, &id);
+    if (write_args_prev != NULL)
+    {
+        bpf_printk("write_args already exists\n");
+    }
+    bpf_map_update_elem(&active_write_args_map, &id, &write_args, BPF_ANY);
     return 0;
 }
 
@@ -564,12 +594,12 @@ int sys_exit_sendmsg(struct trace_event_raw_sys_exit *ctx)
         return 0;
     }
     u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t *write_args = bpf_map_lookup_elem(&active_args_map, &id);
+    struct data_args_t *write_args = bpf_map_lookup_elem(&active_write_args_map, &id);
     if (write_args != NULL)
     {
         process_data(ctx, id, write_args, bytes_count, false);
     }
-    bpf_map_delete_elem(&active_args_map, &id);
+    bpf_map_delete_elem(&active_write_args_map, &id);
     return 0;
 }
 
@@ -589,7 +619,12 @@ int sys_enter_sendto(struct trace_event_raw_sys_enter *ctx)
         return 0;
     }  
     // bpf_printk("sendto: %llu\n", pid_fd);   
-    bpf_map_update_elem(&active_args_map, &id, &write_args, BPF_ANY);
+    struct data_args_t *write_args_prev = bpf_map_lookup_elem(&active_write_args_map, &id);
+    if (write_args_prev != NULL)
+    {
+        bpf_printk("write_args already exists\n");
+    }
+    bpf_map_update_elem(&active_write_args_map, &id, &write_args, BPF_ANY);
     return 0;
 }
 
@@ -602,12 +637,12 @@ int sys_exit_sendto(struct trace_event_raw_sys_exit *ctx)
         return 0;
     }
     u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t *write_args = bpf_map_lookup_elem(&active_args_map, &id);
+    struct data_args_t *write_args = bpf_map_lookup_elem(&active_write_args_map, &id);
     if (write_args != NULL)
     {
         process_data(ctx, id, write_args, bytes_count, false);
     }
-    bpf_map_delete_elem(&active_args_map, &id);
+    bpf_map_delete_elem(&active_write_args_map, &id);
     return 0;
 }
 
