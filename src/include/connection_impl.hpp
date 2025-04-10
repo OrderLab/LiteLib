@@ -160,29 +160,39 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   
   if (seq_num != expected_seq_num_) {
     LOG(ERROR) << "RequestUpdate: seq_num mismatch. Expected " << expected_seq_num_
-               << " but got " << seq_num << std::endl;
+               << " but got " << seq_num << " this: " << this << std::endl;
   } 
   // else {
   //   LOG(INFO) << "RequestUpdate: seq_num matched. Expected " << expected_seq_num_
   //             << " got " << seq_num << std::endl;
   // }
   expected_seq_num_ = seq_num + 1;
-  request_num_++;
-  if (request_num_ != response_num_ + 1) {
+  request_num_ = seq_num;
+  if (request_num_ != response_num_ + 1 || to_be_closed_) {
     LOG(ERROR) << "RequestUpdate: request_num mismatch. Expected " << response_num_ + 1
-               << " but got " << request_num_ << std::endl;
+               << " but got " << request_num_ << " this: " << this << std::endl;
+    for (size_t i = 0; i < 3; i++) {
+      std::cout << "Last request buffer " << i << ": ";
+      for (size_t j = 0; j < last_request_buffer_size_[i]; j++) {
+        std::cout << last_request_buffer_[i][j];
+      }
+      std::cout << std::endl;
+    }
     std::cout << "Request buffer: ";
     for (size_t i = 0; i < len; i++) {
       std::cout << buffer[i];
     }
     std::cout << std::endl;
-    std::cout << "Last request buffer: ";
-    for (size_t i = 0; i < len; i++) {
-      std::cout << last_request_buffer_[i];
-    }
     std::cout << std::endl;
+    if (to_be_closed_ == 6) exit(1);
+    to_be_closed_++;
   }
-  memcpy(last_request_buffer_, buffer, len);
+  for (size_t i = 0; i < 2; i++) {
+    last_request_buffer_size_[i] = last_request_buffer_size_[i+1];
+    memcpy(last_request_buffer_[i], last_request_buffer_[i+1], last_request_buffer_size_[i+1]);
+  }
+  last_request_buffer_size_[2] = len;
+  memcpy(last_request_buffer_[2], buffer, len);
   bool forwarded = false;
   // check if the buffer is large enough
   if (len > 131072) {
@@ -208,7 +218,6 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       return;
     }
   }
-  
 }
 
 
@@ -290,29 +299,39 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 
   if (seq_num != expected_seq_num_) {
     LOG(ERROR) << "ResponseUpdate: seq_num mismatch. Expected " << expected_seq_num_
-               << " but got " << seq_num << std::endl;
+               << " but got " << seq_num << " this: " << this << std::endl;
   } 
   // else {
   //   LOG(INFO) << "ResponseUpdate: seq_num matched. Expected " << expected_seq_num_
   //             << " got " << seq_num << std::endl;
   // }
   expected_seq_num_ = seq_num + 1;
-  response_num_++;
-  if (response_num_ != request_num_) {
-    LOG(ERROR) << "ResponseUpdate: response_num mismatch. Expected " << request_num_
-               << " but got " << response_num_ << std::endl;
+  response_num_ = seq_num;
+  if (response_num_ != request_num_ + 1 || to_be_closed_) {
+    LOG(ERROR) << "ResponseUpdate: response_num mismatch. Expected " << request_num_ + 1
+               << " but got " << response_num_ << " this: " << this << std::endl;
+    for (size_t i = 0; i < 3; i++) {
+      std::cout << "Last response buffer " << i << ": ";
+      for (size_t j = 0; j < last_response_buffer_size_[i]; j++) {
+        std::cout << last_response_buffer_[i][j];
+      }
+      std::cout << std::endl;
+    }
     std::cout << "Response buffer: ";
     for (size_t i = 0; i < len; i++) {
       std::cout << buffer[i];
     }
     std::cout << std::endl;
-    std::cout << "Last response buffer: ";
-    for (size_t i = 0; i < len; i++) {
-      std::cout << last_response_buffer_[i];
-    }
     std::cout << std::endl;
+    if (to_be_closed_ == 6) exit(1);
+    to_be_closed_++;
   }
-  memcpy(last_response_buffer_, buffer, len);
+  for (size_t i = 0; i < 2; i++) {
+    last_response_buffer_size_[i] = last_response_buffer_size_[i+1];
+    memcpy(last_response_buffer_[i], last_response_buffer_[i+1], last_response_buffer_size_[i+1]);
+  }
+  last_response_buffer_size_[2] = len;
+  memcpy(last_response_buffer_[2], buffer, len);
   bool forwarded = false;
   if (len > 131072) {
     LOG(ERROR) << "ResponseUpdate: buffer is too large" << std::endl;
@@ -337,7 +356,6 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       return;
     }
   }
-  
 }
 
 

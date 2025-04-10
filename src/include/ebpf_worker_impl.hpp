@@ -262,6 +262,7 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
     size_t msg_size = strlen(event->msg);
     memcpy(self->buffer, event->msg, msg_size);
     self->buffer[msg_size] = '\0';  // Ensure null termination
+    auto fd = event->fd;
     
     if (is_request) {
         
@@ -269,7 +270,7 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
 
         // Check if the connection exists
         uint16_t sport = 0;
-        if (self->source_to_conn_.find(std::make_pair(event->fd, sport)) 
+        if (self->source_to_conn_.find(std::make_pair(fd, sport)) 
             == self->source_to_conn_.end()) {
             // Add the connection to the connection map
             auto new_connection =
@@ -281,13 +282,13 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
                                     self->lite_core_,      // lite core instance
                                     false,                 // is_server
                                     self);                 // worker instance
-            self->source_to_conn_[std::make_pair(event->fd, sport)] = new_connection;
+            self->source_to_conn_[std::make_pair(fd, sport)] = new_connection;
             self->lite_core_.live_connections_.insert(new_connection);
             self->conns_.insert(new_connection);
         }
         
         // Update the connection with request data
-        self->source_to_conn_[std::make_pair(event->fd, sport)]
+        self->source_to_conn_[std::make_pair(fd, sport)]
             ->RequestUpdate(self->buffer, event->msg_size, event->seq_num);  // Using 0 for seq_num as it's not in packet_data
     } else {
         // Convert destination IP to string for response handling
@@ -295,14 +296,14 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         uint16_t dport = 0;
         // std::cout << "Received response: " << self->buffer << std::endl;
 
-        if (self->source_to_conn_.find(std::make_pair(event->fd, dport)) 
+        if (self->source_to_conn_.find(std::make_pair(fd, dport)) 
             == self->source_to_conn_.end()) {
             // Connection not found for response
             printf("Connection not found for response: %d\n", event->fd);
             return 0;
         }
         // Update the connection with response data
-        self->source_to_conn_[std::make_pair(event->fd, dport)]
+        self->source_to_conn_[std::make_pair(fd, dport)]
             ->ResponseUpdate(self->buffer, event->msg_size, event->seq_num);  // Using 0 for seq_num as it's not in packet_data
     }
     return 0;

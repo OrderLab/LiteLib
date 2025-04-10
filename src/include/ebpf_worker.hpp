@@ -100,7 +100,7 @@ struct socket_data_event_t
   unsigned int msg_size;
   char msg[MAX_MSG_SIZE];
   uint32_t seq_num;
-};
+} __attribute__((packed));
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
