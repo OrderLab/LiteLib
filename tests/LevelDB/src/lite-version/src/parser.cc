@@ -33,7 +33,7 @@ lite::DeserializeResult RESPTypeParser::Deserialize(InputIterator &begin,
         break;
       default:
         LOG(ERROR) << "Unknown RESPType: " << *(begin - 1) << "length: " << end - begin << std::endl;
-        for(int i = 0; i < end - begin; i++){
+        for(int i = -1; i < end - begin; i++){
           if (isprint(*(begin + i))) {
             LOG(ERROR) << *(begin + i);
           } else {
