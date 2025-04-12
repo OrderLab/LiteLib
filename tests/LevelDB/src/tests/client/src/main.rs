@@ -342,17 +342,16 @@ async fn main() {
             let bar = bar.clone();
             
             let handle = tokio::spawn(async move {
-                let mut conn = pool.get().await.unwrap_or_else(|e| {
-                    panic!("Initialize failed i: {}, error: {}", i, e);
-                });
-                update_conn_if_not_established!(conn, cfg.benchmark.timeout);
-                cmd("SET")
-                    .arg(generate_key(i, cfg.benchmark.key_length))
+                for conn in pool.iter() {  // Iterate through all connections
+                    let mut conn = conn.get().await.unwrap();
+                    update_conn_if_not_established!(conn, cfg.benchmark.timeout);
+                    cmd("SET")
+                        .arg(generate_key(i, cfg.benchmark.key_length))
                     .arg(&value)
                     .query::<String>(&mut conn.conn.as_mut().unwrap())
                     .unwrap();
                 bar.inc(1);
-            });
+            }});
             handles.push(handle);
             sleep_until(iter_end_time).await;
         }
