@@ -8,6 +8,8 @@
 
 char LICENSE[] SEC("license") = "GPL";
 
+#define READ_RETRY_COUNT 10
+
 #define SERVER_PORT 6379
 #define ACCEPT 1
 #define CLOSE 2
@@ -79,7 +81,7 @@ int bpf_call_inet_csk_accept(struct pt_regs *ctx) {
     struct sock_common sc;
     int err = bpf_core_read(&sc, sizeof(sc), &sk->__sk_common);
     if (err < 0) {
-        bpf_printk("inet_csk_accept: bpf_core_read failed (err: %d)\n", err);
+        bpf_printk("[%d] inet_csk_accept: bpf_core_read failed (err: %d)\n", __LINE__, err);
         return 0;
     }
 
@@ -96,7 +98,7 @@ int bpf_call_inet_csk_accept(struct pt_regs *ctx) {
 
     struct connection_event *event = bpf_ringbuf_reserve(&conn_ringbuf, sizeof(struct connection_event), 0);
     if (!event) {
-        bpf_printk("accept event ringbuf reserve failed\n");
+        bpf_printk("[%d] accept event ringbuf reserve failed\n", __LINE__);
         return 0;
     }
 
@@ -121,7 +123,7 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
     struct sock_common sc;
     int err = bpf_core_read(&sc, sizeof(sc), &sk->__sk_common);
     if (err < 0) {
-        bpf_printk("tcp_close: bpf_core_read failed (err: %d)\n", err);
+        bpf_printk("[%d] tcp_close: bpf_core_read failed (err: %d)\n", __LINE__, err);
         return 0;
     }
     __u32 saddr = sc.skc_rcv_saddr;
@@ -135,7 +137,7 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
     //            &saddr, sport, dport);
     struct connection_event *event = bpf_ringbuf_reserve(&conn_ringbuf, sizeof(struct connection_event), 0);
     if (!event) {
-        bpf_printk("close event ringbuf reserve failed (err: %d)\n", err);
+        bpf_printk("[%d] close event ringbuf reserve failed (err: %d)\n", __LINE__, err);
         return 0;
     }
 
@@ -223,7 +225,7 @@ SEC("tracepoint/syscalls/sys_enter_accept")
 int sys_enter_accept(struct trace_event_raw_sys_enter *ctx) {
     u64 id = bpf_get_current_pid_tgid();
 
-    bpf_printk("sys_enter_accept tid: %llu\n", id);
+    bpf_printk("[%d] sys_enter_accept tid: %llu\n", __LINE__, id);
 
     struct accept_args_t accept_args = {};
     accept_args.sockfd = (int)ctx->args[0];  // Get listening socket FD
@@ -231,7 +233,7 @@ int sys_enter_accept(struct trace_event_raw_sys_enter *ctx) {
 
     u64 err = bpf_map_update_elem(&active_accept_args_map, &id, &accept_args, BPF_ANY);
     if (err != 0) {
-        bpf_printk("sys_enter_accept: map update failed (err: %d)\n", err);
+        bpf_printk("[%d] sys_enter_accept: map update failed (err: %d)\n", __LINE__, err);
     }
     return 0;
 }
@@ -283,7 +285,7 @@ int sys_exit_accept(struct trace_event_raw_sys_exit *ctx)
     __u64 pid_fd = ((__u64)pid << 32) | (u32)ret_fd;
     u64 err = bpf_map_update_elem(&conn_info_map, &pid_fd, &conn_info, BPF_ANY);
     if (err != 0) {
-        bpf_printk("sys_exit_accept: map update failed (err: %d)\n", err);
+        bpf_printk("[%d] sys_exit_accept: map update failed (err: %d)\n", __LINE__, err);
     }
 
     // struct socket_data_event_t *open_event = bpf_ringbuf_reserve(&msgs_ringbuf, sizeof(struct socket_data_event_t), 0);
@@ -301,7 +303,7 @@ int sys_exit_accept(struct trace_event_raw_sys_exit *ctx)
 
     err = bpf_map_delete_elem(&active_accept_args_map, &id);
     if (err != 0) {
-        bpf_printk("sys_exit_accept: map delete failed (err: %d)\n", err);
+        bpf_printk("[%d] sys_exit_accept: map delete failed (err: %d)\n", __LINE__, err);
     }
     return 0;
 }
@@ -380,7 +382,10 @@ static inline void process_data(
     u32 pid = id >> 32;
 
     char line_buffer[1];
-    bpf_probe_read(line_buffer, 1, args->buf);
+    u64 err = bpf_probe_read_user(line_buffer, 1, args->buf);
+    if (err != 0) {
+        bpf_printk("[%d] process_data: probe read failed (err: %d)\n", __LINE__, err);
+    }
     if (!is_resp_connection(line_buffer, bytes_count) && bytes_count <= MAX_MSG_SIZE)
     {
         // print each character in the buffer
@@ -391,11 +396,11 @@ static inline void process_data(
         //         bpf_printk("%c", args->buf[i]);
         //     }
         // }
-        bpf_printk("process_data: 0x%02x ", line_buffer[0]);
+        bpf_printk("[%d] process_data: 0x%02x ", __LINE__, line_buffer[0]);
     }
     struct socket_data_event_t *event = bpf_ringbuf_reserve(&msgs_ringbuf, sizeof(struct socket_data_event_t), 0);
     if (!event) {
-        bpf_printk("ringbuf reserve failed\n");
+        bpf_printk("[%d] ringbuf reserve failed\n", __LINE__);
         return;
     }
 
@@ -405,7 +410,7 @@ static inline void process_data(
         event->seq_num = 0;
         __u32 next_seq_num = 1;
         if (bpf_map_update_elem(&seq_tracker, &key, &next_seq_num, BPF_ANY) != 0) {
-            bpf_printk("process_data: map update failed\n");
+            bpf_printk("[%d] process_data: map update failed\n", __LINE__);
         }
     } else {
         event->seq_num = *seq_num;
@@ -417,11 +422,18 @@ static inline void process_data(
     event->fd = args->fd;
     event->is_read = is_read;
     if (bytes_count >= MAX_MSG_SIZE)
-        bpf_printk("process_data: bytes_count >= MAX_MSG_SIZE\n");
+        bpf_printk("[%d] process_data: bytes_count >= MAX_MSG_SIZE\n", __LINE__);
     unsigned int read_size = bytes_count >= MAX_MSG_SIZE ? MAX_MSG_SIZE - 1 : bytes_count;
     event->msg_size = read_size;
-    bpf_probe_read(&event->msg, read_size, args->buf);
-        // bpf_printk("event->msg: %s\n", event->msg);
+    for (int i = 0; i < READ_RETRY_COUNT; i++) {
+        err = bpf_probe_read_user(&event->msg, read_size, args->buf);
+        if (err != 0) {
+            bpf_printk("[%d] process_data: probe read failed (err: %d), retry %d, buf_len: %d, buf: %p\n", __LINE__, err, i, read_size, args->buf);
+        } else {
+            break;
+        }
+    }
+    // bpf_printk("event->msg: %s\n", event->msg);
     bpf_ringbuf_submit(event, 0);
 
 }
@@ -436,7 +448,10 @@ static inline void process_data_2(
     u32 pid = id >> 32;
 
     char line_buffer[1];
-    bpf_probe_read(line_buffer, 1, args->buf);
+    u64 err = bpf_probe_read_kernel(line_buffer, 1, args->buf);
+    if (err != 0) {
+        bpf_printk("[%d] process_data_2: probe read failed (err: %d)\n", __LINE__, err);
+    }
     if (!is_resp_connection(line_buffer, bytes_count) && bytes_count <= MAX_MSG_SIZE)
     {
         // print each character in the buffer
@@ -453,7 +468,7 @@ static inline void process_data_2(
     // bpf_printk("process_data_2: 0x%02x ", line_buffer[0]);
     struct socket_data_event_t *event = bpf_ringbuf_reserve(&msgs_ringbuf, sizeof(struct socket_data_event_t), 0);
     if (!event) {
-        bpf_printk("ringbuf reserve failed\n");
+        bpf_printk("[%d] ringbuf reserve failed\n", __LINE__);
         return;
     }
 
@@ -463,7 +478,7 @@ static inline void process_data_2(
         event->seq_num = 0;
         __u32 next_seq_num = 1;
         if (bpf_map_update_elem(&seq_tracker, &key, &next_seq_num, BPF_ANY) != 0) {
-            bpf_printk("process_data: map update failed\n");
+            bpf_printk("[%d] process_data: map update failed\n", __LINE__);
         }
     } else {
         event->seq_num = *seq_num;
@@ -475,115 +490,20 @@ static inline void process_data_2(
     event->fd = args->fd;
     event->is_read = is_read;
     if (bytes_count >= MAX_MSG_SIZE)
-        bpf_printk("process_data write: bytes_count >= MAX_MSG_SIZE\n");
+        bpf_printk("[%d] process_data write: bytes_count >= MAX_MSG_SIZE\n", __LINE__);
     unsigned int read_size = bytes_count >= MAX_MSG_SIZE ? MAX_MSG_SIZE - 1 : bytes_count;
     event->msg_size = read_size;
-    bpf_probe_read(&event->msg, read_size, (void *)args->buf);
+    for (int i = 0; i < READ_RETRY_COUNT; i++) {
+        err = bpf_probe_read_kernel(&event->msg, read_size, (void *)args->buf);
+        if (err != 0) {
+            bpf_printk("[%d] process_data_2: probe read failed (err: %d), retry %d, buf_len: %d, buf: %p\n", __LINE__, err, i, read_size, args->buf);
+        } else {
+            break;
+        }
+    }
         // bpf_printk("event->msg: %s\n", event->msg);
     bpf_ringbuf_submit(event, 0);
 
-}
-
-SEC("tracepoint/syscalls/sys_enter_read")
-int sys_enter_read(struct trace_event_raw_sys_enter *ctx)
-{
-    u64 id = bpf_get_current_pid_tgid();
-    u64 fd = (u64)BPF_CORE_READ(ctx, args[0]);
-    u32 pid = id >> 32;
-    u64 pid_fd = ((u64)pid << 32) | (u64)fd;
-    struct conn_info_t *conn_info = bpf_map_lookup_elem(&conn_info_map, &pid_fd);
-    // bpf_printk("sys_enter_read pid_fd: %llu, pid: %d\n", pid_fd, pid);
-    if (conn_info == NULL)
-    {
-        return 0;
-    }
-    // bpf_printk("read: %llu\n", pid_fd);
-    struct data_args_t read_args = {};
-    read_args.fd = (int)fd;
-    read_args.buf = (char *)BPF_CORE_READ(ctx, args[1]);
-    struct data_args_t *read_args_prev = bpf_map_lookup_elem(&active_read_args_map, &id);
-    if (read_args_prev != NULL)
-    {
-        bpf_printk("read_args already exists\n");
-    }
-    u64 err = bpf_map_update_elem(&active_read_args_map, &id, &read_args, BPF_ANY);
-    if (err != 0) {
-        bpf_printk("sys_enter_read: map update failed (err: %d)\n", err);
-    }
-
-    return 0;
-}
-
-
-SEC("tracepoint/syscalls/sys_exit_read")
-int sys_exit_read(struct trace_event_raw_sys_exit *ctx)
-{
-    u64 bytes_count = (u64)BPF_CORE_READ(ctx, ret);
-    if (bytes_count <= 0)
-    {
-        return 0;
-    }
-    u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t *read_args = bpf_map_lookup_elem(&active_read_args_map, &id);
-    if (read_args == NULL) return 0;
-    process_data(id, read_args, bytes_count, true);
-
-    u64 err = bpf_map_delete_elem(&active_read_args_map, &id);
-    if (err != 0) {
-        bpf_printk("sys_exit_read: map delete failed (err: %d)\n", err);
-    }
-
-    return 0;
-}
-
-SEC("tracepoint/syscalls/sys_enter_recvmsg")
-int sys_enter_recvmsg(struct trace_event_raw_sys_enter *ctx)
-{
-    u64 id = bpf_get_current_pid_tgid();
-    u64 fd = (u64)BPF_CORE_READ(ctx, args[0]);
-    u32 pid = id >> 32;
-    u64 pid_fd = ((u64)pid << 32) | (u64)fd;
-    struct conn_info_t *conn_info = bpf_map_lookup_elem(&conn_info_map, &pid_fd);
-    if (conn_info == NULL)
-    {
-        return 0;
-    }
-    // bpf_printk("recvmsg: %llu\n", pid_fd);
-    struct data_args_t read_args = {};
-    read_args.fd = (int)fd;
-    read_args.buf = (char *)BPF_CORE_READ(ctx, args[1]);
-    struct data_args_t *read_args_prev = bpf_map_lookup_elem(&active_read_args_map, &id);
-    if (read_args_prev != NULL)
-    {
-        bpf_printk("read_args already exists\n");
-    }
-    u64 err = bpf_map_update_elem(&active_read_args_map, &id, &read_args, BPF_ANY);
-    if (err != 0) {
-        bpf_printk("sys_enter_recvmsg: map update failed (err: %d)\n", err);
-    }
-
-    return 0;
-}
-
-SEC("tracepoint/syscalls/sys_exit_recvmsg")
-int sys_exit_recvmsg(struct trace_event_raw_sys_exit *ctx)
-{
-    u64 bytes_count = (u64)BPF_CORE_READ(ctx, ret);
-    if (bytes_count <= 0)
-    {
-        return 0;
-    }
-    u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t *read_args = bpf_map_lookup_elem(&active_read_args_map, &id);
-    if (read_args == NULL) return 0;
-    process_data(id, read_args, bytes_count, true);
-
-    u64 err = bpf_map_delete_elem(&active_read_args_map, &id);
-    if (err != 0) {
-        bpf_printk("sys_exit_recvmsg: map delete failed (err: %d)\n", err);
-    }
-
-    return 0;
 }
 
 SEC("kprobe/__x64_sys_recvfrom")
@@ -623,11 +543,11 @@ int BPF_KPROBE(handle_recvfrom, struct pt_regs *regs)
     struct data_args_t *read_args_prev = bpf_map_lookup_elem(&active_read_args_map, &id);
     if (read_args_prev != NULL)
     {
-        bpf_printk("read_args already exists\n");
+        bpf_printk("[%d] read_args already exists\n", __LINE__);
     }
     u64 err = bpf_map_update_elem(&active_read_args_map, &id, &read_args, BPF_ANY);
     if (err != 0) {
-        bpf_printk("sys_enter_recvfrom: map update failed (err: %d)\n", err);
+        bpf_printk("[%d] sys_enter_recvfrom: map update failed (err: %d)\n", __LINE__, err);
     }
 
     return 0;
@@ -650,15 +570,19 @@ int BPF_KRETPROBE(handle_recvfrom_ret, ssize_t ret)
 
     u64 err = bpf_map_delete_elem(&active_read_args_map, &id);
     if (err != 0) {
-        bpf_printk("sys_exit_recvfrom: map delete failed (err: %d)\n", err);
+        bpf_printk("[%d] sys_exit_recvfrom: map delete failed (err: %d)\n", __LINE__, err);
     }
 
     return 0;
 }
 
-SEC("kprobe/ksys_write")
-int BPF_KPROBE(handle_write, int fd, const char *buf, size_t count)
+SEC("kprobe/__x64_sys_write")
+int BPF_KPROBE(handle_write, struct pt_regs *regs)
 {
+    int fd = PT_REGS_PARM1_CORE(regs);
+    void *buf = (void *)PT_REGS_PARM2_CORE(regs);
+    size_t count = PT_REGS_PARM3_CORE(regs);
+
     u64 id = bpf_get_current_pid_tgid();
     struct data_args_array_t write_args = {};
     write_args.fd = fd;
@@ -678,18 +602,27 @@ int BPF_KPROBE(handle_write, int fd, const char *buf, size_t count)
     {
         return 0;
     }
-    // bpf_printk("write: fd=%d count=%d\n", fd, (int)count);
     
     // Use unsigned value for read_size to avoid verifier issues
     u32 read_size = buf_len > MAX_MSG_SIZE - 1 ? MAX_MSG_SIZE - 1 : buf_len;
     
     // Use safe helper function for memory access
     if (buf_len > 0) {
-        bpf_probe_read_user(&write_args.buf, buf_len, (void *)buf);
+        for (int i = 0; i < READ_RETRY_COUNT; i++) {
+            u64 err = bpf_probe_read_user(&write_args.buf, buf_len, (void *)buf);
+            if (err != 0) {
+                bpf_printk("[%d] sys_enter_write: probe read failed (err: %d), retry %d, buf_len: %d, buf: %p\n", __LINE__, err, i, buf_len, buf);
+            } else {
+                break;
+            }
+        }
     }
         
     char line_buffer[1];
-    bpf_probe_read(line_buffer, 1, write_args.buf);
+    u64 err = bpf_probe_read_kernel(line_buffer, 1, write_args.buf);
+    if (err != 0) {
+        bpf_printk("[%d] sys_enter_write: probe read failed (err: %d)\n", __LINE__, err);
+    }
     // for (int i = 0; i < read_size; i++) {
     //     if (write_args.buf[i] < 32 || write_args.buf[i] > 126) {
     //         bpf_printk("0x%02x ", write_args.buf[i]);
@@ -699,24 +632,24 @@ int BPF_KPROBE(handle_write, int fd, const char *buf, size_t count)
     // }
     if (!is_resp_connection(line_buffer, 1))
     {
-        bpf_printk("enter 0x%02x ", line_buffer[0]);
+        bpf_printk("[%d] enter 0x%02x ", __LINE__, line_buffer[0]);
     }
 
     struct data_args_array_t *write_args_prev = bpf_map_lookup_elem(&active_write_event_args_map, &id);
     if (write_args_prev != NULL)
     {
-        bpf_printk("write_args already exists\n");
+        bpf_printk("[%d] write_args already exists\n", __LINE__);
     }
     
-    u64 err = bpf_map_update_elem(&active_write_event_args_map, &id, &write_args, BPF_ANY);
+    err = bpf_map_update_elem(&active_write_event_args_map, &id, &write_args, BPF_ANY);
     if (err != 0) {
-        bpf_printk("sys_enter_write: map update failed (err: %d)\n", err);
+        bpf_printk("[%d] sys_enter_write: map update failed (err: %d)\n", __LINE__, err);
     }
     
     return 0;
 }
 
-SEC("kretprobe/ksys_write")
+SEC("kretprobe/__x64_sys_write")
 int BPF_KRETPROBE(handle_write_ret, ssize_t ret)
 {
     u64 bytes_count = (u64)ret;
@@ -729,112 +662,18 @@ int BPF_KRETPROBE(handle_write_ret, ssize_t ret)
     if (write_args == NULL) return 0;
     
     char line_buffer[1];
-    bpf_probe_read_kernel(line_buffer, 1, write_args->buf);
+    u64 err = bpf_probe_read_kernel(line_buffer, 1, write_args->buf);
+    if (err != 0) {
+        bpf_printk("[%d] sys_exit_write: probe read failed (err: %d)\n", __LINE__, err);
+    }
     if (!is_resp_connection(line_buffer, 1))
     {
-        bpf_printk("exit 0x%02x ", line_buffer[0]);
+        bpf_printk("[%d] exit 0x%02x ", __LINE__, line_buffer[0]);
     }
     process_data_2(id, write_args, bytes_count, false);
-    u64 err = bpf_map_delete_elem(&active_write_event_args_map, &id);
+    err = bpf_map_delete_elem(&active_write_event_args_map, &id);
     if (err != 0) {
-        bpf_printk("sys_exit_write: map delete failed (err: %d)\n", err);
+        bpf_printk("[%d] sys_exit_write: map delete failed (err: %d)\n", __LINE__, err);
     }
     return 0;
 }
-
-SEC("tracepoint/syscalls/sys_enter_sendmsg")
-int sys_enter_sendmsg(struct trace_event_raw_sys_enter *ctx)
-{
-    u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t write_args = {};
-    write_args.fd = (int)BPF_CORE_READ(ctx, args[0]);
-    write_args.buf = (char *)BPF_CORE_READ(ctx, args[1]);
-    u32 pid = id >> 32;
-    u64 pid_fd = ((u64)pid << 32) | (u64)write_args.fd;
-
-    struct conn_info_t *conn_info = bpf_map_lookup_elem(&conn_info_map, &pid_fd);
-    if (conn_info == NULL)
-    {
-        return 0;
-    }
-    // bpf_printk("sendmsg: %llu\n", pid_fd);
-    struct data_args_t *write_args_prev = bpf_map_lookup_elem(&active_write_args_map, &id);
-    if (write_args_prev != NULL)
-    {
-        bpf_printk("write_args already exists\n");
-    }
-    u64 err = bpf_map_update_elem(&active_write_args_map, &id, &write_args, BPF_ANY);
-    if (err != 0) {
-        bpf_printk("sys_enter_sendmsg: map update failed (err: %d)\n", err);
-    }
-    return 0;
-}
-
-SEC("tracepoint/syscalls/sys_exit_sendmsg")
-int sys_exit_sendmsg(struct trace_event_raw_sys_exit *ctx)
-{
-    u64 bytes_count = (u64)BPF_CORE_READ(ctx, ret);
-    if (bytes_count <= 0)
-    {
-        return 0;
-    }
-    u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t *write_args = bpf_map_lookup_elem(&active_write_args_map, &id);
-    if (write_args == NULL) return 0;
-    process_data(id, write_args, bytes_count, false);
-
-    u64 err = bpf_map_delete_elem(&active_write_args_map, &id);
-    if (err != 0) {
-        bpf_printk("sys_exit_sendmsg: map delete failed (err: %d)\n", err);
-    }
-    return 0;
-}
-
-SEC("tracepoint/syscalls/sys_enter_sendto")
-int sys_enter_sendto(struct trace_event_raw_sys_enter *ctx)
-{
-    u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t write_args = {};
-    write_args.fd = (int)BPF_CORE_READ(ctx, args[0]);
-    write_args.buf = (char *)BPF_CORE_READ(ctx, args[1]);
-    u32 pid = id >> 32;
-    u64 pid_fd = ((u64)pid << 32) | (u64)write_args.fd;
-
-    struct conn_info_t *conn_info = bpf_map_lookup_elem(&conn_info_map, &pid_fd);
-    if (conn_info == NULL)
-    {
-        return 0;
-    }
-    // bpf_printk("sendto: %llu\n", pid_fd);
-    struct data_args_t *write_args_prev = bpf_map_lookup_elem(&active_write_args_map, &id);
-    if (write_args_prev != NULL)
-    {
-        bpf_printk("write_args already exists\n");
-    }
-    u64 err = bpf_map_update_elem(&active_write_args_map, &id, &write_args, BPF_ANY);
-    if (err != 0) {
-        bpf_printk("sys_enter_sendto: map update failed (err: %d)\n", err);
-    }
-    return 0;
-}
-
-SEC("tracepoint/syscalls/sys_exit_sendto")
-int sys_exit_sendto(struct trace_event_raw_sys_exit *ctx)
-{
-    u64 bytes_count = (u64)BPF_CORE_READ(ctx, ret);
-    if (bytes_count <= 0)
-    {
-        return 0;
-    }
-    u64 id = bpf_get_current_pid_tgid();
-    struct data_args_t *write_args = bpf_map_lookup_elem(&active_write_args_map, &id);
-    if (write_args == NULL) return 0;
-    process_data(id, write_args, bytes_count, false);
-
-    u64 err = bpf_map_delete_elem(&active_write_args_map, &id);
-    if (err != 0) {
-        bpf_printk("sys_exit_sendto: map delete failed (err: %d)\n", err);
-    }
-    return 0;
-}
-
