@@ -159,7 +159,7 @@ elif [ "$MODE" == "replica" ]; then
     ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" > $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
 fi
 echo "`date '+%Y-%m-%d %H:%M:%S'` YCSB load completed"
-sleep 5
+sleep 20
 
 # Kill vanilla server after the crash time
 if [ "$CRASH" == "1" ]; then

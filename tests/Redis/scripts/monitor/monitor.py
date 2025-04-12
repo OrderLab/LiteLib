@@ -54,15 +54,18 @@ def do(i):
     try:
       get_process()
       for name in process_names:
-        data[name] = {"cpu": 0.0, "mem": 0.0}
+        data[name] = {"cpu": 0.0, "mem": 0.0, "shared_mem": 0.0}
       for proc in processes:
         cpu = None
         mem = None
+        shared_mem = None
         with proc.oneshot():
           cpu = proc.cpu_percent(interval=None)
           mem = proc.memory_info().rss
+          shared_mem = proc.memory_info().shared
         data[proc.name()]['cpu'] += cpu
         data[proc.name()]['mem'] += mem
+        data[proc.name()]['shared_mem'] += shared_mem
     except Exception as error:
       print("An error occurred:", error)
       exception = True
@@ -82,6 +85,7 @@ if __name__ == '__main__':
   print(f'start time: {start_time}')
   print(f'log file: {sys.argv[2]}')
   print(f'logs avg cpu percent between t-1 and t seconds, and mem percent in t second')
+  print(f'memory values are in bytes (rss and shared memory)')
 
   i = -1
   time_delta = start_time / 1e9 - time.time()
