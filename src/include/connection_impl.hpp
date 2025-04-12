@@ -201,9 +201,19 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   }
   uint8_t* begin = buffer;
   uint8_t* end = begin + len;
+  uint8_t* old_begin = begin;
   while (begin != end) {
     const auto result = request_->Deserialize(begin, end);
     if (result == kGood) {
+      LOG(ERROR) << "successfully parse request" << std::endl;
+      for(int i = 0; i < end - old_begin; i++){
+        if (isprint(*(old_begin + i))) {
+          std::cout << *(old_begin + i);
+        } else {
+          std::cout << "0x" << std::hex << (int)(unsigned char)*(old_begin + i);
+        }
+      }
+      std::cout << std::endl;
       if (!lite_core_.HandleRequest(
               std::move(request_), extra_app_info_,
               pending_requests_, client_fd_, backend_fd_,
@@ -212,9 +222,26 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       }
       request_ = std::make_unique<Request>();
     } else if (result == kIndeterminate) {
+      LOG(ERROR) << "kIndeterminate" << std::endl;
+      for(int i = 0; i < end - old_begin; i++){
+        if (isprint(*(old_begin + i))) {
+          std::cout << *(old_begin + i);
+        } else {
+          std::cout << "0x" << std::hex << (int)(unsigned char)*(old_begin + i);
+        }
+      }
+      std::cout << std::endl;
       continue;
     } else if (result == kBad) {
       LOG(ERROR) << "failed to parse request" << std::endl;
+      for(int i = 0; i < end - old_begin; i++){
+        if (isprint(*(old_begin + i))) {
+          std::cout << *(old_begin + i);
+        } else {
+          std::cout << "0x" << std::hex << (int)(unsigned char)*(old_begin + i);
+        }
+      }
+      std::cout << std::endl;
       return;
     }
   }
@@ -338,6 +365,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     return;
   }
   uint8_t* begin = buffer;
+  uint8_t* old_begin = begin;
   uint8_t* end = begin + len;
   while (begin != end) {
     const auto result = response_->Deserialize(begin, end);
@@ -350,9 +378,26 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       }
       response_ = std::make_unique<Response>();
     } else if (result == kIndeterminate) {
+      LOG(ERROR) << "kIndeterminate" << std::endl;
+      for(int i = 0; i < end - old_begin; i++){
+        if (isprint(*(old_begin + i))) {
+          std::cout << *(old_begin + i);
+        } else {
+          std::cout << "0x" << std::hex << (int)(unsigned char)*(old_begin + i);
+        }
+      }
+      std::cout << std::endl;
       continue;
     } else if (result == kBad) {
       LOG(ERROR) << "failed to parse response" << std::endl;
+      for(int i = 0; i < end - old_begin; i++){
+        if (isprint(*(old_begin + i))) {
+          std::cout << *(old_begin + i);
+        } else {
+          std::cout << "0x" << std::hex << (int)(unsigned char)*(old_begin + i);
+        }
+      }
+      std::cout << std::endl;
       return;
     }
   }
