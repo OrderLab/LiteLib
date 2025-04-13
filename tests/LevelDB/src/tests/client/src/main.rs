@@ -337,21 +337,21 @@ async fn main() {
         for i in (1..cfg.benchmark.num_keys + 1).rev() {
             let iter_end_time = start_time + init_interval * ((cfg.benchmark.num_keys - i + 1) as u32);
             let pool = pool.clone();
-            let i = i;
+            let i = i; // Copy i into the closure
             let value = format!("{}_{}_{}", base_value, i, 0);
             let bar = bar.clone();
-            
             let handle = tokio::spawn(async move {
-                for conn in pool.iter() {  // Iterate through all connections
-                    let mut conn = conn.get().await.unwrap();
-                    update_conn_if_not_established!(conn, cfg.benchmark.timeout);
-                    cmd("SET")
-                        .arg(generate_key(i, cfg.benchmark.key_length))
+                let mut conn = pool.get().await.unwrap_or_else(|e| {
+                    panic!("Initialize failed i: {}, error: {}", i, e);
+                });
+                update_conn_if_not_established!(conn, cfg.benchmark.timeout);
+                cmd("SET")
+                    .arg(generate_key(i, cfg.benchmark.key_length))
                     .arg(&value)
                     .query::<String>(&mut conn.conn.as_mut().unwrap())
                     .unwrap();
                 bar.inc(1);
-            }});
+            });
             handles.push(handle);
             sleep_until(iter_end_time).await;
         }
