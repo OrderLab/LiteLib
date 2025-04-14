@@ -157,6 +157,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   //     packet_content << "\\n";
   //   }
   // }
+  // LOG(INFO) << "RequestUpdate: packet_content: " << packet_content.str() << std::endl;
   
   if (seq_num != expected_seq_num_) {
     LOG(ERROR) << "RequestUpdate: seq_num mismatch. Expected " << expected_seq_num_
@@ -296,6 +297,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   //     packet_content << "\\n";
   //   }
   // }
+  // LOG(INFO) << "ResponseUpdate: packet_content: " << packet_content.str() << std::endl;
 
   if (seq_num != expected_seq_num_) {
     LOG(ERROR) << "ResponseUpdate: seq_num mismatch. Expected " << expected_seq_num_

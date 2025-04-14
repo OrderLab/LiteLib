@@ -61,18 +61,6 @@ struct ConnectionEvent {
     struct tcp_info connection;
 } __attribute__((packed));
 
-struct ParseResult{
-    std::unique_ptr<char[]> src_ip;
-    uint16_t src_port;
-    std::unique_ptr<char[]> dst_ip;
-    uint16_t dst_port;
-    std::unique_ptr<uint8_t[]> payload;
-    int len;
-    bool request_dir;
-    int seq_num;
-    // connection
-};
-
 struct packet_data {
   uint32_t len;
   uint32_t saddr;
@@ -90,12 +78,9 @@ struct socket_info {
   uint64_t ref_socket_fd;
 };
 
-struct socket_data_event_t
-{
-  unsigned int pid;
-  int fd;
-  bool is_connection;
-  int socket_fd;
+struct socket_data_event_t {
+  uint32_t remote_addr;
+  uint16_t remote_port;
   bool is_read;
   unsigned int msg_size;
   char msg[MAX_MSG_SIZE];
@@ -122,12 +107,8 @@ class EbpfWorker : public Worker<Application, Request, Response,
   /// Create the worker thread and start running the event loop.
   int Run(const char name[] = "lite-worker");
 
-
   //Set Mode
   int SetMode(int mode);
-
-  //Set Socket Info
-  int SetSocketInfo(uint64_t socket_fd, uint64_t pid);
 
   /// The file descriptor used to signal the worker thread.
   evutil_socket_t notify_event_fd;
@@ -152,14 +133,18 @@ class EbpfWorker : public Worker<Application, Request, Response,
 
   struct litesys_bpf *skel;
 
+  struct ring_buffer *rb = nullptr;
 
-  struct ring_buffer *rb;
-
-  struct ring_buffer *pb;
+  struct ring_buffer *pb = nullptr;
 
   unsigned char *buffer;
 
-  int prog_fd_;
+  int prog_fd_ = 0;
+  int cg_fd = 0;
+  int sockops_monitor_fd = 0;
+  int sock_map_fd = 0;
+  int redis_request_prog_fd = 0;
+  int redis_response_prog_fd = 0;
 
   /// The underlying service implementation.
   LiteCoreInstance &lite_core_;
@@ -187,9 +172,6 @@ class EbpfWorker : public Worker<Application, Request, Response,
 
   static int HandlePacket(void *ctx, void *data, size_t data_sz);
   
-  /// Parse the TCP data.
-  static ParseResult parse_tcp_data(unsigned char *buffer, int size);
-
   /// Check the direction of the TCP data.
   static bool check_dir(char* src_ip, uint16_t sport, char* dst_ip, uint16_t dport);
 
