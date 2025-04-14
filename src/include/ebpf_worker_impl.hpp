@@ -93,14 +93,19 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
        CacheEntry>::~EbpfWorker() {
+  if (pb) ring_buffer__free(pb);
+  if (rb) ring_buffer__free(rb);
   // setsockopt(notify_event_fd, SOL_SOCKET, SO_DETACH_BPF, &prog_fd_, sizeof(prog_fd_));
   // close(notify_event_fd);
-  litesys_bpf__destroy(skel);
+  if (skel) litesys_bpf__destroy(skel);
+  if (redis_request_prog_fd) bpf_prog_detach2(redis_request_prog_fd, sock_map_fd, BPF_SK_SKB_STREAM_PARSER);
+  if (redis_response_prog_fd) bpf_prog_detach2(redis_response_prog_fd, sock_map_fd, BPF_SK_SKB_STREAM_VERDICT);
+  if (sockops_monitor_fd) bpf_prog_detach2(sockops_monitor_fd, cg_fd, BPF_CGROUP_SOCK_OPS);
+  if (sock_map_fd) close(sock_map_fd);
+  if (cg_fd) close(cg_fd);
   // event_del(&notify_event_);
   event_base_free(base_);
   free(buffer);
-
-  conns_.visit_all([](const auto &conn) { delete conn; });
 }
 
 template <typename Application, typename Request, typename Response,
@@ -208,6 +213,29 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
     return -1;
   }
 
+  cg_fd = open("/sys/fs/cgroup", O_DIRECTORY | O_RDONLY);
+  sockops_monitor_fd = bpf_program__fd(skel->progs.bpf_sockops_monitor);
+  bpf_prog_attach(sockops_monitor_fd, cg_fd, BPF_CGROUP_SOCK_OPS, 0);
+
+  sock_map_fd = bpf_map__fd(skel->maps.sock_hash);
+
+//   redis_request_prog_fd = bpf_program__fd(skel->progs.handle_redis_request);
+//   if (bpf_prog_attach(redis_request_prog_fd, sock_map_fd, BPF_SK_SKB_STREAM_PARSER, 0) != 0) {
+//       perror("bpf_prog_attach failed for redis_request_prog_fd");
+//       return 1;
+//   }
+  redis_response_prog_fd = bpf_program__fd(skel->progs.handle_redis_response_sk_msg);
+  if (bpf_prog_attach(redis_response_prog_fd, sock_map_fd, BPF_SK_MSG_VERDICT, 0) != 0) {
+      perror("bpf_prog_attach failed for redis_response_prog_fd");
+      return 1;
+  }
+
+  redis_request_prog_fd = bpf_program__fd(skel->progs.handle_redis_request);
+  if (bpf_prog_attach(redis_request_prog_fd, sock_map_fd, BPF_SK_SKB_STREAM_VERDICT, 0) != 0) {
+      perror("bpf_prog_attach failed for redis_request_prog_fd");
+      return 1;
+  }
+
   auto err = litesys_bpf__attach(skel);
   if (err) {
     fprintf(stderr, "Failed to attach BPF skeleton\n");
@@ -217,10 +245,14 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
 
   SetMode(0);
 
-  SetSocketInfo(info.socket_fd, info.pid);
-
   pb = ring_buffer__new(bpf_map__fd(skel->maps.msgs_ringbuf), HandlePacket, this, NULL);
   if (!pb) {
+    printf("Failed to create perf buffer\n");
+    return -1;
+  }
+
+  rb = ring_buffer__new(bpf_map__fd(skel->maps.conn_ringbuf), HandleConnection, this, NULL);
+  if (!rb) {
     printf("Failed to create perf buffer\n");
     return -1;
   }
@@ -242,7 +274,7 @@ void *EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
   auto *self = static_cast<EbpfWorker<Application, Request, Response, 
                           ConnectionInfo, CacheKey, CacheEntry>*>(arg_self);
   while(true){
-    // ring_buffer__poll(self->rb, 100);
+    ring_buffer__poll(self->rb, 100);
     ring_buffer__poll(self->pb, 100000000);
   }
   event_base_loop(self->base_, 0);
@@ -262,15 +294,13 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
     size_t msg_size = strlen(event->msg);
     memcpy(self->buffer, event->msg, msg_size);
     self->buffer[msg_size] = '\0';  // Ensure null termination
-    auto fd = event->fd;
+    auto remote_addr = event->remote_addr;
+    auto remote_port = event->remote_port;
     
     if (is_request) {
-        
         // std::cout << "Received request: " << self->buffer << std::endl;
-
         // Check if the connection exists
-        uint16_t sport = 0;
-        if (self->source_to_conn_.find(std::make_pair(fd, sport)) 
+        if (self->source_to_conn_.find(std::make_pair(remote_addr, remote_port)) 
             == self->source_to_conn_.end()) {
             // Add the connection to the connection map
             auto new_connection =
@@ -282,28 +312,24 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
                                     self->lite_core_,      // lite core instance
                                     false,                 // is_server
                                     self);                 // worker instance
-            self->source_to_conn_[std::make_pair(fd, sport)] = new_connection;
+            self->source_to_conn_[std::make_pair(remote_addr, remote_port)] = new_connection;
             self->lite_core_.live_connections_.insert(new_connection);
             self->conns_.insert(new_connection);
         }
         
         // Update the connection with request data
-        self->source_to_conn_[std::make_pair(fd, sport)]
+        self->source_to_conn_[std::make_pair(remote_addr, remote_port)]
             ->RequestUpdate(self->buffer, event->msg_size, event->seq_num);  // Using 0 for seq_num as it's not in packet_data
     } else {
-        // Convert destination IP to string for response handling
-        // cannot bind packed field to uint16_t &
-        uint16_t dport = 0;
         // std::cout << "Received response: " << self->buffer << std::endl;
-
-        if (self->source_to_conn_.find(std::make_pair(fd, dport)) 
+        if (self->source_to_conn_.find(std::make_pair(remote_addr, remote_port)) 
             == self->source_to_conn_.end()) {
             // Connection not found for response
-            printf("Connection not found for response: %d\n", event->fd);
+            printf("Connection not found for response: %d:%u\n", remote_addr, remote_port);
             return 0;
         }
         // Update the connection with response data
-        self->source_to_conn_[std::make_pair(fd, dport)]
+        self->source_to_conn_[std::make_pair(remote_addr, remote_port)]
             ->ResponseUpdate(self->buffer, event->msg_size, event->seq_num);  // Using 0 for seq_num as it's not in packet_data
     }
     return 0;
@@ -331,7 +357,7 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         std::string dst_str(ip_str);
         if(self->source_to_conn_.find(std::make_pair(self->ipToUint32(dst_str), dport)) == self->source_to_conn_.end()){
           //print dst_str and event->connection.dport
-          printf("Adding connection to the connection map during accept update: %s:%u\n", dst_str.c_str(), event->connection.dport);
+        //   LOG(INFO) << "Adding connection to the connection map during accept update: " << dst_str << ":" << event->connection.dport << std::endl;
           return 0;
           auto new_connection =
             new ConnectionInstance(0,                    // socket fd
@@ -345,6 +371,8 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
         self->source_to_conn_[std::make_pair(self->ipToUint32(dst_str), dport)] = new_connection;
         self->lite_core_.live_connections_.insert(new_connection);
         self->conns_.insert(new_connection);
+        } else {
+          LOG(INFO) << "Connection already exists in the connection map during accept update: " << dst_str << ":" << event->connection.dport << std::endl;
         }
     } else{
         if (!inet_ntop(AF_INET, &event->connection.saddr, ip_str, sizeof(ip_str))) {
@@ -404,25 +432,6 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
   }
   if (bpf_map_lookup_elem(bpf_map__fd(skel->maps.mode), &key, &value) < 0) {
       std::cerr << "Failed to look up map mode value: " << strerror(errno) << std::endl;
-      return -1;
-  }
-  return 0;
-}
-
-template <typename Application, typename Request, typename Response,
-          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
-            CacheEntry>::SetSocketInfo(uint64_t socket_fd, uint64_t pid) {
-  uint32_t key=0;
-  uint64_t value = socket_fd;
-  if (bpf_map_update_elem(bpf_map__fd(skel->maps.socket_info), &key, &value, BPF_ANY) < 0) {
-      std::cerr << "Failed to update mode value in map: " << strerror(errno) << std::endl;
-      return -1;
-  }
-  key = 1;
-  value = pid;
-  if (bpf_map_update_elem(bpf_map__fd(skel->maps.socket_info), &key, &value, BPF_ANY) < 0) {
-      std::cerr << "Failed to update mode value in map: " << strerror(errno) << std::endl;
       return -1;
   }
   return 0;
