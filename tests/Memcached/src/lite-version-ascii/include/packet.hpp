@@ -54,7 +54,9 @@ struct Packet {
   }
 
   void ParseOperation(int start_idx) {
-    if (VecPartialCmp(*buffer, start_idx, "set")) {
+    if (VecPartialCmp(*buffer, start_idx, "set")
+        || VecPartialCmp(*buffer, start_idx, "add")
+        || VecPartialCmp(*buffer, start_idx, "replace")) {
       operation = Operation::kSet;
       expected_line_cnt = 2;
       return;

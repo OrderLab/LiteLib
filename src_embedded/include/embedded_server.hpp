@@ -76,6 +76,7 @@ class EmbeddedServer {
   }
 
   int SendMessageToNextWorker(EmbeddedWorkerMessage msg) {
+    std::lock_guard<std::mutex> lock(workers_mutex_);
     (*current_worker_)->message_queue.push_back(msg);
     (*current_worker_)->Notify();
     current_worker_ = std::next(current_worker_);
@@ -109,6 +110,7 @@ class EmbeddedServer {
 
  private:
   std::vector<std::unique_ptr<EmbeddedWorkerInstance>> workers_;
+  std::mutex workers_mutex_;
   typename decltype(workers_)::iterator current_worker_;
 
   RequestDestructorFn RequestDestructor;

@@ -83,7 +83,9 @@ std::pair<Packet, bool> Memcached::EmergencyServeImpl(std::shared_ptr<Packet> p,
     case Packet::Operation::kSet: {
       CacheEntry entry;
       // Parse command line: "set <key> <flags> <exptime> <bytes>\r\n"
-      size_t pos = 4;                                          // Skip "set "
+      // size_t pos = 4;                                          // Skip "set "
+      size_t pos = std::find(p->buffer->begin(), p->buffer->end(), ' ') -
+                   p->buffer->begin() + 1;
       while (pos < p->len && (*p->buffer)[pos] != ' ') pos++;  // Find key end
       std::vector<uint8_t> key(p->buffer->begin() + 4,
                                p->buffer->begin() + pos);
