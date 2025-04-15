@@ -329,6 +329,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   app_.EmergencyToNormalHook();
 
   ebpf_worker_->SetEmergencyMode(false);
+  emergency_mode_ = false;
 
   if (!TransferConnectionsToServer(full_fd)) {
     LOG(ERROR) << "Failed to transfer connections to server" << std::endl;
@@ -345,6 +346,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                             end_time - start_time)
                             .count();
   LOG(INFO) << "Replay took " << duration << " ms\n";
+
+  sleep(10); // TODO: it's better to wait for a signal from the full version
 
   while (!dead_connection_log_heads_.empty()) {
     auto head = dead_connection_log_heads_.pop_front();
@@ -377,7 +380,10 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     auto tcp_id = network::GetTCPID(c->client_fd_);
     ebpf_worker_
         ->source_to_conn_[std::make_pair(tcp_id.dst_ip, tcp_id.dst_port)] = c;
+    LOG(INFO) << "Transfer " << c << " " << tcp_id.dst_ip << ":" << tcp_id.dst_port;
   });
+
+  std::queue<std::unique_ptr<ConnectionInstance>> conns;
 
   // listener connections
   lens[1] = lens[0];
@@ -387,6 +393,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     lens[1]++;
     conn->DetachFromWorker();
     server_instance_ptr_->conns_.pop();
+    conns.push(std::move(conn));
   }
 
   if (!network::SendSockets(full_fd, fds, lens)) {
@@ -394,6 +401,8 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     close(full_fd);
     return false;
   }
+
+  while (!conns.empty()) conns.pop();
 
   return true;
 }

@@ -62,7 +62,7 @@ index c0a8fd7..c44b790 100644
  
      int opt_host=0;
 diff --git a/src/rl_connection.cpp b/src/rl_connection.cpp
-index 184f2a8..58bce5a 100644
+index 9f0baa2..af0e364 100644
 --- a/src/rl_connection.cpp
 +++ b/src/rl_connection.cpp
 @@ -20,6 +20,8 @@
@@ -82,7 +82,15 @@ index 184f2a8..58bce5a 100644
  
      next_idx = read_buffer;
      ev_init(&read_watcher, RLConnection::on_readable);
-@@ -57,6 +60,7 @@ RLConnection::RLConnection(RLServer *s, int fd):
+@@ -52,11 +55,15 @@ RLConnection::RLConnection(RLServer *s, int fd):
+     //ip = inet_ntoa(sockaddr.sin_addr);
+ 
+     loop = ev_loop_new(0);
++    ev_async_init(&async_watcher, RLConnection::async_cb);
++    async_watcher.data = this;
++    ev_async_start(loop, &async_watcher);
+ }
+ 
  RLConnection::~RLConnection()
  {
      if(open){
@@ -90,8 +98,43 @@ index 184f2a8..58bce5a 100644
          ev_io_stop(loop, &read_watcher);
          if(writer_started){
              ev_io_stop(loop, &write_watcher);
+diff --git a/src/rl_connection.h b/src/rl_connection.h
+index fbc2beb..8cec535 100644
+--- a/src/rl_connection.h
++++ b/src/rl_connection.h
+@@ -16,7 +16,8 @@
+ #include <leveldb/c.h>
+ 
+ #include "rl.h"
+-
++#include <fcntl.h>
++#include <future>
+ class RLServer;
+ class RLRequest;
+ 
+@@ -68,6 +69,20 @@ public:
+     void write_bulk(const char *out, size_t out_size);
+     void write_bulk(const std::string &out);
+     void write_mbulk_header(int n);
++    ev_async async_watcher;
++    std::promise<void> async_done_promise;
++    int install;
++    static void async_cb(EV_P_ ev_async *w, int revents) {
++        RLConnection *c = static_cast<RLConnection *>(w->data);
++        if (c->install) {
++            ev_io_set(&c->write_watcher, c->fd, EV_WRITE);
++            ev_io_set(&c->read_watcher, c->fd, EV_READ);
++            ev_io_start(c->loop, &c->read_watcher);
++        } else {
++            ev_io_stop(c->loop, &c->read_watcher);
++        }
++        c->async_done_promise.set_value();
++    }
+ };
+ 
+ #endif
 diff --git a/src/rl_server.cpp b/src/rl_server.cpp
-index 663b036..d526618 100644
+index 663b036..1cea617 100644
 --- a/src/rl_server.cpp
 +++ b/src/rl_server.cpp
 @@ -25,6 +25,8 @@
@@ -103,102 +146,56 @@ index 663b036..d526618 100644
  #define EVBACKEND EVFLAG_AUTO
  
  #ifdef __linux
-@@ -120,50 +122,56 @@ void RLServer::start()
+@@ -91,6 +93,9 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+     }
+ 
+     loop = ev_loop_new(EVBACKEND);
++    ev_async_init(&async_watcher, RLServer::async_cb);
++    async_watcher.data = this;
++    ev_async_start(loop, &async_watcher);
+     tcp_connection_watcher.data = this;
+     unix_connection_watcher.data = this;
+ }
+@@ -120,6 +125,7 @@ void RLServer::start()
      struct sockaddr_in addr;
      int flags = 1;
  
--    if((tcp_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
--        perror("socket()");
--        exit(1);
--    }
 +    if (LiteIsNormalMode()) {
-+        if((tcp_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-+            perror("socket()");
-+            exit(1);
-+        }
+     if((tcp_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+         perror("socket()");
+         exit(1);
+@@ -131,13 +137,13 @@ void RLServer::start()
+     setsockopt(tcp_fd, SOL_SOCKET, SO_LINGER, (void *)&ling, sizeof(ling));
  
--    flags = 1;
--    setsockopt(tcp_fd, SOL_SOCKET, SO_REUSEADDR, (void *)&flags, sizeof(flags));
--    setsockopt(tcp_fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags, sizeof(flags));
--    setsockopt(tcp_fd, SOL_SOCKET, SO_LINGER, (void *)&ling, sizeof(ling));
--
--    /* XXX: Sending single byte chunks in a response body? Perhaps there is a
+     /* XXX: Sending single byte chunks in a response body? Perhaps there is a
 -     * need to enable the Nagel algorithm dynamically. For now disabling.
 -     */
--    setsockopt(tcp_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
--
--    /* the memset call clears nonstandard fields in some impementations that
++    * need to enable the Nagel algorithm dynamically. For now disabling.
++    */
+     setsockopt(tcp_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
+ 
+     /* the memset call clears nonstandard fields in some impementations that
 -     * otherwise mess things up.
 -     */
--    memset(&addr, 0, sizeof(addr));
--
--    addr.sin_family = AF_INET;
--    addr.sin_port = htons(port);
--    if(!hostaddr.empty()){
--        addr.sin_addr.s_addr = inet_addr(hostaddr.c_str());
--        if(addr.sin_addr.s_addr==INADDR_NONE){
--            printf("Bad address(%s) to listen\n",hostaddr.c_str());
-+        flags = 1;
-+        setsockopt(tcp_fd, SOL_SOCKET, SO_REUSEADDR, (void *)&flags, sizeof(flags));
-+        setsockopt(tcp_fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags, sizeof(flags));
-+        setsockopt(tcp_fd, SOL_SOCKET, SO_LINGER, (void *)&ling, sizeof(ling));
-+
-+        /* XXX: Sending single byte chunks in a response body? Perhaps there is a
-+        * need to enable the Nagel algorithm dynamically. For now disabling.
-+        */
-+        setsockopt(tcp_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
-+
-+        /* the memset call clears nonstandard fields in some impementations that
-+        * otherwise mess things up.
-+        */
-+        memset(&addr, 0, sizeof(addr));
-+
-+        addr.sin_family = AF_INET;
-+        addr.sin_port = htons(port);
-+        if(!hostaddr.empty()){
-+            addr.sin_addr.s_addr = inet_addr(hostaddr.c_str());
-+            if(addr.sin_addr.s_addr==INADDR_NONE){
-+                printf("Bad address(%s) to listen\n",hostaddr.c_str());
-+                exit(1);
-+            }
-+        }else{
-+            addr.sin_addr.s_addr = htonl(INADDR_ANY);
-+        }
-+
-+        if(bind(tcp_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-+            perror("bind()");
-+            if(tcp_fd > 0) close(tcp_fd);
-             exit(1);
-         }
--    }else{
--        addr.sin_addr.s_addr = htonl(INADDR_ANY);
--    }
++    * otherwise mess things up.
++    */
+     memset(&addr, 0, sizeof(addr));
  
--    if(bind(tcp_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
--        perror("bind()");
--        if(tcp_fd > 0) close(tcp_fd);
--        exit(1);
--    }
-+        if(listen(tcp_fd, MAX_CONNECTIONS) < 0) {
-+            perror("listen()");
-+            exit(1);
-+        }
+     addr.sin_family = AF_INET;
+@@ -165,6 +171,12 @@ void RLServer::start()
  
--    if(listen(tcp_fd, MAX_CONNECTIONS) < 0) {
--        perror("listen()");
--        exit(1);
--    }
-+        set_nonblock(tcp_fd);
+     set_nonblock(tcp_fd);
  
--    set_nonblock(tcp_fd);
-+        LiteRegisterListener(tcp_fd, this, 0);
++    LiteRegisterListener(tcp_fd, this, 0);
 +    } else {
 +        tcp_fd = LiteGetDummyListenerFD();
++        LiteRegisterListener(tcp_fd, this, 0);
 +    }
- 
++
      ev_init(&tcp_connection_watcher, RLServer::on_tcp_connection);
  
-@@ -208,6 +216,8 @@ void RLServer::start()
+     ev_io_set(&tcp_connection_watcher, tcp_fd, EV_READ);
+@@ -208,6 +220,8 @@ void RLServer::start()
      std::cout << "boot time " << std::chrono::duration_cast<std::chrono::nanoseconds>(
                   now.time_since_epoch()).count() << std::endl;
  
@@ -206,6 +203,40 @@ index 663b036..d526618 100644
 +
      ev_run(loop, 0);
  }
+ 
+diff --git a/src/rl_server.h b/src/rl_server.h
+index b4af24a..c0e8eec 100644
+--- a/src/rl_server.h
++++ b/src/rl_server.h
+@@ -15,7 +15,8 @@
+ #include <ev.h>
+ #include <leveldb/db.h>
+ #include <leveldb/options.h>
+-
++#include <fcntl.h>
++#include <future>
+ class RLServer{
+ 
+ public:
+@@ -38,6 +39,19 @@ public:
+ 
+     static void on_tcp_connection(struct ev_loop *loop, ev_io *watcher, int revents);
+     static void on_unix_connection(struct ev_loop *loop, ev_io *watcher, int revents);
++    ev_async async_watcher;
++    std::promise<void> async_done_promise;
++    int install;
++    static void async_cb(EV_P_ ev_async *w, int revents) {
++        RLServer *s = static_cast<RLServer *>(w->data);
++        if (s->install) {
++            ev_io_set(&s->tcp_connection_watcher, s->tcp_fd, EV_READ);
++            ev_io_start(s->loop, &s->tcp_connection_watcher);
++        } else {
++            ev_io_stop(s->loop, &s->tcp_connection_watcher);
++        }
++        s->async_done_promise.set_value();
++    }
+ };
+ 
  
 diff --git a/src/rl_util.cpp b/src/rl_util.cpp
 index 71794e1..02c7b13 100644
@@ -270,14 +301,14 @@ index 0000000..efd7958
 +) | grep -v "^Unstaged changes after reset:" | grep -v "^M	" >> ../scripts/leveldb/redis-leveldb.ebpf.patch
 diff --git a/src/litesys.cpp b/src/litesys.cpp
 new file mode 100644
-index 0000000..377d257
+index 0000000..68310e7
 --- /dev/null
 +++ b/src/litesys.cpp
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,26 @@
 +#include "litesys.hpp"
 +#include "rl_connection.h"
 +#include "rl_server.h"
-+
++#include <future>
 +void LiteFlushWriteBuffer(void *conn) {
 +  RLConnection *c = static_cast<RLConnection *>(conn);
 +  ev_clear_pending(c->loop, &c->write_watcher);
@@ -285,23 +316,20 @@ index 0000000..377d257
 +
 +void LiteReinstallClientEventHandler(void *client, int install) {
 +  RLConnection *c = static_cast<RLConnection *>(client);
-+
-+  ev_io_stop(c->loop, &c->read_watcher);
-+  ev_io_stop(c->loop, &c->write_watcher);
-+
-+  ev_io_set(&c->write_watcher, c->fd, EV_WRITE);
-+  ev_io_set(&c->read_watcher, c->fd, EV_READ);
-+  ev_io_start(c->loop, &c->read_watcher);
-+  ev_run(c->loop, 0);
++  c->async_done_promise = std::promise<void>();
++  std::future<void> fut = c->async_done_promise.get_future();
++  c->install = install;
++  ev_async_send(c->loop, &c->async_watcher);
++  fut.wait();
 +}
 +
 +void LiteReinstallListenerEventHandler(void *listener, int install) {
 +  RLServer *s = static_cast<RLServer *>(listener);
-+
-+  ev_io_stop(s->loop, &s->tcp_connection_watcher);
-+
-+  ev_io_set(&s->tcp_connection_watcher, s->tcp_fd, EV_READ);
-+  ev_io_start(s->loop, &s->tcp_connection_watcher);
++  s->async_done_promise = std::promise<void>();
++  std::future<void> fut = s->async_done_promise.get_future();
++  s->install = install;
++  ev_async_send(s->loop, &s->async_watcher);
++  fut.wait();
 +}
 diff --git a/src/litesys.hpp b/src/litesys.hpp
 new file mode 100644

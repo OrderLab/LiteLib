@@ -241,8 +241,8 @@ std::pair<std::vector<int>, std::array<int, 2>> ReceiveSockets(
   msg.msg_controllen = cmsgBuf.size();
 
   ssize_t received = recvmsg(fd, &msg, 0);
-  if (received < 0) {
-    LOG(ERROR) << "Error receiving socket message";
+  if (received <= 0) {
+    PLOG(ERROR) << "Error receiving socket message";
     return {std::vector<int>(), lens};
   }
 
@@ -288,7 +288,7 @@ bool SendSockets(const evutil_socket_t fd, std::vector<int>& fds,
   memcpy(CMSG_DATA(cmsg), fds.data(), totalBytes);
 
   if (sendmsg(fd, &msg, 0) < 0) {
-    LOG(ERROR) << "Failed to transfer sockets to the full process";
+    PLOG(ERROR) << "Failed to transfer sockets to the full process";
     return false;
   }
 
