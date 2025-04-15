@@ -99,20 +99,19 @@ index 9f0baa2..af0e364 100644
          if(writer_started){
              ev_io_stop(loop, &write_watcher);
 diff --git a/src/rl_connection.h b/src/rl_connection.h
-index fbc2beb..8cec535 100644
+index fbc2beb..96d7662 100644
 --- a/src/rl_connection.h
 +++ b/src/rl_connection.h
-@@ -16,7 +16,8 @@
+@@ -16,7 +16,7 @@
  #include <leveldb/c.h>
  
  #include "rl.h"
 -
-+#include <fcntl.h>
 +#include <future>
  class RLServer;
  class RLRequest;
  
-@@ -68,6 +69,20 @@ public:
+@@ -68,6 +68,20 @@ public:
      void write_bulk(const char *out, size_t out_size);
      void write_bulk(const std::string &out);
      void write_mbulk_header(int n);
@@ -205,20 +204,19 @@ index 663b036..1cea617 100644
  }
  
 diff --git a/src/rl_server.h b/src/rl_server.h
-index b4af24a..c0e8eec 100644
+index b4af24a..02df46a 100644
 --- a/src/rl_server.h
 +++ b/src/rl_server.h
-@@ -15,7 +15,8 @@
+@@ -15,7 +15,7 @@
  #include <ev.h>
  #include <leveldb/db.h>
  #include <leveldb/options.h>
 -
-+#include <fcntl.h>
 +#include <future>
  class RLServer{
  
  public:
-@@ -38,6 +39,19 @@ public:
+@@ -38,6 +38,19 @@ public:
  
      static void on_tcp_connection(struct ev_loop *loop, ev_io *watcher, int revents);
      static void on_unix_connection(struct ev_loop *loop, ev_io *watcher, int revents);

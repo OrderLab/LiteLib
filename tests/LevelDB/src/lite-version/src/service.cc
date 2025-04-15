@@ -137,7 +137,7 @@ void LevelDB::NormalUpdateImpl(const std::shared_ptr<Packet> &req, Cache *cache,
     }
     entry.value = value->value;
     cache->Set(*(key->value), entry, in_transaction);
-    std::cout<<*(key->value)<<" "<<entry.value->at(0)<<std::endl;
+    // std::cout<<*(key->value)<<" "<<entry.value->at(0)<<std::endl;
   } else if (opcode != "get" &&
              opcode != "ping") {  // TODO: update states using get
     LOG(ERROR) << "Unknow opcode: " << opcode << std::endl;

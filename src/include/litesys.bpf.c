@@ -74,7 +74,8 @@ int bpf_call_inet_csk_accept(struct pt_regs *ctx) {
   __u32 *value = bpf_map_lookup_elem(&emergency_mode, &key);
   __u32 emergency_mode_value = value ? (*value) : 0;
   if (emergency_mode_value == 1) {
-    bpf_printk("[%d] skip bpf_call_inet_csk_accept: emergency mode\n", __LINE__);
+    bpf_printk("[%d] skip bpf_call_inet_csk_accept: emergency mode\n",
+               __LINE__);
     return 0;
   }
 
@@ -93,8 +94,9 @@ int bpf_call_inet_csk_accept(struct pt_regs *ctx) {
   event->socket.dport = dport;
   event->socket.state = sc.skc_state;
 
-  bpf_printk("[%d] bpf_call_inet_csk_accept: remote_addr: %pI4, remote_port: %d\n",
-             __LINE__, &daddr, dport);
+  bpf_printk(
+      "[%d] bpf_call_inet_csk_accept: remote_addr: %pI4, remote_port: %d\n",
+      __LINE__, &daddr, dport);
   bpf_ringbuf_submit(event, 0);
   return 0;
 }
@@ -224,12 +226,14 @@ int bpf_sockops_monitor(struct bpf_sock_ops *skops) {
       err = bpf_sock_hash_update(skops, &sock_hash, &key, BPF_ANY);
       if (err != 0) {
         bpf_printk(
-            "[%d] accept sockops: bpf_sock_hash_update failed (err: %d), remote_addr: "
+            "[%d] accept sockops: bpf_sock_hash_update failed (err: %d), "
+            "remote_addr: "
             "%pI4, remote_port: %d\n",
             __LINE__, err, &key.remote_ip, key.remote_port);
       } else {
         bpf_printk(
-            "[%d] accept sockops: bpf_sock_hash_update success: remote_addr: %pI4, "
+            "[%d] accept sockops: bpf_sock_hash_update success: remote_addr: "
+            "%pI4, "
             "remote_port: %d\n",
             __LINE__, &key.remote_ip, key.remote_port);
       }
@@ -269,18 +273,19 @@ int handle_redis_request(struct __sk_buff *skb) {
   __u32 *value = bpf_map_lookup_elem(&emergency_mode, &key);
   __u32 emergency_mode_value = value ? (*value) : 0;
   if (emergency_mode_value == 1) {
-    bpf_printk("[%d] skip handle_redis_request: emergency mode\n", __LINE__);
+    // bpf_printk("[%d] skip handle_redis_request: emergency mode\n", __LINE__);
     return SK_PASS;
   }
 
-    bpf_printk("[%d] handle_redis_request: skb->len: %d\n", __LINE__,
-    skb->len);
+  // bpf_printk("[%d] handle_redis_request: skb->len: %d\n", __LINE__,
+  // skb->len);
   __u32 len = skb->len;
   if (len == 0 || len > MAX_MSG_SIZE) {
     if (len == 0) {
       bpf_printk("[%d] handle_redis_request: len is 0\n", __LINE__);
     } else {
-      bpf_printk("[%d] handle_redis_request too long: len: %d\n", __LINE__, len);
+      bpf_printk("[%d] handle_redis_request too long: len: %d\n", __LINE__,
+                 len);
     }
     return SK_PASS;
   }
@@ -328,7 +333,7 @@ int handle_redis_request(struct __sk_buff *skb) {
   }
 
   bpf_ringbuf_submit(event, 0);
-  bpf_printk("[%d] handle_redis_request: %s\n", __LINE__, event->msg);
+  // bpf_printk("[%d] handle_redis_request: %s\n", __LINE__, event->msg);
   return SK_PASS;
 }
 
@@ -338,12 +343,13 @@ int handle_redis_response_sk_msg(struct sk_msg_md *msg) {
   __u32 *value = bpf_map_lookup_elem(&emergency_mode, &key);
   __u32 emergency_mode_value = value ? (*value) : 0;
   if (emergency_mode_value == 1) {
-    bpf_printk("[%d] skip handle_redis_response_sk_msg: emergency mode\n", __LINE__);
+    // bpf_printk("[%d] skip handle_redis_response_sk_msg: emergency mode\n",
+    // __LINE__);
     return SK_PASS;
   }
 
-    bpf_printk("[%d] handle_redis_response_sk_msg: msg->size: %d\n", __LINE__,
-               msg->size);
+  // bpf_printk("[%d] handle_redis_response_sk_msg: msg->size: %d\n", __LINE__,
+  //            msg->size);
   u64 err = bpf_msg_pull_data(msg, 0, MAX_MSG_SIZE, 0);
   if (err < 0) {
     bpf_printk(
@@ -358,8 +364,8 @@ int handle_redis_response_sk_msg(struct sk_msg_md *msg) {
     if (len == 0) {
       bpf_printk("[%d] handle_redis_response_sk_msg: len is 0\n", __LINE__);
     } else {
-      bpf_printk("[%d] handle_redis_response_sk_msg too long: len: %d\n", __LINE__,
-               len);
+      bpf_printk("[%d] handle_redis_response_sk_msg too long: len: %d\n",
+                 __LINE__, len);
     }
     return SK_PASS;
   }
@@ -405,6 +411,7 @@ int handle_redis_response_sk_msg(struct sk_msg_md *msg) {
   }
 
   bpf_ringbuf_submit(event, 0);
-  bpf_printk("[%d] handle_redis_response_sk_msg: %s\n", __LINE__, event->msg);
+  // bpf_printk("[%d] handle_redis_response_sk_msg: %s\n", __LINE__,
+  // event->msg);
   return SK_PASS;
 }
