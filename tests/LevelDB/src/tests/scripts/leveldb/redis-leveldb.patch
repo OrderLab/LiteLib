@@ -88,7 +88,7 @@ index 72d9685..c0a8fd7 100644
      }
  
 diff --git a/src/rl_connection.cpp b/src/rl_connection.cpp
-index 5e49310..184f2a8 100644
+index 5e49310..9f0baa2 100644
 --- a/src/rl_connection.cpp
 +++ b/src/rl_connection.cpp
 @@ -28,7 +28,7 @@
@@ -100,7 +100,7 @@ index 5e49310..184f2a8 100644
  
  RLConnection::RLConnection(RLServer *s, int fd):
      db_index(0), fd(fd), server(s), buffered_data(0),writer_started(false)
-@@ -50,26 +50,45 @@ RLConnection::RLConnection(RLServer *s, int fd):
+@@ -50,26 +50,46 @@ RLConnection::RLConnection(RLServer *s, int fd):
      server->clients_num++;
      //memcpy(sockaddr, &addr, addr_len);
      //ip = inet_ntoa(sockaddr.sin_addr);
@@ -127,6 +127,7 @@ index 5e49310..184f2a8 100644
 +        delete transaction;
 +        transaction=NULL;
 +    }
++    ev_break(loop, EVBREAK_ALL);
 +    ev_loop_destroy(loop);
      server->clients_num--;
  }
@@ -151,7 +152,7 @@ index 5e49310..184f2a8 100644
  }
  
  
-@@ -222,14 +241,14 @@ int RLConnection::do_write(){
+@@ -222,14 +242,14 @@ int RLConnection::do_write(){
          }else{
              perror("Write Error Msg");
              writer_started=false;
