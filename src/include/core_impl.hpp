@@ -343,6 +343,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     lens[1]++;
     conn->Detach();
     server_instance_ptr_->conns_.pop();
+    // TODO: will be closed before sending, close it later as in eBPF
   }
 
   if (!network::SendSockets(full_fd, fds, lens)) {
