@@ -23,10 +23,12 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                                    const size_t replay_expected_rps,
                                    const double flow_control_ratio,
                                    const size_t n_replay_threads,
-                                   const char pipe_path[], bool crash_recover)
-    : lite_core_(app, max_item_count, backend_addr, backend_port, pipe_path,
-                 barrier_, workers_, sliding_window_size, replay_expected_rps,
-                 flow_control_ratio, n_replay_threads, crash_recover),
+                                   const std::string socket_path,
+                                   bool crash_recover)
+    : lite_core_(app, max_item_count, backend_addr, backend_port, socket_path,
+                 barrier_, this, ebpf_worker_, workers_, sliding_window_size,
+                 replay_expected_rps, flow_control_ratio, n_replay_threads,
+                 crash_recover),
       barrier_(nthreads + 1,
                []() { LOG(INFO) << "Barrier completed" << std::endl; }) {
   struct event_config* ev_config;
@@ -35,17 +37,16 @@ LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
   main_base_ = event_base_new_with_config(ev_config);
   event_config_free(ev_config);
 
-  if(lite_core_.is_ebpf_){
+  if (lite_core_.is_ebpf_) {
     ebpf_worker_ = std::make_unique<EbpfWorkerInstance>(lite_core_, barrier_);
     sfd = ebpf_worker_->Run();
-  } 
-  else{
-    for (int i = 0; i < nthreads; i++) {
-      workers_.emplace_back(new WorkerInstance(lite_core_, barrier_));
-      (**workers_.rbegin()).Run();
-    }
-    next_worker_ = workers_.begin();
   }
+
+  for (int i = 0; i < nthreads; i++) {
+    workers_.emplace_back(new WorkerInstance(lite_core_, barrier_));
+    (**workers_.rbegin()).Run();
+  }
+  next_worker_ = workers_.begin();
 }
 
 template <typename Application, typename Request, typename Response,
@@ -54,7 +55,7 @@ template <typename Application, typename Request, typename Response,
 bool LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Run(const char* port) {
   signal(SIGPIPE, SIG_IGN);
-  while(lite_core_.is_ebpf_){
+  while (lite_core_.is_ebpf_) {
     sleep(10);
   }
   struct linger ling = {0, 0};
@@ -154,6 +155,18 @@ void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                        sizeof(uint64_t)) != sizeof(uint64_t))
       << "failed writing to worker eventfd";
 
+  next_worker_++;
+  if (next_worker_ == workers_.end()) next_worker_ = workers_.begin();
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
+void LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
+                CacheEntry>::DispatchNewConnection(ConnectionInstance* conn) {
+  conn->AttachToWorker(conn->client_fd_, EV_READ | EV_PERSIST,
+                       (*next_worker_)->base_,
+                       ConnectionInstance::ClientHandler, next_worker_->get());
   next_worker_++;
   if (next_worker_ == workers_.end()) next_worker_ = workers_.begin();
 }

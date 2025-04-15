@@ -4,7 +4,9 @@
 #include <map>
 
 #include "core.hpp"
+#include "ebpf_worker.hpp"
 #include "network_utils.hpp"
+#include "server.hpp"
 #include "worker.hpp"
 
 namespace lite {
@@ -17,20 +19,26 @@ template <typename Application, typename Request, typename Response,
 LiteCore<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>::
     LiteCore(Application &app, const size_t &max_item_count,
              std::string &backend_addr, std::string &backend_port,
-             const char pipe_path[],
+             const std::string socket_path,
              std::barrier<std::function<void()>> &barrier,
+             LiteServerInstance *server_instance_ptr,
+             std::unique_ptr<EbpfWorkerInstance> &ebpf_worker,
              std::vector<std::unique_ptr<WorkerInstance>> &workers,
              const std::chrono::milliseconds sliding_window_size,
              const size_t replay_expected_rps, const double flow_control_ratio,
              const size_t n_replay_threads, bool crash_recover)
-    : Daemon([&] { return Replay(); }, [&] { TakeOver(); }, backend_port, 
-             pipe_path),
+    : Daemon(std::bind(&LiteCore::Replay, this, std::placeholders::_1),
+             std::bind(&LiteCore::TakeOver, this, std::placeholders::_1,
+                       std::placeholders::_2),
+             backend_port, socket_path),
       app_(app),
       crash_recover_(crash_recover),
       cache_inner_(max_item_count, emergency_mode_),
       logger_inner_(sliding_window_size),
       backend_addr_(backend_addr),
       barrier_(barrier),
+      server_instance_ptr_(server_instance_ptr),
+      ebpf_worker_(ebpf_worker),
       workers_(workers),
       replay_rate_(sliding_window_size),
       replay_expected_rps_(replay_expected_rps),
@@ -56,9 +64,9 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                   const evutil_socket_t backend_fd, CacheInstance *cache,
                   LoggerInstance *logger, const bool forwarded) {
   if (!emergency_mode_ && backend_fd <= 0 && !is_ebpf_) {
-    LOG(WARNING) << "Core: Fall back and entering emergency mode "
-                 << GetUNIXTimeStamp() << std::endl;
-    TakeOver();
+    LOG(FATAL) << "Core: Fall back and entering emergency mode "
+               << GetUNIXTimeStamp() << std::endl;
+    // TakeOver();
   }
 
   if (emergency_mode_) {
@@ -133,42 +141,48 @@ template <typename Application, typename Request, typename Response,
                          CacheKey, CacheEntry> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-              CacheEntry>::TakeOver() {
+              CacheEntry>::TakeOver(const std::vector<int> &fds,
+                                    int connection_cnt) {
   emergency_mode_ = true;
-  LOG(INFO) << "Disconnect all from backend" << std::endl;
-  LOG(INFO) << "Emergency barrier initialized" << std::endl;
-  for (auto &worker : workers_) {
-    worker->notify_queue_.push_back(
-        {.type = WorkerMessage::Type::kBarrier, .fd = 0});
-    uint64_t buf = 1;
-    PLOG_IF(ERROR, write(worker->notify_event_fd, &buf, sizeof(uint64_t)) !=
-                       sizeof(uint64_t))
-        << "failed writing to worker eventfd";
-  }
-  barrier_.arrive_and_wait();
-
-  std::set<ConnectionInstance *> connections_to_be_closed;
-  LOG(INFO) << "live connections: " << live_connections_.size() << std::endl;
-  live_connections_.visit_all([&](ConnectionInstance *const &c) {
-    if (c->backend_fd_ > 0) {
-      close(c->backend_fd_);
-      c->backend_fd_ = -1;
-    }
-    if (!c->pending_requests_.empty()) {
-      // TODO: serve them using EmergencyServe
-      // Remaining issue: MULTI -> (switch to emergency) ->
-      // EXEC, service.cc will inject an illegal DISCARD
-      connections_to_be_closed.insert(c);
-    }
-  });
-  for (auto &conn : connections_to_be_closed) {
-    live_connections_.erase(conn);
-    delete conn;
-  }
 
   app_.NormalToEmergencyHook();
 
-  barrier_.arrive_and_wait();  // unblock worker threads
+  // TODO: Remaining issue: MULTI -> (switch to emergency) ->
+  // EXEC, service.cc will inject an illegal DISCARD
+
+  ebpf_worker_->SetEmergencyMode(true);
+
+  // transfer client connections to workers
+  for (int i = 0; i < connection_cnt; i++) {
+    auto tcp_id = network::GetTCPID(fds[i]);
+    auto conn =
+        ebpf_worker_
+            ->source_to_conn_[std::make_pair(tcp_id.dst_ip, tcp_id.dst_port)];
+    if (!conn) {
+      LOG(ERROR) << "Failed to find connection for client fd " << fds[i]
+                 << " dst_ip: " << tcp_id.dst_ip
+                 << " dst_port: " << tcp_id.dst_port << std::endl;
+      continue;
+    }
+    conn->client_fd_ = fds[i];
+    server_instance_ptr_->DispatchNewConnection(conn);
+    ebpf_worker_->source_to_conn_.erase(
+        std::make_pair(tcp_id.dst_ip, tcp_id.dst_port));
+    ebpf_worker_->conns_.erase(conn);
+  }
+
+  // transfer listener connections to server
+  for (int i = connection_cnt; i < fds.size(); i++) {
+    std::unique_ptr<ConnectionInstance> new_connection;
+    LOG_IF(FATAL,
+           !(new_connection = std::make_unique<ConnectionInstance>(
+                 fds[i], EV_READ | EV_PERSIST, server_instance_ptr_->main_base_,
+                 LiteServerInstance::EventHandler, server_instance_ptr_, *this,
+                 false, nullptr)))
+        << "failed to create listening connection\n";
+    server_instance_ptr_->conns_.push(std::move(new_connection));
+  }
+
   if (!crash_recover_) {
     // add all cache nodes to the log
     crash_conn_head_ = new LogEntryInstance(
@@ -187,25 +201,25 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
 }
 
-#define SendReplayReq(conn, req, buffer)                               \
-  do {                                                                 \
-    assert((conn)->pending_requests_.empty());                         \
-    (conn)->pending_requests_.push_back(std::make_pair((req), false)); \
-    if (!network::Write((conn)->backend_fd_, (buffer))) {              \
-      LOG(ERROR) << "line#" << __LINE__                                \
-                 << " Replay failed to write to backend\n";            \
-      return false;                                                    \
-    }                                                                  \
+#define SendReplayReq(conn, req, buffer)                                     \
+  do {                                                                       \
+    /* assert((conn)->pending_requests_.empty()); */                         \
+    /* (conn)->pending_requests_.push_back(std::make_pair((req), false)); */ \
+    if (!network::Write((conn)->backend_fd_, (buffer))) {                    \
+      LOG(ERROR) << "line#" << __LINE__                                      \
+                 << " Replay failed to write to backend\n";                  \
+      return false;                                                          \
+    }                                                                        \
   } while (0)
 
-#define SendReplayReqWithoutAssertion(conn, req, buffer)               \
-  do {                                                                 \
-    (conn)->pending_requests_.push_back(std::make_pair((req), false)); \
-    if (!network::Write((conn)->backend_fd_, (buffer))) {              \
-      LOG(ERROR) << "line#" << __LINE__                                \
-                 << " Replay failed to write to backend\n";            \
-      return false;                                                    \
-    }                                                                  \
+#define SendReplayReqWithoutAssertion(conn, req, buffer)                     \
+  do {                                                                       \
+    /* (conn)->pending_requests_.push_back(std::make_pair((req), false)); */ \
+    if (!network::Write((conn)->backend_fd_, (buffer))) {                    \
+      LOG(ERROR) << "line#" << __LINE__                                      \
+                 << " Replay failed to write to backend\n";                  \
+      return false;                                                          \
+    }                                                                        \
   } while (0)
 
 template <typename Application, typename Request, typename Response,
@@ -214,27 +228,30 @@ template <typename Application, typename Request, typename Response,
                          CacheKey, CacheEntry> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
-              CacheEntry>::Replay() {
+              CacheEntry>::Replay(const int full_fd) {
   const auto start_time = std::chrono::high_resolution_clock::now();
 
   replay_rate_.Reset(replay_expected_rps_);  // Reset the sliding window
   is_replaying_ = true;
   LOG(INFO) << "replay start, live connections: " << live_connections_.size()
             << std::endl;
+  int replay_id = 0;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
     if (!c->ConnectBackend()) {
       LOG(ERROR) << "Failed to connect to backend" << std::endl;
     } else {
       LOG(INFO) << "Connect backend " << c->backend_fd_ << " to "
                 << c->client_fd_ << std::endl;
+      c->replay_conn_id_ = replay_id++;
     }
   });
+  // TODO: handle new client connections/client connection closeing after this
 
+  // replay
   std::map<WorkerInstance *, ConnectionInstance *>
       replay_worker_sync_state_conns;
 
   for (auto &replay_worker_ : replay_workers_) {
-    replay_worker_->RemoveAllConnections();
     replay_worker_sync_state_conns[replay_worker_.get()] =
         replay_worker_->NewReplayConnection();
   }
@@ -245,14 +262,14 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   for (int i = 0; i < 2;
        i++) {  // Double flush to process in-flight connections
     size_t log_cnt = 0, dirty_cnt = 0;
-    while (LoggerInstance::Pop(logger_inner_, entry)) {
+    while (logger_inner_.Pop(entry)) {
       if (entry->state) {
         dirty_cnt++;
         const auto req = entry->state->value.ToRequest(entry->state->key);
         const auto buffer = req->Serialize();
         auto &replay_conn =
             replay_worker_sync_state_conns[next_replay_worker_->get()];
-        replay_conn->pending_requests_.wait_for_empty();
+        // replay_conn->pending_requests_.wait_for_empty();
         SendReplayReq(replay_conn, req, buffer);
         next_replay_worker_++;
         if (next_replay_worker_ == replay_workers_.end())
@@ -268,13 +285,13 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
           if (next_replay_worker_ == replay_workers_.end())
             next_replay_worker_ = replay_workers_.begin();
         } else {
-          if (!i) {
-            (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
-          } else {
-            // TODO: how to disable the reading from client event, instead of
-            // blocking the worker. So that we can wait for the server's
-            // responses
-          }
+          // if (!i) {
+          //   (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
+          // } else {
+          //   // TODO: how to disable the reading from client event, instead of
+          //   // blocking the worker. So that we can wait for the server's
+          //   // responses
+          // }
           SendReplayReqWithoutAssertion(*entry->backend_conn_ptr, entry->req,
                                         buffer);
         }
@@ -300,19 +317,26 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   }
 
   LOG(INFO) << "Waiting for all replay connections to finish\n";
-  for (auto &replay_worker : replay_workers_) {
-    replay_worker->conns_.visit_all([&](ConnectionInstance *const &c) {
-      c->pending_requests_.wait_for_empty();
-    });
-  }
+  // for (auto &replay_worker : replay_workers_) {
+  //   replay_worker->conns_.visit_all([&](ConnectionInstance *const &c) {
+  //     c->pending_requests_.wait_for_empty();
+  //   });
+  // }
   // TODO: wait for all live connections to receive replay responses
 
   is_replaying_ = false;
-  emergency_mode_ = false;
-  LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
-               << std::endl;
 
   app_.EmergencyToNormalHook();
+
+  ebpf_worker_->SetEmergencyMode(false);
+
+  if (!TransferConnectionsToServer(full_fd)) {
+    LOG(ERROR) << "Failed to transfer connections to server" << std::endl;
+    return false;
+  }
+
+  LOG(WARNING) << "Daemon: Exited emergency mode " << GetUNIXTimeStamp()
+               << std::endl;
 
   barrier_.arrive_and_wait();  // unblock worker threads
 
@@ -323,11 +347,52 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   LOG(INFO) << "Replay took " << duration << " ms\n";
 
   while (!dead_connection_log_heads_.empty()) {
-    delete dead_connection_log_heads_.pop_front();
+    auto head = dead_connection_log_heads_.pop_front();
+    delete head;
   }
 
   for (auto &replay_worker_ : replay_workers_) {
     replay_worker_->RemoveAllConnections();
+  }
+
+  return true;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+  requires IsApplication<Application, Request, Response, ConnectionInfo,
+                         CacheKey, CacheEntry> &&
+           IsCacheEntry<Request, CacheKey, CacheEntry>
+bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
+              CacheEntry>::TransferConnectionsToServer(const int full_fd) {
+  std::array<int, 2> lens = {static_cast<int>(live_connections_.size()), 0};
+  std::vector<int> fds;
+
+  // client connections
+  fds.resize(lens[0]);
+  live_connections_.visit_all([&](ConnectionInstance *const &c) {
+    fds[c->replay_conn_id_] = c->client_fd_;
+    c->DetachFromWorker();
+    ebpf_worker_->conns_.insert(c);
+    auto tcp_id = network::GetTCPID(c->client_fd_);
+    ebpf_worker_
+        ->source_to_conn_[std::make_pair(tcp_id.dst_ip, tcp_id.dst_port)] = c;
+  });
+
+  // listener connections
+  lens[1] = lens[0];
+  while (!server_instance_ptr_->conns_.empty()) {
+    auto conn = std::move(server_instance_ptr_->conns_.front());
+    fds.push_back(conn->client_fd_);
+    lens[1]++;
+    conn->DetachFromWorker();
+    server_instance_ptr_->conns_.pop();
+  }
+
+  if (!network::SendSockets(full_fd, fds, lens)) {
+    LOG(ERROR) << "Failed to transfer sockets to the full process";
+    close(full_fd);
+    return false;
   }
 
   return true;

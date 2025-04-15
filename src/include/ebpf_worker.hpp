@@ -105,31 +105,16 @@ class EbpfWorker : public Worker<Application, Request, Response,
   ~EbpfWorker();
 
   /// Create the worker thread and start running the event loop.
-  int Run(const char name[] = "lite-worker");
+  virtual int Run(const char name[] = "lite-ebpf-worker");
 
   //Set Mode
-  int SetMode(int mode);
-
-  /// The file descriptor used to signal the worker thread.
-  evutil_socket_t notify_event_fd;
-
-  /// The connections managed by the worker thread.
-  ThreadSafeSet<ConnectionInstance *> conns_;
+  int SetEmergencyMode(bool mode);
 
   /// Source Address, port to connection map
   std::unordered_map<std::pair<uint32_t, uint16_t>, ConnectionInstance *, PairHash> source_to_conn_;
 
-  int count;
-
  private:
-  /// PID of the worker thread.
-  pthread_t thread_id_;
-
-  /// The event base for the worker thread.
-  struct event_base *base_;
-
-  /// The event used to notify the worker thread.
-  struct event notify_event_;
+  struct event* timer_event = nullptr;
 
   struct litesys_bpf *skel;
 
@@ -145,11 +130,6 @@ class EbpfWorker : public Worker<Application, Request, Response,
   int sock_map_fd = 0;
   int redis_request_prog_fd = 0;
   int redis_response_prog_fd = 0;
-
-  /// The underlying service implementation.
-  LiteCoreInstance &lite_core_;
-
-  std::barrier<std::function<void()>> &barrier_;
 
   socket_info findSocketFD(int port);
   
@@ -171,9 +151,6 @@ class EbpfWorker : public Worker<Application, Request, Response,
   static int HandleConnection(void *ctx, void *data, size_t data_sz);
 
   static int HandlePacket(void *ctx, void *data, size_t data_sz);
-  
-  /// Check the direction of the TCP data.
-  static bool check_dir(char* src_ip, uint16_t sport, char* dst_ip, uint16_t dport);
 
   /// Convert the port to network order.
   uint16_t htons_custom(uint16_t i);

@@ -36,7 +36,7 @@ class Worker {
   ~Worker();
 
   /// Create the worker thread and start running the event loop.
-  void Run(const char name[] = "lite-worker");
+  virtual int Run(const char name[] = "lite-worker");
 
   /// The file descriptor used to signal the worker thread.
   evutil_socket_t notify_event_fd;
@@ -51,12 +51,12 @@ class Worker {
 
   ConnectionInstance *NewReplayConnection();
 
- private:
-  /// PID of the worker thread.
-  pthread_t thread_id_;
-
   /// The event base for the worker thread.
   struct event_base *base_;
+
+ protected:
+  /// PID of the worker thread.
+  pthread_t thread_id_;
 
   /// The event used to notify the worker thread.
   struct event notify_event_;
