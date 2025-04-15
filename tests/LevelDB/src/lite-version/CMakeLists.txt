@@ -46,26 +46,37 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-as-needed -Wl,-rp
 
 add_subdirectory(Lite)
 
-add_executable(${PROJECT_NAME})
-
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined")
 
-file(GLOB ALL_CC_FILES
-  "src/*.cc"
-)
+function(link_common_libraries target)
+    target_link_libraries(${target} PRIVATE Lite)
+    target_link_libraries(${target} PRIVATE libevent::core Boost::system Boost::thread)
+    target_link_libraries(${target} PRIVATE glog::glog)
+    target_link_libraries(${target} PRIVATE tcmalloc)
+    # target_link_libraries(${target} PRIVATE ${JEMALLOC_LIBRARIES})
+    target_include_directories(${target} PRIVATE include)
+endfunction()
+
+# build lite process
+add_executable(${PROJECT_NAME})
+file(GLOB ALL_CC_FILES "src/*.cc")
 target_sources(${PROJECT_NAME}
     PRIVATE
-        main.cc
-        ${ALL_CC_FILES}
+    main.cc
+    ${ALL_CC_FILES}
 )
+link_common_libraries(${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Lite)
-target_link_libraries(${PROJECT_NAME} PRIVATE libevent::core Boost::system Boost::thread glog::glog tcmalloc)
-# Use the absolute path to libbpf
-target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBBPF_LIBRARY})
-
-target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        include
-        ${CMAKE_CURRENT_SOURCE_DIR}/Lite/include
+# build embedded lite library
+set(LIBRARY_NAME "embedded_lite_leveldb")
+file(GLOB LIB_SOURCES "lib/*.cc" "Lite/src/embedded.cc")
+add_library(${LIBRARY_NAME} SHARED ${LIB_SOURCES} ${ALL_CC_FILES})
+set_target_properties(${LIBRARY_NAME} PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    C_VISIBILITY_PRESET hidden
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON
 )
+link_common_libraries(${LIBRARY_NAME})
+
+message(WARNING "After building, run: export LD_LIBRARY_PATH=`pwd`:$LD_LIBRARY_PATH")

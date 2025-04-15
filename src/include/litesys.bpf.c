@@ -45,8 +45,8 @@ struct {
   __uint(type, BPF_MAP_TYPE_ARRAY);
   __uint(max_entries, 1);  // element 0: application mode
   __type(key, __u32);      // Array index
-  __type(value, __u64);    // Counter value
-} mode SEC(".maps");
+  __type(value, __u32);    // Counter value
+} emergency_mode SEC(".maps");
 
 // Hook for accepting new TCP connections
 SEC("kretprobe/inet_csk_accept")
@@ -69,6 +69,14 @@ int bpf_call_inet_csk_accept(struct pt_regs *ctx) {
   __u16 dport = bpf_ntohs(sc.skc_dport);
 
   if (sport != SERVER_PORT) return 0;
+
+  __u32 key = 0;
+  __u32 *value = bpf_map_lookup_elem(&emergency_mode, &key);
+  __u32 emergency_mode_value = value ? (*value) : 0;
+  if (emergency_mode_value == 1) {
+    bpf_printk("[%d] skip bpf_call_inet_csk_accept: emergency mode\n", __LINE__);
+    return 0;
+  }
 
   struct connection_event *event =
       bpf_ringbuf_reserve(&conn_ringbuf, sizeof(struct connection_event), 0);
@@ -110,6 +118,15 @@ int bpf_call_tcp_close(struct pt_regs *ctx) {
   __u16 dport = bpf_ntohs(sc.skc_dport);
 
   if (sport != SERVER_PORT) return 0;
+
+  __u32 key = 0;
+  __u32 *value = bpf_map_lookup_elem(&emergency_mode, &key);
+  __u32 emergency_mode_value = value ? (*value) : 0;
+  if (emergency_mode_value == 1) {
+    bpf_printk("[%d] skip bpf_call_tcp_close: emergency mode\n", __LINE__);
+    return 0;
+  }
+
   // bpf_printk("Closing connection: saddr=%pI4 sport=%d -> dport=%d\n",
   //            &saddr, sport, dport);
   struct connection_event *event =
@@ -246,63 +263,13 @@ int bpf_sockops_monitor(struct bpf_sock_ops *skops) {
   return 0;
 }
 
-// SEC("sk_skb/stream_parser")
-// int handle_redis_response(struct __sk_buff *skb) {
-//     if (skb->local_port != 6379) {
-//         bpf_printk("[%d] handle_redis_response: local_port: %d\n", __LINE__,
-//         skb->local_port); return SK_PASS;
-//     }
-
-//     bpf_printk("[%d] handle_redis_response: skb->len: %d\n", __LINE__,
-//     skb->len);
-//     __u32 len = skb->len;
-//     if (len == 0 || len > MAX_MSG_SIZE) {
-//         bpf_printk("[%d] handle_redis_response too long: len: %d\n", __LINE__,
-//         len); return SK_PASS;
-//     }
-
-//     struct socket_data_event_t *event = bpf_ringbuf_reserve(&msgs_ringbuf,
-//     sizeof(*event), 0); if (!event) {
-//         bpf_printk("[%d] handle_redis_response: bpf_ringbuf_reserve failed\n",
-//         __LINE__); return SK_PASS;
-//     }
-
-//     event->fd = 0;
-//     event->socket_fd = 0;
-//     event->is_connection = false;
-//     event->is_read = true;
-//     event->msg_size = len;
-
-//     if (bpf_skb_load_bytes(skb, 0, &event->msg, len) < 0) {
-//         bpf_ringbuf_discard(event, 0);
-//         bpf_printk("[%d] handle_redis_response: bpf_skb_load_bytes failed\n",
-//         __LINE__); return SK_PASS;
-//     }
-
-//     // TODO
-//     // u64 id = bpf_get_current_pid_tgid();
-//     // u32 pid = id >> 32;
-//     // event->pid = pid;
-//     // u32 *seq = bpf_map_lookup_elem(&seq_tracker, &id);
-//     // if (seq) {
-//     //     event->seq_num = *seq;
-//     //     (*seq)++;
-//     // } else {
-//     //     event->seq_num = 0;
-//     //     u32 init = 1;
-//     //     bpf_map_update_elem(&seq_tracker, &id, &init, BPF_ANY);
-//     // }
-
-//     bpf_ringbuf_submit(event, 0);
-//     bpf_printk("[%d] handle_redis_response: bpf_ringbuf_submit success\n",
-//     __LINE__); return SK_PASS;
-// }
-
 SEC("sk_skb/stream_verdict")
 int handle_redis_request(struct __sk_buff *skb) {
-  if (skb->local_port != 6379) {
-    bpf_printk("[%d] handle_redis_request: local_port: %d\n", __LINE__,
-               skb->local_port);
+  __u32 key = 0;
+  __u32 *value = bpf_map_lookup_elem(&emergency_mode, &key);
+  __u32 emergency_mode_value = value ? (*value) : 0;
+  if (emergency_mode_value == 1) {
+    bpf_printk("[%d] skip handle_redis_request: emergency mode\n", __LINE__);
     return SK_PASS;
   }
 
@@ -368,6 +335,14 @@ int handle_redis_request(struct __sk_buff *skb) {
 
 SEC("sk_msg")
 int handle_redis_response_sk_msg(struct sk_msg_md *msg) {
+  __u32 key = 0;
+  __u32 *value = bpf_map_lookup_elem(&emergency_mode, &key);
+  __u32 emergency_mode_value = value ? (*value) : 0;
+  if (emergency_mode_value == 1) {
+    bpf_printk("[%d] skip handle_redis_response_sk_msg: emergency mode\n", __LINE__);
+    return SK_PASS;
+  }
+
   //   bpf_printk("[%d] handle_redis_response_sk_msg: msg->size: %d\n", __LINE__,
   //              msg->size);
   u64 err = bpf_msg_pull_data(msg, 0, MAX_MSG_SIZE, 0);

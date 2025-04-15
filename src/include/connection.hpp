@@ -43,6 +43,12 @@ class Connection {
 
   ~Connection();
 
+  void AttachToWorker(const evutil_socket_t sfd, const int event_flags,
+                      struct event_base* base, EventHandler event_handler,
+                      WorkerInstance* worker_ptr);
+
+  void DetachFromWorker();
+
   /// Accept a new connection.
   [[nodiscard]] int Accept() const {
     socklen_t addrlen;
@@ -70,11 +76,9 @@ class Connection {
   evutil_socket_t client_fd_, backend_fd_;
 
   int to_be_closed_ = 0;
-  uint32_t expected_seq_num_=0;
-  uint32_t response_num_=-1;
-  uint32_t request_num_=-1;
-
-
+  uint32_t expected_seq_num_ = 0;
+  uint32_t response_num_ = -1;
+  uint32_t request_num_ = -1;
 
   /// The pending requests
   ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>> pending_requests_;
@@ -94,9 +98,11 @@ class Connection {
 
   LoggerInstance logger_;
 
+  int replay_conn_id_;
+
  private:
   /// Corresponding worker's event_base
-  struct event_base* const base_;
+  struct event_base* base_;
 
   WorkerInstance* worker_ptr_;
 

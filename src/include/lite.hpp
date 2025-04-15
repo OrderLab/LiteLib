@@ -17,3 +17,5 @@ using namespace std::chrono_literals;
 #include "server_impl.hpp"
 #include "worker_impl.hpp"
 #include "ebpf_worker_impl.hpp"
+
+#include "embedded_lite_impl.hpp"
