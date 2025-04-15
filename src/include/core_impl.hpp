@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <map>
+#include <fcntl.h>
 
 #include "core.hpp"
 #include "ebpf_worker.hpp"
@@ -143,14 +144,15 @@ template <typename Application, typename Request, typename Response,
 void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
               CacheEntry>::TakeOver(const std::vector<int> &fds,
                                     int connection_cnt) {
+  ebpf_worker_->SetEmergencyMode(true);
+  ebpf_worker_->ClearAllInFlightTraffic();
+
   emergency_mode_ = true;
 
   app_.NormalToEmergencyHook();
 
   // TODO: Remaining issue: MULTI -> (switch to emergency) ->
   // EXEC, service.cc will inject an illegal DISCARD
-
-  ebpf_worker_->SetEmergencyMode(true);
 
   // transfer client connections to workers
   for (int i = 0; i < connection_cnt; i++) {
@@ -165,10 +167,26 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       continue;
     }
     conn->client_fd_ = fds[i];
-    server_instance_ptr_->DispatchNewConnection(conn);
     ebpf_worker_->source_to_conn_.erase(
         std::make_pair(tcp_id.dst_ip, tcp_id.dst_port));
     ebpf_worker_->conns_.erase(conn);
+
+    // TODO: may not support quite protocol very well (e.g. Memcached setq)
+    if (!conn->pending_requests_.empty()) {
+      LOG(WARNING) << "Connection " << conn
+                   << " pending requests size: " << conn->pending_requests_.size()
+                   << ". Close the connection";
+      delete conn;
+      continue;
+    }
+
+    if (fcntl(fds[i], F_GETFD) == -1) {
+      LOG(ERROR) << "Invalid FD before dispatching to worker: " << fds[i];
+      delete conn;
+      continue;
+    }
+
+    server_instance_ptr_->DispatchNewConnection(conn);
   }
 
   // transfer listener connections to server
@@ -199,6 +217,10 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         false);
   }
   LOG(WARNING) << "Entered emergency mode " << GetUNIXTimeStamp() << std::endl;
+
+  size_t cnt = 0;
+  cache_inner_.VisitAllState([&](CacheStateInstance *state) { cnt++; }, false);
+  LOG(INFO) << "Cache count: " << cnt << std::endl;
 }
 
 #define SendReplayReq(conn, req, buffer)                                     \
@@ -313,6 +335,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
             << "failed writing to worker eventfd";
       }
       barrier_.arrive_and_wait();
+      ebpf_worker_->SetEmergencyMode(false);
     }
   }
 
@@ -328,7 +351,6 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   app_.EmergencyToNormalHook();
 
-  ebpf_worker_->SetEmergencyMode(false);
   emergency_mode_ = false;
 
   if (!TransferConnectionsToServer(full_fd)) {
@@ -380,7 +402,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     auto tcp_id = network::GetTCPID(c->client_fd_);
     ebpf_worker_
         ->source_to_conn_[std::make_pair(tcp_id.dst_ip, tcp_id.dst_port)] = c;
-    LOG(INFO) << "Transfer " << c << " " << tcp_id.dst_ip << ":" << tcp_id.dst_port;
+    // LOG(INFO) << "Transfer " << c << " " << tcp_id.dst_ip << ":" << tcp_id.dst_port;
   });
 
   std::queue<std::unique_ptr<ConnectionInstance>> conns;

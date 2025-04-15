@@ -272,12 +272,29 @@ void *EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
       static_cast<EbpfWorker<Application, Request, Response, ConnectionInfo,
                              CacheKey, CacheEntry> *>(arg_self);
   while (true) {
-    ring_buffer__poll(self->rb, 100);
-    ring_buffer__poll(self->pb, 100000000);
+    self->cnt_event_processed_last_poll = 0;
+    self->cnt_event_processed_last_poll += ring_buffer__poll(self->rb, 1);
+    self->cnt_event_processed_last_poll += ring_buffer__poll(self->pb, 10);
+    if (self->cnt_event_processed_last_poll == 0) {
+      self->consecutive_empty_poll++;
+    } else {
+      self->consecutive_empty_poll = 0;
+    }
   }
   event_base_loop(self->base_, 0);
   event_base_free(self->base_);
   return NULL;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
+               CacheEntry>::ClearAllInFlightTraffic() {
+  consecutive_empty_poll = 0;
+  while (consecutive_empty_poll < 10) {
+    __asm__ volatile("pause");
+  }
+  return 0;
 }
 
 template <typename Application, typename Request, typename Response,

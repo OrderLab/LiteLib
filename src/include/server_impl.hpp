@@ -56,7 +56,8 @@ bool LiteServer<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Run(const char* port) {
   signal(SIGPIPE, SIG_IGN);
   while (lite_core_.is_ebpf_) {
-    sleep(10);
+    event_base_loop(main_base_, EVLOOP_NO_EXIT_ON_EMPTY);
+    event_base_free(main_base_);
   }
   struct linger ling = {0, 0};
   struct addrinfo* ai;

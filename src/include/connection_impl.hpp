@@ -177,6 +177,10 @@ template <typename Application, typename Request, typename Response,
 void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::RequestUpdate(uint8_t* buffer, int len,
                                            uint32_t seq_num) {
+  if (unlikely(lite_core_.emergency_mode_)) {
+    LOG(WARNING) << "Skipping RequestUpdate: emergency mode" << std::endl;
+    return;
+  }
   // std::stringstream packet_content;
   // for (size_t i = 0; i < len; i++) {
   //   char c = buffer[i];
@@ -323,6 +327,10 @@ template <typename Application, typename Request, typename Response,
 void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::ResponseUpdate(uint8_t* buffer, int len,
                                             uint32_t seq_num) {
+  if (unlikely(lite_core_.emergency_mode_)) {
+    LOG(WARNING) << "Skipping ResponseUpdate: emergency mode" << std::endl;
+    return;
+  }
   // std::stringstream packet_content;
   // for (size_t i = 0; i < len; i++) {
   //   char c = buffer[i];

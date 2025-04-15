@@ -133,7 +133,7 @@ index fbc2beb..96d7662 100644
  
  #endif
 diff --git a/src/rl_server.cpp b/src/rl_server.cpp
-index 663b036..1cea617 100644
+index 663b036..df3a273 100644
 --- a/src/rl_server.cpp
 +++ b/src/rl_server.cpp
 @@ -25,6 +25,8 @@
@@ -163,24 +163,6 @@ index 663b036..1cea617 100644
      if((tcp_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
          perror("socket()");
          exit(1);
-@@ -131,13 +137,13 @@ void RLServer::start()
-     setsockopt(tcp_fd, SOL_SOCKET, SO_LINGER, (void *)&ling, sizeof(ling));
- 
-     /* XXX: Sending single byte chunks in a response body? Perhaps there is a
--     * need to enable the Nagel algorithm dynamically. For now disabling.
--     */
-+    * need to enable the Nagel algorithm dynamically. For now disabling.
-+    */
-     setsockopt(tcp_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags));
- 
-     /* the memset call clears nonstandard fields in some impementations that
--     * otherwise mess things up.
--     */
-+    * otherwise mess things up.
-+    */
-     memset(&addr, 0, sizeof(addr));
- 
-     addr.sin_family = AF_INET;
 @@ -165,6 +171,12 @@ void RLServer::start()
  
      set_nonblock(tcp_fd);
@@ -237,7 +219,7 @@ index b4af24a..02df46a 100644
  
  
 diff --git a/src/rl_util.cpp b/src/rl_util.cpp
-index 71794e1..02c7b13 100644
+index 71794e1..b25169a 100644
 --- a/src/rl_util.cpp
 +++ b/src/rl_util.cpp
 @@ -24,6 +24,8 @@
@@ -249,14 +231,14 @@ index 71794e1..02c7b13 100644
  void set_nonblock (int fd) {
      int flags = fcntl(fd, F_GETFL, 0);
      int r = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-@@ -86,6 +88,7 @@ void sig_term(int signo) {
-     if(signo==SIGINT ||
-         signo == SIGTERM ||
-         signo == SIGQUIT) {
-+        LiteSignalHandler(signo);
+@@ -89,6 +91,7 @@ void sig_term(int signo) {
          const auto now = std::chrono::system_clock::now();
          std::cout << "crash time " << std::chrono::duration_cast<std::chrono::nanoseconds>(
                       now.time_since_epoch()).count() << std::endl;
++        LiteSignalHandler(signo);
+         exit_hook();
+         exit(0);
+     }
 diff --git a/vendor/LiteSys/build b/vendor/LiteSys/build
 new file mode 120000
 index 0000000..0d5f485

@@ -15,10 +15,15 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> LevelDB::Match(
     const std::shared_ptr<Packet> &resp, ConnectionInfo &conn,
     lite::ThreadSafeQueue<std::pair<std::shared_ptr<Packet>, bool>>
         &pending_requests) const {
-  // std::cout << "Pending requests size: " << pending_requests.size() << std::endl;
+  // std::cout << "Pending requests size: " << pending_requests.size() <<
+  // std::endl;
   if (pending_requests.size() != 1) {
-    LOG(FATAL) << "Pending requests is not 1, it is " << pending_requests.size() << "\n";
-    exit(1);
+    // If it happens after the failure, it's fine. We don't target handling
+    // consecutive crashes
+    LOG(WARNING) << "Pending requests is not 1, it is "
+                 << pending_requests.size() << "\n";
+    if (pending_requests.size() == 0)
+      return std::make_pair(std::vector<std::shared_ptr<Packet>>(), true);
   }
   auto [req, is_not_replay] = pending_requests.pop_front();
   RESPArray *command = dynamic_cast<RESPArray *>(req->command.get());

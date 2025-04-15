@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sys/un.h>
+#include <ctime>
 
 #include "cache.hpp"
 #include "embedded_lite.h"
@@ -46,6 +47,8 @@ int Init(char *argv_0, const std::string socket_path,
   embedded_server_void_ptr = embedded_server_ptr;
   LOG(INFO) << "eBPF LiteSys initialized";
   LOG(INFO) << "\temergency_mode: " << embedded_server_ptr->emergency_mode_;
+
+  srand(static_cast<unsigned int>(time(nullptr)));
 
   return 0;
 }
@@ -224,7 +227,7 @@ int GetDummyListenerFD() {
   for (int i = 0; i < 16; i++) {
     random_str += charset[rand() % sizeof(charset)];
   }
-  std::string socket_path = "/tmp/" + random_str + ".sock";
+  std::string socket_path = "/tmp/ebpf.dummy." + random_str + ".sock";
 
   // Create random unix domain socket
   int fd = socket(AF_UNIX, SOCK_STREAM, 0);
