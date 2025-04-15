@@ -74,6 +74,8 @@ class EmbeddedServer {
       LOG(WARNING) << "LiteSys: Received " << lens[0] << " client FDs and "
                    << (lens[1] - lens[0]) << " listener FDs";
 
+      emergency_mode_ = false;
+
       for (int i = 0; i < lens[0]; i++) {
         auto [replay_fd, client] = replay_conns_.front();
         replay_conns_.pop();
@@ -89,8 +91,6 @@ class EmbeddedServer {
         ReinstallClientEventHandler(client, 1);
         close(received_fds[i]);
       }
-
-      emergency_mode_ = false;
 
       if (fd_to_listener_.size() != lens[1] - lens[0]) {
         LOG(ERROR) << "LiteSys: Number of listener FDs mismatch";

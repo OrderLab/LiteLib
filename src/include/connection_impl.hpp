@@ -284,36 +284,37 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     return;
   }
 
-  bool forwarded = false;
-  if (!conn->lite_core_.emergency_mode_) {
-    forwarded = true;
-    if (!network::Write(conn->client_fd_, conn->buffer_, bytes_transferred)) {
-      LOG(ERROR) << "Failed to write request to backend" << std::endl;
-      delete conn;
-      return;
-    }
-  }
+  // NOTE: we don't need to handle responses in eBPF mode
+  // bool forwarded = false;
+  // if (!conn->lite_core_.emergency_mode_) {
+  //   forwarded = true;
+  //   if (!network::Write(conn->client_fd_, conn->buffer_, bytes_transferred)) {
+  //     LOG(ERROR) << "Failed to write request to backend" << std::endl;
+  //     delete conn;
+  //     return;
+  //   }
+  // }
 
-  uint8_t* begin = conn->buffer_;
-  uint8_t* end = begin + bytes_transferred;
-  while (begin != end) {
-    const auto result = conn->response_->Deserialize(begin, end);
-    if (result == kGood) {
-      if (!conn->lite_core_.HandleResponse(
-              std::move(conn->response_), conn->extra_app_info_,
-              conn->pending_requests_, conn->client_fd_, &conn->cache_,
-              forwarded)) {
-        delete conn;
-        return;
-      }
-      conn->response_ = std::make_unique<Response>();
-    } else if (result == kIndeterminate) {
-      continue;
-    } else if (result == kBad) {
-      LOG(ERROR) << "failed to parse response" << std::endl;
-      return;
-    }
-  }
+  // uint8_t* begin = conn->buffer_;
+  // uint8_t* end = begin + bytes_transferred;
+  // while (begin != end) {
+  //   const auto result = conn->response_->Deserialize(begin, end);
+  //   if (result == kGood) {
+  //     if (!conn->lite_core_.HandleResponse(
+  //             std::move(conn->response_), conn->extra_app_info_,
+  //             conn->pending_requests_, conn->client_fd_, &conn->cache_,
+  //             forwarded)) {
+  //       delete conn;
+  //       return;
+  //     }
+  //     conn->response_ = std::make_unique<Response>();
+  //   } else if (result == kIndeterminate) {
+  //     continue;
+  //   } else if (result == kBad) {
+  //     LOG(ERROR) << "failed to parse response" << std::endl;
+  //     return;
+  //   }
+  // }
   return;
 }
 // Response update

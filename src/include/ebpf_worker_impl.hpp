@@ -299,7 +299,7 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
   auto remote_port = event->remote_port;  // already changed endian in eBPF
 
   if (is_request) {
-    // std::cout << "Received request: " << self->buffer << std::endl;
+    std::cout << "Received request: " << self->buffer << std::endl;
     // Check if the connection exists
     if (self->source_to_conn_.find(std::make_pair(remote_addr, remote_port)) ==
         self->source_to_conn_.end()) {
@@ -327,13 +327,17 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
       self->conns_.insert(new_connection);
     }
 
+    LOG(INFO) << "Update request: "
+              << self->source_to_conn_[std::make_pair(remote_addr, remote_port)]
+              << " " << remote_addr << ":" << remote_port;
+
     // Update the connection with request data
     self->source_to_conn_[std::make_pair(remote_addr, remote_port)]
         ->RequestUpdate(
             self->buffer, event->msg_size,
             event->seq_num);  // Using 0 for seq_num as it's not in packet_data
   } else {
-    // std::cout << "Received response: " << self->buffer << std::endl;
+    std::cout << "Received response: " << self->buffer << std::endl;
     if (self->source_to_conn_.find(std::make_pair(remote_addr, remote_port)) ==
         self->source_to_conn_.end()) {
       // Connection not found for response
@@ -341,6 +345,11 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
                 << remote_port << std::endl;
       return 0;
     }
+
+    LOG(INFO) << "Update response: "
+              << self->source_to_conn_[std::make_pair(remote_addr, remote_port)]
+              << " " << remote_addr << ":" << remote_port;
+
     // Update the connection with response data
     self->source_to_conn_[std::make_pair(remote_addr, remote_port)]
         ->ResponseUpdate(

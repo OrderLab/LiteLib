@@ -273,8 +273,8 @@ int handle_redis_request(struct __sk_buff *skb) {
     return SK_PASS;
   }
 
-  //   bpf_printk("[%d] handle_redis_request: skb->len: %d\n", __LINE__,
-  //   skb->len);
+    bpf_printk("[%d] handle_redis_request: skb->len: %d\n", __LINE__,
+    skb->len);
   __u32 len = skb->len;
   if (len == 0 || len > MAX_MSG_SIZE) {
     if (len == 0) {
@@ -327,9 +327,8 @@ int handle_redis_request(struct __sk_buff *skb) {
     }
   }
 
-  // bpf_printk("[%d] handle_redis_request: %s\n", __LINE__, event->msg);
-
   bpf_ringbuf_submit(event, 0);
+  bpf_printk("[%d] handle_redis_request: %s\n", __LINE__, event->msg);
   return SK_PASS;
 }
 
@@ -343,8 +342,8 @@ int handle_redis_response_sk_msg(struct sk_msg_md *msg) {
     return SK_PASS;
   }
 
-  //   bpf_printk("[%d] handle_redis_response_sk_msg: msg->size: %d\n", __LINE__,
-  //              msg->size);
+    bpf_printk("[%d] handle_redis_response_sk_msg: msg->size: %d\n", __LINE__,
+               msg->size);
   u64 err = bpf_msg_pull_data(msg, 0, MAX_MSG_SIZE, 0);
   if (err < 0) {
     bpf_printk(
@@ -405,8 +404,7 @@ int handle_redis_response_sk_msg(struct sk_msg_md *msg) {
     }
   }
 
-  // bpf_printk("[%d] handle_redis_response_sk_msg: %s\n", __LINE__, event->msg);
-
   bpf_ringbuf_submit(event, 0);
+  bpf_printk("[%d] handle_redis_response_sk_msg: %s\n", __LINE__, event->msg);
   return SK_PASS;
 }
