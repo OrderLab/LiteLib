@@ -110,6 +110,8 @@ class EbpfWorker : public Worker<Application, Request, Response,
   //Set Mode
   int SetEmergencyMode(bool mode);
 
+  int ClearAllInFlightTraffic();
+
   /// Source Address, port to connection map
   std::unordered_map<std::pair<uint32_t, uint16_t>, ConnectionInstance *, PairHash> source_to_conn_;
 
@@ -121,6 +123,9 @@ class EbpfWorker : public Worker<Application, Request, Response,
   struct ring_buffer *rb = nullptr;
 
   struct ring_buffer *pb = nullptr;
+
+  std::atomic<unsigned> consecutive_empty_poll = 0;
+  int cnt_event_processed_last_poll = 0;
 
   unsigned char *buffer;
 

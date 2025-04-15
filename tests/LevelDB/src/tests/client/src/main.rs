@@ -394,13 +394,6 @@ async fn main() {
 
     let mut handles = Vec::new();
     let records = Arc::new(Mutex::new(vec![]));
-    let bar = ProgressBar::new(num_requests as u64).with_prefix("Benchmarking");
-    bar.set_style(
-        ProgressStyle::with_template(
-            "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",
-        )
-        .unwrap(),
-    );
 
     // -------------------------- Set up remote scripts -----------------------
     if let Some(remote_script_config) = &cfg.benchmark.remote_script {
@@ -464,6 +457,13 @@ async fn main() {
     }
 
     // -------------------------- Benchmark -----------------------------------
+    let bar = ProgressBar::new(num_requests as u64).with_prefix("Benchmarking");
+    bar.set_style(
+        ProgressStyle::with_template(
+            "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",
+        )
+        .unwrap(),
+    );
     let start_time = Instant::now();
     for i in 0..num_requests {
         let iter_end_time = start_time + interval * (i as u32 + 1);

@@ -42,6 +42,7 @@ os.system(r"mkdir -p " + args.work_dir)
 os.system(r"chmod 777 " + args.work_dir)
 
 os.system(r'pgrep "redis-leveldb" | xargs kill -9')
+os.system(r'pgrep "redis-leveldb-vanilla" | xargs kill -9')
 os.system(r'pgrep "LiteLevelDB" | xargs kill -9')
 os.system(r'pgrep "lite_cli" | xargs kill -9')
 os.system(r'pgrep "socket" | xargs kill -9')
@@ -49,6 +50,8 @@ os.system(r'pgrep "redis-server" | xargs kill -9')
 os.system(r"rm dump.rdb")
 os.system(r"rm -rf /tmp/lite_LevelDB")
 os.system(r"rm -rf /tmp/redis-leveldb.sock")
+os.system(r"rm -rf /tmp/lite_leveldb_control_plane.sock")
+os.system(r"rm -rf /tmp/ebpf.dummy.*.sock")
 time.sleep(1)
 
 os.system(r'cgdelete -g cpu,cpuset:/cpulimited')
@@ -66,7 +69,7 @@ if args.experiment_type == "Full":
         "cgexec",
         "-g",
         "cpu:cpulimited",
-        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb-vanilla",
         "-D",
         args.work_dir + "/full-data",
         "-P",
@@ -88,7 +91,7 @@ elif args.experiment_type == "Checkpoint":
         "cgexec",
         "-g",
         "cpu:cpulimited",
-        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb-vanilla",
         "-D",
         args.work_dir + "/checkpoint-data/foo",
         "-P",
@@ -108,7 +111,7 @@ elif args.experiment_type == "Lite":
         "cgexec",
         "-g",
         "cpu:cpulimited",
-        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb-vanilla",
         "-D",
         args.work_dir + "/lite-data",
         "-P",
@@ -153,7 +156,8 @@ elif args.experiment_type == "Ebpf":
         str(args.write_buffer_size),
     ]
     utils.StartBackgroundProcess(
-        boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-1.txt"
+        boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-1.txt",
+        env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1", "LiteEmergencyMode": "0"},
     )
 
     boot_command = [

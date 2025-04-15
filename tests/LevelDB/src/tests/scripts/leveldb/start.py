@@ -82,26 +82,26 @@ utils.StartBackgroundProcess(
     boot_command, args.work_dir + "/" + args.file_prefix + "-monitor-log.txt"
 )
 
-boot_command = [
-    "perf",
-    "record",
-    "-F",
-    "99",
-    "-a",
-    "-g",
-    "-C",
-    "0-"+str(args.cpu_limit-1),
-    "-o",
-    args.work_dir + "/perf.data",
-    "--",
-    "sleep",
-    str(args.total_time - 10),
-]
-utils.StartBackgroundProcess(
-    boot_command, args.work_dir + "/" + args.file_prefix + "-perf-output.log"
-)
+# boot_command = [
+#     "perf",
+#     "record",
+#     "-F",
+#     "99",
+#     "-a",
+#     "-g",
+#     "-C",
+#     "0-"+str(args.cpu_limit-1),
+#     "-o",
+#     args.work_dir + "/perf.data",
+#     "--",
+#     "sleep",
+#     str(args.total_time - 10),
+# ]
+# utils.StartBackgroundProcess(
+#     boot_command, args.work_dir + "/" + args.file_prefix + "-perf-output.log"
+# )
 
-redis_leveldb_pid = get_pid_by_name("redis-leveldb")
+# redis_leveldb_pid = get_pid_by_name("redis-leveldb-vanilla")
 checkpoint_lock = threading.Lock()
 
 
@@ -187,14 +187,16 @@ if args.experiment_type == "Checkpoint":
 sleep_for(crash_time - time.time())
 # ---------------------------------------------------------------- crashes
 
-os.system(r'pgrep "redis-leveldb" | xargs kill -2')
+os.system(r'pgrep "redis-leveldb" | xargs kill -15')
+os.system(r'pgrep "redis-leveldb-vanilla" | xargs kill -15')
+os.system(r'rm /tmp/redis-leveldb.sock')
 
-if args.experiment_type == "Full" or  args.experiment_type == "Ebpf":
+if args.experiment_type == "Full":
     boot_command = [
         "cgexec",
         "-g",
         "cpu:cpulimited",
-        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb-vanilla",
         "-D",
         args.work_dir + "/full-data",
         "-P",
@@ -203,7 +205,25 @@ if args.experiment_type == "Full" or  args.experiment_type == "Ebpf":
         str(args.write_buffer_size),
     ]
     utils.StartBackgroundProcess(
-        boot_command, args.work_dir + "/" + args.file_prefix + ".log", True
+        boot_command, args.work_dir + "/" + args.file_prefix + ".log", True,
+        env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"},
+    )
+elif args.experiment_type == "Ebpf":
+    boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        "-D",
+        args.work_dir + "/ebpf-data",
+        "-P",
+        "6379",
+        "-B",
+        str(args.write_buffer_size),
+    ]
+    utils.StartBackgroundProcess(
+        boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-2.txt",
+        env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1", "LiteEmergencyMode": "1"},
     )
 elif args.experiment_type == "Checkpoint":
     boot_command = [
@@ -253,7 +273,7 @@ elif args.experiment_type == "Lite":
         "cgexec",
         "-g",
         "cpu:cpulimited",
-        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb-vanilla",
         "-D",
         args.work_dir + "/lite-data",
         "-P",

@@ -51,16 +51,16 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
       return -1;
     }
 
-    // set non-blocking
-    if ((flags = fcntl(backend_fd, F_GETFL)) == -1) {
-      PLOG(ERROR) << "failed to get flags for backend";
-      return -1;
-    }
-    flags |= O_NONBLOCK;
-    if (fcntl(backend_fd, F_SETFL, flags) == -1) {
-      PLOG(ERROR) << "failed to set backend to non-blocking";
-      return -1;
-    }
+    // set non-blocking // TODO: temp disable for leveldb
+    // if ((flags = fcntl(backend_fd, F_GETFL)) == -1) {
+    //   PLOG(ERROR) << "failed to get flags for backend";
+    //   return -1;
+    // }
+    // flags |= O_NONBLOCK;
+    // if (fcntl(backend_fd, F_SETFL, flags) == -1) {
+    //   PLOG(ERROR) << "failed to set backend to non-blocking";
+    //   return -1;
+    // }
 
     if (connect(backend_fd, (struct sockaddr*)&unix_addr, sizeof(unix_addr)) ==
         -1) {
