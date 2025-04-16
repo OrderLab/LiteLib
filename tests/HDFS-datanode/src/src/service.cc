@@ -5,7 +5,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <errno.h>
+#include <filesystem>
 
 #include <fstream>
 
@@ -305,8 +305,9 @@ void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
                    << std::endl;
       }
       std::string poolId = BlockReceivedAndDeletedRequest.blockpoolid();
-      auto blocks = BlockReceivedAndDeletedRequest.blocks();
+      auto blocks = BlockReceivedAndDeletedRequest.blocks();      
       // TODO: update the block map
+      // std::cout << BlockReceivedAndDeletedRequest.DebugString();
     } else {
       LOG(ERROR) << "unknown method name: " << req->RequestHeader.methodname()
                  << std::endl;
@@ -417,10 +418,14 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
         } else {
           std::cout << "Sent " << sent << " bytes." << std::endl;
         }
+        
+        int d1 = (TargetBlock.blockid() >> 16) & 0x3F;
+        int d2 = (TargetBlock.blockid() >> 8) & 0x3F;
+        std::string subdirs = "subdir" + std::to_string(d1) + "/subdir" + std::to_string(d2);
 
         std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" +
                                 TargetBlock.poolid() +
-                                "/current/finalized/subdir0/subdir2/blk_" +
+                                "/current/finalized/" + subdirs + "/blk_" +
                                 std::to_string(TargetBlock.blockid());
         std::string MetaPath = BlockPath + "_" +
                                std::to_string(TargetBlock.generationstamp()) +
@@ -587,7 +592,6 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
         OpWriteBlock.clear_targetpinnings();
         OpWriteBlock.clear_targetstorageids();
 
-        // This piece of code has not been tested
         std::cout << "replication number: " << DatanodeTargets.size()
                   << std::endl;
 
@@ -667,13 +671,28 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
           std::cout << "Sent " << sent << " bytes." << std::endl;
         }
 
-        std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" +
-                      target.poolid() +
-                      "/current/finalized/subdir0/subdir2/blk_" +
-                      std::to_string(target.blockid());
-        std::string MetaPath = BlockPath + "_" +
-                              std::to_string(target.generationstamp()) +
-                              ".meta";
+        int d1 = (target.blockid() >> 16) & 0x3F;
+        int d2 = (target.blockid() >> 8) & 0x3F;
+        std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" + target.poolid() + "/current/finalized/subdir" + std::to_string(d1);
+        if (!std::filesystem::exists(BlockPath)) {
+          if (std::filesystem::create_directories(BlockPath)) {
+              std::cout << "Directory created: " << BlockPath << std::endl;
+          } else {
+              std::cerr << "Failed to create directory." << std::endl;
+          }
+        }
+
+        BlockPath += "/subdir" + std::to_string(d2);
+        if (!std::filesystem::exists(BlockPath)) {
+          if (std::filesystem::create_directories(BlockPath)) {
+              std::cout << "Directory created: " << BlockPath << std::endl;
+          } else {
+              std::cerr << "Failed to create directory." << std::endl;
+          }
+        }
+
+        BlockPath += "/blk_" + std::to_string(target.blockid());
+        std::string MetaPath = BlockPath + "_" + std::to_string(target.generationstamp()) + ".meta";
 
         std::shared_ptr<std::ofstream> blockstream = std::make_shared<std::ofstream>(BlockPath, std::ios::binary | std::ios::out);
         std::shared_ptr<std::ofstream> metastream = std::make_shared<std::ofstream>(MetaPath, std::ios::binary | std::ios::out);
@@ -855,17 +874,17 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
         auto* datanodeID = registration->mutable_datanodeid();
         datanodeID->set_ipaddr("10.10.1.2");
         datanodeID->set_hostname("node1");
-        datanodeID->set_datanodeuuid("3bf08c18-f4f8-42ef-8f5a-86ca8885b7b8");
+        datanodeID->set_datanodeuuid("d660df90-c60d-458d-b3cb-38261b459007");
         datanodeID->set_xferport(9866);
         datanodeID->set_infoport(9864);
         datanodeID->set_ipcport(9867);
         datanodeID->set_infosecureport(0);
 
         auto* storageInfo = registration->mutable_storageinfo();
-        storageInfo->set_layoutversion(-66);
-        storageInfo->set_namespceid(459736184);
-        storageInfo->set_clusterid("CID-ae8e7a4b-3ac0-4870-b876-f0f89c83cf03");
-        storageInfo->set_ctime(1741568254745);
+        storageInfo->set_layoutversion(-57);
+        storageInfo->set_namespceid(1084605719);
+        storageInfo->set_clusterid("CID-4bb27076-ddb4-4740-9027-cc95653aedaa");
+        storageInfo->set_ctime(1744664128720);
 
         auto* keys = registration->mutable_keys();
         keys->set_isblocktokenenabled(false);
@@ -906,8 +925,6 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
             blockReceivedAndDeletedRequestBuffer->data() + sizeof(blockReceivedAndDeletedRequestHeader),
             blockReceivedAndDeletedRequest.ByteSizeLong());
 
-        close(conn.client_fd);
-
         auto conn = *(server->GetFirstWorker()->conns_.begin());
         std::shared_ptr<Packet> finalResponse = std::make_shared<Packet>(blockReceivedAndDeletedRequestBuffer, Packet::tcp);
 
@@ -915,111 +932,7 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
             LOG(ERROR) << "Failed to send finalResponse" << std::endl;
         }
 
-        
-        // if (DatanodeTargets.empty()) {
-        
-        // } else {
-        //   OpWriteBlock.clear_targets();
-        //   OpWriteBlock.clear_targetstoragetypes();
-        //   OpWriteBlock.clear_targetpinnings();
-        //   OpWriteBlock.clear_targetstorageids();
-
-        //   // This piece of code has not been tested
-        //   std::cout << "replication number: " << DatanodeTargets.size()
-        //             << std::endl;
-
-        //   hadoop::hdfs::DatanodeInfoProto* source = OpWriteBlock.mutable_source();
-        //   // probably not needed till set_numblocks
-        //   hadoop::hdfs::DatanodeIDProto* id = source->mutable_id();
-        //   id->set_ipaddr("");
-        //   id->set_hostname("");
-        //   id->set_datanodeuuid("");
-        //   id->set_xferport(0);
-        //   id->set_infoport(0);
-        //   id->set_ipcport(0);
-        //   id->set_infosecureport(0);
-        //   source->set_capacity(0);
-        //   source->set_dfsused(0);
-        //   source->set_remaining(0);
-        //   source->set_blockpoolused(0);
-        //   source->set_lastupdate(0);
-        //   source->set_xceivercount(0);
-        //   source->set_nondfsused(0);
-        //   source->set_adminstate(hadoop::hdfs::DatanodeInfoProto::NORMAL);
-        //   source->set_cachecapacity(0);
-        //   source->set_cacheused(0);
-        //   source->set_lastupdatemonotonic(0);
-        //   source->set_lastblockreporttime(0);
-        //   source->set_lastblockreportmonotonic(0);
-        //   source->set_numblocks(0);
-        //   OpWriteBlock.clear_targetstoragetypes();
-        //   OpWriteBlock.clear_targetpinnings();
-        //   OpWriteBlock.clear_targetstorageids();
-        //   std::cout << "New OpWriteBlock size: " << OpWriteBlock.ByteSizeLong() << ", OpWriteBlock:\n" << OpWriteBlock.DebugString() << std::endl;
-
-        //   std::shared_ptr<std::vector<uint8_t>> send_buffer = std::make_shared<std::vector<uint8_t>>();
-        //   int size = OpWriteBlock.ByteSizeLong();
-        //   uint8_t appendBytes[] = {0x0, 0x1c, 0x50, static_cast<uint8_t>(size & 0xFF), 0x1};
-        //   size_t appendLength = sizeof(appendBytes);
-        //   // Append the bytes to send_buffer
-        //   send_buffer->insert(send_buffer->end(), appendBytes, appendBytes + appendLength);
-        //   // WriteDelimitedTo(*send_buffer, &OpWriteBlock);
-        //   send_buffer->resize(appendLength + size);
-        //   OpWriteBlock.SerializeToArray(send_buffer->data() + appendLength, size);
-
-        //   for(auto datanode : DatanodeTargets) {
-        //     auto NextDatanodeId = datanode.id();
-        //     const char *addr = NextDatanodeId.ipaddr().data();
-        //     auto port = NextDatanodeId.xferport();
-        //     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        //     if (sockfd < 0) {
-        //       LOG(ERROR) << "Socket creation failed" << std::endl;
-        //       WriteErrorResponse(resp.buffer);
-        //       return std::make_pair(resp, false);
-        //     }
-        //     std::cout << "connect to datanode at " << addr << ":" << port << std::endl;
-        //     sockaddr_in server_addr;
-        //     memset(&server_addr, 0, sizeof(server_addr));
-        //     server_addr.sin_family = AF_INET;
-        //     server_addr.sin_port = htons(port);
-        //     inet_pton(AF_INET, addr, &server_addr.sin_addr);
-        //     if (connect(sockfd, (struct sockaddr *)&server_addr,
-        //                 sizeof(server_addr)) < 0) {
-        //       LOG(ERROR) << "Connection to next datanode failed" << std::endl;
-        //       close(sockfd);
-        //       WriteErrorResponse(resp.buffer);
-        //       return std::make_pair(resp, false);
-        //     }
-            
-        //     int sent = send(sockfd, send_buffer->data(), send_buffer->size(), 0);
-        //     if (sent < 0) {
-        //       LOG(ERROR) << "send failed" << std::endl;
-        //       close(sockfd);
-        //     }
-
-        //     char buffer[1024];
-        //     memset(buffer, 0, sizeof(buffer));
-        //     int bytes_received = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
-        //     if (bytes_received < 0) {
-        //       LOG(ERROR) << "receive failed" << std::endl;
-        //       close(sockfd);
-        //       WriteErrorResponse(resp.buffer);
-        //       return std::make_pair(resp, false);
-        //     }
-
-        //     close(sockfd);
-        //     google::protobuf::io::ArrayInputStream array_input(buffer,
-        //                                                       bytes_received);
-        //     google::protobuf::io::CodedInputStream coded_input(&array_input);
-        //     if (!ReadDelimitedFrom(&coded_input, &resp.block_op_response)) {
-        //       WriteErrorResponse(resp.buffer);
-        //       return std::make_pair(resp, false);
-        //     } else {
-        //       WriteDelimitedTo(resp.buffer, &resp.block_op_response);
-        //       std::cout << "resp.block_op_response: " << resp.block_op_response.DebugString() << std::endl;
-        //     }
-        //   }
-        // }
+        // close(conn.client_fd);
         return std::make_pair(resp, false);
         break;
       }
@@ -1050,10 +963,25 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
       auto target = OpWriteBlock.header().baseheader().block();
 
       if (!packet_header.lastpacketinblock()) {
-        std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" +
-                                target.poolid() +
-                                "/current/finalized/subdir0/subdir2/blk_" +
-                                std::to_string(target.blockid());
+        int d1 = (target.blockid() >> 16) & 0x3F;
+        int d2 = (target.blockid() >> 8) & 0x3F;
+        std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" + target.poolid() + "/current/finalized/subdir" + std::to_string(d1);
+        if (!std::filesystem::exists(BlockPath)) {
+          if (std::filesystem::create_directories(BlockPath)) {
+              std::cout << "Directory created: " << BlockPath << std::endl;
+          } else {
+              std::cerr << "Failed to create directory." << std::endl;
+          }
+        }
+
+        BlockPath += "/subdir" + std::to_string(d2);
+        if (!std::filesystem::exists(BlockPath)) {
+          if (std::filesystem::create_directories(BlockPath)) {
+              std::cout << "Directory created: " << BlockPath << std::endl;
+          } else {
+              std::cerr << "Failed to create directory." << std::endl;
+          }
+        }
         std::string MetaPath = BlockPath + "_" +
                                std::to_string(target.generationstamp()) +
                                ".meta";
