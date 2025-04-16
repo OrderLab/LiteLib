@@ -61,14 +61,14 @@ parser.add_argument(
     "-i", "--checkpoint_interval", type=int, help="The interval of checkpointing"
 )
 parser.add_argument(
-    "-u", "--cpu_limit", type=int, required=True, help="The CPU limit of the whole system"
+    "-u", "--cpu_limit", type=float, required=True, help="The CPU limit of the whole system"
 )
 args = parser.parse_args()
 
-os.system(r'cgset -r cpuset.cpus="0-' + str(args.cpu_limit-1) + '" cpulimited')
-os.system(r'cgset -r cpu.max="' + str(args.cpu_limit) + '00000 100000" cpulimited')
+# os.system(r'cgset -r cpuset.cpus="0-' + str(args.cpu_limit-1) + '" cpulimited')
+cpu = int(args.cpu_limit * 100000)
+os.system(r'cgset -r cpu.max="' + str(cpu) + ' 100000" cpulimited')
 os.system(r'cgget -g cpu:cpulimited')
-os.system(r'cgget -g cpuset:cpulimited')
 
 monitor_log_file = args.work_dir + "/monitor." + args.file_prefix + ".jsonl"
 boot_command = [
@@ -101,7 +101,7 @@ utils.StartBackgroundProcess(
 #     boot_command, args.work_dir + "/" + args.file_prefix + "-perf-output.log"
 # )
 
-# redis_leveldb_pid = get_pid_by_name("redis-leveldb-vanilla")
+redis_leveldb_pid = get_pid_by_name("redis-leveldb-vanilla")
 checkpoint_lock = threading.Lock()
 
 

@@ -54,12 +54,11 @@ os.system(r"rm -rf /tmp/lite_leveldb_control_plane.sock")
 os.system(r"rm -rf /tmp/ebpf.dummy.*.sock")
 time.sleep(1)
 
-os.system(r'cgdelete -g cpu,cpuset:/cpulimited')
-os.system(r'cgcreate -g cpu,cpuset:/cpulimited')
-os.system(r'cgset -r cpuset.cpus="0-39" cpulimited') # 40 cores
+os.system(r'cgdelete -g cpu:/cpulimited')
+os.system(r'cgcreate -g cpu:/cpulimited')
+# os.system(r'cgset -r cpuset.cpus="0-39" cpulimited') # 40 cores
 os.system(r'cgset -r cpu.max="4000000 100000" cpulimited') # 40 cores
 os.system(r'cgget -g cpu:cpulimited')
-os.system(r'cgget -g cpuset:cpulimited')
 
 if args.experiment_type == "Full":
     os.system(r"rm -rf " + args.work_dir + "/full-data")
