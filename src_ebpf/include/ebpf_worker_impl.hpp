@@ -29,7 +29,7 @@
 
 #define SO_ATTACH_BPF 50
 #define BUFFER_SIZE 65536
-#define SERVER_PORT 6379
+#define SERVER_PORT 11211
 #define ACCEPT 1
 #define CLOSE 2
 
@@ -441,8 +441,8 @@ int EbpfWorker<Application, Request, Response, ConnectionInfo, CacheKey,
             std::make_pair(self->ipToUint32(dest_str), dport)) !=
         self->source_to_conn_.end()) {
       // print dest_str and event->connection.dport
-      printf("Removing connection from the connection map: %s:%u\n",
-             dest_str.c_str(), dport);
+      // printf("Removing connection from the connection map: %s:%u\n",
+      //        dest_str.c_str(), dport);
       return 0;
       auto connection = self->source_to_conn_[std::make_pair(
           self->ipToUint32(dest_str), dport)];

@@ -4,8 +4,8 @@
 
 set -x
 
-SCRIPT_DIR=$(realpath "$(dirname "$0")")
-YCSB_DIR="~/YCSB"
+SCRIPT_DIR="/home/rishika/cascade/tests/Memcached/tests/ycsb"
+YCSB_DIR="/home/rishika/YCSB"
 MASTER_HOST="node3"
 CLIENT_HOST="node2"
 # take arg for mode: lite, replica
@@ -13,7 +13,9 @@ MODE=$1
 ORIGINAL_SUFFIX=$2
 SUFFIX=${MODE}_${ORIGINAL_SUFFIX}
 
-if [ "$MODE" == "vanilla" ] || [ "$MODE" == "embedded" ] || [ "$MODE" == "proxy" ]; then
+mkdir -p $SCRIPT_DIR/logs
+
+if [ "$MODE" == "vanilla" ] || [ "$MODE" == "embedded" ] || [ "$MODE" == "proxy" ] || [ "$MODE" == "ebpf" ]; then
   echo "Starting Memcached"
   $SCRIPT_DIR/start-$MODE.sh $SUFFIX
 else

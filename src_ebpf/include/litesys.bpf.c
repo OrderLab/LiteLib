@@ -10,11 +10,11 @@ char LICENSE[] SEC("license") = "GPL";
 
 #define READ_RETRY_COUNT 10
 
-#define SERVER_PORT 6379
+#define SERVER_PORT 11211
 #define ACCEPT 1
 #define CLOSE 2
 
-#define MAX_MSG_SIZE 256
+#define MAX_MSG_SIZE 1300
 #define MAX_POOLING_CONN (1 << 12)
 
 struct event_type_header {
@@ -176,7 +176,7 @@ struct socket_data_event_t {
 
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
-  __uint(max_entries, 1 << 26);
+  __uint(max_entries, 1 << 27);
 } msgs_ringbuf SEC(".maps");
 
 static inline bool is_resp_connection(const char *line_buffer,
@@ -219,7 +219,7 @@ int bpf_sockops_monitor(struct bpf_sock_ops *skops) {
       local_port = skops->local_port;
       bpf_printk("[%d] accept sockops: local_port: %d\n", __LINE__, local_port);
 
-      if (local_port != 6379) return 0;
+      if (local_port != SERVER_PORT) return 0;
       key.remote_port = bpf_ntohs(skops->remote_port >> 16);
       key.remote_ip = skops->remote_ip4;
 
@@ -245,7 +245,7 @@ int bpf_sockops_monitor(struct bpf_sock_ops *skops) {
         bpf_printk("[%d] close sockops: local_port: %d\n", __LINE__,
                    local_port);
 
-        if (local_port != 6379) return 0;
+        if (local_port != SERVER_PORT) return 0;
 
         key.remote_ip = skops->remote_ip4;
         key.remote_port = bpf_ntohs(skops->remote_port >> 16);
