@@ -120,6 +120,10 @@ template <typename Application, typename Request, typename Response,
            IsConnectionInfo<ConnectionInfo> && IsCacheKey<CacheKey> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
 int SignalHandler(int sig) {
+  const auto now = std::chrono::system_clock::now();
+  const auto timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                         now.time_since_epoch()).count();
+  LOG(INFO) << "EmbeddedLite: SignalHandler: " << timestamp;
   auto embedded_server_ptr =
       static_cast<EmbeddedServer<Application, Request, Response, ConnectionInfo,
                                  CacheKey, CacheEntry> *>(
