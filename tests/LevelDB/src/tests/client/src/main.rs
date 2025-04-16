@@ -22,7 +22,7 @@ enum ExperimentType {
 struct RemoteScriptConfig {
     root_dir: String,
     experiment_type: ExperimentType,
-    cpu_limit: usize,
+    cpu_limit: f64,
     remote_addr: String,
     remote_ssh_port: String,
     write_buffer_size: usize,
@@ -44,6 +44,7 @@ struct BenchmarkConfig {
     #[serde(deserialize_with = "deserialize_duration")]
     test_duration: Duration,
     rps: usize,
+    init_rps: usize,
     key_distribution: KeyDistribution,
     write_ratio: f64,
     #[serde(deserialize_with = "deserialize_duration")]
@@ -189,13 +190,13 @@ async fn do_query(
                                 } else {
                                     // timeout comes after the response is sent
                                     *old_suffix_expected = actual_suffix;
-                                    eprintln!(
-                                        "\ni: {}, key: {}, expected value: {:?}, actual value: {:?}, update expected value\n",
-                                        i,
-                                        key,
-                                        get_last_n_char(&old_value_expected, 10),
-                                        get_last_n_char(&new_value, 10)
-                                    );
+                                    // eprintln!(
+                                    //     "\ni: {}, key: {}, expected value: {:?}, actual value: {:?}, update expected value\n",
+                                    //     i,
+                                    //     key,
+                                    //     get_last_n_char(&old_value_expected, 10),
+                                    //     get_last_n_char(&new_value, 10)
+                                    // );
                                 }
                             } else {
                                 *old_suffix_expected = new_suffix_expected;
@@ -244,6 +245,7 @@ async fn main() {
     let cfg = Config::from_env().unwrap();
     println!("{:?}", cfg);
     let num_requests = cfg.benchmark.test_duration.as_secs() as usize * cfg.benchmark.rps;
+    let init_interval = Duration::from_secs_f64(1.0 / cfg.benchmark.init_rps as f64);
     let interval = Duration::from_secs_f64(1.0 / cfg.benchmark.rps as f64);
     let base_value: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
@@ -333,7 +335,7 @@ async fn main() {
         let start_time = Instant::now();
 
         for i in (1..cfg.benchmark.num_keys + 1).rev() {
-            let iter_end_time = start_time + interval * ((cfg.benchmark.num_keys - i + 1) as u32);
+            let iter_end_time = start_time + init_interval * ((cfg.benchmark.num_keys - i + 1) as u32);
             let pool = pool.clone();
             let i = i;
             let value = format!("{}_{}_{}", base_value, i, 0);
@@ -352,6 +354,7 @@ async fn main() {
                 bar.inc(1);
             });
             handles.push(handle);
+            sleep_until(iter_end_time).await;
         }
 
         for handle in handles {
