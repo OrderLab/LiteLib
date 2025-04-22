@@ -38,7 +38,7 @@ struct connection_event {
 // Define a BPF ring buffer map for passing connection events
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
-  __uint(max_entries, 1 << 16);  // 64KB ring buffer
+  __uint(max_entries, MAX_POOLING_CONN);  // 64KB ring buffer
 } conn_ringbuf SEC(".maps");
 
 struct {
