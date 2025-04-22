@@ -14,7 +14,7 @@ char LICENSE[] SEC("license") = "GPL";
 #define ACCEPT 1
 #define CLOSE 2
 
-#define MAX_MSG_SIZE 1300
+#define MAX_MSG_SIZE 256
 #define MAX_POOLING_CONN (1 << 12)
 
 struct event_type_header {
