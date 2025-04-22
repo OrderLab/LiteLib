@@ -278,8 +278,8 @@ void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
           block.set_blockid(blockId);
           block.set_generationstamp(generationstamp);
           block.set_numbytes(len);
-          BlockMap[std::make_pair(poolId, blockId)] = block;
-          std::cout << "map the block: " << blockId << std::endl;
+          // BlockMap[std::make_pair(poolId, blockId)] = block;
+          // std::cout << "map the block: " << blockId << std::endl;
         }
       }
     } else if (req->RequestHeader.methodname() == "registerDatanode") {
@@ -345,8 +345,8 @@ void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
                   << ", len: " << OpReadBlock.len() << ", poolId" << poolId
                   << ", block size: " << numbytes << ", blockId: " << blockId
                   << ", generationstamp: " << generationstamp << std::endl;
-        BlockMap[std::make_pair(poolId, blockId)] = block;
-        std::cout << "map the block: " << blockId << std::endl;
+        // BlockMap[std::make_pair(poolId, blockId)] = block;
+        // std::cout << "map the block: " << blockId << std::endl;
         break;
       }
       case Packet::WRITE_BLOCK: {
@@ -364,8 +364,8 @@ void Datanode::NormalUpdate(const std::shared_ptr<Packet> &resp,
         std::cout << "Write the block. poolId: " << poolId
                   << ", block size: " << numbytes << ", blockId: " << blockId
                   << ", generationstamp: " << generationstamp << std::endl;
-        BlockMap[std::make_pair(poolId, blockId)] = block;
-        std::cout << "map the block: " << blockId << std::endl;
+        // BlockMap[std::make_pair(poolId, blockId)] = block;
+        // std::cout << "map the block: " << blockId << std::endl;
         break;
       }
       default:
@@ -403,6 +403,20 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
 
         char checksumBuffer[12] = {0x0d, 0x08, 0x00, 0x22, 0x09, 0x0a, 0x05};
         checksum.SerializeToArray(checksumBuffer + 7, 5);
+        
+        int flags = fcntl(conn.client_fd, F_GETFL, 0);
+        if (flags == -1) {
+            perror("fcntl F_GETFL");
+            return std::make_pair(resp, false);
+        }
+
+        flags &= ~O_NONBLOCK;  // Unset the O_NONBLOCK bit
+
+        if (fcntl(conn.client_fd, F_SETFL, flags) == -1) {
+            perror("fcntl F_SETFL");
+            return std::make_pair(resp, false);
+        }
+        
 
         int sent = send(conn.client_fd, checksumBuffer, 12, 0);
         if (sent == -1) {
@@ -419,11 +433,11 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
           std::cout << "Sent " << sent << " bytes." << std::endl;
         }
         
-        int d1 = (TargetBlock.blockid() >> 16) & 0x3F;
-        int d2 = (TargetBlock.blockid() >> 8) & 0x3F;
+        int d1 = (TargetBlock.blockid() >> 16) & 0x1F;
+        int d2 = (TargetBlock.blockid() >> 8) & 0x1F;
         std::string subdirs = "subdir" + std::to_string(d1) + "/subdir" + std::to_string(d2);
 
-        std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" +
+        std::string BlockPath = "/mnt/hdd/data/hdfs/datanode/current/" +
                                 TargetBlock.poolid() +
                                 "/current/finalized/" + subdirs + "/blk_" +
                                 std::to_string(TargetBlock.blockid());
@@ -444,28 +458,28 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
           return std::make_pair(resp, false);
         }
 
+        unsigned char checksumHeader[7];
+        metastream->read(reinterpret_cast<char*>(checksumHeader), 7);
+
         const size_t MAX_DATA_SIZE = 64 * 1024;
         char buffer[MAX_DATA_SIZE];
 
         auto remaining_bytes = len;
         uint64_t seqno = 0;
-        
-        unsigned char checksumHeader[7];
-        unsigned char checksumBuf[size_t(ceil(len / 512.0) * 4)];
-        
-        metastream->read(reinterpret_cast<char*>(checksumHeader), 7);
-        metastream->read(reinterpret_cast<char*>(checksumBuf), sizeof(checksumBuf));
-
-        if (!metastream->good()) {
-          LOG(ERROR) << "Failed to read metadata from: " << MetaPath << std::endl;
-          WriteErrorResponse(resp.buffer);
-          return std::make_pair(resp, false);
-        }
 
         while(remaining_bytes > 0) {
           hadoop::hdfs::PacketHeaderProto packet_header;
 
-          size_t read_size = remaining_bytes > MAX_DATA_SIZE ? MAX_DATA_SIZE : remaining_bytes;
+          size_t read_size = std::min(remaining_bytes, static_cast<long>(MAX_DATA_SIZE));
+
+          unsigned char checksumBuf[size_t(ceil(read_size / 512.0) * 4)];
+          
+          metastream->read(reinterpret_cast<char*>(checksumBuf), sizeof(checksumBuf));
+          if (!metastream->good()) {
+            LOG(ERROR) << "Failed to read metadata from: " << MetaPath << std::endl;
+            WriteErrorResponse(resp.buffer);
+            return std::make_pair(resp, false);
+          }
 
           blockstream->read(buffer, read_size);
           if (!blockstream->good()) {
@@ -475,9 +489,8 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
           }
 
           uint32_t packet_size = 4 + read_size;
-          if(seqno == 0) {
-            packet_size += sizeof(checksumBuf);
-          }
+          packet_size += sizeof(checksumBuf);
+
           unsigned char packet_size_buffer[6];
 
           packet_size_buffer[0] = (packet_size >> 24) & 0xFF;
@@ -499,23 +512,52 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
 
           packet_header.SerializeToArray(packet_header_buffer.data() + 6, packet_header.ByteSizeLong());
           
-          if(seqno == 0) {
-            packet_header_buffer.insert(packet_header_buffer.end(), checksumBuf, checksumBuf + sizeof(checksumBuf));
-          }
-          sent = send(conn.client_fd, packet_header_buffer.data(), packet_header_buffer.size(), 0);
-          if (sent == -1) {
-            perror("send packet header failed");
-          } else {
-            std::cout << "Sent " << sent << " bytes." << std::endl;
-          }
+          packet_header_buffer.insert(packet_header_buffer.end(), checksumBuf, checksumBuf + sizeof(checksumBuf));
 
-
-          sent = send(conn.client_fd, buffer, read_size, 0);
-          if (sent == -1) {
-            perror("send data failed");
-          } else {
-            std::cout << "Sent " << sent << " bytes." << std::endl;
+          int total_sent = 0;
+          int to_send = packet_header_buffer.size();
+          while (total_sent < to_send) {
+            int sent = send(conn.client_fd, packet_header_buffer.data() + total_sent, to_send - total_sent, 0);
+            if (sent == -1) {
+              if (errno == EINTR) {
+                continue; // Interrupted, try again
+              } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // For non-blocking socket: wait for writable state
+                // You might want to use select/poll/epoll here, or just break
+                std::cerr << "Socket not ready for writing (EAGAIN/EWOULDBLOCK)." << std::endl;
+                break;
+              } else {
+                perror("send packet header failed");
+                break;
+              }
+            } else {
+              total_sent += sent;
+            }
           }
+          std::cout << "Total bytes sent: " << total_sent << std::endl;
+
+  
+          total_sent = 0;
+          to_send = read_size;
+          while (total_sent < to_send) {
+            int sent = send(conn.client_fd, buffer + total_sent, to_send - total_sent, 0);
+            if (sent == -1) {
+              if (errno == EINTR) {
+                continue; // Interrupted, try again
+              } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // For non-blocking socket: wait for writable state
+                // You might want to use select/poll/epoll here, or just break
+                std::cerr << "Socket not ready for writing (EAGAIN/EWOULDBLOCK)." << std::endl;
+                break;
+              } else {
+                perror("send data failed");
+                break;
+              }
+            } else {
+              total_sent += sent;
+            }
+          }
+          std::cout << "Total bytes sent: " << total_sent << std::endl;
 
           Packet packet = Packet();
 
@@ -533,13 +575,28 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
         final_packet_header_buffer.resize(6 + final_packet_header.ByteSizeLong());
         final_packet_header.SerializeToArray(final_packet_header_buffer.data() + 6, final_packet_header.ByteSizeLong());
 
-        sent = send(conn.client_fd, final_packet_header_buffer.data(), 6 + final_packet_header.ByteSizeLong(), 0);
-        if (sent == -1) {
-          perror("send final packet header failed");
-        } else {
-          std::cout << "Sent " << sent << " bytes." << std::endl;
+        int total_sent = 0;
+        int to_send = 6 + final_packet_header.ByteSizeLong();
+        while (total_sent < to_send) {
+          int sent = send(conn.client_fd, final_packet_header_buffer.data() + total_sent, to_send - total_sent, 0);
+          if (sent == -1) {
+            if (errno == EINTR) {
+              continue; // Interrupted, try again
+            } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+              // For non-blocking socket: wait for writable state
+              // You might want to use select/poll/epoll here, or just break
+              std::cerr << "Socket not ready for writing (EAGAIN/EWOULDBLOCK)." << std::endl;
+              break;
+            } else {
+              perror("send final packet header failed");
+              break;
+            }
+          } else {
+            total_sent += sent;
+          }
         }
-        
+        std::cout << "Total bytes sent: " << total_sent << std::endl;
+
         return std::make_pair(resp, false);
         break;
       }
@@ -560,7 +617,7 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
         std::cout << "Original OpWriteBlock size: " << OpWriteBlock.ByteSizeLong() << ", OpWriteBlock:\n" << OpWriteBlock.DebugString() << std::endl;
         auto target = OpWriteBlock.header().baseheader().block();
         TargetMap[&conn] = OpWriteBlock;
-        BlockMap[std::make_pair(target.poolid(), target.blockid())] = target;
+        // BlockMap[std::make_pair(target.poolid(), target.blockid())] = target;
 
         auto DatanodeTargets = OpWriteBlock.targets();
         std::vector<int> datanodeSockfd(DatanodeTargets.size());
@@ -671,9 +728,9 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
           std::cout << "Sent " << sent << " bytes." << std::endl;
         }
 
-        int d1 = (target.blockid() >> 16) & 0x3F;
-        int d2 = (target.blockid() >> 8) & 0x3F;
-        std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" + target.poolid() + "/current/finalized/subdir" + std::to_string(d1);
+        int d1 = (target.blockid() >> 16) & 0x1F;
+        int d2 = (target.blockid() >> 8) & 0x1F;
+        std::string BlockPath = "/mnt/hdd/data/hdfs/datanode/current/" + target.poolid() + "/current/finalized/subdir" + std::to_string(d1);
         if (!std::filesystem::exists(BlockPath)) {
           if (std::filesystem::create_directories(BlockPath)) {
               std::cout << "Directory created: " << BlockPath << std::endl;
@@ -963,9 +1020,9 @@ std::pair<Packet, bool> Datanode::EmergencyServe(std::shared_ptr<Packet> req, Co
       auto target = OpWriteBlock.header().baseheader().block();
 
       if (!packet_header.lastpacketinblock()) {
-        int d1 = (target.blockid() >> 16) & 0x3F;
-        int d2 = (target.blockid() >> 8) & 0x3F;
-        std::string BlockPath = "/tmp/hdfs/data/dfs/data/current/" + target.poolid() + "/current/finalized/subdir" + std::to_string(d1);
+        int d1 = (target.blockid() >> 16) & 0x1F;
+        int d2 = (target.blockid() >> 8) & 0x1F;
+        std::string BlockPath = "/mnt/hdd/data/hdfs/datanode/current/" + target.poolid() + "/current/finalized/subdir" + std::to_string(d1);
         if (!std::filesystem::exists(BlockPath)) {
           if (std::filesystem::create_directories(BlockPath)) {
               std::cout << "Directory created: " << BlockPath << std::endl;
