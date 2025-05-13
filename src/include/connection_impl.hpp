@@ -27,7 +27,7 @@ Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       lite_core_(lite_core),
       self_(std::make_shared<ConnectionInstance*>(this)),
       log_head_(new LogEntryInstance(nullptr, nullptr, self_)),
-      cache_(lite_core.cache_inner_, lite_core.logger_inner_, log_head_),
+      cache_(std::make_shared<CacheInstance>(lite_core.cache_inner_, lite_core.logger_inner_, log_head_)),
       logger_(lite_core.logger_inner_, log_head_),
       worker_ptr_(worker_ptr) {
   if (sfd) {
@@ -126,7 +126,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       if (!conn->lite_core_.HandleRequest(
               std::move(conn->request_), conn->extra_app_info_,
               conn->pending_requests_, conn->client_fd_, conn->backend_fd_,
-              &conn->cache_, &conn->logger_, forwarded)) {
+              conn->cache_, &conn->logger_, forwarded)) {
         delete conn;
         return;
       }
@@ -185,7 +185,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     if (result == kGood) {
       if (!conn->lite_core_.HandleResponse(
               std::move(conn->response_), conn->extra_app_info_,
-              conn->pending_requests_, conn->client_fd_, &conn->cache_,
+              conn->pending_requests_, conn->client_fd_, conn->cache_,
               forwarded)) {
         delete conn;
         return;

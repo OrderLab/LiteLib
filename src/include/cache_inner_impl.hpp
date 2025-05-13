@@ -198,7 +198,7 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
   if (!in_transaction) {
     transaction_lock = std::shared_lock<std::shared_mutex>{transaction_mutex_};
   }
-  cache_.visit_all([&](auto &x) { visitor(x.first, x.second.value); });
+  cache_.visit_all([&](auto &x) { visitor(x.first, x.second.state->value); });
 }
 
 template <typename Application, typename Request, typename Response,

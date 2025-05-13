@@ -79,7 +79,7 @@ class Connection {
   LogEntryInstance* log_head_;
 
  public:
-  CacheInstance cache_;
+  std::shared_ptr<CacheInstance> cache_;
 
   LoggerInstance logger_;
 

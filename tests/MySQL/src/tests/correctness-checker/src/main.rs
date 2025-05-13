@@ -192,6 +192,15 @@ fn init() -> Pool {
 // async fn main() {
 //     let pool = init();
 //     let mut conn = pool.get_conn().unwrap();
+//     println!("Result: {:?}", point_selects(&mut conn, 1, 10));
+//     let data = Data {
+//         k: Some(0),
+//         c: Some(get_rand_c()),
+//         pad: Some(get_rand_pad()),
+//     };
+//     println!("New data: {:?}", data);
+//     println!("Result: {:?}", deletes(&mut conn, 1, 10));
+//     println!("Result: {:?}", inserts(&mut conn, 1, 10, data));
 //     // println!("Result: {:?}", sum_ranges(&mut conn, 1, 3, 4));
 //     // println!("Result: {:?}", point_selects(&mut conn, 1, 3));
 //     // println!(
@@ -209,9 +218,9 @@ fn init() -> Pool {
 //     // );
 //     // println!("Result: {:?}", point_selects(&mut conn, 1, 3));
 //     // println!("Result: {:?}", order_ranges(&mut conn, 1, 3, 4));
-//     println!("Result: {:?}", sum_ranges(&mut conn, 1, 3, 4));
-//     println!("Result: {:?}", index_updates(&mut conn, 1, 3));
-//     println!("Result: {:?}", sum_ranges(&mut conn, 1, 3, 4));
+//     // println!("Result: {:?}", sum_ranges(&mut conn, 1, 3, 4));
+//     // println!("Result: {:?}", index_updates(&mut conn, 1, 3));
+//     // println!("Result: {:?}", sum_ranges(&mut conn, 1, 3, 4));
 //     // println!("Result: {:?}", deletes(&mut conn, 1, 3));
 //     // println!("Result: {:?}", point_selects(&mut conn, 1, 3));
 //     // println!("Result: {:?}", order_ranges(&mut conn, 1, 3, 4));
@@ -271,7 +280,7 @@ async fn main() {
 
     // ------------------------- Perform the benchmarking -----------------------------
     let mut handles = Vec::new();
-    let bar = ProgressBar::new(TEST_DURATION.as_secs() as u64).with_prefix("Fetching the database");
+    let bar = ProgressBar::new(TEST_DURATION.as_secs() as u64).with_prefix("Benchmarking the database");
     bar.set_style(
         ProgressStyle::with_template(
             "{prefix} [{elapsed_precise}] [{bar:40}] ({pos}/{len}, ETA {eta})",

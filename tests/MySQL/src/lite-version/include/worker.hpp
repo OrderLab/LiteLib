@@ -21,7 +21,7 @@ struct NormalTask {
   std::string query;
   ConnectionInfo
       *conn;  // TODO: what if the connection is closed before it is handled?
-  Cache *cache;
+  std::shared_ptr<Cache> cache;
 };
 
 class MySQLWorker {

@@ -53,7 +53,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                   ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
                       &pending_requests,
                   const evutil_socket_t client_fd,
-                  const evutil_socket_t backend_fd, CacheInstance *cache,
+                  const evutil_socket_t backend_fd, std::shared_ptr<CacheInstance> cache,
                   LoggerInstance *logger, const bool forwarded) {
   if (!emergency_mode_ && backend_fd <= 0) {
     LOG(WARNING) << "Core: Fall back and entering emergency mode "
@@ -104,7 +104,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     HandleResponse(std::shared_ptr<Response> resp, ConnectionInfo &conn_info,
                    ThreadSafeQueue<std::pair<std::shared_ptr<Request>, bool>>
                        &pending_requests,
-                   const evutil_socket_t client_fd, CacheInstance *cache,
+                   const evutil_socket_t client_fd, std::shared_ptr<CacheInstance> cache,
                    const bool forwarded) {
   const auto [related_stateful_request, forward_resp] =
       app_.Match(resp, conn_info, pending_requests);

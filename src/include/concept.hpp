@@ -35,8 +35,7 @@ concept IsApplication = requires(
         pending_requests,  // true: request forward from client, false:
                            // request generated during replay
     std::vector<std::shared_ptr<Request>> related_requests,
-    Cache<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>
-        *cache,
+    std::shared_ptr<Cache<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>> cache,
     Logger<Application, Request, Response, ConnectionInfo, CacheKey, CacheEntry>
         *logger,
     bool flow_control  // true: reject this request if it will trigger

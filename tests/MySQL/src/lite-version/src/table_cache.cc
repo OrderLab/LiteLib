@@ -20,6 +20,23 @@ TableCache::TableCache() {
   tables_["sbtest2"] = schema;
 }
 
+void TableCache::Dump(Cache *cache) {
+  cache->ConstVisitAll([&](const auto &key, const auto &entry) {
+    LOG(INFO) << "Key: " << key.table << std::endl;
+    for (size_t i = 0; i < key.primary_keys.size(); ++i) {
+      LOG(INFO) << "Primary key " << i << ": " << ValueToString(key.primary_keys[i]) << std::endl;
+    }
+    for (size_t i = 0; i < entry.values.size(); ++i) {
+      if (entry.values[i].has_value()) {
+        LOG(INFO) << "Value " << i << ": " << ValueToString(entry.values[i].value())
+                  << std::endl;
+      } else {
+        LOG(INFO) << "Value " << i << ": " << "UNKNOWN" << std::endl;
+      }
+    }
+  });
+}
+
 bool TableCache::HandleInsert(const hsql::InsertStatement &stmt, Cache *cache,
                               QueryCache *query_cache,
                               bool update_query_cache) {
@@ -384,7 +401,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
               }
 
               if (!update_query_cache) {
-                if (!old_entry_match.value() || !new_entry_match.value()) {
+                if (!old_entry_match.value()) {
                   return false;
                 } else {
                   goto remove_where_clause;

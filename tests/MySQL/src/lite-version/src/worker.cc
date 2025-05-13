@@ -63,7 +63,7 @@ void MySQLWorker::NotifyHandler(evutil_socket_t fd, short which,
             tsk.query_cache_block_full_ptr, self->mysql_.table_cache_,
             self->mysql_.dangling_cache_);
       } else if (tsk.type == NormalTask::Type::kUpdateQuery) {
-        self->mysql_.NormalUpdateQuery(tsk.query, tsk.conn, tsk.cache);
+        self->mysql_.NormalUpdateQuery(tsk.query, tsk.conn, tsk.cache.get());
       }
     }
   } else {

@@ -14,11 +14,11 @@ void PrintHelp() {
                "       [-p port] [-h help]\n";
   LOG(INFO) << "Options:\n";
   LOG(INFO) << "  -t, --thread_num      Number of worker threads. Default: \n"
-               "                          hardware_concurrency() - 1\n";
+               "                          1\n";
   LOG(INFO)
       << "  -s, --size            Max number of items in cache. Default: \n"
          "                          1024\n";
-  LOG(INFO) << "  -p, --port            Default: 3306\n";
+  LOG(INFO) << "  -p, --port            Default: 59999\n";
   LOG(INFO) << "  -h, --help            Show this help message.\n";
   LOG(INFO) << "Example:\n";
   LOG(INFO) << "  LiteMySQL -t 128 -p 3306\n";
@@ -28,9 +28,9 @@ void PrintHelp() {
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   try {
-    size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
+    size_t thread_pool_size = 1;
     size_t cache_size(1024);
-    const char* port = "3306";
+    const char* port = "59999";
 
     const char* const short_opts = "t:s:p:a:h";
     const option long_opts[] = {{"thread_num", required_argument, nullptr, 't'},

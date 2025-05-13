@@ -94,6 +94,31 @@ QueryCache::QueryCache(MySQL &mysql) : mysql_(mysql) { ConnectToFull(); }
 
 QueryCache::~QueryCache() { DisconnectFromFull(); }
 
+int QueryCache::GetSizeAndDump(bool dump) {
+  int cnt = 0;
+  table_query_caches_.cvisit_all([&](const auto &table_query_cache_it) {
+    auto &[table, table_query_cache] = table_query_cache_it;
+    table_query_cache.where_query_caches.cvisit_all(
+        [&](const auto &where_query_cache_it) {
+          auto &[where, where_query_cache] = where_query_cache_it;
+          cnt += where_query_cache.query_and_results.size();
+          if (dump) {
+            where_query_cache.query_and_results.cvisit_all(
+                [&](const auto &query_and_result_it) {
+                  auto &[query, query_and_result] = query_and_result_it;
+                  LOG(INFO) << "Query: " << query << std::endl;
+                  // auto result = query_and_result->result.Serialize();
+                  // for (size_t i = 0; i < result->size(); ++i) {
+                  //   std::cerr << result->at(i);
+                  //   std::cerr << std::endl;
+                  // }
+                });
+          }
+        });
+  });
+  return cnt;
+}
+
 #define FULL_TO_LITE_FIFO "/tmp/mysql_full_to_lite"
 #define LITE_TO_FULL_FIFO "/tmp/mysql_lite_to_full"
 
@@ -195,20 +220,7 @@ bool QueryCache::NormalToEmergencyHook(TableCache &table_cache, Cache *cache) {
 
   BuildRelationsBetweenQueryAndCachedRows();
 
-  size_t cnt = 0;
-  table_query_caches_.cvisit_all([&](const auto &table_query_cache_it) {
-    auto &[table, table_query_cache] = table_query_cache_it;
-    table_query_cache.where_query_caches.cvisit_all(
-        [&](const auto &where_query_cache_it) {
-          auto &[where, where_query_cache] = where_query_cache_it;
-          cnt += where_query_cache.query_and_results.size();
-          where_query_cache.query_and_results.cvisit_all(
-              [&](const auto &query_and_result_it) {
-                auto &[query, query_and_result] = query_and_result_it;
-                LOG(INFO) << "Query: " << query << std::endl;
-              });
-        });
-  });
+  int cnt = GetSizeAndDump(true);
   LOG(INFO) << "Query cache size: " << cnt << std::endl;
 
   return true;
@@ -247,6 +259,7 @@ void QueryCache::AddQueryCacheBlock(
 void QueryCache::AddQueryAndResult(std::string query,
                                    std::vector<uint8_t> &result,
                                    TableCache &table_cache, Cache *cache) {
+  // LOG(INFO) << "AddQueryAndResult for query: " << query << std::endl;
   hsql::SQLParserResult parse_result;
   hsql::SQLParser::parse(query, &parse_result);
   if (!parse_result.isValid()) {
@@ -359,6 +372,8 @@ void QueryCache::AddQueryAndResult(std::string query,
     }
     cache->Add(key, entry, false, false);
   }
+
+  // table_cache.Dump(cache);
 
 insert_to_query_cache:
   auto query_and_result = std::make_unique<QueryAndResult>(

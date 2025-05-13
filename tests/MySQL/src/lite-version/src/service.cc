@@ -55,7 +55,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
 
 void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
                          std::vector<std::shared_ptr<Packet>> requests,
-                         ConnectionInfo &conn, Cache *cache) {
+                         ConnectionInfo &conn, std::shared_ptr<Cache> cache) {
   if (requests.empty()) {
     // TODO: add lock and uncomment
     // if (conn.state == ConnectionInfo::State::Init) {
@@ -141,13 +141,13 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
 
 void MySQL::HandleReplayResponse(const std::shared_ptr<Packet> &resp,
                                  std::vector<std::shared_ptr<Packet>> requests,
-                                 ConnectionInfo &conn, Cache *cache) {
+                                 ConnectionInfo &conn, std::shared_ptr<Cache> cache) {
   return;
 }
 
 std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
                                               ConnectionInfo &conn,
-                                              Cache *cache, Logger *logger,
+                                              std::shared_ptr<Cache> cache, Logger *logger,
                                               bool flow_control) {
   // TODO: flow_control
   Packet resp;
@@ -179,7 +179,7 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
   switch (req_cmd) {
     case COM_QUERY: {
       std::string query{req_com_data.com_query.query};
-      return EmergencyServeQuery(query, conn, cache, logger, flow_control);
+      return EmergencyServeQuery(query, conn, cache.get(), logger, flow_control);
     }
     case COM_STMT_EXECUTE: {
       auto [stmt_it, values] =
@@ -187,7 +187,7 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
       std::string query = stmt_it->second.query;
       for (size_t i = 0; i < values.size(); i++)
         query.replace(query.find("?"), 1, ValueToString(values[i]));
-      return EmergencyServeQuery(query, conn, cache, logger, flow_control);
+      return EmergencyServeQuery(query, conn, cache.get(), logger, flow_control);
     }
     case COM_PING: {
       resp.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
@@ -258,6 +258,8 @@ void MySQL::NormalUpdateQuery(std::string &query, ConnectionInfo *conn,
         auto delete_stmt = dynamic_cast<const hsql::DeleteStatement *>(stmt);
         if (!table_cache_.HandleDelete(*delete_stmt, cache, &query_cache_,
                                        false)) {
+          // LOG(INFO) << "InvalidateUnprocessableDeleteDuringNormal for delete statement: "
+          //           << query << std::endl;
           query_cache_.InvalidateUnprocessableDeleteDuringNormal(delete_stmt,
                                                                  table_cache_);
         }

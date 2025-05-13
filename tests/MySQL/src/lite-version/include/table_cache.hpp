@@ -63,6 +63,8 @@ class TableCache {
  public:
   TableCache();
 
+  void Dump(Cache *cache);
+
   // if update_query_cache is false, only invalidate related entries
   bool HandleInsert(const hsql::InsertStatement &stmt, Cache *cache,
                     QueryCache *query_cache, bool update_query_cache = true);

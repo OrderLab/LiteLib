@@ -27,14 +27,14 @@ class MySQL {
 
   void NormalUpdate(const std::shared_ptr<Packet> &resp,
                     std::vector<std::shared_ptr<Packet>> requests,
-                    ConnectionInfo &conn, Cache *cache);
+                    ConnectionInfo &conn, std::shared_ptr<Cache> cache);
 
   void HandleReplayResponse(const std::shared_ptr<Packet> &resp,
                             std::vector<std::shared_ptr<Packet>> requests,
-                            ConnectionInfo &conn, Cache *cache);
+                            ConnectionInfo &conn, std::shared_ptr<Cache> cache);
 
   std::pair<Packet, bool> EmergencyServe(std::shared_ptr<Packet> req,
-                                         ConnectionInfo &conn, Cache *cache,
+                                         ConnectionInfo &conn, std::shared_ptr<Cache> cache,
                                          Logger *logger, bool flow_control);
 
   void NormalToEmergencyHook();

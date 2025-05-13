@@ -119,6 +119,8 @@ class QueryCache {
         column_range_indices;  // key: column name
   };
 
+  int GetSizeAndDump(bool dump = false);
+
  public:
   QueryCache(MySQL &mysql);
 
