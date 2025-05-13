@@ -2727,7 +2727,7 @@ void Query_cache::free_query_internal(Query_cache_block *query_block, my_bool sy
   Query_cache_block *result_block= query->result();
 
   if (!sync_free_memory && result_block && result_block->type == Query_cache_block::RESULT && SendQueryToLite(query_block)) {
-    query->unlock_n_destroy();
+    // query->unlock_n_destroy();
     DBUG_VOID_RETURN;
   }
 
@@ -2783,6 +2783,7 @@ void Query_cache::free_query_internal_async_free_callback(Query_cache_block *que
     free_memory_block(current);
   } while (block != result_block);
 
+  query->unlock_n_destroy();
   free_memory_block(query_block);
 
   unlock();

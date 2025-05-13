@@ -17,7 +17,7 @@ static TABLE_COUNT: usize = 1;
 static TABLE_SIZE: i32 = 10;
 // static TABLE_SIZE: i32 = 1000000;
 static TEST_DURATION: Duration = Duration::from_secs(60);
-static THREAD_COUNT: usize = 1;
+static THREAD_COUNT: usize = 32;
 static RANGE_SIZE: i32 = 100;
 
 fn get_rand_db_id() -> i32 {
