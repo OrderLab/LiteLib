@@ -100,7 +100,7 @@ bool TableCache::HandleInsert(const hsql::InsertStatement &stmt, Cache *cache,
     return false;
   }
 
-  cache->Add(key, entry);
+  cache->Add(key, entry, false, false);
   UpdateQueryCache(key, nullptr, &entry, query_cache, update_query_cache);
   return true;
 }
@@ -265,7 +265,7 @@ bool TableCache::HandleUpdate(const hsql::UpdateStatement &stmt, Cache *cache,
           return false;
       }
     }
-    cache->Replace(key, new_entry);
+    cache->Replace(key, new_entry, false, false);
     UpdateQueryCache(key, &old_entry, &new_entry, query_cache,
                      update_query_cache);
     return true;

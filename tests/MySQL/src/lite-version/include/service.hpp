@@ -57,9 +57,11 @@ class MySQL {
   void NormalUpdateQuery(std::string &query, ConnectionInfo *conn,
                          Cache *cache);
 
-  std::pair<Packet, bool> EmergencyServeQuery(std::string &query,
+  std::pair<Packet, bool> EmergencyServeQuery(std::shared_ptr<Packet> req,
+                                              std::string &query,
                                               ConnectionInfo &conn,
-                                              Cache *cache, Logger *logger,
+                                              std::shared_ptr<Cache> cache,
+                                              Logger *logger,
                                               bool flow_control);
 
   friend class MySQLWorker;

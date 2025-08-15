@@ -179,7 +179,7 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
   switch (req_cmd) {
     case COM_QUERY: {
       std::string query{req_com_data.com_query.query};
-      return EmergencyServeQuery(query, conn, cache.get(), logger, flow_control);
+      return EmergencyServeQuery(req, query, conn, cache.get(), logger, flow_control);
     }
     case COM_STMT_EXECUTE: {
       auto [stmt_it, values] =
@@ -187,7 +187,7 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
       std::string query = stmt_it->second.query;
       for (size_t i = 0; i < values.size(); i++)
         query.replace(query.find("?"), 1, ValueToString(values[i]));
-      return EmergencyServeQuery(query, conn, cache.get(), logger, flow_control);
+      return EmergencyServeQuery(req, query, conn, cache.get(), logger, flow_control);
     }
     case COM_PING: {
       resp.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
@@ -280,7 +280,8 @@ void MySQL::NormalUpdateQuery(std::string &query, ConnectionInfo *conn,
   }
 }
 
-std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
+std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::shared_ptr<Packet> req,
+                                                   std::string &query,
                                                    ConnectionInfo &conn,
                                                    Cache *cache, Logger *logger,
                                                    bool flow_control) {
@@ -351,6 +352,7 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
       return {resp, true};
     }
     case hsql::kStmtInsert: {
+      logger->Log(req);
       auto insert_stmt = dynamic_cast<const hsql::InsertStatement *>(stmt);
       if (table_cache_.HandleInsert(*insert_stmt, cache, &query_cache_)) {
         resp.buffer = std::make_shared<std::vector<uint8_t>>(
@@ -365,6 +367,7 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
       break;
     }
     case hsql::kStmtUpdate: {
+      logger->Log(req);
       auto update_stmt = dynamic_cast<const hsql::UpdateStatement *>(stmt);
       if (table_cache_.HandleUpdate(*update_stmt, cache, &query_cache_)) {
         resp.buffer =
@@ -385,6 +388,7 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::string &query,
     }
     case hsql::kStmtDelete: {
       // TODO
+      logger->Log(req);
       auto delete_stmt = dynamic_cast<const hsql::DeleteStatement *>(stmt);
       if (table_cache_.HandleDelete(*delete_stmt, cache, &query_cache_)) {
         resp.buffer =
