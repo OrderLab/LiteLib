@@ -60,7 +60,7 @@ class MySQL {
   std::pair<Packet, bool> EmergencyServeQuery(std::shared_ptr<Packet> req,
                                               std::string &query,
                                               ConnectionInfo &conn,
-                                              std::shared_ptr<Cache> cache,
+                                              Cache *cache,
                                               Logger *logger,
                                               bool flow_control);
 
