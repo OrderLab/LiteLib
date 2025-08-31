@@ -73,6 +73,11 @@ concept IsApplication = requires(
   {
     app.EmergencyConnectionEstablishHook(conn_info)
   } -> std::convertible_to<std::optional<Response>>;
+
+  // Hook function for sending replay request to backend
+  {
+    app.ReplayConnectionEstablishHook(conn_info)
+  } -> std::convertible_to<std::optional<Response>>;
 };
 
 template <typename ProtocolMessage>

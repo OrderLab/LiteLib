@@ -99,7 +99,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       ;  // LOG(INFO) << "Client disconnected: " << fd << std::endl;
     else
       PLOG(ERROR) << "read from client";
-    delete conn;
+    if (!conn->lite_core_.is_replaying_) delete conn;
     // TODO: how to properly handle the case when the client disconnects as
     // expected? (e.g. quit command in Memcached)
     return;
@@ -110,7 +110,6 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
     forwarded = true;
     if (!network::Write(conn->backend_fd_, conn->buffer_, bytes_transferred)) {
       LOG(ERROR) << "Failed to write request to backend" << std::endl;
-      delete conn;
       return;
     }
   }
@@ -127,7 +126,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
               std::move(conn->request_), conn->extra_app_info_,
               conn->pending_requests_, conn->client_fd_, conn->backend_fd_,
               conn->cache_, &conn->logger_, forwarded)) {
-        delete conn;
+        if (!conn->lite_core_.is_replaying_) delete conn;
         return;
       }
       conn->request_ = std::make_unique<Request>();
@@ -163,7 +162,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       conn->backend_fd_ = -1;
     } else {
       PLOG(ERROR) << "read from backend";
-      delete conn;
+      if (!conn->lite_core_.is_replaying_) delete conn;
     }
     return;
   }
@@ -177,6 +176,8 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       return;
     }
   }
+  // FIXME: temporary solution for MySQL
+  else return;
 
   uint8_t* begin = conn->buffer_;
   uint8_t* end = begin + bytes_transferred;
@@ -204,7 +205,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
-                CacheEntry>::ConnectBackend() {
+                CacheEntry>::ConnectBackend(bool is_replay) {
   // Set up a socket connection to the backend server
   if ((backend_fd_ = network::TryConnectBackend(
            lite_core_.backend_addr_, lite_core_.backend_port_)) == -1) {
@@ -221,6 +222,15 @@ bool Connection<Application, Request, Response, ConnectionInfo, CacheKey,
   if (event_add(&backend_event_, 0) == -1) {
     PLOG(ERROR) << "backend event_add";
     throw std::runtime_error("backend event_add");
+  }
+
+  if (is_replay) {
+    // FIXME: uncomment (temporary solution for MySQL)
+    // std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    auto req = lite_core_.app_.ReplayConnectionEstablishHook(extra_app_info_);
+    network::Write(backend_fd_, req.Serialize());
+    auto req_ptr = std::make_shared<decltype(req)>(req);
+    pending_requests_.push_back(std::make_pair(req_ptr, false));
   }
 
   return true;

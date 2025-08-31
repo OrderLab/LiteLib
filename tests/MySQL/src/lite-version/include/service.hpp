@@ -43,12 +43,14 @@ class MySQL {
 
   Packet EmergencyConnectionEstablishHook(ConnectionInfo &conn);
 
+  Packet ReplayConnectionEstablishHook(ConnectionInfo &conn);
+
   Cache *dangling_cache_;  // used by workers
 
   void AssignNewNormalTask(NormalTask &&task);
 
  private:
-  Packet server_greeting_;
+  Packet server_greeting_, login_request_;
 
   TableCache table_cache_;
 

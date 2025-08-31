@@ -17,8 +17,8 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool Logger<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Pop(LoggerInnerInstance &logger_inner,
-                             LogEntryInstance *&entry) {
-  auto ret = logger_inner.Pop(entry);
+                             LogEntryInstance *&entry, bool &last_one_in_connection) {
+  auto ret = logger_inner.Pop(entry, last_one_in_connection);
   return ret;
 }
 

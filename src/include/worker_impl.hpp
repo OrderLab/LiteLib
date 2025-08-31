@@ -101,7 +101,7 @@ Worker<Application, Request, Response, ConnectionInfo, CacheKey,
     LOG(ERROR) << "failed to create replay connection\n";
     return nullptr;
   }
-  new_connection->ConnectBackend();
+  new_connection->ConnectBackend(true);
   conns_.insert(new_connection);
   return new_connection;
 }

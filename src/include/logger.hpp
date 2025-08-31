@@ -20,7 +20,7 @@ class Logger {
 
   void Log(const std::shared_ptr<Request> &req);
 
-  static bool Pop(LoggerInnerInstance &logger_inner, LogEntryInstance *&entry);
+  static bool Pop(LoggerInnerInstance &logger_inner, LogEntryInstance *&entry, bool &last_one_in_connection);
 
   bool EraseConnectionLogs(const size_t number_of_entries);
 

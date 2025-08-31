@@ -200,7 +200,9 @@ void QueryCache::DisconnectFromFull() {
   if (close(full_to_lite_fd_) == -1) PLOG(ERROR) << "close full_to_lite_fd";
 }
 
-void QueryCache::EmergencyToNormalHook() { ConnectToFull(); }
+void QueryCache::EmergencyToNormalHook() { /* TODO: uncomment this */
+  // ConnectToFull();
+}
 
 bool QueryCache::NormalToEmergencyHook(TableCache &table_cache, Cache *cache) {
   if (shm_info_->shm_info.queries_blocks == 0) {

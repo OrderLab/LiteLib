@@ -38,10 +38,12 @@ void LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool LoggerInner<Application, Request, Response, ConnectionInfo, CacheKey,
-                 CacheEntry>::Pop(LogEntryInstance *&entry) {
+                 CacheEntry>::Pop(LogEntryInstance *&entry, bool &last_one_in_connection) {
   std::unique_lock<std::mutex> chr_lock(chr_mutex_);
   if (chr_tail_.chr_pre == &chr_head_) return false;
   entry = chr_tail_.chr_pre;
+  // if entry->conn_pre is conn_head, then it is the last one in connection
+  last_one_in_connection = (entry->conn_pre->conn_pre == nullptr);
   entry->Delink();
   if (entry->state) {
     entry->state->dirty_node = nullptr;

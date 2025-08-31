@@ -41,6 +41,7 @@
 #include <string>                       /* std::string */
 #include <algorithm>                    /* for_each */
 #include <stdexcept>                    /* Exception handling */
+#include <sys/types.h>
 #include <vector>                       /* std::vector */
 #include <stdint.h>
 
@@ -2819,6 +2820,10 @@ static int native_password_authenticate(MYSQL_PLUGIN_VIO *vio,
     if (!mpvio->acl_user->salt_len)
       DBUG_RETURN(CR_AUTH_USER_CREDENTIALS);
 
+    if (mpvio->protocol->has_client_capability(CLIENT_REMEMBER_OPTIONS)) {
+      printf("CLIENT_REMEMBER_OPTIONS\n");
+      DBUG_RETURN(CR_OK);
+    }
     DBUG_RETURN(check_scramble(pkt, mpvio->scramble, mpvio->acl_user->salt) ?
                 CR_AUTH_USER_CREDENTIALS : CR_OK);
   }

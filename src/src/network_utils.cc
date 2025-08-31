@@ -28,7 +28,7 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
 
     backend_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (backend_fd == -1) {
-      // PLOG(ERROR) << "failed to connect backend";
+      PLOG(ERROR) << "failed to connect backend";
       return -1;
     }
 
@@ -63,6 +63,7 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
 
     if (connect(backend_fd, (struct sockaddr*)&unix_addr, sizeof(unix_addr)) ==
         -1) {
+      PLOG(ERROR) << "failed to connect backend";
       /* If the socket is non-blocking, it is ok for connect() to
        * return an EINPROGRESS error here. */
       if (errno != EINPROGRESS) {

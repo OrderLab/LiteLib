@@ -17,6 +17,34 @@ MySQL::MySQL(const size_t &number_of_workers) : query_cache_(*this) {
           0x6c, 0x5f, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x70,
           0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x0});
 
+  login_request_.buffer =
+      std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
+          0xe4, 0x0,  0x0,  0x1,  0x89, 0xa2, 0x1f, 0x80, 0x0,  0x0,
+          0x40, // CLIENT_REMEMBER_OPTIONS is set to 1
+          0x0,  0x2d, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
+          0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
+          0x0,  0x0,  0x0,  0x0,  0x0,  0x73, 0x62, 0x74, 0x65, 0x73,
+          0x74, 0x0,  0x14, 0x8e, 0x36, 0xb0, 0x6a, 0xd7, 0x81, 0xa5,
+          0xa0, 0x12, 0xa0, 0x20, 0x92, 0x30, 0x7f, 0x1f, 0x53, 0xcc,
+          0x3c, 0xa,  0x5b, 0x73, 0x62, 0x74, 0x65, 0x73, 0x74, 0x0,
+          0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f, 0x6e, 0x61, 0x74, 0x69,
+          0x76, 0x65, 0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72,
+          0x64, 0x0,  0x8a, 0x9,  0x5f, 0x70, 0x6c, 0x61, 0x74, 0x66,
+          0x6f, 0x72, 0x6d, 0x6,  0x78, 0x38, 0x36, 0x5f, 0x36, 0x34,
+          0xc,  0x5f, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x5f, 0x6e,
+          0x61, 0x6d, 0x65, 0x11, 0x72, 0x75, 0x73, 0x74, 0x2d, 0x6d,
+          0x79, 0x73, 0x71, 0x6c, 0x2d, 0x73, 0x69, 0x6d, 0x70, 0x6c,
+          0x65, 0xf,  0x5f, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x5f,
+          0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x6,  0x32, 0x35,
+          0x2e, 0x30, 0x2e, 0x31, 0x3,  0x5f, 0x6f, 0x73, 0x5,  0x6c,
+          0x69, 0x6e, 0x75, 0x78, 0xc,  0x70, 0x72, 0x6f, 0x67, 0x72,
+          0x61, 0x6d, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x20, 0x74, 0x61,
+          0x72, 0x67, 0x65, 0x74, 0x2f, 0x64, 0x65, 0x62, 0x75, 0x67,
+          0x2f, 0x63, 0x6f, 0x72, 0x72, 0x65, 0x63, 0x74, 0x6e, 0x65,
+          0x73, 0x73, 0x2d, 0x63, 0x68, 0x65, 0x63, 0x6b, 0x65, 0x72,
+          0x4,  0x5f, 0x70, 0x69, 0x64, 0x5,  0x33, 0x39, 0x35, 0x35,
+          0x37});
+
   for (size_t i = 0; i < number_of_workers; i++) {
     workers_in_normal_.push_back(new MySQLWorker(*this));
   }
@@ -47,7 +75,7 @@ std::pair<std::vector<std::shared_ptr<Packet>>, bool> MySQL::Match(
     } while (!pending_requests.empty() &&
              pending_requests.front().first->payload_length_ == 0xffffff);
   }
-  if (related_reqs.empty()) {
+  if (related_reqs.empty() && conn.state != ConnectionInfo::State::Init) {
     LOG(INFO) << "No related requests found" << std::endl;
   }
   return {related_reqs, forward_response};
@@ -57,12 +85,12 @@ void MySQL::NormalUpdate(const std::shared_ptr<Packet> &resp,
                          std::vector<std::shared_ptr<Packet>> requests,
                          ConnectionInfo &conn, std::shared_ptr<Cache> cache) {
   if (requests.empty()) {
-    // TODO: add lock and uncomment
-    // if (conn.state == ConnectionInfo::State::Init) {
+    if (conn.state == ConnectionInfo::State::Init) {
     //   // server greeting
+    // TODO: add lock and uncomment
     //   server_greeting_.buffer = resp->buffer;
-    //   conn.state = ConnectionInfo::State::ServerGreeted;
-    // }
+      conn.state = ConnectionInfo::State::ServerGreeted;
+    }
     return;
   }
 
@@ -154,11 +182,13 @@ std::pair<Packet, bool> MySQL::EmergencyServe(std::shared_ptr<Packet> req,
   conn.request_payload.insert(conn.request_payload.end(),
                               req->buffer->begin() + 4, req->buffer->end());
   if (req->payload_length_ == 0xffffff) {  // incomplete payload
+    LOG(INFO) << "EmergencyServe: incomplete payload" << std::endl;
     return {resp, false};
   }
   conn.request_payload.push_back(0);
 
   if (conn.state == ConnectionInfo::State::ServerGreeted) {
+    // LOG(INFO) << "Server greeted, try to reply login request" << std::endl;
     resp.buffer = std::make_shared<std::vector<uint8_t>>(std::vector<uint8_t>{
         0x7, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0});
     conn.state = ConnectionInfo::State::LoggedIn;
@@ -219,6 +249,10 @@ void MySQL::EmergencyToNormalHook() { query_cache_.EmergencyToNormalHook(); }
 Packet MySQL::EmergencyConnectionEstablishHook(ConnectionInfo &conn) {
   conn.state = ConnectionInfo::ServerGreeted;
   return server_greeting_;
+}
+
+Packet MySQL::ReplayConnectionEstablishHook(ConnectionInfo &conn) {
+  return login_request_;
 }
 
 void MySQL::NormalUpdateQuery(std::string &query, ConnectionInfo *conn,
@@ -360,8 +394,8 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::shared_ptr<Packet> req,
                                  0x7, 0x3, 0x0, 0x0, 0x0});
         // TODO: handle it
       } else {
-        LOG(WARNING) << "Unable to handle insert statement: " << query
-                     << std::endl;
+        // LOG(WARNING) << "Unable to handle insert statement: " << query
+        //              << std::endl;
         return {resp, true};
       }
       break;
@@ -380,8 +414,8 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::shared_ptr<Packet> req,
                 0x69, 0x6e, 0x67, 0x73, 0x3a, 0x20, 0x30});
         // TODO: handle it
       } else {
-        LOG(WARNING) << "Unable to handle update statement: " << query
-                     << std::endl;
+        // LOG(WARNING) << "Unable to handle update statement: " << query
+        //              << std::endl;
         return {resp, true};
       }
       break;
@@ -396,8 +430,8 @@ std::pair<Packet, bool> MySQL::EmergencyServeQuery(std::shared_ptr<Packet> req,
                 0x7, 0x0, 0x0, 0x1, 0x0, 0x1, 0x0, 0x3, 0x0, 0x0, 0x0});
         // TODO: handle it
       } else {
-        LOG(WARNING) << "Unable to handle delete statement: " << query
-                     << std::endl;
+        // LOG(WARNING) << "Unable to handle delete statement: " << query
+        //              << std::endl;
         return {resp, true};
       }
       break;

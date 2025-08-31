@@ -52,7 +52,7 @@ class LoggerInner {
 
   void Log(LogEntryInstance *entry, LogEntryInstance *conn_head);
 
-  bool Pop(LogEntryInstance *&entry);
+  bool Pop(LogEntryInstance *&entry, bool &last_one_in_connection);
 
   bool EraseConnectionLogs(LogEntryInstance *conn_head,
                            const size_t number_of_entries);

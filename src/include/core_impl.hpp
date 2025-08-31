@@ -222,11 +222,11 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
   LOG(INFO) << "replay start, live connections: " << live_connections_.size()
             << std::endl;
   live_connections_.visit_all([&](ConnectionInstance *const &c) {
-    if (!c->ConnectBackend()) {
+    if (!c->ConnectBackend(true)) {
       LOG(ERROR) << "Failed to connect to backend" << std::endl;
     } else {
       LOG(INFO) << "Connect backend " << c->backend_fd_ << " to "
-                << c->client_fd_ << std::endl;
+                << c->client_fd_ << " with " << c << std::endl;
     }
   });
 
@@ -235,6 +235,7 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   for (auto &replay_worker_ : replay_workers_) {
     replay_worker_->RemoveAllConnections();
+    auto conn = replay_worker_->NewReplayConnection();
     replay_worker_sync_state_conns[replay_worker_.get()] =
         replay_worker_->NewReplayConnection();
   }
@@ -242,10 +243,13 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
 
   LogEntryInstance *entry;
 
+  std::set<ConnectionInstance *> replay_conns_for_closed_connections;
+
   for (int i = 0; i < 2;
        i++) {  // Double flush to process in-flight connections
+    bool last_one_in_connection = false;
     size_t log_cnt = 0, dirty_cnt = 0;
-    while (LoggerInstance::Pop(logger_inner_, entry)) {
+    while (LoggerInstance::Pop(logger_inner_, entry, last_one_in_connection)) {
       if (entry->state) {
         dirty_cnt++;
         const auto req = entry->state->value.ToRequest(entry->state->key);
@@ -262,24 +266,40 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
         const auto buffer = entry->req->Serialize();
         if (!*entry->backend_conn_ptr) {  // log belongs to a closed connection
           auto replay_conn = (*next_replay_worker_)->NewReplayConnection();
+          replay_conns_for_closed_connections.insert(replay_conn);
           *entry->backend_conn_ptr = replay_conn;
-          SendReplayReq(replay_conn, entry->req, buffer);
+          // LOG(INFO) << "create replay connection for a closed connection: " << *entry->backend_conn_ptr << std::endl;
+          SendReplayReqWithoutAssertion(replay_conn, entry->req, buffer);
+          // FIXME: uncomment (temporary solution for MySQL)
+          // SendReplayReq(replay_conn, entry->req, buffer);
           next_replay_worker_++;
           if (next_replay_worker_ == replay_workers_.end())
             next_replay_worker_ = replay_workers_.begin();
         } else {
           if (!i) {
-            (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
+            // std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            // FIXME: uncomment (temporary solution for MySQL)
+            // (*entry->backend_conn_ptr)->pending_requests_.wait_for_empty();
           } else {
             // TODO: how to disable the reading from client event, instead of
             // blocking the worker. So that we can wait for the server's
             // responses
           }
+          // LOG(INFO) << "send replay request to a connection: " << *entry->backend_conn_ptr << std::endl;
           SendReplayReqWithoutAssertion(*entry->backend_conn_ptr, entry->req,
                                         buffer);
         }
       }
+      if (last_one_in_connection &&
+          replay_conns_for_closed_connections.count(*entry->backend_conn_ptr)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        replay_conns_for_closed_connections.erase(*entry->backend_conn_ptr);
+        // LOG(INFO) << "delete replay connection for a closed connection: " << *entry->backend_conn_ptr << std::endl;
+        if (*entry->backend_conn_ptr)
+          close((*entry->backend_conn_ptr)->backend_fd_);
+      }
       delete entry;
+      // LOG(INFO) << "Replay one log entry" << std::endl;
       ++replay_rate_;
     }
     LOG(INFO) << "Replay i = " << i << " finished with " << log_cnt
@@ -299,12 +319,13 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
     }
   }
 
-  LOG(INFO) << "Waiting for all replay connections to finish\n";
-  for (auto &replay_worker : replay_workers_) {
-    replay_worker->conns_.visit_all([&](ConnectionInstance *const &c) {
-      c->pending_requests_.wait_for_empty();
-    });
-  }
+  // FIXME: uncomment (temporary solution for MySQL)
+  // LOG(INFO) << "Waiting for all replay connections to finish\n";
+  // for (auto &replay_worker : replay_workers_) {
+  //   replay_worker->conns_.visit_all([&](ConnectionInstance *const &c) {
+  //     c->pending_requests_.wait_for_empty();
+  //   });
+  // }
   // TODO: wait for all live connections to receive replay responses
 
   is_replaying_ = false;
@@ -313,6 +334,15 @@ bool LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
                << std::endl;
 
   app_.EmergencyToNormalHook();
+
+  // FIXME: comment (temporary solution for MySQL)
+  std::set<ConnectionInstance *> connections_to_be_deleted;
+  live_connections_.visit_all([&](ConnectionInstance *const &c) {
+    connections_to_be_deleted.insert(c);
+  });
+  for (auto &conn : connections_to_be_deleted) {
+    delete conn;
+  }
 
   barrier_.arrive_and_wait();  // unblock worker threads
 

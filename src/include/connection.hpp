@@ -58,7 +58,7 @@ class Connection {
   static void BackendHandler(evutil_socket_t fd, short which, void* arg_conn);
 
   /// Try to connect to the backend and set event
-  bool ConnectBackend();
+  bool ConnectBackend(bool is_replay = false);
 
   ConnectionInfo extra_app_info_;
 
