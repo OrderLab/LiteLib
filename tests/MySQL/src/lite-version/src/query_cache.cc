@@ -77,7 +77,7 @@ std::shared_ptr<std::vector<uint8_t>> Result::Serialize() {
 
   // EOF
   // length
-  buffer->push_back(0x5);
+  buffer->push_back(suffix_packets.size() + 1);
   buffer->push_back(0x0);
   buffer->push_back(0x0);
   // packet number
