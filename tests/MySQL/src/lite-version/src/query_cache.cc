@@ -16,7 +16,7 @@ Result Result::Deserialize(std::vector<uint8_t> &buffer,
 
   const uint8_t *begin = buffer.data();
   uint8_t column_count = begin[4];
-  for (uint8_t i = 0; i < 2 + column_count; i++) {
+  for (uint8_t i = 0; i < 1 + column_count; i++) {
     uint32_t payload_length = begin[0] | begin[1] << 8 | begin[2] << 16;
     result.prefix_packets.insert(result.prefix_packets.end(), begin,
                                  begin + 4 + payload_length);
@@ -43,8 +43,8 @@ Result Result::Deserialize(std::vector<uint8_t> &buffer,
   }
 
   result.suffix_packets.insert(result.suffix_packets.end(),
-                               buffer.begin() + (begin + 5 - buffer.data()),
-                               buffer.end());
+                               begin + 5,
+                               (const uint8_t *)buffer.data() + buffer.size());
 
   return result;
 }
@@ -53,7 +53,7 @@ std::shared_ptr<std::vector<uint8_t>> Result::Serialize() {
   auto buffer = std::make_shared<std::vector<uint8_t>>();
   buffer->insert(buffer->end(), prefix_packets.begin(), prefix_packets.end());
 
-  uint8_t packet_number = (*buffer)[4] + 3;  // column_count + 3
+  uint8_t packet_number = (*buffer)[4] + 2;  // column_count + 2
   for (const auto &row : rows) {
     std::vector<uint8_t> values_buffer;
 
