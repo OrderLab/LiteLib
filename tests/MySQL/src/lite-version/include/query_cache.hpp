@@ -152,6 +152,8 @@ class QueryCache {
 
   void DisconnectFromFull();
 
+  void WaitForAllNotificationsFromFull();
+
   void AddQueryCacheBlock(Query_cache_block *query_cache_block_lite_ptr,
                           TableCache &table_cache, Cache *cache);
 

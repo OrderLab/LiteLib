@@ -200,11 +200,23 @@ void QueryCache::DisconnectFromFull() {
   if (close(full_to_lite_fd_) == -1) PLOG(ERROR) << "close full_to_lite_fd";
 }
 
+void QueryCache::WaitForAllNotificationsFromFull() {
+  // Wait until all workers have processed their notifications from the full MySQL server
+  // This ensures that all query cache blocks have been processed before transitioning
+  
+  // Use the barrier mechanism to wait for all workers
+  mysql_.WaitForAllWorkersBarrier();
+  
+  LOG(INFO) << "All workers have finished processing notifications from full MySQL server" << std::endl;
+}
+
 void QueryCache::EmergencyToNormalHook() { /* TODO: uncomment this */
   // ConnectToFull();
 }
 
 bool QueryCache::NormalToEmergencyHook(TableCache &table_cache, Cache *cache) {
+  WaitForAllNotificationsFromFull();
+
   if (shm_info_->shm_info.queries_blocks == 0) {
     LOG(WARNING) << "No query cache block in shared memory" << std::endl;
   } else {

@@ -2,6 +2,7 @@
 
 #include <hsql/SQLParser.h>
 #include <hsql/util/sqlhelper.h>
+#include <unistd.h>
 
 #include "mysql-server/protocol_classic.hpp"
 
@@ -459,4 +460,17 @@ void MySQL::AssignNewNormalTask(NormalTask &&task) {
   PLOG_IF(ERROR, write(worker->notify_event_fd_, &buf, sizeof(uint64_t)) !=
                      sizeof(uint64_t))
       << "failed writing to mysql eventfd";
+}
+
+void MySQL::WaitForAllWorkersBarrier() {
+  // Wait until all workers have finished processing their notifications
+  // This uses an atomic counter that workers increment/decrement
+  
+  // Wait for all workers to finish
+  while (active_workers_.load() > 0) {
+    // Small delay to avoid busy waiting
+    usleep(1000); // 1ms delay
+  }
+  
+  LOG(INFO) << "All workers have finished processing notifications" << std::endl;
 }

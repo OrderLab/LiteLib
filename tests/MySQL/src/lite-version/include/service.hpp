@@ -2,6 +2,7 @@
 
 #include <lite.hpp>
 #include <optional>
+#include <atomic>
 
 #include "dissect.hpp"
 #include "packet.hpp"
@@ -49,6 +50,8 @@ class MySQL {
 
   void AssignNewNormalTask(NormalTask &&task);
 
+  void WaitForAllWorkersBarrier();
+
  private:
   Packet server_greeting_, login_request_;
 
@@ -71,4 +74,6 @@ class MySQL {
   std::vector<MySQLWorker *> workers_in_normal_;
   std::vector<MySQLWorker *>::iterator cur_worker = workers_in_normal_.begin();
   std::mutex cur_worker_mutex;
+  
+  std::atomic<int> active_workers_{0};
 };

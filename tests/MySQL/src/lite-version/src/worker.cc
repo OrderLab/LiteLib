@@ -56,6 +56,10 @@ void MySQLWorker::NotifyHandler(evutil_socket_t fd, short which,
       LOG(ERROR) << "MySQL can't read from libevent pipe\n";
       return;
     }
+    
+    // Increment active workers counter
+    self->mysql_.active_workers_.fetch_add(1);
+    
     while (counter--) {
       NormalTask tsk = self->notify_queue_.pop_front();
       if (tsk.type == NormalTask::Type::kInsertCache) {
@@ -66,6 +70,9 @@ void MySQLWorker::NotifyHandler(evutil_socket_t fd, short which,
         self->mysql_.NormalUpdateQuery(tsk.query, tsk.conn, tsk.cache.get());
       }
     }
+    
+    // Decrement active workers counter
+    self->mysql_.active_workers_.fetch_sub(1);
   } else {
   }
 }
