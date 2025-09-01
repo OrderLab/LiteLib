@@ -2,8 +2,8 @@
 
 #include "query_cache.hpp"
 
-std::vector<QueryAndResult *> QueryCacheRangeIndex::Query(const int index) {
-  std::vector<QueryAndResult *> ret;
+std::vector<std::shared_ptr<QueryAndResult>> QueryCacheRangeIndex::Query(const int index) {
+  std::vector<std::shared_ptr<QueryAndResult>> ret;
   int begin = min, end = max;
   for (;;) {
     range_index.visit(Range{begin, end}, [&](auto &node_it) {
@@ -24,12 +24,12 @@ std::vector<QueryAndResult *> QueryCacheRangeIndex::Query(const int index) {
   return ret;
 }
 
-void QueryCacheRangeIndex::Insert(QueryAndResult *query_and_result,
+void QueryCacheRangeIndex::Insert(std::shared_ptr<QueryAndResult> query_and_result,
                                   const int begin, const int end) {
   InsertInternal(query_and_result, begin, end, min, max);
 }
 
-void QueryCacheRangeIndex::Delete(QueryAndResult *query_and_result) {
+void QueryCacheRangeIndex::Delete(std::shared_ptr<QueryAndResult> query_and_result) {
   // TODO: assert that it's a between where clause
   const auto where = query_and_result->GetSelectStatement()->whereClause;
 
@@ -63,12 +63,12 @@ void QueryCacheRangeIndex::Delete(QueryAndResult *query_and_result) {
                  std::get<kLL>(upper_bound), min, max);
 }
 
-void QueryCacheRangeIndex::Delete(QueryAndResult *query_and_result,
+void QueryCacheRangeIndex::Delete(std::shared_ptr<QueryAndResult> query_and_result,
                                   const int begin, const int end) {
   DeleteInternal(query_and_result, begin, end, min, max);
 }
 
-void QueryCacheRangeIndex::InsertInternal(QueryAndResult *query_and_result,
+void QueryCacheRangeIndex::InsertInternal(std::shared_ptr<QueryAndResult> query_and_result,
                                           const int begin, const int end,
                                           const int node_begin,
                                           const int node_end) {
@@ -92,7 +92,7 @@ void QueryCacheRangeIndex::InsertInternal(QueryAndResult *query_and_result,
   }
 }
 
-void QueryCacheRangeIndex::DeleteInternal(QueryAndResult *query_and_result,
+void QueryCacheRangeIndex::DeleteInternal(std::shared_ptr<QueryAndResult> query_and_result,
                                           const int begin, const int end,
                                           const int node_begin,
                                           const int node_end) {

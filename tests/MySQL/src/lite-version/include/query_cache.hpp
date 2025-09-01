@@ -5,6 +5,9 @@
 
 #include <optional>
 #include <unordered_map>
+#include <sstream>
+#include <glog/logging.h>
+#include <boost/stacktrace.hpp>
 
 #include "dissect.hpp"
 #include "mysql-server/sql_cache.hpp"
@@ -66,6 +69,12 @@ class QueryAndResult {
   //   }
   //   return *this;
   // }
+  // ~QueryAndResult() {
+  //   LOG(INFO) << "~QueryAndResult " << this << std::endl;
+
+  //   // Print call stack using Boost.Stacktrace
+  //   LOG(INFO) << "Call stack:" << std::endl << boost::stacktrace::stacktrace();
+  // }
 
   const hsql::SelectStatement *GetSelectStatement() const {
     if (select_statement) {
@@ -101,7 +110,7 @@ class QueryCache {
     WhereQueryCache(WhereQueryCache &&rhs)
         : query_and_results(std::move(rhs.query_and_results)) {}
     boost::unordered::concurrent_flat_map<std::string,
-                                          std::unique_ptr<QueryAndResult>>
+                                          std::shared_ptr<QueryAndResult>>
         query_and_results;  // key: query string
   };
 

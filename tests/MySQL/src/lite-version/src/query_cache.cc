@@ -390,7 +390,7 @@ void QueryCache::AddQueryAndResult(std::string query,
   // table_cache.Dump(cache);
 
 insert_to_query_cache:
-  auto query_and_result = std::make_unique<QueryAndResult>(
+  auto query_and_result = std::make_shared<QueryAndResult>(
       std::move(parsed_result), std::move(parse_result));
   select_stmt =
       query_and_result->GetSelectStatement();  // update select_stmt pointer
@@ -456,7 +456,7 @@ insert_to_query_cache:
             table_query_cache.column_range_indices.visit(
                 where->expr->name, [&](auto &column_range_index_it) {
                   auto &[_, column_range_index] = column_range_index_it;
-                  column_range_index->Insert(query_and_result.get(),
+                  column_range_index->Insert(query_and_result,
                                              std::get<kLL>(lower_bound),
                                              std::get<kLL>(upper_bound));
                 });
@@ -475,7 +475,7 @@ insert_to_query_cache:
             where_stream.str(), [&](auto &where_query_cache_it) {
               auto &[_, where_query_cache] = where_query_cache_it;
               where_query_cache.query_and_results.insert(
-                  std::make_pair(query, std::move(query_and_result)));
+                  std::make_pair(query, query_and_result));
             });
       });
 }

@@ -59,7 +59,7 @@ install_boost() {
   tar -xavf boost-${BOOST_VERSION}-cmake.tar.xz
   cd boost-${BOOST_VERSION}
   ./bootstrap.sh --prefix=/usr/local
-  ./b2 install
+  ./b2 --with-system --with-thread --with-stacktrace --with-unordered install
 }
 
 install_libevent() {

@@ -11,10 +11,10 @@ class QueryCacheRangeIndex {
  public:
   struct Node {
     std::unique_ptr<std::shared_mutex> mutex_ptr;
-    std::set<QueryAndResult *> query_and_results;
+    std::set<std::shared_ptr<QueryAndResult>> query_and_results;
 
     Node() : mutex_ptr(std::make_unique<std::shared_mutex>()) {}
-    Node(QueryAndResult *query_and_result)
+    Node(std::shared_ptr<QueryAndResult> query_and_result)
         : mutex_ptr(std::make_unique<std::shared_mutex>()) {
       query_and_results.insert(query_and_result);
     }
@@ -23,13 +23,13 @@ class QueryCacheRangeIndex {
           mutex_ptr(std::move(rhs.mutex_ptr)) {}
   };
 
-  std::vector<QueryAndResult *> Query(const int index);
+  std::vector<std::shared_ptr<QueryAndResult>> Query(const int index);
 
-  void Insert(QueryAndResult *query_and_result, const int begin, const int end);
+  void Insert(std::shared_ptr<QueryAndResult> query_and_result, const int begin, const int end);
 
-  void Delete(QueryAndResult *query_and_result);
+  void Delete(std::shared_ptr<QueryAndResult> query_and_result);
 
-  void Delete(QueryAndResult *query_and_result, const int begin, const int end);
+  void Delete(std::shared_ptr<QueryAndResult> query_and_result, const int begin, const int end);
 
  private:
   static const int min = std::numeric_limits<int>::min();
@@ -50,9 +50,9 @@ class QueryCacheRangeIndex {
 
   boost::unordered::concurrent_flat_map<Range, Node> range_index;
 
-  void InsertInternal(QueryAndResult *query_and_result, const int begin,
+  void InsertInternal(std::shared_ptr<QueryAndResult> query_and_result, const int begin,
                       const int end, const int node_begin, const int node_end);
 
-  void DeleteInternal(QueryAndResult *query_and_result, const int begin,
+  void DeleteInternal(std::shared_ptr<QueryAndResult> query_and_result, const int begin,
                       const int end, const int node_begin, const int node_end);
 };

@@ -668,7 +668,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                     table_query_cache.column_range_indices.visit(
                         column_name, [&](auto &column_range_index_it) {
                           auto &[_, column_range_index] = column_range_index_it;
-                          column_range_index->Delete(query_and_result.get());
+                          column_range_index->Delete(query_and_result);
                         });
                     return true;
                   });
@@ -738,7 +738,7 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
                         column_name, [&](auto &column_range_index_it) {
                           auto &[_, column_range_index] = column_range_index_it;
                           column_range_index->Delete(
-                              query_and_result.get(),
+                              query_and_result,
                               std::get<kLL>(lower_bound),
                               std::get<kLL>(upper_bound));
                         });
