@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   try {
     size_t thread_pool_size = 1;
-    size_t cache_size(1024);
+    size_t cache_size(102400);
     const char* port = "59999";
 
     const char* const short_opts = "t:s:p:a:h";

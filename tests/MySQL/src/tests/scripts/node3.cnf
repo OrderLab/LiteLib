@@ -1,0 +1,30 @@
+[mysqld]
+server_id=3
+bind-address=0.0.0.0
+port=60000
+datadir=/usr/local/mysql/data
+socket=/var/run/mysqld-60000.sock
+pid-file=/var/run/mysqld-60000.pid
+
+query_cache_type=ON
+
+# durability
+innodb_flush_log_at_trx_commit=1
+sync_binlog=1
+
+# replication + GTID + row-based
+log_bin=mysql-bin
+binlog_format=ROW
+gtid_mode=ON
+enforce_gtid_consistency=ON
+log_slave_updates=ON
+relay_log_recovery=ON
+master_info_repository=TABLE
+relay_log_info_repository=TABLE
+
+plugin_load_add='semisync_master.so'
+plugin_load_add='semisync_slave.so'
+
+# replica default safety
+read_only=ON
+super_read_only=ON
