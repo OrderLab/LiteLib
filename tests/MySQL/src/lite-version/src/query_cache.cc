@@ -10,13 +10,16 @@
 
 #include "service.hpp"
 
+#define RUST_CLIENT 0
+// if it's sysbench client, set to 0
+
 Result Result::Deserialize(std::vector<uint8_t> &buffer,
                            const hsql::SelectStatement *stmt) {
   Result result;
 
   const uint8_t *begin = buffer.data();
   uint8_t column_count = begin[4];
-  for (uint8_t i = 0; i < 1 + column_count; i++) {
+  for (uint8_t i = 0; i < 1 + RUST_CLIENT + column_count; i++) {
     uint32_t payload_length = begin[0] | begin[1] << 8 | begin[2] << 16;
     result.prefix_packets.insert(result.prefix_packets.end(), begin,
                                  begin + 4 + payload_length);
@@ -53,7 +56,7 @@ std::shared_ptr<std::vector<uint8_t>> Result::Serialize() {
   auto buffer = std::make_shared<std::vector<uint8_t>>();
   buffer->insert(buffer->end(), prefix_packets.begin(), prefix_packets.end());
 
-  uint8_t packet_number = (*buffer)[4] + 2;  // column_count + 2
+  uint8_t packet_number = (*buffer)[4] + 2 + RUST_CLIENT;  // column_count + 2 + RUST_CLIENT
   for (const auto &row : rows) {
     std::vector<uint8_t> values_buffer;
 
@@ -77,7 +80,7 @@ std::shared_ptr<std::vector<uint8_t>> Result::Serialize() {
 
   // EOF
   // length
-  buffer->push_back(suffix_packets.size() + 1);
+  buffer->push_back(suffix_packets.size() + 1 + RUST_CLIENT);
   buffer->push_back(0x0);
   buffer->push_back(0x0);
   // packet number
