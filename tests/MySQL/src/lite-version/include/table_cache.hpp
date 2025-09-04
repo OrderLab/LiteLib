@@ -52,6 +52,7 @@ struct TableSchema {
   std::vector<TableColumn>
       columns;  // primary key 1, primary key 2, value 1, value 2, ...
   std::unordered_map<std::string, size_t> columns_name_to_index;
+  std::unordered_map<size_t, std::string> columns_index_to_name;
 };
 
 class MySQL;
@@ -89,4 +90,7 @@ class TableCache {
   void UpdateQueryCache(const CacheKey &key, const CacheEntry *old_entry,
                         const CacheEntry *new_entry, QueryCache *query_cache,
                         bool update_query_cache);
+
+  void GetLowerBoundAndUpperBound(const hsql::Expr *where, Value &lower_bound,
+                                  Value &upper_bound);
 };

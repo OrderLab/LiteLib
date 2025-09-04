@@ -15,6 +15,7 @@ TableCache::TableCache() {
   schema.columns = {
       {kLL, true}, {kLL, false}, {kVARCHAR, false}, {kVARCHAR, false}};
   schema.columns_name_to_index = {{"id", 0}, {"k", 1}, {"c", 2}, {"pad", 3}};
+  schema.columns_index_to_name = {{0, "id"}, {1, "k"}, {2, "c"}, {3, "pad"}};
 
   tables_["sbtest1"] = schema;
   tables_["sbtest2"] = schema;
@@ -369,11 +370,90 @@ std::optional<bool> TableCache::WhereMatch(const CacheKey &key,
   return std::nullopt;
 }
 
+void TableCache::GetLowerBoundAndUpperBound(const hsql::Expr *where,
+                                            Value &lower_bound,
+                                            Value &upper_bound) {
+  if (where->opType == hsql::kOpBetween) {
+    if (!ExprToValue((*where->exprList)[0], lower_bound)) {
+      LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+    }
+    if (!ValueCast(lower_bound, kLL)) {
+      LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+    }
+
+    if (!ExprToValue((*where->exprList)[1], upper_bound)) {
+      LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+    }
+    if (!ValueCast(upper_bound, kLL)) {
+      LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+    }
+  } else if (where->opType == hsql::kOpEquals) {
+    if (!ExprToValue(where->expr2, lower_bound)) {
+      LOG(ERROR) << "WhereMatch: ExprToValue failed" << std::endl;
+    }
+    if (!ValueCast(lower_bound, kLL)) {
+      LOG(ERROR) << "WhereMatch: ValueCast failed" << std::endl;
+    }
+    upper_bound = lower_bound;
+  }
+}
+
 void TableCache::UpdateQueryCache(const CacheKey &key,
                                   const CacheEntry *old_entry,
                                   const CacheEntry *new_entry,
                                   QueryCache *query_cache,
                                   bool update_query_cache) {
+  if (!update_query_cache) {
+    // all where clauses of the same template are the same in terms of known or
+    // unknown template one: range/point select on an index
+    //   as we only store rows whose primary key is known in the cache, so we
+    //   can directly use the index to get related query and results
+    query_cache->table_query_caches_.visit(
+        key.table, [&](auto &table_query_cache_it) {
+          auto &[_, table_query_cache] = table_query_cache_it;
+          table_query_cache.column_range_indices.visit(
+              tables_[key.table].columns_index_to_name[0],
+              [&](auto &column_range_index_it) {
+                auto &[_, column_range_index] = column_range_index_it;
+                // find all related query and results matched old_entry and
+                // remove them
+                auto related_query_and_results =
+                    column_range_index->Query(std::get<kLL>(key.primary_keys[0]));
+                std::unordered_set<std::string> where_strs;
+                std::unordered_map<std::string, std::pair<Value, Value>>
+                    where_bounds;
+                for (const auto &related_query_and_result :
+                     related_query_and_results) {
+                  where_strs.insert(related_query_and_result->GetWhereClause());
+                  auto where_bound_it = where_bounds.find(
+                      related_query_and_result->GetWhereClause());
+                  if (where_bound_it == where_bounds.end()) {
+                    Value lower_bound, upper_bound;
+                    std::shared_lock query_and_result_lock(
+                        *(related_query_and_result->mutex_ptr));
+                    const auto where =
+                        related_query_and_result->GetSelectStatement()
+                            ->whereClause;
+                    GetLowerBoundAndUpperBound(where, lower_bound, upper_bound);
+                    auto [it, _] = where_bounds.insert(std::make_pair(
+                        related_query_and_result->GetWhereClause(),
+                        std::make_pair(lower_bound, upper_bound)));
+                    where_bound_it = it;
+                  }
+                  column_range_index->Delete(
+                      related_query_and_result,
+                      std::get<kLL>(where_bound_it->second.first),
+                      std::get<kLL>(where_bound_it->second.second));
+                }
+                for (const auto &where_str : where_strs) {
+                  table_query_cache.where_query_caches.erase(where_str);
+                }
+              });
+        });
+    // TODO: template two: others, do the things in the following code. But in
+    // Sysbench, there are no other kinds of where clauses, so we skip it
+    return;
+  }
   query_cache->table_query_caches_.visit(
       key.table, [&](auto &table_query_cache_it) {
         auto &[table, table_query_cache] = table_query_cache_it;
@@ -683,43 +763,10 @@ void TableCache::UpdateQueryCache(const CacheKey &key,
               where_query_cache.query_and_results.cvisit_while(
                   [&](const auto &query_and_result_it) {
                     auto &[query, query_and_result] = query_and_result_it;
-                    std::shared_lock query_and_result_lock(
-                        *(query_and_result->mutex_ptr));
-                    const auto where =
-                        query_and_result->GetSelectStatement()->whereClause;
-
+                    std::shared_lock query_and_result_lock(*(query_and_result->mutex_ptr));
+                    const auto where = query_and_result->GetSelectStatement()->whereClause;
+                    GetLowerBoundAndUpperBound(where, lower_bound, upper_bound);
                     column_name = where->expr->name;
-
-                    if (where->opType == hsql::kOpBetween) {
-                      if (!ExprToValue((*where->exprList)[0], lower_bound)) {
-                        LOG(ERROR)
-                            << "WhereMatch: ExprToValue failed" << std::endl;
-                      }
-                      if (!ValueCast(lower_bound, kLL)) {
-                        LOG(ERROR)
-                            << "WhereMatch: ValueCast failed" << std::endl;
-                      }
-
-                      if (!ExprToValue((*where->exprList)[1], upper_bound)) {
-                        LOG(ERROR)
-                            << "WhereMatch: ExprToValue failed" << std::endl;
-                      }
-                      if (!ValueCast(upper_bound, kLL)) {
-                        LOG(ERROR)
-                            << "WhereMatch: ValueCast failed" << std::endl;
-                      }
-                    } else if (where->opType == hsql::kOpEquals) {
-                      if (!ExprToValue(where->expr2, lower_bound)) {
-                        LOG(ERROR)
-                            << "WhereMatch: ExprToValue failed" << std::endl;
-                      }
-                      if (!ValueCast(lower_bound, kLL)) {
-                        LOG(ERROR)
-                            << "WhereMatch: ValueCast failed" << std::endl;
-                      }
-                      upper_bound = lower_bound;
-                    }
-
                     return false;
                   });
 
