@@ -237,7 +237,7 @@ bool QueryCache::NormalToEmergencyHook(TableCache &table_cache, Cache *cache) {
 
   BuildRelationsBetweenQueryAndCachedRows();
 
-  int cnt = GetSizeAndDump(true);
+  int cnt = GetSizeAndDump(false);
   LOG(INFO) << "Query cache size: " << cnt << std::endl;
 
   return true;
