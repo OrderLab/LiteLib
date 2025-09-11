@@ -18,3 +18,112 @@ index fdc5c83..fee84bb 100644
         t.INT, t.INT},
     distinct_ranges = {
        "SELECT DISTINCT c FROM sbtest%u WHERE id BETWEEN ? AND ? ORDER BY c",
+diff --git a/src/lua/oltp_read_write.lua b/src/lua/oltp_read_write.lua
+index 9b5cf6e..d073a8a 100755
+--- a/src/lua/oltp_read_write.lua
++++ b/src/lua/oltp_read_write.lua
+@@ -46,18 +46,27 @@ function event()
+       begin()
+    end
+ 
+-   execute_point_selects()
+-
++   -- Create a list of available operations
++   local operations = {
++      execute_point_selects
++   }
++   
++   -- Add range operations if enabled
+    if sysbench.opt.range_selects then
+-      execute_simple_ranges()
+-      execute_sum_ranges()
+-      execute_order_ranges()
+-      execute_distinct_ranges()
++      table.insert(operations, execute_simple_ranges)
++      table.insert(operations, execute_sum_ranges)
++      table.insert(operations, execute_order_ranges)
++      table.insert(operations, execute_distinct_ranges)
+    end
+-
+-   execute_index_updates()
+-   execute_non_index_updates()
+-   execute_delete_inserts()
++   
++   -- Add other operations
++   table.insert(operations, execute_index_updates)
++   table.insert(operations, execute_non_index_updates)
++   table.insert(operations, execute_delete_inserts)
++   
++   -- Randomly select and execute one operation
++   local selected_op = operations[math.random(1, #operations)]
++   selected_op()
+ 
+    if not sysbench.opt.skip_trx then
+       commit()
+diff --git a/src/sysbench.c b/src/sysbench.c
+index fb83bef..16eeb6b 100644
+--- a/src/sysbench.c
++++ b/src/sysbench.c
+@@ -82,6 +82,9 @@
+ /* Maximum queue length for the tx-rate mode. Must be a power of 2 */
+ #define MAX_QUEUE_LEN 131072
+ 
++/* Initial number of pending events to pre-populate in queue */
++static int init_pending_events;
++
+ /*
+   Extra thread ID assigned to background threads. This may be used as an index
+   into per-thread arrays (see comment in sb_alloc_per_thread_array().
+@@ -119,6 +122,7 @@ sb_arg_t general_args[] =
+   SB_OPT("luajit-cmd", "perform LuaJIT control command. This option is "
+          "equivalent to 'luajit -j'. See LuaJIT documentation for more "
+          "information", NULL, STRING),
++  SB_OPT("init-pending-events", "initial number of pending events to pre-populate in queue at test start", "0", INT),
+ 
+   SB_OPT_END
+ };
+@@ -874,6 +878,21 @@ static void *eventgen_thread_proc(void *arg)
+ 
+   log_text(LOG_DEBUG, "Event generating thread started");
+ 
++  /* Pre-populate queue with initial pending events if specified */
++  if (init_pending_events > 0)
++  {
++    log_text(LOG_DEBUG, "Pre-populating queue with %d events", init_pending_events);
++    for (int i = 0; i < init_pending_events; i++)
++    {
++      queue_array[i] = 0; /* Use 0 timestamp for pre-populated events */
++      if (ck_ring_enqueue_spmc(&queue_ring, queue_ring_buffer, &queue_array[i]) == false)
++      {
++        log_text(LOG_WARNING, "Failed to pre-populate event %d in queue", i);
++        break;
++      }
++    }
++  }
++
+   /* Wait for the worker threads to initialize */
+   if (sb_barrier_wait(&worker_barrier) < 0)
+     return NULL;
+@@ -1383,6 +1402,22 @@ static int init(void)
+ 
+   sb_globals.tx_rate = sb_get_value_int("rate");
+ 
++  /* Initialize pending events count for tx-rate mode */
++  init_pending_events = sb_get_value_int("init-pending-events");
++  if (init_pending_events < 0)
++  {
++    log_text(LOG_FATAL, "Invalid value for --init-pending-events: %d. Must be non-negative.\n",
++             init_pending_events);
++    return 1;
++  }
++  
++  if (init_pending_events > MAX_QUEUE_LEN)
++  {
++    log_text(LOG_FATAL, "Invalid value for --init-pending-events: %d. Must not exceed %d.\n",
++             init_pending_events, MAX_QUEUE_LEN);
++    return 1;
++  }
++
+   sb_globals.report_interval = sb_get_value_int("report-interval");
+ 
+   sb_globals.n_checkpoints = 0;
