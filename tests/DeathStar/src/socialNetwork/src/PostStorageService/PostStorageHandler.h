@@ -16,6 +16,7 @@
 #include "../tracing.h"
 
 extern bool offline_memcached_patch;
+extern bool offline_mongodb_patch;
 
 namespace social_network {
 using json = nlohmann::json;
@@ -59,24 +60,7 @@ void PostStorageHandler::StorePost(
       "store_post_server", {opentracing::ChildOf(parent_span->get())});
   opentracing::Tracer::Global()->Inject(span->context(), writer);
 
-  mongoc_client_t *mongodb_client =
-      mongoc_client_pool_pop(_mongodb_client_pool);
-  if (!mongodb_client) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_MONGODB_ERROR;
-    se.message = "Failed to pop a client from MongoDB pool";
-    throw se;
-  }
-
-  auto collection =
-      mongoc_client_get_collection(mongodb_client, "post", "post");
-  if (!collection) {
-    ServiceException se;
-    se.errorCode = ErrorCode::SE_MONGODB_ERROR;
-    se.message = "Failed to create collection user from DB user";
-    mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
-    throw se;
-  }
+  std::string post_id_str = std::to_string(post.post_id);
 
   bson_t *new_doc = bson_new();
   BSON_APPEND_INT64(new_doc, "post_id", post.post_id);
@@ -137,11 +121,37 @@ void PostStorageHandler::StorePost(
   }
   bson_append_array_end(new_doc, &media_list);
 
+  // goto can't cross var initialization
+  bool inserted;
+  std::unique_ptr<opentracing::v2::Span> insert_span;
+  _mongoc_collection_t* collection;
+  
+  mongoc_client_t *mongodb_client =
+      mongoc_client_pool_pop(_mongodb_client_pool);
+  if (!mongodb_client) {
+    ServiceException se;
+    se.errorCode = ErrorCode::SE_MONGODB_ERROR;
+    se.message = "Failed to pop a client from MongoDB pool";
+    if (!offline_mongodb_patch) throw se;
+    else goto upload_to_memcached;
+  }
+
+  collection =
+      mongoc_client_get_collection(mongodb_client, "post", "post");
+  if (!collection) {
+    ServiceException se;
+    se.errorCode = ErrorCode::SE_MONGODB_ERROR;
+    se.message = "Failed to create collection user from DB user";
+    mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
+    if (!offline_mongodb_patch) throw se;
+    else goto upload_to_memcached;
+  }
+
   bson_error_t error;
-  auto insert_span = opentracing::Tracer::Global()->StartSpan(
+  insert_span = opentracing::Tracer::Global()->StartSpan(
       "post_storage_mongo_insert_client",
       {opentracing::ChildOf(&span->context())});
-  bool inserted = mongoc_collection_insert_one(collection, new_doc, nullptr,
+  inserted = mongoc_collection_insert_one(collection, new_doc, nullptr,
                                                nullptr, &error);
   insert_span->Finish();
 
@@ -150,16 +160,50 @@ void PostStorageHandler::StorePost(
     ServiceException se;
     se.errorCode = ErrorCode::SE_MONGODB_ERROR;
     se.message = error.message;
-    bson_destroy(new_doc);
     mongoc_collection_destroy(collection);
     mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
-    throw se;
+    if (!offline_mongodb_patch) {
+      bson_destroy(new_doc);
+      throw se;
+    } else {
+      goto upload_to_memcached;
+    }
   }
 
   bson_destroy(new_doc);
   mongoc_collection_destroy(collection);
   mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
 
+  span->Finish();
+  return;
+
+  // upload post to memcached if mongodb is offline
+ upload_to_memcached:
+  LOG(error) << "Upload post fallback to Memcached";
+  memcached_return_t memcached_rc;
+  auto memcached_client =
+      memcached_pool_pop(_memcached_client_pool, true, &memcached_rc);
+  if (!memcached_client) {
+    ServiceException se;
+    se.errorCode = ErrorCode::SE_MEMCACHED_ERROR;
+    se.message = "Failed to pop a client from memcached pool";
+    LOG(warning) << se.message;
+    throw se;
+  }
+
+  auto post_json_char = bson_as_json(new_doc, nullptr);
+
+  memcached_rc = memcached_set(
+    memcached_client, post_id_str.c_str(), post_id_str.length(),
+    post_json_char, std::strlen(post_json_char), static_cast<time_t>(0),
+    static_cast<uint32_t>(0));
+  if (memcached_rc != MEMCACHED_SUCCESS) {
+    LOG(warning) << "Failed to set post to Memcached: "
+                  << memcached_strerror(memcached_client, memcached_rc);
+  }
+
+  memcached_pool_push(_memcached_client_pool, memcached_client);
+  bson_destroy(new_doc);
   span->Finish();
 }
 
@@ -292,7 +336,11 @@ void PostStorageHandler::ReadPost(
       ServiceException se;
       se.errorCode = ErrorCode::SE_MONGODB_ERROR;
       se.message = error.message;
-      throw se;
+      if (!offline_mongodb_patch) throw se;
+      else {
+        span->Finish();
+        return;
+      }
     } else {
       LOG(warning) << "Post_id: " << post_id << " doesn't exist in MongoDB";
       bson_destroy(query);
@@ -524,6 +572,7 @@ void PostStorageHandler::ReadPosts(
   std::map<int64_t, std::string> post_json_map;
 
   // Find the rest in MongoDB
+  // NOTE: ignore offline_mongodb_patch here because we want to find the rest in MongoDB
   if (!post_ids_not_cached.empty()) {
     mongoc_client_t *mongodb_client =
         mongoc_client_pool_pop(_mongodb_client_pool);

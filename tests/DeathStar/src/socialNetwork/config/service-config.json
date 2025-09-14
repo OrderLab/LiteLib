@@ -61,7 +61,8 @@
     "timeout_ms": 10000,
     "port": 9090,
     "connections": 512,
-    "offline_memcached_patch": true
+    "offline_memcached_patch": true,
+    "offline_mongodb_patch": true
   },
   "compose-post-redis": {
     "keepalive_ms": 10000,

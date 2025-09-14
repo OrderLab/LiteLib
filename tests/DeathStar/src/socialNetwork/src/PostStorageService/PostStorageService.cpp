@@ -19,6 +19,7 @@ using namespace social_network;
 static memcached_pool_st* memcached_client_pool;
 static mongoc_client_pool_t* mongodb_client_pool;
 bool offline_memcached_patch = false;
+bool offline_mongodb_patch = false;
 
 void sigintHandler(int sig) {
   if (memcached_client_pool != nullptr) {
@@ -49,19 +50,21 @@ int main(int argc, char* argv[]) {
   int memcached_timeout = config_json["post-storage-memcached"]["timeout_ms"];
 
   offline_memcached_patch = config_json["post-storage-service"]["offline_memcached_patch"];
+  offline_mongodb_patch = config_json["post-storage-service"]["offline_mongodb_patch"];
 
   LOG(info) << "Offline memcached patch: " << offline_memcached_patch;
+  LOG(info) << "Offline mongodb patch: " << offline_mongodb_patch;
 
   memcached_client_pool = init_memcached_client_pool(
       config_json, "post-storage", 32, memcached_conns);
   mongodb_client_pool =
       init_mongodb_client_pool(config_json, "post-storage", mongodb_conns);
-  if (memcached_client_pool == nullptr || mongodb_client_pool == nullptr) {
+  if (!offline_mongodb_patch && (memcached_client_pool == nullptr || mongodb_client_pool == nullptr)) {
     return EXIT_FAILURE;
   }
 
   mongoc_client_t* mongodb_client = mongoc_client_pool_pop(mongodb_client_pool);
-  if (!mongodb_client) {
+  if (!offline_mongodb_patch && !mongodb_client) {
     LOG(fatal) << "Failed to pop mongoc client";
     return EXIT_FAILURE;
   }
@@ -70,6 +73,7 @@ int main(int argc, char* argv[]) {
     r = CreateIndex(mongodb_client, "post", "post_id", true);
     if (!r) {
       LOG(error) << "Failed to create mongodb index, try again";
+      if (offline_mongodb_patch) break;
       sleep(1);
     }
   }

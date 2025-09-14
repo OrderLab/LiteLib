@@ -3,7 +3,8 @@
 set -x
 
 TYPE=$1
-CRASH=${2:-20}
+CRASH_MONGODB=${2:-0}
+CRASH=${3:-20}
 LOG_PREFIX=${TYPE}_$(date '+%Y%m%d_%H%M%S')
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
@@ -34,6 +35,13 @@ function warmup_memcached() {
     ../src/wrk2/wrk -D exp -t 80 -c 512 -d 60 -L -s ../src/socialNetwork/wrk2/scripts/social-network/read-home-timeline.lua http://node1:8080/wrk2-api/home-timeline/read -R 3000
 }
 
+function crash_mongodb() {
+    sleep $CRASH
+    if [ "$CRASH_MONGODB" == "1" ]; then
+        ssh node0 "docker exec post-storage-mongodb pkill -f mongod"
+    fi
+}
+
 function crash_memcached() {
     sleep $CRASH
     docker exec post-storage-memcached /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/crash.sh
@@ -52,5 +60,6 @@ start_memcached
 warmup_memcached
 sleep 5
 crash_memcached &
+crash_mongodb &
 logging &
 run_workload

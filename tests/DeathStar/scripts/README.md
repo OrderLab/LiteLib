@@ -5,7 +5,7 @@
 ./swarm_init.sh
 ```
 
-# Single node
+# Single node (or testing e2e success rate)
 
 ## Update docker images
 
@@ -38,6 +38,7 @@ time python3 scripts/init_social_graph.py --graph=socfb-Reed98 --ip node1 --comp
 ./run_exp_single.sh vanilla
 ./run_exp_single.sh vanilla+
 ./run_exp_single.sh litesys
+./run_exp_single.sh litesys 1 # 1 means crash mongodb to test e2e success rate
 ```
 
 ## Change cgroup manually
@@ -89,7 +90,7 @@ time python3 scripts/init_social_graph.py --graph=socfb-Reed98 --ip node1 --comp
 ### Memcached
 
 ```bash
-# go to post-storage-memcached-1 in node4
+# go to post-storage-memcached-1 in node3
 cgset -r cpu.max="100000 100000" deathstar_cpulimited_1
 cgget -g cpu:/deathstar_cpulimited_1
 ```
