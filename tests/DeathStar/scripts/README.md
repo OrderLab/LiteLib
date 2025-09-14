@@ -16,6 +16,7 @@
 ## Run
 
 ```bash
+# if for testing e2e success rate, modify offline_mongodb_patch in ./config/service-config.json to true
 ./swarm_helper_single.sh up
 ```
 
@@ -44,7 +45,7 @@ time python3 scripts/init_social_graph.py --graph=socfb-Reed98 --ip node1 --comp
 ## Change cgroup manually
 
 ```bash
-# go to post-storage-mongodb in node2
+# go to post-storage-mongodb in node0
 cd /workspace/tests/DeathStar/src/socialNetwork/docker/mongo-with-cgroup
 
 # change cgroup

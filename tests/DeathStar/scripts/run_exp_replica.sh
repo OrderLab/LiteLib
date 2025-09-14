@@ -3,7 +3,8 @@
 set -x
 
 TYPE=$1
-CRASH=${2:-20}
+MCROUTER_READONLY=${2:-0}
+CRASH=${3:-20}
 LOG_PREFIX=${TYPE}_$(date '+%Y%m%d_%H%M%S')
 
 function start_memcached() {
@@ -29,6 +30,14 @@ function warmup_memcached() {
     ../src/wrk2/wrk -D exp -t 80 -c 512 -d 60 -L -s ../src/socialNetwork/wrk2/scripts/social-network/read-home-timeline.lua http://node1:8080/wrk2-api/home-timeline/read -R 3000
 }
 
+function mcrouter_readonly() {
+    sleep $CRASH
+    if [ "$MCROUTER_READONLY" == "1" ]; then
+        mv ../src/socialNetwork/config/mcrouter.json ../src/socialNetwork/config/mcrouter.json.bak
+        cp ../src/socialNetwork/config/mcrouter.readonly.json ../src/socialNetwork/config/mcrouter.json
+    fi
+}
+
 function crash_memcached() {
     sleep $CRASH
     docker exec post-storage-memcached-1 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/crash.sh
@@ -44,10 +53,18 @@ function run_workload() {
     ../src/wrk2/wrk -D exp -t 80 -c 512 -d 90 -L -s ../src/socialNetwork/wrk2/scripts/social-network/mixed-workload.lua http://node1:8080 -R 2500
 }
 
+function restore_mcrouter() {
+    if [ "$MCROUTER_READONLY" == "1" ]; then
+        mv ../src/socialNetwork/config/mcrouter.json.bak ../src/socialNetwork/config/mcrouter.json
+    fi
+}
+
 # Run the experiment
 start_memcached
 warmup_memcached
 sleep 5
 crash_memcached &
+mcrouter_readonly &
 logging &
 run_workload
+restore_mcrouter

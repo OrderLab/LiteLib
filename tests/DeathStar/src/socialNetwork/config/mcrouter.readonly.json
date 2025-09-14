@@ -1,0 +1,45 @@
+{
+  "pools": {
+    "A": {
+      "servers": [
+        "post-storage-memcached-1:11211"
+      ]
+    },
+    "B": {
+      "servers": [
+        "post-storage-memcached-2:11211"
+      ]
+    }
+  },
+  "route": {
+    "type": "OperationSelectorRoute",
+    "operation_policies": {
+      "get": {
+        "type": "FailoverRoute",
+        "children": [
+          {
+            "type": "HashRoute",
+            "children": [
+              "Pool|A",
+              "Pool|B"
+            ]
+          },
+          "Pool|A",
+          "Pool|B"
+        ]
+      },
+      "set": "ErrorRoute|Writes are disabled",
+      "add": "ErrorRoute|Writes are disabled",
+      "delete": "ErrorRoute|Writes are disabled",
+      "incr": "ErrorRoute|Writes are disabled",
+      "decr": "ErrorRoute|Writes are disabled"
+    },
+    "default_policy": {
+      "type": "AllFastestRoute",
+      "children": [
+        "Pool|A",
+        "Pool|B"
+      ]
+    }
+  }
+}

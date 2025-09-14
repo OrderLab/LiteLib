@@ -62,7 +62,7 @@
     "port": 9090,
     "connections": 512,
     "offline_memcached_patch": true,
-    "offline_mongodb_patch": true
+    "offline_mongodb_patch": false
   },
   "compose-post-redis": {
     "keepalive_ms": 10000,
