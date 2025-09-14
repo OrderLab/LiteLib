@@ -6,6 +6,7 @@
 #include <libmemcached/util.h>
 #include <mongoc.h>
 
+#include <atomic>
 #include <future>
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -17,6 +18,7 @@
 
 extern bool offline_memcached_patch;
 extern bool offline_mongodb_patch;
+extern std::atomic<bool> store_post_error_knob;
 
 namespace social_network {
 using json = nlohmann::json;
@@ -51,6 +53,15 @@ PostStorageHandler::PostStorageHandler(
 void PostStorageHandler::StorePost(
     int64_t req_id, const social_network::Post &post,
     const std::map<std::string, std::string> &carrier) {
+  // Check if error knob is enabled
+  if (store_post_error_knob.load()) {
+    ServiceException se;
+    // BUG: this will not be exposed as error in wrk2
+    se.errorCode = ErrorCode::SE_THRIFT_HANDLER_ERROR;
+    se.message = "Store post error knob is enabled";
+    throw se;
+  }
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;

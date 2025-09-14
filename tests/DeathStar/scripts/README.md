@@ -84,6 +84,9 @@ time python3 scripts/init_social_graph.py --graph=socfb-Reed98 --ip node1 --comp
 # in node3
 ./run_exp_replica.sh vanilla
 ./run_exp_replica.sh litesys
+# set mongodb to 100%
+./run_exp_replica.sh vanilla 1 # 1 means mcrouter readonly
+./run_exp_replica.sh vanilla 2 # 2 means post-storage-service readonly, note write requests will still be counted as success (see the bug description in PostStorageHandler.h)
 ```
 
 ## Change cgroup manually

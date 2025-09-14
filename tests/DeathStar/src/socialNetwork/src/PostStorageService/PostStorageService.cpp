@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <atomic>
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/server/TThreadedServer.h>
 #include <thrift/transport/TBufferTransports.h>
@@ -20,6 +21,7 @@ static memcached_pool_st* memcached_client_pool;
 static mongoc_client_pool_t* mongodb_client_pool;
 bool offline_memcached_patch = false;
 bool offline_mongodb_patch = false;
+std::atomic<bool> store_post_error_knob{false};
 
 void sigintHandler(int sig) {
   if (memcached_client_pool != nullptr) {
@@ -31,8 +33,14 @@ void sigintHandler(int sig) {
   exit(EXIT_SUCCESS);
 }
 
+void sigusr1Handler(int sig) {
+  store_post_error_knob.store(!store_post_error_knob.load());
+  LOG(info) << "Store post error knob toggled to: " << store_post_error_knob.load();
+}
+
 int main(int argc, char* argv[]) {
   signal(SIGINT, sigintHandler);
+  signal(SIGUSR1, sigusr1Handler);
   init_logger();
   SetUpTracer("config/jaeger-config.yml", "post-storage-service");
 
