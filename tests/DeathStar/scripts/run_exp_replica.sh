@@ -3,9 +3,11 @@
 set -x
 
 TYPE=$1
-DEFCON_CONFIG=${2:-0} # 1 mcrouter readonly, 2 post-storage-service readonly
+DEFCON_CONFIG=${2:-0} # 1 mcrouter readonly, 2 post-storage-service readonly, 3 load shedding
+LOAD_SHEDDING_RATE=${3:-1500} # max number of requests per second
 CRASH=${3:-20}
 LOG_PREFIX=${TYPE}_$(date '+%Y%m%d_%H%M%S')
+DeathStarDir=$(cd "$(dirname "$0")/.." && pwd)
 
 function start_memcached() {
     ssh node0 "docker exec post-storage-mongodb cgcreate -g cpu:/deathstar_cpulimited"
@@ -72,6 +74,29 @@ function restore_post_storage_service() {
     fi
 }
 
+function load_shedding() {
+    sleep $CRASH
+    if [ "$DEFCON_CONFIG" == "3" ]; then
+        ssh node1 "
+            cp $DeathStarDir/src/socialNetwork/nginx-web-server/conf/nginx.conf $DeathStarDir/src/socialNetwork/nginx-web-server/conf/nginx.conf.bak &&
+            cp $DeathStarDir/src/socialNetwork/nginx-web-server/conf/nginx.load_shedding.conf $DeathStarDir/src/socialNetwork/nginx-web-server/conf/nginx.new_load_shedding.conf &&
+            sed -i 's/\(limit_req_zone.*rate=\)[0-9]\+r\/s/\1'"${LOAD_SHEDDING_RATE}"'r\/s/' $DeathStarDir/src/socialNetwork/nginx-web-server/conf/nginx.new_load_shedding.conf &&
+            cat $DeathStarDir/src/socialNetwork/nginx-web-server/conf/nginx.new_load_shedding.conf > $DeathStarDir/src/socialNetwork/nginx-web-server/conf/nginx.conf &&
+            docker exec \$(docker ps -q -f name=socialnetwork_nginx-web-server) sh -c \"cat /usr/local/openresty/nginx/conf/nginx.conf && nginx -s reload\"
+            rm -f $DeathStarDir/src/socialNetwork/nginx-web-server/conf/nginx.new_load_shedding.conf
+        "
+    fi
+}
+
+function restore_load_shedding() {
+    if [ "$DEFCON_CONFIG" == "3" ]; then
+        ssh node1 "
+            cat $DeathStarDir/src/socialNetwork/nginx-web-server/conf/nginx.conf.bak > $DeathStarDir/src/socialNetwork/nginx-web-server/conf/nginx.conf &&
+            docker exec \$(docker ps -q -f name=socialnetwork_nginx-web-server) sh -c \"nginx -s reload\"
+        "
+    fi
+}
+
 # Run the experiment
 start_memcached
 warmup_memcached
@@ -79,7 +104,9 @@ sleep 5
 crash_memcached &
 mcrouter_readonly &
 post_storage_service_readonly &
+load_shedding &
 logging &
 run_workload
 restore_mcrouter
 restore_post_storage_service
+restore_load_shedding

@@ -87,6 +87,7 @@ time python3 scripts/init_social_graph.py --graph=socfb-Reed98 --ip node1 --comp
 # set mongodb to 100%
 ./run_exp_replica.sh vanilla 1 # 1 means mcrouter readonly
 ./run_exp_replica.sh vanilla 2 # 2 means post-storage-service readonly, note write requests will still be counted as success (see the bug description in PostStorageHandler.h)
+./run_exp_replica.sh vanilla 3 1500 # 3 means load shedding, 1500 means max number of requests per second
 ```
 
 ## Change cgroup manually
