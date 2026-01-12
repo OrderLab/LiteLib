@@ -36,7 +36,7 @@ kill_process_by_port() {
   fi
   local pids=$(lsof -t -i @$addr:$port)
   if [ -n "$pids" ]; then
-    if [ "$MODE" == "replica"]; then
+    if [ "$MODE" == "replica" ] || [ "$MODE" == "read-only-replica" ]; then
         kill -9 $pids # replica will use slave later, don't need to dump rdb
     else
         kill -15 $pids
@@ -52,7 +52,7 @@ get_master_info() {
     if [ "$MODE" == "lite" ]; then
         MASTER_HOST=$LITE_HOST
         MASTER_PORT=$LITE_PORT
-    elif [ "$MODE" == "replica" ]; then
+    elif [ "$MODE" == "replica" ] || [ "$MODE" == "read-only-replica" ]; then
         MASTER_INFO=$(redis-cli -h $SENTINEL_HOST -p $SENTINEL_PORT SENTINEL get-master-addr-by-name $MASTER_NAME)
         MASTER_HOST=$(echo $MASTER_INFO | awk '{print $1}')
         MASTER_PORT=$(echo $MASTER_INFO | awk '{print $2}')
@@ -99,7 +99,7 @@ kill_vanilla_server() {
         $LITE_DIR/Lite/lite_cli -t /tmp/lite_Redis -p /tmp/redis.sock -m 0
         echo "Vanilla server is back up and running"
         
-    elif [ "$MODE" == "replica" ]; then
+    elif [ "$MODE" == "replica" ] || [ "$MODE" == "read-only-replica" ]; then
         while alive_on_port $VANILLA_PORT; do
             sleep 0.1
         done
@@ -136,7 +136,7 @@ rm -f $SCRIPT_DIR/*.rdb
 # Start relevant monitoring processes
 if [ "$MODE" == "lite" ] || [ "$MODE" == "embedded" ]; then
     python -u $SCRIPT_DIR/monitor/monitor.py 180 $SCRIPT_DIR/logs/$MODE-monitor-$SUFFIX.log 0 &
-elif [ "$MODE" == "replica" ]; then
+elif [ "$MODE" == "replica" ] || [ "$MODE" == "read-only-replica" ]; then
     python -u $SCRIPT_DIR/monitor/monitor.py 180 $SCRIPT_DIR/logs/$MODE-vanilla-monitor-$SUFFIX.log 0 &
     ssh $REPLICA_HOST "python -u $DEST_DIR/monitor.py 180 $SCRIPT_DIR/logs/$MODE-replica-monitor-$SUFFIX.log 0" &
     ssh $SENTINEL_HOST "python -u $DEST_DIR/monitor.py 180 $SCRIPT_DIR/logs/$MODE-sentinel-monitor-$SUFFIX.log 0" &
@@ -155,8 +155,12 @@ echo "Master host: $MASTER_HOST, Master port: $MASTER_PORT"
 echo "`date '+%Y-%m-%d %H:%M:%S'` Starting YCSB load"
 if [ "$MODE" == "lite" ] || [ "$MODE" == "vanilla" ] || [ "$MODE" == "embedded" ]; then
     ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" > $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
-elif [ "$MODE" == "replica" ]; then
-    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" > $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
+elif [ "$MODE" == "replica" ] || [ "$MODE" == "read-only-replica" ]; then
+    READ_FROM_REPLICA="false"
+    if [ "$MODE" == "read-only-replica" ]; then
+        READ_FROM_REPLICA="true"
+    fi
+    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb load redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME -p redis.read.from.replica=$READ_FROM_REPLICA" > $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
 fi
 echo "`date '+%Y-%m-%d %H:%M:%S'` YCSB load completed"
 sleep 20
@@ -171,8 +175,12 @@ get_master_info
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 echo "[$TIMESTAMP] Starting benchmark" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log
 
-if [ "$MODE" == "replica" ]; then
-    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
+if [ "$MODE" == "replica" ] || [ "$MODE" == "read-only-replica" ]; then
+    READ_FROM_REPLICA="false"
+    if [ "$MODE" == "read-only-replica" ]; then
+        READ_FROM_REPLICA="true"
+    fi
+    ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.sentinel=$SENTINEL_HOST:$SENTINEL_PORT -p redis.sentinel.master=$MASTER_NAME -p redis.read.from.replica=$READ_FROM_REPLICA" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
 elif [ "$MODE" == "lite" ] || [ "$MODE" == "vanilla" ] || [ "$MODE" == "embedded" ]; then
     ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run redis -s -P workloads/ycsb_workload -p redis.host=$MASTER_HOST -p redis.port=$MASTER_PORT" >> $SCRIPT_DIR/logs/benchmark-$MODE-$SUFFIX.log 2>&1
 fi
@@ -181,7 +189,7 @@ STATUS=$?
 echo "Benchmark completed with status $STATUS"
 
 # Copy the resulting CSV files from replica and sentinel hosts
-if [ "$MODE" == "replica" ]; then
+if [ "$MODE" == "replica" ] || [ "$MODE" == "read-only-replica" ]; then
     scp $REPLICA_HOST:$SCRIPT_DIR/logs/*.log $SCRIPT_DIR/logs
     scp $SENTINEL_HOST:$SCRIPT_DIR/logs/*.log $SCRIPT_DIR/logs
 

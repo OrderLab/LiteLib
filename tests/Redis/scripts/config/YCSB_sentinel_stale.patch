@@ -104,7 +104,7 @@ index 8a27cc93..2e62a96b 100644
    public static final Status NOT_IMPLEMENTED = new Status("NOT_IMPLEMENTED", "The operation is not " +
        "implemented for the current binding.");
 diff --git a/redis/src/main/java/site/ycsb/db/RedisClient.java b/redis/src/main/java/site/ycsb/db/RedisClient.java
-index 2de9ad23..c5d98936 100644
+index 2de9ad23..b4a7b335 100644
 --- a/redis/src/main/java/site/ycsb/db/RedisClient.java
 +++ b/redis/src/main/java/site/ycsb/db/RedisClient.java
 @@ -1,27 +1,3 @@
@@ -167,14 +167,16 @@ index 2de9ad23..c5d98936 100644
  
  /**
   * YCSB binding for <a href="http://redis.io/">Redis</a>.
-@@ -54,17 +33,65 @@ import java.util.Vector;
+@@ -54,17 +33,68 @@ import java.util.Vector;
   */
  public class RedisClient extends DB {
  
 -  private JedisCommands jedis;
 +  private JedisPool jedisPool;
 +  private JedisSentinelPool jedisSentinelPool;
++  private JedisPool jedisSlavePool;
 +  private boolean useSentinel;
++  private boolean readFromReplica;
  
    public static final String HOST_PROPERTY = "redis.host";
    public static final String PORT_PROPERTY = "redis.port";
@@ -183,6 +185,7 @@ index 2de9ad23..c5d98936 100644
 +  public static final String SENTINEL_PROPERTY = "redis.sentinel";
 +  public static final String SENTINEL_MASTER_PROPERTY = "redis.sentinel.master";
    public static final String TIMEOUT_PROPERTY = "redis.timeout";
++  public static final String READ_FROM_REPLICA_PROPERTY = "redis.read.from.replica";
  
    public static final String INDEX_KEY = "_indices";
 +  
@@ -235,12 +238,13 @@ index 2de9ad23..c5d98936 100644
      Properties props = getProperties();
      int port;
  
-@@ -75,108 +102,235 @@ public class RedisClient extends DB {
+@@ -75,108 +105,284 @@ public class RedisClient extends DB {
        port = Protocol.DEFAULT_PORT;
      }
      String host = props.getProperty(HOST_PROPERTY);
 +    String sentinel = props.getProperty(SENTINEL_PROPERTY);
 +    String sentinelMaster = props.getProperty(SENTINEL_MASTER_PROPERTY);
++    readFromReplica = Boolean.parseBoolean(props.getProperty(READ_FROM_REPLICA_PROPERTY, "false"));
  
 -    boolean clusterEnabled = Boolean.parseBoolean(props.getProperty(CLUSTER_PROPERTY));
 -    if (clusterEnabled) {
@@ -267,6 +271,9 @@ index 2de9ad23..c5d98936 100644
 -    String password = props.getProperty(PASSWORD_PROPERTY);
 -    if (password != null) {
 -      ((BasicCommands) jedis).auth(password);
++      if (readFromReplica) {
++        setupSlavePool(sentinel, sentinelMaster);
++      }
 +    } else {
 +      useSentinel = false;
 +      jedisPool = new JedisPool(host, port);
@@ -278,6 +285,9 @@ index 2de9ad23..c5d98936 100644
 -      ((Closeable) jedis).close();
 +      if (useSentinel) {
 +        ((Closeable) jedisSentinelPool).close();
++        if (jedisSlavePool != null) {
++          ((Closeable) jedisSlavePool).close();
++        }
 +      } else {
 +        ((Closeable) jedisPool).close();
 +      }
@@ -294,6 +304,33 @@ index 2de9ad23..c5d98936 100644
 -   */
 -  private double hash(String key) {
 -    return key.hashCode();
++  private void setupSlavePool(String sentinel, String sentinelMaster) {
++    jedisSlavePool = null;
++    String[] sentinelArray = sentinel.split(",");
++    for (String sentinelAddr : sentinelArray) {
++      String[] hostPort = sentinelAddr.split(":");
++      String sentinelHost = hostPort[0];
++      int sentinelPort = hostPort.length > 1 ? Integer.parseInt(hostPort[1]) : 26379;
++      try (Jedis sentinelJedis = new Jedis(sentinelHost, sentinelPort)) {
++        List<Map<String, String>> slaves = sentinelJedis.sentinelSlaves(sentinelMaster);
++        for (Map<String, String> slave : slaves) {
++          String flags = slave.get("flags");
++          String masterLinkStatus = slave.get("master-link-status");
++          if (flags != null && flags.contains("slave")
++              && (masterLinkStatus == null || "ok".equalsIgnoreCase(masterLinkStatus))) {
++            String slaveHost = slave.get("ip");
++            int slavePort = Integer.parseInt(slave.get("port"));
++            jedisSlavePool = new JedisPool(slaveHost, slavePort);
++            return;
++          }
++        }
++      } catch (Exception e) {
++        // Ignore and try next sentinel
++      }
++    }
+   }
+ 
+-  // XXX jedis.select(int index) to switch to `table`
 +  private Jedis getJedisResource() {
 +    while (true) {
 +      try {
@@ -314,6 +351,9 @@ index 2de9ad23..c5d98936 100644
 +          String sentinelMaster = getProperties().getProperty(SENTINEL_MASTER_PROPERTY);
 +          Set<String> sentinels = Set.of(sentinel.split(","));
 +          jedisSentinelPool = new JedisSentinelPool(sentinelMaster, sentinels);
++          if (readFromReplica) {
++            setupSlavePool(sentinel, sentinelMaster);
++          }
 +        } else {
 +          // Reconnect to the same host and port
 +          String host = getProperties().getProperty(HOST_PROPERTY);
@@ -322,10 +362,21 @@ index 2de9ad23..c5d98936 100644
 +        }
 +      }
 +    }
-   }
++  }
++
++  private Jedis getJedisReadResource() {
++    if (!readFromReplica || !useSentinel || jedisSlavePool == null) {
++      return getJedisResource();
++    }
++    while (true) {
++      try {
++        return jedisSlavePool.getResource();
++      } catch (Exception e) {
++        return getJedisResource();
++      }
++    }
++  }
  
--  // XXX jedis.select(int index) to switch to `table`
--
    @Override
 -  public Status read(String table, String key, Set<String> fields,
 -      Map<String, ByteIterator> result) {
@@ -341,7 +392,7 @@ index 2de9ad23..c5d98936 100644
 +      return Status.ERROR;
 +    }
 +    
-+    try (Jedis jedis = getJedisResource()) {
++    try (Jedis jedis = getJedisReadResource()) {
 +      if (fields == null) {
 +        long expectedVersion = getVersionCounter(key);
 +        Map<String, String> values = jedis.hgetAll(key);
@@ -379,15 +430,12 @@ index 2de9ad23..c5d98936 100644
 +        if (allNull) {
 +          return Status.MISSED;
 +        }
- 
--      Iterator<String> fieldIterator = fields.iterator();
--      Iterator<String> valueIterator = values.iterator();
++
 +        Iterator<String> fieldIterator = fields.iterator();
 +        Iterator<String> valueIterator = values.iterator();
  
--      while (fieldIterator.hasNext() && valueIterator.hasNext()) {
--        result.put(fieldIterator.next(),
--            new StringByteIterator(valueIterator.next()));
+-      Iterator<String> fieldIterator = fields.iterator();
+-      Iterator<String> valueIterator = values.iterator();
 +        while (fieldIterator.hasNext() && valueIterator.hasNext()) {
 +          String field = fieldIterator.next();
 +          String value = valueIterator.next();
@@ -395,7 +443,10 @@ index 2de9ad23..c5d98936 100644
 +            result.put(field, new StringByteIterator(value));
 +          }
 +        }
-+
+ 
+-      while (fieldIterator.hasNext() && valueIterator.hasNext()) {
+-        result.put(fieldIterator.next(),
+-            new StringByteIterator(valueIterator.next()));
 +        if (result.isEmpty()) {
 +          return Status.MISSED;
 +        }

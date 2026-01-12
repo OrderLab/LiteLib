@@ -4,17 +4,17 @@ set -x
 
 SCRIPT_DIR=$(realpath "$(dirname "$0")")
 
-SUFFIX=overhead
-for i in {1..10}; do
-    for MODE in vanilla replica embedded; do
-        ./run-single-experiment.sh $MODE $SUFFIX-$i 0 > $SCRIPT_DIR/logs/$MODE-experiment-script-$SUFFIX-$i.log 2>&1
+SUFFIX=recovery
+for i in {1..3}; do
+    for MODE in vanilla replica read-only-replica embedded; do
+        ./run-single-experiment.sh $MODE $SUFFIX-$i 1 > $SCRIPT_DIR/logs/$MODE-experiment-script-$SUFFIX-$i.log 2>&1
     done
 done
 
-SUFFIX=recovery
-for i in {1..3}; do
-    for MODE in vanilla replica embedded; do
-        ./run-single-experiment.sh $MODE $SUFFIX-$i 1 > $SCRIPT_DIR/logs/$MODE-experiment-script-$SUFFIX-$i.log 2>&1
+SUFFIX=overhead
+for i in {1..10}; do
+    for MODE in vanilla replica read-only-replica embedded; do
+        ./run-single-experiment.sh $MODE $SUFFIX-$i 0 > $SCRIPT_DIR/logs/$MODE-experiment-script-$SUFFIX-$i.log 2>&1
     done
 done
 

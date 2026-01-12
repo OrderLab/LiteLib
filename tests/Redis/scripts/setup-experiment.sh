@@ -17,7 +17,7 @@ if [ "$MODE" == "lite" ] || [ "$MODE" == "embedded" ]; then
   echo "Starting Redis Lite"
   $SCRIPT_DIR/start-redis.sh $MODE $SUFFIX
   $SCRIPT_DIR/start-lite.sh $MODE $SUFFIX
-elif [ "$MODE" == "replica" ]; then
+elif [ "$MODE" == "replica" ] || [ "$MODE" == "read-only-replica" ]; then
   echo "Starting Redis Replica"
   $SCRIPT_DIR/start-redis.sh $MODE $SUFFIX
   $SCRIPT_DIR/start-repl.sh $MODE $SUFFIX
