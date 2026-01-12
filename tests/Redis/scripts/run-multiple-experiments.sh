@@ -4,6 +4,8 @@ set -x
 
 SCRIPT_DIR=$(realpath "$(dirname "$0")")
 
+mkdir -p $SCRIPT_DIR/logs
+
 SUFFIX=recovery
 for i in {1..3}; do
     for MODE in vanilla replica read-only-replica embedded; do
