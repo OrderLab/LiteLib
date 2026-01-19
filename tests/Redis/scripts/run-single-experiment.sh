@@ -92,7 +92,7 @@ kill_vanilla_server() {
         echo "Vanilla server killed after $CRASH_TIME seconds"
         
         # Reboot the vanilla server
-		$SCRIPT_DIR/start-redis.sh $MODE $SUFFIX
+		$SCRIPT_DIR/start-redis.sh $MODE $SUFFIX 1
         while ! redis-cli -h $MASTER_HOST -p $VANILLA_PORT ping | grep -q "PONG"; do
             sleep 0.1
         done
@@ -110,7 +110,7 @@ kill_vanilla_server() {
             NEW_MASTER_PORT=$(echo $NEW_MASTER_INFO | awk '{print $2}')
             if [[ "$NEW_MASTER_HOST" != "$MASTER_HOST" || "$NEW_MASTER_PORT" != "$MASTER_PORT" ]]; then
                 echo "Master switched to $NEW_MASTER_HOST:$NEW_MASTER_PORT"
-                $SCRIPT_DIR/start-redis.sh $MODE $SUFFIX
+                $SCRIPT_DIR/start-redis.sh $MODE $SUFFIX 1
                 break
             fi
             sleep 0.1
@@ -121,7 +121,7 @@ kill_vanilla_server() {
             sleep 0.1
         done
         echo "Vanilla server killed after $CRASH_TIME seconds"
-        $SCRIPT_DIR/start-redis.sh $MODE $SUFFIX
+        $SCRIPT_DIR/start-redis.sh $MODE $SUFFIX 1
         echo "Vanilla server is back up and running"
     fi
 }
