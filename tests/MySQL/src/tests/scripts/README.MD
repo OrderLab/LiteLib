@@ -75,13 +75,15 @@ echo "deb [signed-by=/usr/share/keyrings/proxysql-2.7.x-keyring.gpg] \
 https://repo.proxysql.com/ProxySQL/proxysql-2.7.x/$(lsb_release -sc)/ ./" \
 | sudo tee /etc/apt/sources.list.d/proxysql.list
 sudo apt-get update
-sudo apt-get install -y proxysql=2.7.3
+sudo apt-get install -y proxysql=2.7.3 mysql-client
 sudo apt-mark hold proxysql
 ```
 
+5.1. If you want passive replication
+
 ```bash
 sudo systemctl start proxysql
-/usr/local/mysql/bin/mysql  -u admin -padmin -h 127.0.0.1 -P6032 <<'SQL'
+mysql  -u admin -padmin -h 127.0.0.1 -P6032 <<'SQL'
 -- Backend servers (start them both in HG10; ProxySQL will move them based on read_only)
 DELETE FROM mysql_servers;
 INSERT INTO mysql_servers(hostgroup_id,hostname,port) VALUES
@@ -111,6 +113,52 @@ SELECT hostgroup_id,hostname,port,status FROM runtime_mysql_servers;
 SQL
 ```
 
+5.2. If you want single-primary replication
+
+```bash
+sudo systemctl start proxysql
+mysql  -u admin -padmin -h 127.0.0.1 -P6032 <<'SQL'
+-- Backend servers (start them both in HG10; ProxySQL will move them based on read_only)
+DELETE FROM mysql_servers;
+INSERT INTO mysql_servers(hostgroup_id,hostname,port) VALUES
+  (10,'node2',60000),
+  (10,'node3',60000);
+
+-- Replication awareness: writer HG=10, reader HG=20; follow @@read_only
+-- Single-primary means: only ONE node should have read_only=0 (primary),
+-- and the other node must have read_only=1 (replica).
+DELETE FROM mysql_replication_hostgroups;
+INSERT INTO mysql_replication_hostgroups (writer_hostgroup, reader_hostgroup, check_type, comment)
+VALUES (10,20,'read_only','single-primary classic-repl');
+
+-- Monitoring creds (must exist on node2 and replicate to node3)
+UPDATE global_variables SET variable_value='monitor'      WHERE variable_name='mysql-monitor_username';
+UPDATE global_variables SET variable_value='MONITOR_PASS' WHERE variable_name='mysql-monitor_password';
+
+-- App user presented by ProxySQL (same creds as on MySQL)
+DELETE FROM mysql_users WHERE username='sbtest';
+INSERT INTO mysql_users(username,password,default_hostgroup) VALUES ('sbtest','password',10);
+
+-- Route normal SELECT to reader HG=20, but keep locking reads on writer HG=10.
+DELETE FROM mysql_query_rules;
+INSERT INTO mysql_query_rules(rule_id,active,match_pattern,destination_hostgroup,apply,comment) VALUES
+  (100,1,'^SELECT\\s+.*FOR\\s+UPDATE',10,1,'locking reads go to writer'),
+  (101,1,'^SELECT\\s+.*LOCK\\s+IN\\s+SHARE\\s+MODE',10,1,'locking reads go to writer'),
+  (110,1,'^SELECT',20,1,'normal SELECT goes to readers'),
+  (120,1,'.*',10,1,'everything else goes to writer');
+
+-- Apply & persist
+LOAD MYSQL VARIABLES        TO RUNTIME; SAVE MYSQL VARIABLES        TO DISK;
+LOAD MYSQL SERVERS          TO RUNTIME; SAVE MYSQL SERVERS          TO DISK;
+LOAD MYSQL USERS            TO RUNTIME; SAVE MYSQL USERS            TO DISK;
+LOAD MYSQL QUERY RULES      TO RUNTIME; SAVE MYSQL QUERY RULES      TO DISK;
+
+-- Sanity
+SELECT hostgroup_id,hostname,port,status FROM runtime_mysql_servers ORDER BY hostgroup_id,hostname;
+SELECT rule_id,active,match_pattern,destination_hostgroup FROM runtime_mysql_query_rules ORDER BY rule_id;
+SQL
+```
+
 6. Set up Orchestrator on node0
 
 ```bash
@@ -122,6 +170,7 @@ sudo apt-get install -y ./orchestrator_${ORC_VER}_amd64.deb
 ```bash
 sudo systemctl start orchestrator
 sudo mkdir -p /var/lib/orchestrator
+sudo cp ./orchestrator.conf.json /etc/orchestrator.conf.json
 sudo systemctl restart orchestrator
 ```
 
