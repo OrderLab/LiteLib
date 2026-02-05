@@ -10,6 +10,10 @@
 # git checkout 805825fa81f633a7477f15ecdc152441e4ef4c83
 # git apply /workspace/tests/MySQL/src/tests/scripts/client/sysbench.patch
 
+# Current sysbench behavior:
+# Average latency: cumulative (since test start) — the last intermediate report shows the overall average.
+# P95 latency: interval-based (since last report) — each report shows the P95 for that interval.
+
 # ./autogen.sh
 # ./configure
 # make -j

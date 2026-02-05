@@ -1,3 +1,47 @@
+diff --git a/src/db_driver.c b/src/db_driver.c
+index d1a1f7a..996e2b0 100644
+--- a/src/db_driver.c
++++ b/src/db_driver.c
+@@ -977,7 +977,7 @@ void db_report_intermediate(sb_stat_t *stat)
+   log_timestamp(LOG_NOTICE, stat->time_total,
+                 "thds: %u tps: %4.2f "
+                 "qps: %4.2f (r/w/o: %4.2f/%4.2f/%4.2f) "
+-                "lat (ms,%u%%): %4.2f err/s: %4.2f "
++                "lat (ms,avg): %4.2f lat (ms,%u%%): %4.2f err/s: %4.2f "
+                 "reconn/s: %4.2f",
+                 stat->threads_running,
+                 stat->events / seconds,
+@@ -985,6 +985,7 @@ void db_report_intermediate(sb_stat_t *stat)
+                 stat->reads / seconds,
+                 stat->writes / seconds,
+                 stat->other / seconds,
++                SEC2MS(stat->latency_avg),
+                 sb_globals.percentile,
+                 SEC2MS(stat->latency_pct),
+                 stat->errors / seconds,
+diff --git a/src/lua/internal/sysbench.lua b/src/lua/internal/sysbench.lua
+index 2611eba..f3fdb74 100644
+--- a/src/lua/internal/sysbench.lua
++++ b/src/lua/internal/sysbench.lua
+@@ -143,8 +143,8 @@ end
+ function sysbench.report_default(stat)
+    local seconds = stat.time_interval
+    print(string.format("[ %.0fs ] thds: %u tps: %4.2f qps: %4.2f " ..
+-                          "(r/w/o: %4.2f/%4.2f/%4.2f) lat (ms,%u%%): %4.2f " ..
+-                          "err/s %4.2f reconn/s: %4.2f",
++                          "(r/w/o: %4.2f/%4.2f/%4.2f) lat (ms,avg): %4.2f " ..
++                          "lat (ms,%u%%): %4.2f err/s %4.2f reconn/s: %4.2f",
+                        stat.time_total,
+                        stat.threads_running,
+                        stat.events / seconds,
+@@ -152,6 +152,7 @@ function sysbench.report_default(stat)
+                        stat.reads / seconds,
+                        stat.writes / seconds,
+                        stat.other / seconds,
++                       stat.latency_avg * 1000,
+                        sysbench.opt.percentile,
+                        stat.latency_pct * 1000,
+                        stat.errors / seconds,
 diff --git a/src/lua/oltp_common.lua b/src/lua/oltp_common.lua
 index fdc5c83..fee84bb 100644
 --- a/src/lua/oltp_common.lua
@@ -60,8 +104,21 @@ index 9b5cf6e..d073a8a 100755
  
     if not sysbench.opt.skip_trx then
        commit()
+diff --git a/src/sb_lua.c b/src/sb_lua.c
+index 4ec038b..deec3a8 100644
+--- a/src/sb_lua.c
++++ b/src/sb_lua.c
+@@ -1029,6 +1029,8 @@ static void sb_lua_report_intermediate(sb_stat_t *stat)
+ 
+   stat_to_lua_table(L, stat);
+ 
++  stat_to_number(latency_avg);
++
+   /*
+     The following is only available for intermediate reports with tx_rate > 0
+   */
 diff --git a/src/sysbench.c b/src/sysbench.c
-index fb83bef..16eeb6b 100644
+index fb83bef..7ce9a83 100644
 --- a/src/sysbench.c
 +++ b/src/sysbench.c
 @@ -82,6 +82,9 @@
@@ -82,7 +139,40 @@ index fb83bef..16eeb6b 100644
  
    SB_OPT_END
  };
-@@ -874,6 +878,21 @@ static void *eventgen_thread_proc(void *arg)
+@@ -187,9 +191,10 @@ static void sigalrm_thread_init_timeout_handler(int sig)
+ void sb_report_intermediate(sb_stat_t *stat)
+ {
+   log_timestamp(LOG_NOTICE, stat->time_total,
+-                "thds: %" PRIu32 " eps: %4.2f lat (ms,%u%%): %4.2f",
++                "thds: %" PRIu32 " eps: %4.2f lat (ms,avg): %4.2f lat (ms,%u%%): %4.2f",
+                 stat->threads_running,
+                 stat->events / stat->time_interval,
++                SEC2MS(stat->latency_avg),
+                 sb_globals.percentile,
+                 SEC2MS(stat->latency_pct));
+   if (sb_globals.tx_rate > 0)
+@@ -223,6 +228,7 @@ static void report_intermediate(void)
+ {
+   sb_stat_t stat;
+   sb_counters_t cnt;
++  sb_timer_t t;
+ 
+   /*
+     sb_globals.report_interval may be set to 0 by the master thread to
+@@ -240,6 +246,12 @@ static void report_intermediate(void)
+ 
+   stat.time_interval = NS2SEC(sb_timer_current(&sb_intermediate_timer));
+ 
++  sb_timer_init(&t);
++  for(unsigned i = 0; i < sb_globals.threads; i++)
++    t = sb_timer_merge(&t, &timers[i]);
++
++  stat.latency_avg = NS2SEC(sb_timer_avg(&t));
++
+   if (sb_globals.tx_rate > 0)
+   {
+     stat.queue_length = ck_ring_size(&queue_ring);
+@@ -874,6 +886,21 @@ static void *eventgen_thread_proc(void *arg)
  
    log_text(LOG_DEBUG, "Event generating thread started");
  
@@ -104,7 +194,7 @@ index fb83bef..16eeb6b 100644
    /* Wait for the worker threads to initialize */
    if (sb_barrier_wait(&worker_barrier) < 0)
      return NULL;
-@@ -1383,6 +1402,22 @@ static int init(void)
+@@ -1383,6 +1410,22 @@ static int init(void)
  
    sb_globals.tx_rate = sb_get_value_int("rate");
  
@@ -127,3 +217,20 @@ index fb83bef..16eeb6b 100644
    sb_globals.report_interval = sb_get_value_int("report-interval");
  
    sb_globals.n_checkpoints = 0;
+diff --git a/src/tests/fileio/sb_fileio.c b/src/tests/fileio/sb_fileio.c
+index 5a00376..7c0b9ef 100644
+--- a/src/tests/fileio/sb_fileio.c
++++ b/src/tests/fileio/sb_fileio.c
+@@ -736,10 +736,11 @@ void file_report_intermediate(sb_stat_t *stat)
+ 
+   log_timestamp(LOG_NOTICE, stat->time_total,
+                 "reads: %4.2f MiB/s writes: %4.2f MiB/s fsyncs: %4.2f/s "
+-                "latency (ms,%u%%): %4.3f",
++                "latency (ms,avg): %4.3f latency (ms,%u%%): %4.3f",
+                 stat->bytes_read / mebibyte / seconds,
+                 stat->bytes_written / mebibyte / seconds,
+                 stat->other / seconds,
++                SEC2MS(stat->latency_avg),
+                 sb_globals.percentile,
+                 SEC2MS(stat->latency_pct));
+ }
