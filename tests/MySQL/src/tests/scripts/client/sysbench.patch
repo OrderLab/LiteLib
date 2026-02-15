@@ -19,6 +19,604 @@ index d1a1f7a..996e2b0 100644
                  sb_globals.percentile,
                  SEC2MS(stat->latency_pct),
                  stat->errors / seconds,
+diff --git a/src/drivers/mysql/drv_mysql.c b/src/drivers/mysql/drv_mysql.c
+index 43d7476..1ff8245 100644
+--- a/src/drivers/mysql/drv_mysql.c
++++ b/src/drivers/mysql/drv_mysql.c
+@@ -30,6 +30,7 @@
+ # include <strings.h>
+ #endif
+ #include <stdio.h>
++#include <inttypes.h>
+ 
+ #include <mysql.h>
+ #include <mysqld_error.h>
+@@ -59,6 +60,9 @@ typedef bool my_bool;
+ static sb_arg_t mysql_drv_args[] =
+ {
+   SB_OPT("mysql-host", "MySQL server host", "localhost", LIST),
++  SB_OPT("mysql-host-raw",
++         "Raw host list for failover (no splitting by sysbench)",
++         NULL, STRING),
+   SB_OPT("mysql-port", "MySQL server port", "3306", LIST),
+   SB_OPT("mysql-socket", "MySQL socket", NULL, LIST),
+   SB_OPT("mysql-user", "MySQL user", "sbtest", STRING),
+@@ -90,11 +94,22 @@ static sb_arg_t mysql_drv_args[] =
+   SB_OPT_END
+ };
+ 
++typedef struct
++{
++  char         *host;
++  unsigned int port;
++  char         *hostport;
++} mysql_host_entry_t;
++
+ typedef struct
+ {
+   sb_list_t          *hosts;
+   sb_list_t          *ports;
+   sb_list_t          *sockets;
++  const char         *host_raw;
++  mysql_host_entry_t *host_raw_entries;
++  unsigned int       host_raw_count;
++  unsigned int       host_raw_default_port;
+   const char         *user;
+   const char         *password;
+   const char         *db;
+@@ -121,6 +136,13 @@ typedef struct
+   const char   *db;
+   unsigned int port;
+   char         *socket;
++  char         *host_label;
++  unsigned int host_raw_idx;
++  bool         in_failover;
++  uint64_t     failover_start_us;
++  uint64_t     failover_seq;
++  char         *failover_old_host;
++  char         *failover_new_host;
+ } db_mysql_conn_t;
+ 
+ #ifdef HAVE_MYSQL_OPT_SSL_MODE
+@@ -179,6 +201,20 @@ static sb_list_item_t *ports_pos;
+ static sb_list_item_t *sockets_pos;
+ 
+ static pthread_mutex_t pos_mutex;
++static sb_list_t empty_sockets;
++static const char *empty_host_label = "(unknown)";
++
++static void free_host_raw_entries(void);
++static int parse_host_raw_list(const char *raw);
++static void trim_space(char *s);
++static void set_host_label(db_mysql_conn_t *db_mysql_con,
++                           const char *host, unsigned int port);
++static const char *current_host_label(const db_mysql_conn_t *db_mysql_con);
++static uint64_t now_us(void);
++static void failover_start(db_conn_t *sb_con, unsigned int err);
++static void failover_mark_reconnected(db_conn_t *sb_con);
++static void failover_end_if_needed(db_conn_t *sb_con);
++static bool is_connection_loss_error(unsigned int err);
+ 
+ #ifdef HAVE_MYSQL_OPT_SSL_MODE
+ 
+@@ -275,14 +311,10 @@ int register_driver_mysql(sb_list_t *drivers)
+ int mysql_drv_init(void)
+ {
+   pthread_mutex_init(&pos_mutex, NULL);
++  SB_LIST_INIT(&empty_sockets);
+ 
+   args.hosts = sb_get_value_list("mysql-host");
+-  if (SB_LIST_IS_EMPTY(args.hosts))
+-  {
+-    log_text(LOG_FATAL, "No MySQL hosts specified, aborting");
+-    return 1;
+-  }
+-  hosts_pos = SB_LIST_ITEM_NEXT(args.hosts);
++  args.host_raw = sb_get_value_string("mysql-host-raw");
+ 
+   args.ports = sb_get_value_list("mysql-port");
+   if (SB_LIST_IS_EMPTY(args.ports))
+@@ -291,9 +323,37 @@ int mysql_drv_init(void)
+     return 1;
+   }
+   ports_pos = SB_LIST_ITEM_NEXT(args.ports);
++  args.host_raw_default_port =
++    (unsigned int) atoi(SB_LIST_ENTRY(ports_pos, value_t, listitem)->data);
++
++  if (args.host_raw != NULL && args.host_raw[0] != '\0')
++  {
++    if (parse_host_raw_list(args.host_raw) != 0 || args.host_raw_count == 0)
++    {
++      log_text(LOG_FATAL, "Invalid value for --mysql-host-raw");
++      return 1;
++    }
++  }
++  else
++  {
++    if (SB_LIST_IS_EMPTY(args.hosts))
++    {
++      log_text(LOG_FATAL, "No MySQL hosts specified, aborting");
++      return 1;
++    }
++    hosts_pos = SB_LIST_ITEM_NEXT(args.hosts);
++  }
+ 
+   args.sockets = sb_get_value_list("mysql-socket");
+   sockets_pos = args.sockets;
++  if (args.host_raw != NULL && args.host_raw[0] != '\0' &&
++      !SB_LIST_IS_EMPTY(args.sockets))
++  {
++    log_text(LOG_WARNING,
++             "--mysql-host-raw is set; ignoring --mysql-socket");
++    args.sockets = &empty_sockets;
++    sockets_pos = args.sockets;
++  }
+ 
+   args.user = sb_get_value_string("mysql-user");
+   args.password = sb_get_value_string("mysql-password");
+@@ -463,21 +523,38 @@ int mysql_drv_connect(db_conn_t *sb_conn)
+   if (SB_LIST_IS_EMPTY(args.sockets))
+   {
+     db_mysql_con->socket = NULL;
+-    db_mysql_con->host = SB_LIST_ENTRY(hosts_pos, value_t, listitem)->data;
+-    db_mysql_con->port =
+-      atoi(SB_LIST_ENTRY(ports_pos, value_t, listitem)->data);
++    if (args.host_raw_count > 0)
++    {
++      db_mysql_con->host_raw_idx = (unsigned int) sb_conn->thread_id %
++                                   args.host_raw_count;
++      db_mysql_con->host =
++        args.host_raw_entries[db_mysql_con->host_raw_idx].host;
++      db_mysql_con->port =
++        args.host_raw_entries[db_mysql_con->host_raw_idx].port;
++      set_host_label(db_mysql_con, db_mysql_con->host, db_mysql_con->port);
++    }
++    else
++    {
++      db_mysql_con->host = SB_LIST_ENTRY(hosts_pos, value_t, listitem)->data;
++      db_mysql_con->port =
++        atoi(SB_LIST_ENTRY(ports_pos, value_t, listitem)->data);
++      set_host_label(db_mysql_con, db_mysql_con->host, db_mysql_con->port);
++    }
+ 
+     /*
+        Pick the next port in args.ports. If there are no more ports in the list,
+        move to the next available host and get the first port again.
+     */
+-    ports_pos = SB_LIST_ITEM_NEXT(ports_pos);
+-    if (ports_pos == args.ports) {
+-      hosts_pos = SB_LIST_ITEM_NEXT(hosts_pos);
+-      if (hosts_pos == args.hosts)
++    if (args.host_raw_count == 0)
++    {
++      ports_pos = SB_LIST_ITEM_NEXT(ports_pos);
++      if (ports_pos == args.ports) {
+         hosts_pos = SB_LIST_ITEM_NEXT(hosts_pos);
++        if (hosts_pos == args.hosts)
++          hosts_pos = SB_LIST_ITEM_NEXT(hosts_pos);
+ 
+-      ports_pos = SB_LIST_ITEM_NEXT(ports_pos);
++        ports_pos = SB_LIST_ITEM_NEXT(ports_pos);
++      }
+     }
+   }
+   else
+@@ -494,6 +571,7 @@ int mysql_drv_connect(db_conn_t *sb_conn)
+       sockets_pos = SB_LIST_ITEM_NEXT(sockets_pos);
+ 
+     db_mysql_con->socket = SB_LIST_ENTRY(sockets_pos, value_t, listitem)->data;
++    set_host_label(db_mysql_con, "localhost", 0);
+   }
+   pthread_mutex_unlock(&pos_mutex);
+ 
+@@ -543,6 +621,9 @@ int mysql_drv_disconnect(db_conn_t *sb_conn)
+     DEBUG("mysql_close(%p)", db_mysql_con->mysql);
+     mysql_close(db_mysql_con->mysql);
+     free(db_mysql_con->mysql);
++    free(db_mysql_con->host_label);
++    free(db_mysql_con->failover_old_host);
++    free(db_mysql_con->failover_new_host);
+     free(db_mysql_con);
+   }
+ 
+@@ -756,6 +837,17 @@ static int mysql_drv_reconnect(db_conn_t *sb_con)
+   DEBUG("mysql_close(%p)", con);
+   mysql_close(con);
+ 
++  if (args.host_raw_count > 0)
++  {
++    db_mysql_con->host_raw_idx =
++      (db_mysql_con->host_raw_idx + 1) % args.host_raw_count;
++    db_mysql_con->host =
++      args.host_raw_entries[db_mysql_con->host_raw_idx].host;
++    db_mysql_con->port =
++      args.host_raw_entries[db_mysql_con->host_raw_idx].port;
++    set_host_label(db_mysql_con, db_mysql_con->host, db_mysql_con->port);
++  }
++
+   while (mysql_drv_real_connect(db_mysql_con))
+   {
+     if (sb_globals.error)
+@@ -765,6 +857,7 @@ static int mysql_drv_reconnect(db_conn_t *sb_con)
+   }
+ 
+   log_text(LOG_DEBUG, "Reconnected");
++  failover_mark_reconnected(sb_con);
+ 
+   return DB_ERROR_IGNORABLE;
+ }
+@@ -810,20 +903,11 @@ static db_error_t check_error(db_conn_t *sb_con, const char *func,
+       log_text(LOG_DEBUG, "Ignoring error %u %s, ", error, sb_con->sql_errmsg);
+ 
+       /* Check if we should reconnect */
+-      switch (error)
++      if (is_connection_loss_error(error))
+       {
+-      case CR_SERVER_LOST:
+-      case CR_SERVER_GONE_ERROR:
+-      case CR_TCP_CONNECTION:
+-      case CR_SERVER_LOST_EXTENDED:
+-
+         *counter = SB_CNT_RECONNECT;
+-
++        failover_start(sb_con, error);
+         return mysql_drv_reconnect(sb_con);
+-
+-      default:
+-
+-        break;
+       }
+ 
+       *counter = SB_CNT_ERROR;
+@@ -887,6 +971,7 @@ db_error_t mysql_drv_execute(db_stmt_t *stmt, db_result_t *rs)
+ 
+       rs->counter = (rs->nrows > 0) ? SB_CNT_WRITE : SB_CNT_OTHER;
+ 
++      failover_end_if_needed(con);
+       return DB_ERROR_NONE;
+     }
+ 
+@@ -903,6 +988,7 @@ db_error_t mysql_drv_execute(db_stmt_t *stmt, db_result_t *rs)
+     DEBUG("mysql_stmt_num_rows(%p) = %u", rs->statement->ptr,
+           (unsigned) (rs->nrows));
+ 
++    failover_end_if_needed(con);
+     return DB_ERROR_NONE;
+   }
+ 
+@@ -993,6 +1079,7 @@ db_error_t mysql_drv_query(db_conn_t *sb_conn, const char *query, size_t len,
+       else
+         rs->counter = SB_CNT_OTHER;
+ 
++      failover_end_if_needed(sb_conn);
+       return DB_ERROR_NONE;
+     }
+ 
+@@ -1008,6 +1095,7 @@ db_error_t mysql_drv_query(db_conn_t *sb_conn, const char *query, size_t len,
+   rs->nfields = mysql_num_fields(res);
+   DEBUG("mysql_num_fields(%p) = %u", res, (unsigned int) rs->nfields);
+ 
++  failover_end_if_needed(sb_conn);
+   return DB_ERROR_NONE;
+ }
+ 
+@@ -1104,6 +1192,308 @@ int mysql_drv_close(db_stmt_t *stmt)
+   return rc;
+ }
+ 
++static uint64_t now_us(void)
++{
++  struct timespec ts;
++
++#ifdef HAVE_CLOCK_GETTIME
++  clock_gettime(CLOCK_REALTIME, &ts);
++#else
++  struct timeval tv;
++  gettimeofday(&tv, NULL);
++  ts.tv_sec = tv.tv_sec;
++  ts.tv_nsec = tv.tv_usec * 1000;
++#endif
++
++  return (uint64_t) ts.tv_sec * US_PER_SEC + (uint64_t) (ts.tv_nsec / 1000);
++}
++
++static const char *current_host_label(const db_mysql_conn_t *db_mysql_con)
++{
++  return (db_mysql_con->host_label != NULL) ? db_mysql_con->host_label : empty_host_label;
++}
++
++/*
++  Reconnect on transport loss without replaying the failed statement.
++  Service gap is measured from the first loss error to the first successful
++  query after reconnect.
++*/
++static void failover_start(db_conn_t *sb_con, unsigned int err)
++{
++  db_mysql_conn_t *db_mysql_con = (db_mysql_conn_t *) sb_con->ptr;
++
++  if (db_mysql_con->in_failover)
++    return;
++
++  db_mysql_con->in_failover = true;
++  db_mysql_con->failover_start_us = now_us();
++  db_mysql_con->failover_seq++;
++
++  free(db_mysql_con->failover_old_host);
++  free(db_mysql_con->failover_new_host);
++  db_mysql_con->failover_old_host = strdup(current_host_label(db_mysql_con));
++  db_mysql_con->failover_new_host = NULL;
++
++  log_text(LOG_NOTICE,
++           "FAILOVER_START tid=%d seq=%" PRIu64 " old_host=%s t_us=%" PRIu64
++           " errno=%u",
++           sb_con->thread_id,
++           db_mysql_con->failover_seq,
++           current_host_label(db_mysql_con),
++           db_mysql_con->failover_start_us,
++           err);
++}
++
++static void failover_mark_reconnected(db_conn_t *sb_con)
++{
++  db_mysql_conn_t *db_mysql_con = (db_mysql_conn_t *) sb_con->ptr;
++
++  if (!db_mysql_con->in_failover)
++    return;
++
++  free(db_mysql_con->failover_new_host);
++  db_mysql_con->failover_new_host = strdup(current_host_label(db_mysql_con));
++}
++
++static void failover_end_if_needed(db_conn_t *sb_con)
++{
++  db_mysql_conn_t *db_mysql_con = (db_mysql_conn_t *) sb_con->ptr;
++
++  if (!db_mysql_con->in_failover || db_mysql_con->failover_new_host == NULL)
++    return;
++
++  const uint64_t end_us = now_us();
++  const uint64_t gap_us = end_us - db_mysql_con->failover_start_us;
++
++  log_text(LOG_NOTICE,
++           "FAILOVER_END tid=%d seq=%" PRIu64 " new_host=%s start_us=%" PRIu64
++           " end_us=%" PRIu64 " gap_us=%" PRIu64,
++           sb_con->thread_id,
++           db_mysql_con->failover_seq,
++           db_mysql_con->failover_new_host,
++           db_mysql_con->failover_start_us,
++           end_us,
++           gap_us);
++
++  db_mysql_con->in_failover = false;
++  free(db_mysql_con->failover_old_host);
++  free(db_mysql_con->failover_new_host);
++  db_mysql_con->failover_old_host = NULL;
++  db_mysql_con->failover_new_host = NULL;
++}
++
++static bool is_connection_loss_error(unsigned int err)
++{
++  switch (err)
++  {
++  case CR_SERVER_LOST:
++  case CR_SERVER_GONE_ERROR:
++  case CR_TCP_CONNECTION:
++#ifdef CR_SERVER_LOST_EXTENDED
++  case CR_SERVER_LOST_EXTENDED:
++#endif
++  case ER_SERVER_SHUTDOWN:
++    return true;
++  default:
++    break;
++  }
++
++  return false;
++}
++
++static void trim_space(char *s)
++{
++  char *start = s;
++  char *end;
++
++  while (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r')
++    start++;
++
++  end = start + strlen(start);
++  while (end > start &&
++         (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
++    end--;
++
++  if (start != s)
++    memmove(s, start, (size_t)(end - start));
++
++  s[end - start] = '\0';
++}
++
++static char *sb_strndup(const char *s, size_t n)
++{
++  char *out = (char *) malloc(n + 1);
++  if (out == NULL)
++    return NULL;
++  memcpy(out, s, n);
++  out[n] = '\0';
++  return out;
++}
++
++static void set_host_label(db_mysql_conn_t *db_mysql_con,
++                           const char *host, unsigned int port)
++{
++  free(db_mysql_con->host_label);
++  db_mysql_con->host_label = NULL;
++
++  if (host == NULL)
++    return;
++
++  if (port == 0)
++  {
++    db_mysql_con->host_label = strdup(host);
++    return;
++  }
++
++  if (strchr(host, ':') != NULL && host[0] != '[')
++  {
++    char buf[512];
++    snprintf(buf, sizeof(buf), "[%s]:%u", host, port);
++    db_mysql_con->host_label = strdup(buf);
++    return;
++  }
++
++  {
++    char buf[512];
++    snprintf(buf, sizeof(buf), "%s:%u", host, port);
++    db_mysql_con->host_label = strdup(buf);
++  }
++}
++
++static int parse_host_token(const char *token,
++                            char **host_out,
++                            unsigned int *port_out)
++{
++  char *host = NULL;
++  unsigned int port = args.host_raw_default_port;
++
++  if (token[0] == '[')
++  {
++    const char *end = strchr(token, ']');
++    if (end == NULL)
++      return 1;
++    host = sb_strndup(token + 1, (size_t)(end - token - 1));
++    if (host == NULL)
++      return 1;
++    if (end[1] == ':' && end[2] != '\0')
++    {
++      port = (unsigned int) atoi(end + 2);
++    }
++  }
++  else
++  {
++    const char *first_colon = strchr(token, ':');
++    const char *last_colon = strrchr(token, ':');
++    if (first_colon != NULL && first_colon == last_colon && last_colon[1] != '\0')
++    {
++      host = sb_strndup(token, (size_t)(last_colon - token));
++      if (host == NULL)
++        return 1;
++      port = (unsigned int) atoi(last_colon + 1);
++    }
++    else
++    {
++      host = strdup(token);
++      if (host == NULL)
++        return 1;
++    }
++  }
++
++  *host_out = host;
++  *port_out = port;
++  return 0;
++}
++
++static int parse_host_raw_list(const char *raw)
++{
++  char *tmp;
++  char *token;
++  unsigned int count = 0;
++
++  free_host_raw_entries();
++
++  if (raw == NULL || raw[0] == '\0')
++    return 0;
++
++  tmp = strdup(raw);
++  if (tmp == NULL)
++    return 1;
++
++  for (token = strtok(tmp, ","); token != NULL; token = strtok(NULL, ","))
++  {
++    trim_space(token);
++    if (token[0] == '\0')
++      continue;
++
++    mysql_host_entry_t *entries =
++      (mysql_host_entry_t *) realloc(args.host_raw_entries,
++                                     sizeof(mysql_host_entry_t) * (count + 1));
++    if (entries == NULL)
++    {
++      free(tmp);
++      free_host_raw_entries();
++      return 1;
++    }
++    args.host_raw_entries = entries;
++
++    if (parse_host_token(token,
++                         &args.host_raw_entries[count].host,
++                         &args.host_raw_entries[count].port) != 0)
++    {
++      free(tmp);
++      free_host_raw_entries();
++      return 1;
++    }
++
++    if (strchr(args.host_raw_entries[count].host, ':') != NULL)
++    {
++      char buf[512];
++      snprintf(buf, sizeof(buf), "[%s]:%u",
++               args.host_raw_entries[count].host,
++               args.host_raw_entries[count].port);
++      args.host_raw_entries[count].hostport = strdup(buf);
++    }
++    else
++    {
++      char buf[512];
++      snprintf(buf, sizeof(buf), "%s:%u",
++               args.host_raw_entries[count].host,
++               args.host_raw_entries[count].port);
++      args.host_raw_entries[count].hostport = strdup(buf);
++    }
++
++    if (args.host_raw_entries[count].hostport == NULL)
++    {
++      free(tmp);
++      free_host_raw_entries();
++      return 1;
++    }
++
++    count++;
++  }
++
++  free(tmp);
++
++  args.host_raw_count = count;
++  return 0;
++}
++
++static void free_host_raw_entries(void)
++{
++  if (args.host_raw_entries == NULL)
++    return;
++
++  for (unsigned int i = 0; i < args.host_raw_count; i++)
++  {
++    free(args.host_raw_entries[i].host);
++    free(args.host_raw_entries[i].hostport);
++  }
++
++  free(args.host_raw_entries);
++  args.host_raw_entries = NULL;
++  args.host_raw_count = 0;
++}
++
+ 
+ /* Uninitialize driver */
+ int mysql_drv_done(void)
+@@ -1111,6 +1501,7 @@ int mysql_drv_done(void)
+   if (args.dry_run)
+     return 0;
+ 
++  free_host_raw_entries();
+   mysql_library_end();
+ 
+   return 0;
 diff --git a/src/lua/internal/sysbench.lua b/src/lua/internal/sysbench.lua
 index 2611eba..f3fdb74 100644
 --- a/src/lua/internal/sysbench.lua

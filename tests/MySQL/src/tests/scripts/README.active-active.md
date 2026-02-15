@@ -103,6 +103,7 @@ sudo /opt/mysql-ndb/bin/mysqld \
 sudo /opt/mysql-ndb/bin/mysql \
   --socket=/var/run/mysqld-ndb-50000.sock -e "
 CREATE DATABASE sbtest;
+"
 ```
 
 ## User setup (node2 and node3)
@@ -154,14 +155,14 @@ INSERT INTO mysql_servers(hostgroup_id,hostname,port) VALUES
   (10,'node2',50000),
   (10,'node3',50000);
 
---- if it's for service gap:
---- DELETE FROM mysql_servers;
---- INSERT INTO mysql_servers(hostgroup_id,hostname,port,weight) VALUES
----   (10,'node2',50000, 100000),
----   (10,'node3',50000, 0);
---- UPDATE global_variables
---- SET variable_value='0'
---- WHERE variable_name='mysql-connect_retries_on_failure';
+-- if it's for service gap:
+-- DELETE FROM mysql_servers;
+-- INSERT INTO mysql_servers(hostgroup_id,hostname,port,weight) VALUES
+--   (10,'node2',50000, 100000),
+--   (10,'node3',50000, 0);
+-- UPDATE global_variables
+--   SET variable_value='0'
+--   WHERE variable_name='mysql-connect_retries_on_failure';
 
 DELETE FROM mysql_users WHERE username='sbtest';
 INSERT INTO mysql_users(username,password,default_hostgroup)
@@ -177,22 +178,39 @@ UPDATE global_variables SET variable_value='MONITOR_PASS'
 
 -- for service gap measurement only!
 -- events/query log settings (JSON lines)
-UPDATE global_variables SET variable_value='1'
-  WHERE variable_name='mysql-eventslog_default_log';
-UPDATE global_variables SET variable_value='2'
-  WHERE variable_name='mysql-eventslog_format';          -- 2 = JSON
-UPDATE global_variables SET variable_value='queries.log'
-  WHERE variable_name='mysql-eventslog_filename';
-UPDATE global_variables SET variable_value='104857600'
-  WHERE variable_name='mysql-eventslog_filesize';        -- 100MB per file
+-- UPDATE global_variables SET variable_value='1'
+--  WHERE variable_name='mysql-eventslog_default_log';
+-- UPDATE global_variables SET variable_value='2'
+--  WHERE variable_name='mysql-eventslog_format';          -- 2 = JSON
+-- UPDATE global_variables SET variable_value='queries.log'
+--  WHERE variable_name='mysql-eventslog_filename';
+-- UPDATE global_variables SET variable_value='104857600'
+--  WHERE variable_name='mysql-eventslog_filesize';        -- 100MB per file
 
 LOAD MYSQL VARIABLES TO RUNTIME; SAVE MYSQL VARIABLES TO DISK;
 SQL
+
 ```
 
 ## Test Process
 
+0. Synchronize time
+
+Setup chrony on both nodes
+
+```bash
+scripts/chrony.sh
+```
+
+Wait for some time to synchronize time, then get the time offset
+
+```bash
+scripts/probe_timing_offset.sh nodex
+```
+
 1. Run sysbench
+
+* prepare (need to bypass ProxySQL)
 
 ```bash
 sysbench \
@@ -203,10 +221,11 @@ sysbench \
 --table-size=100000 \
 --threads=8 --rate=500 \
 --time=0 \
---mysql-host=node0 \
---mysql-port=6033 \
+--mysql-host=node2 \
+--mysql-port=50000 \
 --mysql-user=sbtest \
 --mysql-password=password \
+--mysql-storage-engine=ndbcluster \
 --db-ps-mode=disable \
 --mysql-ignore-errors=2013,1062,2027 \
 --skip_trx=on --rand-type=zipfian --rand-zipfian-exp=1 \
@@ -222,27 +241,49 @@ sysbench \
 --table-size=100000 \
 --threads=8 --rate=500 \
 --time=0 \
---mysql-host=node0 \
---mysql-port=6033 \
+--mysql-host-raw="10.10.1.1:6033" \
 --mysql-user=sbtest \
 --mysql-password=password \
 --db-ps-mode=disable \
---mysql-ignore-errors=2013,1062,2027 \
+--mysql-ignore-errors=1053,2013,1062,2027 \
 --skip_trx=on --rand-type=zipfian --rand-zipfian-exp=1 --histogram \
 run
 ```
 
+Important: don't use hostname, DNS lookup will be slow.
+Note: you can use `rate=0` to have a more accurate measurement of the service gap.
+If you want to test client-side failover, you need to use `--mysql-host-raw="10.10.1.3:50000,10.10.1.4:50000"`
+
 2. Kill the primary instance
 
 ```bash
-date +%s%6N; sudo pkill -f mysqld
+pids=$(pidof mysqld)
+
+t0=$(date +%s%6N)
+sudo kill -9 $pids
+t1=$(date +%s%6N)
+
+for p in $pids; do
+  while kill -0 "$p" 2>/dev/null; do :; done
+done
+
+tdead=$(date +%s%6N)
+
+echo "t0=$t0 t1=$t1 tdead=$tdead pids=$pids"
 ```
 
-3. Get the service gap in node0
+3. Get the service gap
+
+3.1 If testing ProxySQL:
 
 ```bash
-sudo python ./ndb_service_gap.py --kill-us $kill_us # the time reported by date +%s%6N
-sudo python ./ndb_service_impact.py --kill-us $kill_us
+sudo python ./ndb_service_gap.py --kill-us $tdead
+sudo python ./ndb_service_impact.py --kill-us $tdead
 sudo rm /var/lib/proxysql/queries.log.*
 sudo systemctl restart proxysql
 ```
+
+3.2 If testing client-side failover:
+
+detection + failover = start-us of the first FAILOVER_END in sysbench - $tdead - result of `scripts/probe_timing_offset.sh node2`
+failover = minimal gap_us in sysbench

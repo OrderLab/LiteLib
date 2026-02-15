@@ -28,6 +28,9 @@ main() {
   # Install dependencies for litesys
   ./litesys_dependency.sh
 
+  # Setup chrony
+  ./chrony.sh
+
   echo "Initialization complete."
 }
 
