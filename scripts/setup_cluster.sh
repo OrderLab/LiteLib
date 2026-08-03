@@ -483,21 +483,31 @@ stage_init() {
 # ---------------------------------------------------------------------------
 
 stage_check() {
-  local node rc=0 failed=()
+  local node rc=0 failed=() needs_reboot=() out
   for node in "${NODES[@]}"; do
     echo
-    if rsh "${node}" "sudo -n '${LITELIB_REPO_DIR}/scripts/check_init.sh'"; then
-      :
+    if out=$(rsh "${node}" "sudo -n '${LITELIB_REPO_DIR}/scripts/check_init.sh'" 2>&1); then
+      echo "${out}"
     else
+      echo "${out}"
       failed+=("${node}")
       rc=1
+      if echo "${out}" | grep -q "reboot required"; then
+        needs_reboot+=("${node}")
+      fi
     fi
   done
   echo
   if [ "${rc}" -eq 0 ]; then
     ok "all ${#NODES[@]} node(s) are initialized"
+    return 0
+  fi
+  err "not initialized: ${failed[*]}"
+  if [ "${#needs_reboot[@]}" -eq "${#failed[@]}" ]; then
+    # Everything is installed; the nodes just have not picked up the new kernel.
+    echo "     All remaining checks only need a reboot into ${LITELIB_KERNEL_RELEASE}:" 1>&2
+    echo "       $0 reboot" 1>&2
   else
-    err "not initialized: ${failed[*]}"
     echo "     Re-run: $0 -n \"${failed[*]}\" init" 1>&2
   fi
   return "${rc}"
