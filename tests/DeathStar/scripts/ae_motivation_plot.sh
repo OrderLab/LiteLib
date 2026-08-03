@@ -97,9 +97,18 @@ echo "    litesys: $(basename "${LITESYS_LOG}")"
 # ---------------------------------------------------------------------------
 
 FIG1="${AE_FIGURES_DIR}/deathstar_latency.pdf"
+# Delete first: otherwise a failed run leaves the previous PDF in place and the
+# existence check below happily reports success on a stale figure.
+rm -f "${FIG1}"
+set -o pipefail
 ae_python "${PLOT_LATENCY}" -o "${FIG1}" "${VANILLA_LOG}" "${LITESYS_LOG}" 2>&1 |
-  grep -v 'UserWarning\|plt.tight_layout' || true
-[ -s "${FIG1}" ] || ae_die "failed to produce ${FIG1}"
+  grep -v 'UserWarning\|plt.tight_layout'
+plot_rc=$?
+set +o pipefail
+# grep exits 1 when it filters everything out; only a real failure matters.
+if [ ! -s "${FIG1}" ]; then
+  ae_die "failed to produce ${FIG1} (plotting exited ${plot_rc})"
+fi
 ae_ok "Figure 1 -> ${FIG1}"
 
 # ---------------------------------------------------------------------------
@@ -107,14 +116,18 @@ ae_ok "Figure 1 -> ${FIG1}"
 # ---------------------------------------------------------------------------
 
 STATS="${RESULTS_DIR}/stats.json"
-if [ -d "${NOCRASH_DIR}" ]; then
+if [ -n "$(find "${NOCRASH_DIR}" -name '*mcrouter*.log' 2>/dev/null | head -1)" ]; then
   ae_python "${COLLECT}" --root "${RESULTS_DIR}" -o "${STATS}" >/dev/null ||
     ae_die "failed to collect mcrouter stats"
   FIG2="${AE_FIGURES_DIR}/deathstar_isolation.pdf"
+  rm -f "${FIG2}"
   ae_python "${PLOT_ISOLATION}" -o "${FIG2}" "${STATS}" 2>&1 |
     grep -v 'UserWarning\|plt.tight_layout' || true
-  [ -s "${FIG2}" ] || ae_die "failed to produce ${FIG2}"
-  ae_ok "Figure 2 -> ${FIG2}"
+  if [ ! -s "${FIG2}" ]; then
+    ae_warn "could not produce ${FIG2}; is the no-crash baseline present?"
+  else
+    ae_ok "Figure 2 -> ${FIG2}"
+  fi
 else
   ae_warn "no ${NOCRASH_DIR}; skipping Figure 2 (it needs the no-crash baseline)"
 fi

@@ -85,6 +85,8 @@ OUT_DIR=${OUT_DIR:-${AE_RESULTS_DIR}/motivation/${RUN_ID}}
 mkdir -p "${OUT_DIR}/crash" "${OUT_DIR}/nocrash"
 RUN_LOG="${OUT_DIR}/run.log"
 
+RUN_TOTAL=0
+RUN_FAILED=0
 MODES=(crash nocrash)
 [ -n "${ONLY}" ] && MODES=("${ONLY}")
 
@@ -158,13 +160,13 @@ run_one() {
 main() {
   preflight
 
-  local mode type i rc=0 total=0 failed=0
+  local mode type i rc=0
   for mode in "${MODES[@]}"; do
     for i in $(seq 1 "${REPEATS}"); do
       for type in vanilla litesys; do
-        total=$((total + 1))
+        RUN_TOTAL=$((RUN_TOTAL + 1))
         run_one "${mode}" "${type}" "${i}" || {
-          failed=$((failed + 1))
+          RUN_FAILED=$((RUN_FAILED + 1))
           rc=1
         }
       done
@@ -172,10 +174,10 @@ main() {
   done
 
   echo
-  if [ "${failed}" -eq 0 ]; then
-    ae_ok "all ${total} runs completed"
+  if [ "${RUN_FAILED}" -eq 0 ]; then
+    ae_ok "all ${RUN_TOTAL} runs completed"
   else
-    ae_err "${failed}/${total} runs failed"
+    ae_err "${RUN_FAILED}/${RUN_TOTAL} runs failed"
   fi
   ae_info "raw logs: ${OUT_DIR}"
   ae_info "next:     ./ae_motivation_plot.sh"
