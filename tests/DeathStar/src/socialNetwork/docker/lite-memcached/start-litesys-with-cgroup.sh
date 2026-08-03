@@ -18,6 +18,16 @@ LOG_PREFIX=$2
 # Must fit inside the container's --shm-size (see swarm_helper_replica.sh).
 LITE_SHM_BYTES=${LITE_SHM_BYTES:-2147483648}
 
+# Worker threads for the full memcached replica in the LiteLib arm.
+#
+# The original value is 1, whereas start-vanilla-with-cgroup.sh gives the
+# vanilla instances 8.  Exposed as a knob because that asymmetry is worth
+# checking when the LiteLib arm shows a worse *pre-failure* baseline than the
+# vanilla arm it is compared against.  (Measured on our cluster: raising it to
+# 8 did not close the gap, so the asymmetry is not the explanation -- but the
+# knob makes that easy to re-check.)
+LITE_MEMCACHED_THREADS=${LITE_MEMCACHED_THREADS:-1}
+
 $Dir/stop-all.sh
 
 if [ "$id" == "3" ]; then
@@ -36,13 +46,13 @@ if [ "$id" == "3" ]; then
   fi
 else
   if [ "$LOG_PREFIX" != "none" ]; then
-    GLOG_stderrthreshold=0 GLOG_logtostderr=1 LD_LIBRARY_PATH=/workspace/tests/Memcached/src/memcached/vendor/LiteSys/build:$LD_LIBRARY_PATH cgexec -g cpu:deathstar_cpulimited_$id /workspace/tests/Memcached/src/memcached/memcached -m 16384 -t 1 -I 32m -c 4096 -u root > $Dir/logs/$LOG_PREFIX.memcached.$id.log 2>&1 &
+    GLOG_stderrthreshold=0 GLOG_logtostderr=1 LD_LIBRARY_PATH=/workspace/tests/Memcached/src/memcached/vendor/LiteSys/build:$LD_LIBRARY_PATH cgexec -g cpu:deathstar_cpulimited_$id /workspace/tests/Memcached/src/memcached/memcached -m 16384 -t ${LITE_MEMCACHED_THREADS} -I 32m -c 4096 -u root > $Dir/logs/$LOG_PREFIX.memcached.$id.log 2>&1 &
 
     sleep 2
 
     GLOG_stderrthreshold=0 GLOG_logtostderr=1 /workspace/tests/Memcached/src/lite-version-ascii-embedded/build/LiteMemcached -t 8 -s ${LITE_SHM_BYTES} > $Dir/logs/$LOG_PREFIX.lite_memcached.$id.log 2>&1 &
   else
-    GLOG_stderrthreshold=0 GLOG_logtostderr=1 LD_LIBRARY_PATH=/workspace/tests/Memcached/src/memcached/vendor/LiteSys/build:$LD_LIBRARY_PATH cgexec -g cpu:deathstar_cpulimited_$id /workspace/tests/Memcached/src/memcached/memcached -m 16384 -t 1 -I 32m -c 4096 -u root &
+    GLOG_stderrthreshold=0 GLOG_logtostderr=1 LD_LIBRARY_PATH=/workspace/tests/Memcached/src/memcached/vendor/LiteSys/build:$LD_LIBRARY_PATH cgexec -g cpu:deathstar_cpulimited_$id /workspace/tests/Memcached/src/memcached/memcached -m 16384 -t ${LITE_MEMCACHED_THREADS} -I 32m -c 4096 -u root &
 
     sleep 2
 
