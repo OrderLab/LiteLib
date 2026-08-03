@@ -185,11 +185,12 @@ known_hosts_snippet() {
   # key is not recorded yet.  This is what removes the interactive
   # "Are you sure you want to continue connecting (yes/no)?" prompt.
   cat <<'EOS'
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
-touch ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+SSH_DIR="$(getent passwd "$(id -un)" | cut -d: -f6)/.ssh"
+mkdir -p "$SSH_DIR" && chmod 700 "$SSH_DIR"
+touch "$SSH_DIR/known_hosts" && chmod 644 "$SSH_DIR/known_hosts"
 for h in HOSTS_PLACEHOLDER; do
-  if ! ssh-keygen -F "$h" >/dev/null 2>&1; then
-    ssh-keyscan -T 10 -t rsa,ecdsa,ed25519 "$h" >>~/.ssh/known_hosts 2>/dev/null
+  if ! ssh-keygen -f "$SSH_DIR/known_hosts" -F "$h" >/dev/null 2>&1; then
+    ssh-keyscan -T 10 -t rsa,ecdsa,ed25519 "$h" >>"$SSH_DIR/known_hosts" 2>/dev/null
   fi
 done
 EOS
@@ -203,11 +204,22 @@ bootstrap_local_ssh() {
     chmod 700 "$(dirname "${key}")"
     ssh-keygen -t ed25519 -N "" -f "${key}" -C "litelib-ae@$(hostname -s)" >/dev/null
   fi
+  # CloudLab installs the private key without its .pub counterpart; derive it
+  # rather than generating a brand-new (and therefore unauthorized) keypair.
+  if [ ! -s "${key}.pub" ]; then
+    info "deriving public key ${key}.pub from the private key"
+    ssh-keygen -y -f "${key}" >"${key}.pub" ||
+      die "cannot read ${key} (is it passphrase-protected?)"
+    chmod 644 "${key}.pub"
+  fi
   # Trust ourselves so that `ssh node0` works like any other node.
   touch ~/.ssh/authorized_keys
   chmod 600 ~/.ssh/authorized_keys
-  grep -qxF "$(cat "${key}.pub")" ~/.ssh/authorized_keys ||
-    cat "${key}.pub" >>~/.ssh/authorized_keys
+  # ssh-keygen -y omits the comment, so match on the key material only.
+  local keytype keydata
+  read -r keytype keydata _ <"${key}.pub"
+  grep -qF "${keydata}" ~/.ssh/authorized_keys ||
+    printf '%s %s litelib-ae\n' "${keytype}" "${keydata}" >>~/.ssh/authorized_keys
 
   local hosts="github.com ${LITELIB_NODES}"
   known_hosts_snippet | sed "s|HOSTS_PLACEHOLDER|${hosts}|" | bash
@@ -217,8 +229,9 @@ bootstrap_local_ssh() {
 stage_ssh() {
   bootstrap_local_ssh
 
-  local pub
-  pub=$(cat "${LITELIB_SSH_KEY}.pub")
+  local keytype keydata
+  read -r keytype keydata _ <"${LITELIB_SSH_KEY}.pub"
+  local pub="${keytype} ${keydata} litelib-ae"
   local node
   for node in "${NODES[@]}"; do
     [ "${node}" = "${SELF}" ] && continue
@@ -231,9 +244,9 @@ stage_ssh() {
      Run 'ssh-copy-id ${LITELIB_SSH_USER}@${node}' once, then re-run this script."
     fi
     ssh "${SSH_OPTS[@]}" "${LITELIB_SSH_USER}@${node}" \
-      "mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && grep -qxF '${pub}' ~/.ssh/authorized_keys || echo '${pub}' >> ~/.ssh/authorized_keys"
+      "mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && grep -qF '${keydata}' ~/.ssh/authorized_keys || echo '${pub}' >> ~/.ssh/authorized_keys"
     # The experiment scripts SSH *between* nodes, so every node needs the key.
-    if ! ssh "${SSH_OPTS[@]}" "${LITELIB_SSH_USER}@${node}" "test -f ~/.ssh/$(basename "${LITELIB_SSH_KEY}")"; then
+    if ! ssh "${SSH_OPTS[@]}" "${LITELIB_SSH_USER}@${node}" "test -s ~/.ssh/$(basename "${LITELIB_SSH_KEY}").pub"; then
       scp "${SSH_OPTS[@]}" -q "${LITELIB_SSH_KEY}" "${LITELIB_SSH_KEY}.pub" \
         "${LITELIB_SSH_USER}@${node}:~/.ssh/"
       ssh "${SSH_OPTS[@]}" "${LITELIB_SSH_USER}@${node}" \
@@ -241,12 +254,14 @@ stage_ssh() {
     fi
     known_hosts_snippet | sed "s|HOSTS_PLACEHOLDER|github.com ${LITELIB_NODES}|" |
       ssh "${SSH_OPTS[@]}" "${LITELIB_SSH_USER}@${node}" bash
-    # root runs network_limit.sh, which SSHes to the peers as well.
+    # root runs network_limit.sh, which SSHes to the peers as well.  `sudo -H`
+    # is required, otherwise HOME still points at the unprivileged account and
+    # the keys land in the wrong known_hosts file.
     known_hosts_snippet | sed "s|HOSTS_PLACEHOLDER|github.com ${LITELIB_NODES}|" |
-      ssh "${SSH_OPTS[@]}" "${LITELIB_SSH_USER}@${node}" sudo -n bash
+      ssh "${SSH_OPTS[@]}" "${LITELIB_SSH_USER}@${node}" sudo -n -H bash
     ok "[${node}] SSH ready"
   done
-  known_hosts_snippet | sed "s|HOSTS_PLACEHOLDER|github.com ${LITELIB_NODES}|" | sudo -n bash
+  known_hosts_snippet | sed "s|HOSTS_PLACEHOLDER|github.com ${LITELIB_NODES}|" | sudo -n -H bash
   ok "[${SELF}] SSH ready"
 }
 
