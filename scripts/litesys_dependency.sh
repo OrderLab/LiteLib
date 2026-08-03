@@ -20,6 +20,7 @@ FREQUENCY=${LITELIB_CPU_FREQ_GHZ}
 PREFIX=${LITELIB_PREFIX}
 
 install_dependencies() {
+  litelib_phase "installing distro packages (${#LITELIB_APT_PACKAGES[@]} packages + kernel ${KERNEL_RELEASE})"
   apt-get install "${APT_OPTS[@]}" --no-install-recommends \
     "${LITELIB_APT_PACKAGES[@]}" \
     linux-tools-"$(uname -r)" \
@@ -46,6 +47,7 @@ install_boost() {
     echo "Boost ${BOOST_VERSION} already installed in ${PREFIX}, skipping."
     return
   fi
+  litelib_phase "building Boost ${BOOST_VERSION} from source (this is the slowest step, ~15 min)"
   mkdir -p "${HOME}/dependencies/boost"
   cd "${HOME}/dependencies/boost"
   if [ ! -d "boost-${BOOST_VERSION}" ]; then
@@ -70,6 +72,7 @@ install_libevent() {
     echo "libevent ${LIBEVENT_VERSION} already installed in ${PREFIX}, skipping."
     return
   fi
+  litelib_phase "building libevent ${LIBEVENT_VERSION} from source"
   mkdir -p "${HOME}/dependencies/libevent"
   cd "${HOME}/dependencies/libevent"
   if [ ! -d "libevent-${LIBEVENT_VERSION}-stable" ]; then
@@ -85,6 +88,7 @@ install_libevent() {
 }
 
 configure_ssh() {
+  litelib_phase "configuring ssh"
   apt-get install "${APT_OPTS[@]}" --no-install-recommends ssh
   local ssh_dir="${LITELIB_USER_HOME}/.ssh"
   mkdir -p "${ssh_dir}"
@@ -99,6 +103,7 @@ configure_ssh() {
 set_cpu_frequency() {
   # Pinning the frequency keeps latency measurements stable across runs.  This
   # is *runtime* state and has to be re-applied after every reboot.
+  litelib_phase "pinning CPU frequency to ${FREQUENCY}GHz"
   cpupower frequency-set -g performance
   cpupower frequency-set -d "${FREQUENCY}GHz" -u "${FREQUENCY}GHz"
 }

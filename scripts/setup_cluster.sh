@@ -36,7 +36,14 @@
 #                            cloning from GitHub (useful for local development)
 #       --include-self       let `reboot` also reboot the node you are on
 #       --skip-check         do not run check_init.sh after init.sh
+#       --no-progress        do not print live per-node progress
 #   -h, --help               show this help
+#
+# While a stage runs, the script prints what every node is currently doing and
+# a heartbeat every couple of minutes.  The complete, unabridged output of each
+# node is written to logs/<timestamp>-<stage>-<node>.log; follow one with
+#
+#   tail -f logs/*-init-node1.log
 #
 # Example:
 #   ./setup_cluster.sh                       # full bring-up of all four nodes
@@ -55,6 +62,9 @@ PARALLEL=1
 SYNC_LOCAL=0
 INCLUDE_SELF=0
 SKIP_CHECK=0
+SHOW_PROGRESS=${LITELIB_PROGRESS:-1}
+LITELIB_POLL_SECS=${LITELIB_POLL_SECS:-5}
+LITELIB_HEARTBEAT_SECS=${LITELIB_HEARTBEAT_SECS:-120}
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -83,8 +93,9 @@ while [ $# -gt 0 ]; do
   --sync-local) SYNC_LOCAL=1 ;;
   --include-self) INCLUDE_SELF=1 ;;
   --skip-check) SKIP_CHECK=1 ;;
+  --no-progress) SHOW_PROGRESS=0 ;;
   -h | --help)
-    sed -n '2,50p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,60p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
     ;;
   setup | ssh | clone | init | check | reboot) COMMAND=$1 ;;
@@ -136,35 +147,110 @@ rsh() {
 # Parallel driver
 # ---------------------------------------------------------------------------
 
+fmt_elapsed() {
+  local s=$1
+  printf '%02d:%02d' $((s / 60)) $((s % 60))
+}
+
+# node_phase <stage> <node> -- last phase announced by that node, if any.
+node_phase() {
+  local log="${LOG_DIR}/${RUN_ID}-$1-$2.log"
+  [ -f "${log}" ] || return 0
+  # Anchor on '^' so the `set -x` trace of the echo is not matched.
+  grep -a "^${LITELIB_PHASE_MARKER} " "${log}" 2>/dev/null | tail -1 |
+    sed "s|^${LITELIB_PHASE_MARKER} ||"
+}
+
+# monitor_progress <stage> <node...>
+# Streams a live view of what each node is doing.  Nodes signal completion by
+# creating a .done stamp, so the monitor needs no knowledge of the job PIDs.
+monitor_progress() {
+  local stage=$1
+  shift
+  local nodes=("$@")
+  local start=${SECONDS} last_beat=${SECONDS}
+  local -A shown=()
+  local node phase running busy
+
+  while :; do
+    running=0
+    busy=()
+    for node in "${nodes[@]}"; do
+      phase=$(node_phase "${stage}" "${node}")
+      if [ ! -f "${LOG_DIR}/.${RUN_ID}-${stage}-${node}.done" ]; then
+        running=$((running + 1))
+        busy+=("${node}${phase:+: ${phase}}")
+      fi
+      if [ -n "${phase}" ] && [ "${shown[${node}]:-}" != "${phase}" ]; then
+        printf '  %s[%s]%s [%s] %s\n' \
+          "${C_INFO}" "$(fmt_elapsed $((SECONDS - start)))" "${C_OFF}" "${node}" "${phase}"
+        shown[${node}]=${phase}
+      fi
+    done
+    [ "${running}" -eq 0 ] && break
+    # Heartbeat, so a long silent step still shows the run is alive.
+    if [ $((SECONDS - last_beat)) -ge "${LITELIB_HEARTBEAT_SECS}" ]; then
+      printf '  %s[%s]%s still running (%d/%d): %s\n' \
+        "${C_INFO}" "$(fmt_elapsed $((SECONDS - start)))" "${C_OFF}" \
+        "${running}" "${#nodes[@]}" "$(
+          IFS='; '
+          echo "${busy[*]}"
+        )"
+      last_beat=${SECONDS}
+    fi
+    sleep "${LITELIB_POLL_SECS}"
+  done
+}
+
 # for_each_node <stage> <function>
 # Runs <function> <node> for every node, streaming its output into
 # ${LOG_DIR}/<run>-<stage>-<node>.log, and fails if any node fails.
 for_each_node() {
   local stage=$1 fn=$2
-  local node pids=() nodes=() rc=0
+  local node pids=() nodes=() rc=0 monitor_pid=""
 
   for node in "${NODES[@]}"; do
     local log="${LOG_DIR}/${RUN_ID}-${stage}-${node}.log"
+    local stamp="${LOG_DIR}/.${RUN_ID}-${stage}-${node}.done"
+    rm -f "${stamp}"
     if [ "${PARALLEL}" -eq 1 ]; then
-      ("${fn}" "${node}" >"${log}" 2>&1) &
+      (
+        "${fn}" "${node}" >"${log}" 2>&1
+        echo $? >"${stamp}"
+      ) &
       pids+=("$!")
       nodes+=("${node}")
     else
-      info "[${node}] ${stage} (log: ${log})"
+      info "[${node}] ${stage} (following ${log})"
       if "${fn}" "${node}" 2>&1 | tee "${log}"; then
         ok "[${node}] ${stage}"
       else
         err "[${node}] ${stage} failed, see ${log}"
         rc=1
       fi
+      : >"${stamp}"
     fi
   done
 
   if [ "${PARALLEL}" -eq 1 ]; then
-    info "${stage}: running on ${#NODES[@]} nodes in parallel (logs: ${LOG_DIR}/${RUN_ID}-${stage}-*.log)"
+    info "${stage}: running on ${#NODES[@]} nodes in parallel"
+    info "full output: ${LOG_DIR}/${RUN_ID}-${stage}-<node>.log"
+    if [ "${SHOW_PROGRESS}" -eq 1 ]; then
+      monitor_progress "${stage}" "${nodes[@]}" &
+      monitor_pid=$!
+    fi
     local i
     for i in "${!pids[@]}"; do
       if wait "${pids[$i]}"; then
+        :
+      else
+        rc=1
+      fi
+    done
+    [ -n "${monitor_pid}" ] && wait "${monitor_pid}" 2>/dev/null
+    for i in "${!nodes[@]}"; do
+      local stamp="${LOG_DIR}/.${RUN_ID}-${stage}-${nodes[$i]}.done"
+      if [ "$(cat "${stamp}" 2>/dev/null)" = "0" ]; then
         ok "[${nodes[$i]}] ${stage}"
       else
         err "[${nodes[$i]}] ${stage} failed, see ${LOG_DIR}/${RUN_ID}-${stage}-${nodes[$i]}.log"

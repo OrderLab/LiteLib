@@ -177,9 +177,12 @@ echo ""
 echo "===== BEFORE ====="
 print_state
 
+litelib_phase "blocking peer traffic on the public network"
 block_other_node_ips
+litelib_phase "applying iptables packet-rate limits"
 set_packet_rate_limit
 set_input_packet_rate_limit
+litelib_phase "applying tc bandwidth limit (${RATE_LIMIT} on ${IFACE})"
 set_bandwidth_limit
 
 echo "===== AFTER ====="

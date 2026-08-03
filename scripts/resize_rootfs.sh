@@ -16,11 +16,19 @@ DISK=${LITELIB_ROOT_DISK}
 PART=${LITELIB_ROOT_PART}
 ROOT_DEV="${DISK}${PART}"
 
+if [ -z "${DISK}" ] || [ -z "${PART}" ] || [ ! -b "${ROOT_DEV}" ]; then
+  echo "cannot determine the root partition (got '${ROOT_DEV}')." 1>&2
+  echo "Override it explicitly, e.g. LITELIB_ROOT_DISK=/dev/sdb LITELIB_ROOT_PART=3 $0" 1>&2
+  exit 1
+fi
+echo "Root filesystem lives on ${ROOT_DEV} (disk ${DISK}, partition ${PART})."
+
 install_dependencies() {
   if command -v growpart >/dev/null 2>&1; then
     echo "cloud-guest-utils already installed, skipping."
     return
   fi
+  litelib_phase "installing cloud-guest-utils"
   apt-get install "${APT_OPTS[@]}" cloud-guest-utils
 }
 
@@ -38,19 +46,28 @@ delete_extra_partition() {
 }
 
 extend_root_partition() {
-  # growpart exits 1 when the partition already spans the free space
-  # ("NOCHANGE"), which must not abort the run under `set -e`.
+  litelib_phase "growing ${ROOT_DEV} to fill ${DISK}"
+  # growpart uses exit code 2 for "old and new are the same", i.e. the
+  # partition already spans the free space.  That must not abort the run under
+  # `set -e` -- but any *other* non-zero status is a genuine failure and has to
+  # surface (e.g. the wrong disk was picked and sfdisk cannot read its label).
   local rc=0
   local out
   out=$(growpart "${DISK}" "${PART}" 2>&1) || rc=$?
   echo "${out}"
-  if [ "${rc}" -ne 0 ] && ! echo "${out}" | grep -qi "NOCHANGE"; then
-    echo "growpart failed (exit ${rc})" 1>&2
-    return "${rc}"
+  if [ "${rc}" -eq 0 ]; then
+    return 0
   fi
+  if [ "${rc}" -eq 2 ] && echo "${out}" | grep -qi "NOCHANGE"; then
+    echo "partition already spans the disk, nothing to do."
+    return 0
+  fi
+  echo "growpart ${DISK} ${PART} failed (exit ${rc})" 1>&2
+  return "${rc}"
 }
 
 resize_filesystem() {
+  litelib_phase "resizing the root filesystem"
   echo "Updating kernel's partition table..."
   partprobe "${DISK}"
 

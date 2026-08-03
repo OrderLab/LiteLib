@@ -38,9 +38,29 @@ LITELIB_REPO_DIR=${LITELIB_REPO_DIR:-${LITELIB_USER_HOME}/LiteLib}
 LITELIB_CTRL_IFACE=${LITELIB_CTRL_IFACE:-eno1}
 # Dedicated 10GbE experiment network (10.10.1.0/24, used by the workloads).
 LITELIB_EXP_IFACE=${LITELIB_EXP_IFACE:-enp94s0f0}
-# Root disk / partition that gets grown to fill the whole device.
-LITELIB_ROOT_DISK=${LITELIB_ROOT_DISK:-/dev/sda}
-LITELIB_ROOT_PART=${LITELIB_ROOT_PART:-3}
+
+# Boot disk and root partition.  These are auto-detected from the live mount of
+# `/` rather than hardcoded: identically provisioned c220g5 nodes do *not*
+# necessarily enumerate their disks in the same order, so the root filesystem
+# may sit on /dev/sda3 on one node and /dev/sdb3 on the next.
+litelib_detect_root_device() {
+  local src part disk
+  src=$(findmnt -no SOURCE / 2>/dev/null) || return 1
+  # /etc/fstab may reference the device by UUID or label.
+  src=$(realpath "${src}" 2>/dev/null || echo "${src}")
+  part=${src#/dev/}
+  [ -r "/sys/class/block/${part}/partition" ] || return 1
+  disk=$(basename "$(readlink -f "/sys/class/block/${part}/..")")
+  printf '/dev/%s %s\n' "${disk}" "$(cat "/sys/class/block/${part}/partition")"
+}
+
+if [ -z "${LITELIB_ROOT_DISK:-}" ] || [ -z "${LITELIB_ROOT_PART:-}" ]; then
+  _litelib_root=$(litelib_detect_root_device || true)
+  LITELIB_ROOT_DISK=${LITELIB_ROOT_DISK:-${_litelib_root%% *}}
+  LITELIB_ROOT_PART=${LITELIB_ROOT_PART:-${_litelib_root##* }}
+  unset _litelib_root
+fi
+
 # Root filesystem size (GiB) below which we consider the disk *not* resized.
 LITELIB_MIN_ROOT_GIB=${LITELIB_MIN_ROOT_GIB:-100}
 # Pinned CPU frequency (GHz).  c220g5 nodes use Xeon Silver 4114 @ 2.20GHz.
@@ -120,3 +140,16 @@ APT_OPTS=(-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confo
 # seen, which is what removes the interactive fingerprint prompt, while still
 # failing loudly if a *known* key ever changes.
 LITELIB_SSH_OPTS=${LITELIB_SSH_OPTS:-"-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=20"}
+
+# --- Progress reporting ------------------------------------------------------
+#
+# init.sh and its sub-scripts announce what they are doing by echoing a marker
+# at the *start of a line*.  setup_cluster.sh greps for it to show live
+# progress while the nodes are being set up in parallel.  Anchoring on '^' is
+# what keeps the `set -x` trace of the echo itself from being picked up.
+LITELIB_PHASE_MARKER=${LITELIB_PHASE_MARKER:-">>> [LiteLib]"}
+
+# litelib_phase <text> -- announce the phase that is about to start.
+litelib_phase() {
+  echo "${LITELIB_PHASE_MARKER} $*"
+}

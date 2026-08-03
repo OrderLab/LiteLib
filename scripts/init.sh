@@ -22,6 +22,7 @@ check_root() {
 }
 
 prepare() {
+  litelib_phase "refreshing apt package index"
   apt-get update
 }
 
@@ -31,14 +32,18 @@ main() {
   prepare
 
   # Setup network rate limit on shared control network
+  litelib_phase "step 1/3: limiting the shared control network"
   "${SCRIPT_DIR}/network_limit.sh"
 
   # Remove /mydata and resize the root filesystem
+  litelib_phase "step 2/3: resizing the root filesystem"
   "${SCRIPT_DIR}/resize_rootfs.sh"
 
   # Install dependencies for litesys
+  litelib_phase "step 3/3: installing dependencies"
   "${SCRIPT_DIR}/litesys_dependency.sh"
 
+  litelib_phase "initialization complete"
   echo "Initialization complete."
 }
 
