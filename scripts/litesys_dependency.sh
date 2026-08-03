@@ -1,91 +1,106 @@
 #!/bin/bash
+#
+# Install every build/run-time dependency LiteLib needs on a single node.
+# Re-running the script is cheap: apt is idempotent and the Boost/libevent
+# source builds are skipped once the pinned version is already installed.
 
 set -e
 set -x
 
-BOOST_VERSION=1.87.0
-LIBEVENT_VERSION=2.1.12
-NUM_JOBS=32
-FREQUENCY=2.2
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=config.sh
+source "${SCRIPT_DIR}/config.sh"
+
+BOOST_VERSION=${LITELIB_BOOST_VERSION}
+LIBEVENT_VERSION=${LITELIB_LIBEVENT_VERSION}
+KERNEL_RELEASE=${LITELIB_KERNEL_RELEASE}
+KERNEL_PKG_VERSION=${LITELIB_KERNEL_PKG_VERSION}
+NUM_JOBS=${LITELIB_NUM_JOBS}
+FREQUENCY=${LITELIB_CPU_FREQ_GHZ}
+PREFIX=${LITELIB_PREFIX}
 
 install_dependencies() {
-  apt-get install -y --no-install-recommends \
-    build-essential \
-    nuttcp \
-    software-properties-common \
-    autoconf \
-    automake \
-    libtool \
-    pkg-config \
-    ca-certificates \
-    libssl-dev \
-    python3 \
-    python3-dev \
-    python3-pip \
-    wget \
-    git \
-    curl \
-    htop \
-    iftop \
-    iotop \
-    locales \
-    locales-all \
-    vim \
-    gdb \
-    valgrind \
-    libgoogle-glog-dev \
-    cmake \
-    rsync \
-    iptables \
-    tcpdump \
-    cgroup-tools \
-    google-perftools \
-    libgoogle-perftools-dev \
-    linux-tools-common \
-    linux-tools-generic \
-    linux-tools-$(uname -r) \
-    libbpf-dev \
-    clang \
-    sysstat \
-    linux-image-6.8.0-52-generic=6.8.0-52.53~22.04.1 \
-    linux-headers-6.8.0-52-generic=6.8.0-52.53~22.04.1
+  apt-get install "${APT_OPTS[@]}" --no-install-recommends \
+    "${LITELIB_APT_PACKAGES[@]}" \
+    linux-tools-"$(uname -r)" \
+    linux-image-"${KERNEL_RELEASE}"="${KERNEL_PKG_VERSION}" \
+    linux-headers-"${KERNEL_RELEASE}"="${KERNEL_PKG_VERSION}"
+
+  # `perf` is invoked by the profiling experiments; once the node has been
+  # rebooted into ${KERNEL_RELEASE} the matching tools package must be present.
+  if [ "$(uname -r)" = "${KERNEL_RELEASE}" ]; then
+    apt-get install "${APT_OPTS[@]}" --no-install-recommends \
+      linux-tools-"${KERNEL_RELEASE}"
+  fi
+}
+
+boost_installed() {
+  local header="${PREFIX}/include/boost/version.hpp"
+  local expected
+  expected=$(echo "${BOOST_VERSION}" | tr . _)
+  [ -f "${header}" ] && grep -q "BOOST_LIB_VERSION \"${expected%_0}\"" "${header}"
 }
 
 install_boost() {
-  mkdir -p ${HOME}/dependencies/boost
-  cd ${HOME}/dependencies/boost
-  BOOST_VERSION_MOD=$(echo $BOOST_VERSION | tr . _)
-  wget https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}-cmake.tar.xz
-  tar -xavf boost-${BOOST_VERSION}-cmake.tar.xz
-  cd boost-${BOOST_VERSION}
-  ./bootstrap.sh --prefix=/usr/local
-  ./b2 install
+  if boost_installed; then
+    echo "Boost ${BOOST_VERSION} already installed in ${PREFIX}, skipping."
+    return
+  fi
+  mkdir -p "${HOME}/dependencies/boost"
+  cd "${HOME}/dependencies/boost"
+  if [ ! -d "boost-${BOOST_VERSION}" ]; then
+    wget -nv -c "https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}-cmake.tar.xz"
+    tar -xaf "boost-${BOOST_VERSION}-cmake.tar.xz"
+  fi
+  cd "boost-${BOOST_VERSION}"
+  ./bootstrap.sh --prefix="${PREFIX}"
+  ./b2 -j"${NUM_JOBS}" install
+  ldconfig
+}
+
+libevent_installed() {
+  local header="${PREFIX}/include/event2/event-config.h"
+  [ -f "${header}" ] &&
+    grep -q "EVENT__VERSION \"${LIBEVENT_VERSION}" "${header}" &&
+    ls "${PREFIX}"/lib/libevent.so >/dev/null 2>&1
 }
 
 install_libevent() {
-  mkdir -p ${HOME}/dependencies/libevent
-  cd ${HOME}/dependencies/libevent
-  wget "https://github.com/libevent/libevent/releases/download/release-${LIBEVENT_VERSION}-stable/libevent-${LIBEVENT_VERSION}-stable.tar.gz"
-  tar -xzvf libevent-${LIBEVENT_VERSION}-stable.tar.gz
-  cd libevent-${LIBEVENT_VERSION}-stable
-  mkdir build && cd build
-  cmake ..
-  make -j${NUM_JOBS}
+  if libevent_installed; then
+    echo "libevent ${LIBEVENT_VERSION} already installed in ${PREFIX}, skipping."
+    return
+  fi
+  mkdir -p "${HOME}/dependencies/libevent"
+  cd "${HOME}/dependencies/libevent"
+  if [ ! -d "libevent-${LIBEVENT_VERSION}-stable" ]; then
+    wget -nv -c "https://github.com/libevent/libevent/releases/download/release-${LIBEVENT_VERSION}-stable/libevent-${LIBEVENT_VERSION}-stable.tar.gz"
+    tar -xzf "libevent-${LIBEVENT_VERSION}-stable.tar.gz"
+  fi
+  cd "libevent-${LIBEVENT_VERSION}-stable"
+  mkdir -p build && cd build
+  cmake -DCMAKE_INSTALL_PREFIX="${PREFIX}" ..
+  make -j"${NUM_JOBS}"
   make install
+  ldconfig
 }
 
 configure_ssh() {
-  apt-get install -y --no-install-recommends ssh
-  mkdir -p ${HOME}/.ssh
-  chmod 700 ${HOME}/.ssh
-  touch ${HOME}/.ssh/authorized_keys
+  apt-get install "${APT_OPTS[@]}" --no-install-recommends ssh
+  local ssh_dir="${LITELIB_USER_HOME}/.ssh"
+  mkdir -p "${ssh_dir}"
+  chmod 700 "${ssh_dir}"
+  touch "${ssh_dir}/authorized_keys"
+  chmod 600 "${ssh_dir}/authorized_keys"
+  chown -R "${LITELIB_SSH_USER}" "${ssh_dir}" 2>/dev/null || true
   # echo "#PasswordAuthentication no" >>/etc/ssh/sshd_config
   # echo "PermitRootLogin yes" >>/etc/ssh/sshd_config
 }
 
 set_cpu_frequency() {
+  # Pinning the frequency keeps latency measurements stable across runs.  This
+  # is *runtime* state and has to be re-applied after every reboot.
   cpupower frequency-set -g performance
-  cpupower frequency-set -d ${FREQUENCY}GHz -u ${FREQUENCY}GHz
+  cpupower frequency-set -d "${FREQUENCY}GHz" -u "${FREQUENCY}GHz"
 }
 
 main() {

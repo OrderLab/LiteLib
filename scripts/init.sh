@@ -1,7 +1,18 @@
 #!/bin/bash
+#
+# Prepare a single node for the LiteLib experiments.  Safe to re-run: every
+# step is idempotent, and the expensive source builds are skipped when the
+# requested version is already installed.
+#
+# Run it as root, e.g. `sudo ./init.sh`, or through ../scripts/setup_cluster.sh
+# to initialize the whole cluster at once.
 
 set -e
 set -x
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=config.sh
+source "${SCRIPT_DIR}/config.sh"
 
 check_root() {
   if [ "$(id -u)" != "0" ]; then
@@ -11,7 +22,7 @@ check_root() {
 }
 
 prepare() {
-  apt update
+  apt-get update
 }
 
 main() {
@@ -20,13 +31,13 @@ main() {
   prepare
 
   # Setup network rate limit on shared control network
-  ./network_limit.sh
+  "${SCRIPT_DIR}/network_limit.sh"
 
   # Remove /mydata and resize the root filesystem
-  ./resize_rootfs.sh
+  "${SCRIPT_DIR}/resize_rootfs.sh"
 
   # Install dependencies for litesys
-  ./litesys_dependency.sh
+  "${SCRIPT_DIR}/litesys_dependency.sh"
 
   echo "Initialization complete."
 }

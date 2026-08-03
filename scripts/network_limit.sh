@@ -1,15 +1,30 @@
 #!/bin/bash
+#
+# Apply the control-network rate limits used by all LiteLib experiments.
+#
+# The shared CloudLab control network (${LITELIB_CTRL_IFACE}) is capped so that
+# background traffic cannot perturb the measurements, while the dedicated
+# experiment network (10.10.1.0/24) is left untouched.
+#
+# NOTE: `tc` and `iptables` state is *not* persistent -- re-run this script
+# (or init.sh, which calls it) after every reboot.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=config.sh
+source "${SCRIPT_DIR}/config.sh"
 
 # === Configuration ===
-NODES=(node0 node1 node2 node3)
-MYNAME=$(hostname)
-SSH_USER="toga"  # Change this to your SSH user
-SSH_KEY="/users/toga/.ssh/id_ed25519"  # Path to your SSH private key
+read -r -a NODES <<<"${LITELIB_NODES}"
+MYNAME=$(hostname -s)
+SSH_USER="${LITELIB_SSH_USER}"
+SSH_KEY="${LITELIB_SSH_KEY}"
+# Never prompt for a host-key fingerprint: this script runs unattended.
+SSH_OPTS=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=3)
 
 # === Parse CLI Arguments ===
-IFACE="${1:-eno1}"
-PKTS_PER_SEC="${2:-10000}"
-RATE_LIMIT="${3:-100mbit}"
+IFACE="${1:-${LITELIB_CTRL_IFACE}}"
+PKTS_PER_SEC="${2:-${LITELIB_PKTS_PER_SEC}}"
+RATE_LIMIT="${3:-${LITELIB_RATE_LIMIT}}"
 
 # === Function: Print current state ===
 print_state() {
@@ -45,7 +60,7 @@ block_other_node_ips() {
     echo "🔍 Getting IPs from $NODE..."
     
     # Get IPs and ensure proper handling of the output
-    IPS=$(ssh -o ConnectTimeout=3 -i "$SSH_KEY" ${SSH_USER}@$NODE "hostname -I" 2>/dev/null)
+    IPS=$(ssh "${SSH_OPTS[@]}" -i "$SSH_KEY" ${SSH_USER}@$NODE "hostname -I" 2>/dev/null)
     if [ $? -eq 0 ] && [ ! -z "$IPS" ]; then
       echo "📡 Found IPs: $IPS"
       for IP in $IPS; do
