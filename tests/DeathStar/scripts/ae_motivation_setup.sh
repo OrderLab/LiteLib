@@ -49,6 +49,13 @@ MEMCACHED_TARBALL="memcached-${MEMCACHED_VERSION}.tar.gz"
 MEMCACHED_URL="https://memcached.org/files/${MEMCACHED_TARBALL}"
 NUM_JOBS=${AE_NUM_JOBS:-$(nproc)}
 
+case "${1:-}" in
+-h | --help)
+  sed -n '2,32p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  exit 0
+  ;;
+esac
+
 STAGES=("$@")
 if [ ${#STAGES[@]} -eq 0 ]; then
   STAGES=(deps sync build images swarm deploy prefill)
