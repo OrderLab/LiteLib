@@ -146,8 +146,9 @@ LITELIB_SSH_OPTS=${LITELIB_SSH_OPTS:-"-o BatchMode=yes -o StrictHostKeyChecking=
 # init.sh and its sub-scripts announce what they are doing by echoing a marker
 # at the *start of a line*.  setup_cluster.sh greps for it to show live
 # progress while the nodes are being set up in parallel.  Anchoring on '^' is
-# what keeps the `set -x` trace of the echo itself from being picked up.
-LITELIB_PHASE_MARKER=${LITELIB_PHASE_MARKER:-">>> [LiteLib]"}
+# what keeps the `set -x` trace of the echo itself from being picked up, so the
+# marker must stay free of regular-expression metacharacters (no brackets!).
+LITELIB_PHASE_MARKER=${LITELIB_PHASE_MARKER:-">>> LITELIB:"}
 
 # litelib_phase <text> -- announce the phase that is about to start.
 litelib_phase() {
