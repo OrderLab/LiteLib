@@ -29,6 +29,13 @@ Reboot into the kernel it installed, then re-verify:
 ./setup_cluster.sh check
 ```
 
+A reboot clears the network rate limits and the CPU frequency pinning, so
+re-apply them after every reboot (seconds, nothing is rebuilt):
+
+```bash
+./setup_cluster.sh post-reboot
+```
+
 To prepare only the machine you are on:
 
 ```bash
@@ -36,11 +43,11 @@ git submodule update --init --recursive
 cd ./scripts
 sudo ./init.sh          # apply the setup
 sudo ./check_init.sh    # verify it
+sudo ./post_reboot.sh   # re-apply runtime state after a reboot
 ```
 
-Note that `init.sh` also re-applies settings that a reboot clears (CPU
-frequency pinning and the network rate limits), so run it again after every
-reboot.
+Note that the network rate limits and the CPU frequency pinning live only in
+kernel state, so they must be re-applied after every reboot.
 
 # Tests
 

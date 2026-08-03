@@ -19,9 +19,32 @@
 # setup_cluster.sh is launched.
 LITELIB_NODES=${LITELIB_NODES:-"node0 node1 node2 node3"}
 
-# Account used for inter-node SSH.  When a script runs under `sudo`, $SUDO_USER
-# holds the unprivileged account that invoked it.
-LITELIB_SSH_USER=${LITELIB_SSH_USER:-${SUDO_USER:-$(id -un)}}
+# Account used for inter-node SSH.
+#
+# Resolution order:
+#   1. an explicit $LITELIB_SSH_USER,
+#   2. $SUDO_USER -- the unprivileged account that invoked `sudo`,
+#   3. the owner of this checkout -- the fallback that matters when a script is
+#      started by systemd or cron, where $SUDO_USER is unset and `id -un` would
+#      yield `root`.  root has no key on the peers, so falling back to it makes
+#      every inter-node SSH fail with "Permission denied (publickey)".
+#   4. the current user, as a last resort.
+litelib_repo_owner() {
+  stat -c '%U' "${BASH_SOURCE[0]}" 2>/dev/null
+}
+
+if [ -z "${LITELIB_SSH_USER:-}" ]; then
+  LITELIB_SSH_USER=${SUDO_USER:-}
+  if [ -z "${LITELIB_SSH_USER}" ] || [ "${LITELIB_SSH_USER}" = root ]; then
+    _litelib_owner=$(litelib_repo_owner)
+    if [ -n "${_litelib_owner}" ] && [ "${_litelib_owner}" != root ]; then
+      LITELIB_SSH_USER=${_litelib_owner}
+    else
+      LITELIB_SSH_USER=$(id -un)
+    fi
+    unset _litelib_owner
+  fi
+fi
 LITELIB_USER_HOME=${LITELIB_USER_HOME:-$(getent passwd "$LITELIB_SSH_USER" | cut -d: -f6)}
 LITELIB_SSH_KEY=${LITELIB_SSH_KEY:-${LITELIB_USER_HOME}/.ssh/id_ed25519}
 

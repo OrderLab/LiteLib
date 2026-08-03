@@ -22,6 +22,8 @@
 #   clone     only clone or update the repository
 #   init      only run init.sh (assumes the repository is already there)
 #   check     only run check_init.sh and print a per-node report
+#   post-reboot  re-apply the runtime config a reboot cleared (network rate
+#             limits + CPU pinning); seconds, no package/build work
 #   reboot    reboot the nodes into the LiteLib kernel and wait for them
 #
 # Options:
@@ -98,7 +100,7 @@ while [ $# -gt 0 ]; do
     sed -n '2,60p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
     ;;
-  setup | ssh | clone | init | check | reboot) COMMAND=$1 ;;
+  setup | ssh | clone | init | check | reboot | post-reboot) COMMAND=$1 ;;
   *)
     echo "unknown argument: $1 (try --help)" 1>&2
     exit 2
@@ -483,7 +485,7 @@ stage_init() {
 # ---------------------------------------------------------------------------
 
 stage_check() {
-  local node rc=0 failed=() needs_reboot=() out
+  local node rc=0 failed=() needs_reboot=() runtime_only=() out
   for node in "${NODES[@]}"; do
     echo
     if out=$(rsh "${node}" "sudo -n '${LITELIB_REPO_DIR}/scripts/check_init.sh'" 2>&1); then
@@ -494,6 +496,12 @@ stage_check() {
       rc=1
       if echo "${out}" | grep -q "reboot required"; then
         needs_reboot+=("${node}")
+      fi
+      # Only runtime state is missing -- a reboot cleared the rate limits and
+      # the CPU pinning, and nothing needs to be reinstalled.
+      if ! echo "${out}" | grep -q "^-- persistent state --" ||
+        ! echo "${out}" | sed -n '/-- persistent state --/,/-- runtime state/p' | grep -q "FAIL"; then
+        runtime_only+=("${node}")
       fi
     fi
   done
@@ -507,10 +515,36 @@ stage_check() {
     # Everything is installed; the nodes just have not picked up the new kernel.
     echo "     All remaining checks only need a reboot into ${LITELIB_KERNEL_RELEASE}:" 1>&2
     echo "       $0 reboot" 1>&2
+  elif [ "${#runtime_only[@]}" -eq "${#failed[@]}" ]; then
+    echo "     Only runtime state is missing (a reboot clears the network rate" 1>&2
+    echo "     limits and the CPU pinning).  Re-apply it with:" 1>&2
+    echo "       $0 -n \"${failed[*]}\" post-reboot" 1>&2
   else
     echo "     Re-run: $0 -n \"${failed[*]}\" init" 1>&2
   fi
   return "${rc}"
+}
+
+# ---------------------------------------------------------------------------
+# Stage: re-apply runtime configuration cleared by a reboot
+# ---------------------------------------------------------------------------
+
+post_reboot_node() {
+  local node=$1
+  rsh "${node}" "
+    set -e
+    test -x '${LITELIB_REPO_DIR}/scripts/post_reboot.sh' || {
+      echo 'scripts/post_reboot.sh not found in ${LITELIB_REPO_DIR}; run the clone stage first' >&2
+      exit 1
+    }
+    sudo -n '${LITELIB_REPO_DIR}/scripts/post_reboot.sh' </dev/null
+  "
+}
+
+stage_post_reboot() {
+  info "re-applying the runtime configuration a reboot clears"
+  info "(control-network rate limits and CPU frequency pinning)"
+  for_each_node post-reboot post_reboot_node
 }
 
 # ---------------------------------------------------------------------------
@@ -543,18 +577,20 @@ stage_reboot() {
     fi
   done
 
-  # tc/iptables/cpufreq settings do not survive a reboot: re-apply them.
+  # tc/iptables/cpufreq settings do not survive a reboot: re-apply them.  Use
+  # the fast path -- a full init.sh here would re-check every package for no
+  # reason, and the peers have just been rebooted, not reinstalled.
   info "re-applying runtime configuration after reboot"
-  for_each_node reinit init_node || rc=1
+  for_each_node post-reboot post_reboot_node || rc=1
 
   if [ "${INCLUDE_SELF}" -eq 1 ]; then
     warn "rebooting ${SELF} now -- this session will drop."
-    warn "After it comes back, run: ${LITELIB_REPO_DIR}/scripts/setup_cluster.sh init"
+    warn "After it comes back, run: ${LITELIB_REPO_DIR}/scripts/setup_cluster.sh post-reboot"
     sleep 5
     sudo -n systemctl reboot
   elif [ "$(uname -r)" != "${LITELIB_KERNEL_RELEASE}" ]; then
     warn "${SELF} still runs $(uname -r); it is the node you are logged into, so it"
-    warn "was not rebooted.  Reboot it yourself and re-run '$0 init' afterwards:"
+    warn "was not rebooted.  Reboot it yourself and re-run '$0 post-reboot' afterwards:"
     warn "    sudo systemctl reboot"
   fi
   return "${rc}"
@@ -575,6 +611,7 @@ clone)
   ;;
 init) stage_init ;;
 check) stage_check ;;
+post-reboot) stage_post_reboot ;;
 reboot) stage_reboot ;;
 setup)
   stage_ssh
