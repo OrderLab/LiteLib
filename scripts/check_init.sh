@@ -240,7 +240,7 @@ if [ "${MODE}" = all ] || [ "${MODE}" = persistent ]; then
 fi
 
 if [ "${MODE}" = all ] || [ "${MODE}" = runtime ]; then
-  log "-- runtime state (re-applied by init.sh after every reboot) --"
+  log "-- runtime state (re-apply with post_reboot.sh after every reboot) --"
   check_kernel_booted
   check_cpu_frequency
   check_tc
