@@ -47,10 +47,10 @@ delete_extra_partition() {
 
 extend_root_partition() {
   litelib_phase "growing ${ROOT_DEV} to fill ${DISK}"
-  # growpart uses exit code 2 for "old and new are the same", i.e. the
-  # partition already spans the free space.  That must not abort the run under
-  # `set -e` -- but any *other* non-zero status is a genuine failure and has to
-  # surface (e.g. the wrong disk was picked and sfdisk cannot read its label).
+  # growpart reports "already as large as it can be" as a *failure* exit code
+  # with a NOCHANGE message, so the message -- not the exit status -- is what
+  # distinguishes "nothing to do" from a real problem (e.g. the wrong disk was
+  # picked and sfdisk cannot read its partition label).
   local rc=0
   local out
   out=$(growpart "${DISK}" "${PART}" 2>&1) || rc=$?
@@ -58,8 +58,8 @@ extend_root_partition() {
   if [ "${rc}" -eq 0 ]; then
     return 0
   fi
-  if [ "${rc}" -eq 2 ] && echo "${out}" | grep -qi "NOCHANGE"; then
-    echo "partition already spans the disk, nothing to do."
+  if echo "${out}" | grep -qi "NOCHANGE"; then
+    echo "${ROOT_DEV} already spans ${DISK}, nothing to do."
     return 0
   fi
   echo "growpart ${DISK} ${PART} failed (exit ${rc})" 1>&2
