@@ -6,15 +6,36 @@ TYPE=$1
 DEFCON_CONFIG=${2:-0} # 1 mcrouter readonly, 2 post-storage-service readonly, 3 load shedding
 LOAD_SHEDDING_RATE=${3:-1500} # max number of requests per second
 CRASH=${3:-20}
-LOG_PREFIX=${TYPE}_$(date '+%Y%m%d_%H%M%S')
+# Allow the caller to name the run, so an orchestrating script can correlate the
+# client log with the per-component logs this run produces.
+LOG_PREFIX=${LOG_PREFIX:-${TYPE}_$(date '+%Y%m%d_%H%M%S')}
+# Set NO_CRASH=1 to run the identical workload without injecting the failure.
+# This is how the no-crash baseline used by Figure 2 is collected.
+NO_CRASH=${NO_CRASH:-0}
+# CPU budget for each Memcached instance, in cgroup v2 "quota period" form.
+# This sets the *operating point* of the experiment: the effect the figure
+# shows is that the surviving instance cannot absorb the ~65% extra load the
+# failover sends it.  If the instances are given more CPU than the workload
+# needs, the failover is absorbed and no cascade appears, so this value has to
+# be matched to the machine (see ae_motivation_calibrate.sh).
+MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"100000 100000"}
+# Offered load, in requests/second, for the warm-up and the measured workload.
+# Together with MEMCACHED_CPU_MAX this fixes the operating point.  The load at
+# which the surviving instance saturates differs measurably between machines of
+# the same type, so it has to be calibrated per cluster; see
+# ae_motivation_calibrate.sh.
+WARMUP_RATE=${WARMUP_RATE:-3000}
+WORKLOAD_RATE=${WORKLOAD_RATE:-2500}
+WORKLOAD_CONNS=${WORKLOAD_CONNS:-512}
+WORKLOAD_THREADS=${WORKLOAD_THREADS:-80}
 DeathStarDir=$(cd "$(dirname "$0")/.." && pwd)
 
 function start_memcached() {
     ssh node0 "docker exec post-storage-mongodb cgcreate -g cpu:/deathstar_cpulimited"
     docker exec post-storage-memcached-1 cgcreate -g cpu:/deathstar_cpulimited_1
-    docker exec post-storage-memcached-1 cgset -r cpu.max="100000 100000" deathstar_cpulimited_1
+    docker exec post-storage-memcached-1 cgset -r cpu.max="$MEMCACHED_CPU_MAX" deathstar_cpulimited_1
     docker exec post-storage-memcached-2 cgcreate -g cpu:/deathstar_cpulimited_2
-    docker exec post-storage-memcached-2 cgset -r cpu.max="100000 100000" deathstar_cpulimited_2
+    docker exec post-storage-memcached-2 cgset -r cpu.max="$MEMCACHED_CPU_MAX" deathstar_cpulimited_2
     if [ "$TYPE" == "vanilla" ]; then
         docker exec post-storage-memcached-1 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 1 $LOG_PREFIX
         docker exec post-storage-memcached-2 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 2 $LOG_PREFIX
@@ -29,10 +50,14 @@ function start_memcached() {
 
 # 200MB for memcached
 function warmup_memcached() {
-    ../src/wrk2/wrk -D exp -t 80 -c 512 -d 60 -L -s ../src/socialNetwork/wrk2/scripts/social-network/read-home-timeline.lua http://node1:8080/wrk2-api/home-timeline/read -R 3000
+    ../src/wrk2/wrk -D exp -t ${WORKLOAD_THREADS} -c ${WORKLOAD_CONNS} -d 60 -L -s ../src/socialNetwork/wrk2/scripts/social-network/read-home-timeline.lua http://node1:8080/wrk2-api/home-timeline/read -R ${WARMUP_RATE}
 }
 
 function crash_memcached() {
+    if [ "$NO_CRASH" == "1" ]; then
+        echo "NO_CRASH=1: skipping failure injection (no-crash baseline)"
+        return 0
+    fi
     sleep $CRASH
     docker exec post-storage-memcached-1 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/crash.sh
 }
@@ -44,7 +69,7 @@ function logging() {
 }
 
 function run_workload() {
-    ../src/wrk2/wrk -D exp -t 80 -c 512 -d 90 -L -s ../src/socialNetwork/wrk2/scripts/social-network/mixed-workload.lua http://node1:8080 -R 2500
+    ../src/wrk2/wrk -D exp -t ${WORKLOAD_THREADS} -c ${WORKLOAD_CONNS} -d 90 -L -s ../src/socialNetwork/wrk2/scripts/social-network/mixed-workload.lua http://node1:8080 -R ${WORKLOAD_RATE}
 }
 
 function mcrouter_readonly() {

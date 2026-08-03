@@ -27,5 +27,13 @@ pip3 install aiohttp
 apt install -y lua5.1 luarocks
 luarocks install luasocket
 
-# Add current user to docker group to run docker without sudo
-usermod -aG docker $USER
+# Add the *invoking* user to the docker group so docker runs without sudo.
+# Under `sudo` $USER is root, which would silently add root instead of the
+# evaluator's account and leave `docker ps` failing with a permission error.
+TARGET_USER=${SUDO_USER:-${USER}}
+if [ -n "${TARGET_USER}" ] && [ "${TARGET_USER}" != root ]; then
+  usermod -aG docker "${TARGET_USER}"
+  echo "Added ${TARGET_USER} to the docker group."
+else
+  echo "WARNING: could not determine a non-root user to add to the docker group." 1>&2
+fi

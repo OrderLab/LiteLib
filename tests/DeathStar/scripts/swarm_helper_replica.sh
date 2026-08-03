@@ -53,9 +53,15 @@ function down() {
     
     # Remove any down nodes from the swarm
     echo "Removing down nodes from swarm..."
-    for node in $(docker node ls -q --filter "role=worker" --format "{{if ne .Status \"Ready\"}}{{.ID}}{{end}}"); do
-        echo "Removing node $node from swarm..."
-        docker node rm --force $node || true
+    # `docker node ls -q` already prints only IDs, so combining it with
+    # --format left the filter expression unevaluated and nothing was ever
+    # removed.  Every leave/rejoin above therefore left a stale Down entry
+    # behind, which later makes `docker node update <hostname>` fail with
+    # "node ... is ambiguous (2 matches found)" -- and that silently skips the
+    # nginx placement label, leaving the front end at half capacity.
+    for node in $(docker node ls --format '{{.ID}} {{.Status}}' | awk '$2!="Ready"{print $1}'); do
+        echo "Removing stale node $node from swarm..."
+        docker node rm --force "$node" || true
     done
     
     echo "Cleanup completed"
@@ -80,8 +86,21 @@ function up() {
     echo "Verifying swarm status..."
     docker node ls
 
-    docker node update --label-add nginx=true ${NODE0_HOSTNAME}
-    docker node update --label-add nginx=true ${NODE1_HOSTNAME}
+    # Label by node ID rather than hostname: a hostname can still match more
+    # than one entry if a stale record survived, and `docker node update` then
+    # fails instead of applying the label.
+    label_nginx() {
+        local host=$1 id
+        id=$(docker node ls --format '{{.ID}} {{.Hostname}} {{.Status}}' |
+             awk -v h="$host" '$2==h && $3=="Ready"{print $1; exit}')
+        if [ -z "$id" ]; then
+            echo "WARNING: no Ready swarm node for ${host}; nginx will be under-replicated" >&2
+            return 1
+        fi
+        docker node update --label-add nginx=true "$id"
+    }
+    label_nginx "${NODE0_HOSTNAME}"
+    label_nginx "${NODE1_HOSTNAME}"
 
     # Deploy the stack
     echo "Deploying stack..."

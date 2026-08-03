@@ -3,3 +3,8 @@ build
 .vscode
 .idea
 cmake-build*
+logs/
+results/
+figures/
+.venv/
+__pycache__/
