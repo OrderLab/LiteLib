@@ -385,15 +385,30 @@ clone_node() {
       cd '${LITELIB_REPO_DIR}'
       git remote set-url origin '${url}'
       git fetch --prune origin
-      if [ -z \"\$(git status --porcelain --untracked-files=no)\" ]; then
-        git checkout '${LITELIB_REPO_BRANCH}'
+      # --ignore-submodules is essential: a submodule whose pinned commit has
+      # disappeared upstream leaves the tree permanently 'dirty' and would
+      # otherwise block every future update.
+      if [ -z \"\$(git status --porcelain --untracked-files=no --ignore-submodules=all)\" ]; then
+        git checkout '${LITELIB_REPO_BRANCH}' 2>/dev/null || \
+          git checkout -b '${LITELIB_REPO_BRANCH}' --track 'origin/${LITELIB_REPO_BRANCH}'
         git merge --ff-only 'origin/${LITELIB_REPO_BRANCH}' || \
           echo '[update] cannot fast-forward, keeping the current commit'
       else
         echo '[update] working tree has local changes, not touching it'
+        git status --porcelain --untracked-files=no --ignore-submodules=all
       fi
     fi
     cd '${LITELIB_REPO_DIR}'
+    # Drop checkouts of submodules that the current commit no longer declares.
+    for stale in \$(git submodule status 2>/dev/null | awk '{print \$2}'); do
+      if ! git config -f .gitmodules --get-regexp path 2>/dev/null | \
+           awk '{print \$2}' | grep -qx \"\$stale\"; then
+        echo \"[update] removing stale submodule \$stale\"
+        git submodule deinit -f \"\$stale\" >/dev/null 2>&1 || true
+        rm -rf \"\$stale\" \".git/modules/\$stale\"
+      fi
+    done
+    git submodule sync --recursive >/dev/null
     git submodule update --init --recursive || \
       echo '[warn] submodule checkout failed (needed only by some workloads)'
     git --no-pager log -1 --oneline
