@@ -140,7 +140,7 @@ function up() {
         --hostname post-storage-memcached-$i \
         --privileged \
         --cgroupns host \
-        --shm-size 6g \
+        --shm-size ${LITE_SHM_SIZE:-24g} \
         -v \$(pwd):/workspace \
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         lite-memcached:latest \
