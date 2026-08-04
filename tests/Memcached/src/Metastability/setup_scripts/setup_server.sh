@@ -82,10 +82,4 @@ echo "pm.max_children = 32" >> /etc/php/7.2/fpm/pool.d/www.conf
 service nginx reload
 service php7.2-fpm restart
 
-mkdir -p "$HOME/.ssh"
-chmod 700 "$HOME/.ssh"
-touch "$HOME/.ssh/known_hosts"
-ssh-keyscan $DATABASE_SERVER_IP  >> $HOME/.ssh/known_hosts
-ssh-keyscan $MEMCACHED_SERVER_IP  >> $HOME/.ssh/known_hosts
-
 echo "Done executing setup_server.sh"
