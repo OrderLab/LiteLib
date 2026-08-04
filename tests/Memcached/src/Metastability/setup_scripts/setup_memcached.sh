@@ -7,13 +7,19 @@ NUM_JOBS=${1:-"40"}
 WARM_UP_SIZE=${2:-"140000"}
 
 if [ "$(id -u)" -eq 0 ]; then
-  echo "This script should not be run as root. Please run as a regular user."
-  exit 1
+  SUDO=""
+else
+  SUDO="sudo"
 fi
 
-sudo apt-get -y install memcached libmemcached-tools
-sudo systemctl stop memcached
-sudo systemctl disable memcached
+${SUDO} apt-get update
+${SUDO} apt-get -y install \
+  build-essential cmake git wget python3 python3-pip \
+  sudo cgroup-tools \
+  libboost-all-dev libevent-dev libgoogle-glog-dev \
+  memcached libmemcached-tools
+${SUDO} systemctl stop memcached || true
+${SUDO} systemctl disable memcached || true
 # apt-get -y install ipvsadm iproute2
 # ln -s /usr/bin/memcached /usr/bin/memcached.replica
 
@@ -35,10 +41,14 @@ sudo systemctl disable memcached
 # sysctl -w net.ipv4.vs.expire_nodest_conn=1
 
 # memcached -d -u root -l 0.0.0.0 --enable-shutdown -m $CACHE_MEM_SIZE
-pip3 install pymemcache python-binary-memcached psutil
+PIP_FLAGS=()
+if pip3 help install 2>/dev/null | grep -q -- --break-system-packages; then
+  PIP_FLAGS+=(--break-system-packages)
+fi
+pip3 install "${PIP_FLAGS[@]}" pymemcache python-binary-memcached psutil
 
 
-sudo apt-get install -y --no-install-recommends \
+${SUDO} apt-get install -y --no-install-recommends \
   libprotobuf-dev \
   libprotobuf-c-dev \
   protobuf-c-compiler \
@@ -57,30 +67,33 @@ sudo apt-get install -y --no-install-recommends \
   asciidoctor
 
 CURRENT_DIR=$(pwd)
-sudo chown -R $(whoami):$(id -gn) ${HOME}/dependencies
+mkdir -p ${HOME}/dependencies
+${SUDO} chown -R $(whoami):$(id -gn) ${HOME}/dependencies
 mkdir -p ${HOME}/dependencies/criu
 cd ${HOME}/dependencies/criu
 wget http://github.com/checkpoint-restore/criu/archive/v4.0/criu-4.0.tar.gz
 tar -xazf criu-4.0.tar.gz
 cd criu-4.0
 make -j16
-sudo make install
+${SUDO} make PREFIX=/usr install
 
 cd $CURRENT_DIR
 
 cp ../Memcached_codes/warm_up_cache.py.template ../Memcached_codes/warm_up_cache.py
 sed -i "/warm_up_size =/c\warm_up_size = $WARM_UP_SIZE" ../Memcached_codes/warm_up_cache.py
-ln -s "`pwd`/../Memcached_codes/warm_up_cache.py" ~/warm_up_cache.py
-ln -s "`pwd`/../Memcached_codes/crash.py" ~/crash.py
-ln -s "`pwd`/../Memcached_codes/monitor.py" ~/monitor.py
-ln -s "`pwd`/../Memcached_codes/init.py" ~/init.py
+ln -sfn "`pwd`/../Memcached_codes/warm_up_cache.py" ~/warm_up_cache.py
+ln -sfn "`pwd`/../Memcached_codes/crash.py" ~/crash.py
+ln -sfn "`pwd`/../Memcached_codes/monitor.py" ~/monitor.py
+ln -sfn "`pwd`/../Memcached_codes/init.py" ~/init.py
 
-cd ../../lite-version
+cd /lite-version
 mkdir -p build
 cd build
+echo "/usr/local/lib" > /etc/ld.so.conf.d/litelib.conf
+ldconfig
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j${NUM_JOBS}
-ln -s "`pwd`/LiteMemcached" ~/LiteMemcached
-ln -s "`pwd`/Lite/lite_cli" ~/lite_cli
+ln -sfn "`pwd`/LiteMemcached" ~/LiteMemcached
+ln -sfn "`pwd`/Lite/lite_cli" ~/lite_cli
 
 echo "Done executing setup_memcached.sh"

@@ -7,7 +7,7 @@ LIBS += -lrt
 
 CC = g++
 #CFLAGS = -Wall -Werror -DDEBUG -g # debug flags
-CFLAGS = -Wall -Werror -g -O2 # release flags
+CFLAGS = -std=c++17 -Wall -Werror -g -O2 # release flags
 CFLAGS += -MMD -MP
 LDFLAGS += -Llib $(LIBS)
 

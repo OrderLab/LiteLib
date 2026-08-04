@@ -47,6 +47,9 @@ services:
       - type: bind
         source: .
         target: /workspace
+      # The 34.6M-row database takes hours to initialize. Preserve only its
+      # files between runs; every service/container is still restarted.
+      - mysql_data:/var/lib/mysql
     deploy:
       resources:
         limits:
@@ -58,6 +61,7 @@ services:
     # image: meta-memcached:v0
     tty: true
     privileged: true
+    cgroup: host
     networks:
       local_net:
         ipv4_address: 10.0.233.6
@@ -66,13 +70,29 @@ services:
       - type: bind
         source: .
         target: /workspace
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
+      - type: bind
+        source: ../lite-version
+        target: /lite-version
+      # lite-version/Lite is a repository symlink to the shared framework.
+      - type: bind
+        source: ../../../../src
+        target: /src
+      - type: bind
+        source: /usr/local/include
+        target: /usr/local/include
+        read_only: true
+      - type: bind
+        source: /usr/local/lib
+        target: /usr/local/lib
+        read_only: true
+      - type: bind
+        source: /sys/fs/cgroup
+        target: /sys/fs/cgroup
 networks:
   local_net:
     ipam:
       driver: default
       config:
         - subnet: 10.0.233.0/24
+volumes:
+  mysql_data:

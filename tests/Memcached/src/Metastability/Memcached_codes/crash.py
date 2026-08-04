@@ -89,6 +89,8 @@ duration = int(sys.argv[1:][1])
 exp_type = sys.argv[1:][2]
 CACHE_MEM_SIZE = 4096000
 CHECKPOINT_INTERVAL = 30
+FULL_CPU_MAX = os.environ.get("FULL_CPU_MAX", "400000 100000")
+memcached_prefix = ["cgexec", "-g", "cpu:fig13_full_memcached"]
 
 memcached_pid = get_pid_by_name("memcached")
 checkpoint_lock = threading.Lock()
@@ -120,7 +122,7 @@ print('failure triggered')
 
 if exp_type == 'lite':
   os.system("rm -f /tmp/memcached.sock")
-  boot_command = ["memcached", "-s", "/tmp/memcached.sock", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32"]
+  boot_command = memcached_prefix + ["memcached", "-s", "/tmp/memcached.sock", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32"]
   # boot_command = ["memcached", "-p", "60001", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32"]
   StartBackgroundProcess(boot_command, "/tmp/memcached.log", True)
 
@@ -159,7 +161,7 @@ elif exp_type == 'full':
   #         break
   #     except socket.error:
   #         continue
-  boot_command = ["memcached", "-d", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32", "-l", "0.0.0.0"]
+  boot_command = memcached_prefix + ["memcached", "-d", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32", "-l", "0.0.0.0"]
   StartBackgroundProcess(boot_command, "/tmp/memcached.log", True)
 elif exp_type == 'checkpoint':
   boot_command = [

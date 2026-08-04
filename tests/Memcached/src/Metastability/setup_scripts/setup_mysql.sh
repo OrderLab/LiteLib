@@ -6,6 +6,7 @@ set -x
 NGINX_SERVER_IP=${1:-"%"}
 # DB_ENTRIES=${2:-"1504000"}
 DB_ENTRIES=${2:-"34600000"}
+MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-"hello@123"}
 
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2
@@ -16,17 +17,32 @@ apt install -y mysql-server mysql-client
 
 echo "bind-address = 0.0.0.0" >> /etc/mysql/mysql.conf.d/mysqld.cnf
 
-ufw allow 3306
+if command -v ufw >/dev/null 2>&1; then
+  ufw allow 3306
+fi
 service mysql restart
+
+cat > /root/.my.cnf <<EOF
+[client]
+user=root
+password=${MYSQL_ROOT_PASSWORD}
+EOF
+chmod 600 /root/.my.cnf
+
+# Route every mysql invocation in this script through the credentials file,
+# including legacy calls below that still spell out `-u root`.
+mysql() {
+  command mysql --defaults-extra-file=/root/.my.cnf "$@"
+}
 
 # adding webserver IP
 cp add_user.sql.template add_user.sql
 sed -i "s/remote_server_ip/$NGINX_SERVER_IP/" add_user.sql
-mysql -u root < add_user.sql
+mysql < add_user.sql
 
 cp init_database.sql.template init_database.sql
 sed -i "s/remote_server_ip/$NGINX_SERVER_IP/" init_database.sql
-mysql -u root < init_database.sql
+mysql < init_database.sql
 
 # touch new_user.sql
 # chmod 777 new_user.sql
@@ -51,6 +67,6 @@ done
 
 cp linearize_column_data.sql.template linearize_column_data.sql
 sed -i "/SET @a:=/c\SET @a:= $DB_ENTRIES;" linearize_column_data.sql
-mysql -u root -phello@123 < linearize_column_data.sql # takes about 1 hour
+mysql < linearize_column_data.sql # takes about 1 hour
 
 echo "Done executing setup_mysql.sh"

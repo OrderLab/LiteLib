@@ -9,11 +9,15 @@ MYSQL_SERVER_IP=${3:-"node2"}
 DB_ENTRIES=${4:-"1400000"}
 
 if [ "$(id -u)" -eq 0 ]; then
-  echo "This script should not be run as root. Please run as a regular user."
-  exit 1
+  SUDO=""
+else
+  SUDO="sudo"
 fi
 
-sudo apt -y install libjpeg8-dev zlib1g-dev mysql-client
+${SUDO} apt update
+${SUDO} apt -y install \
+  build-essential python3 python3-pip \
+  libjpeg8-dev zlib1g-dev mysql-client
 
 pip3 install matplotlib scipy pymemcache SciencePlots
 
@@ -31,9 +35,9 @@ sed -i "/memcached_host =/c\memcached_host = \'$MEMCACHED_SERVER_IP\'" ../LoadGe
 cp ../LoadGenerator/TraceFileGenerator.py.template ../LoadGenerator/TraceFileGenerator.py
 sed -i "/row_nums_in_db =/c\row_nums_in_db = $DB_ENTRIES" ../LoadGenerator/TraceFileGenerator.py
 
-mkdir ../LoadGenerator/traces
-mkdir ../LoadGenerator/result_stats
-mkdir ../LoadGenerator/experiment_plots
+mkdir -p ../LoadGenerator/traces
+mkdir -p ../LoadGenerator/result_stats
+mkdir -p ../LoadGenerator/experiment_plots
 cd ../LoadGenerator && make
 
 ssh-keyscan $NGINX_SERVER_IP  >> $HOME/.ssh/known_hosts

@@ -41,8 +41,10 @@ sed -i "s/MEMCACHED_SERVER_IP/$MEMCACHED_SERVER_IP/" ../NGINX\ Web\ Server/www/h
 # rm -r /var/www/html/*
 # mkdir -p /var/www/html/
 # cp -r ../NGINX\ Web\ Server/www/html/* /var/www/html/
-mv /usr/share/nginx/html /usr/share/nginx/html.bak
-ln -s "`pwd`/../NGINX Web Server/www/html" /usr/share/nginx/html
+if [ -d /usr/share/nginx/html ] && [ ! -L /usr/share/nginx/html ]; then
+  mv /usr/share/nginx/html /usr/share/nginx/html.bak
+fi
+ln -sfn "`pwd`/../NGINX Web Server/www/html" /usr/share/nginx/html
 
 # set execution time
 # set default execution time 1s
