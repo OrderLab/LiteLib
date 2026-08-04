@@ -84,6 +84,10 @@ def periodic_checkpoint(interval, end_time):
         i += 1
         time.sleep(interval - (time.monotonic() - first_checkpoint_time) % interval)
 
+def precrash_checkpoint(delay):
+  sleep_for(delay)
+  checkpoint_dump(1)
+
 crash_time = int(sys.argv[1:][0])
 duration = int(sys.argv[1:][1])
 exp_type = sys.argv[1:][2]
@@ -99,14 +103,16 @@ checkpoint_thread = None
 if exp_type == 'checkpoint':
   os.system(r'sudo rm -rf /tmp/checkpoint-data')
   os.system(r'sudo mkdir -p /tmp/checkpoint-data')
-  target_checkpoint_time = crash_time - CHECKPOINT_INTERVAL / 2 - 8
-  checkpoint_start_time = target_checkpoint_time - target_checkpoint_time // CHECKPOINT_INTERVAL * CHECKPOINT_INTERVAL
+  # The periodic implementation could begin another expensive CRIU dump just
+  # before the crash. Restore then waited for and used that nearly-current
+  # image, hiding stale-data behavior. Create the final pre-crash checkpoint
+  # once, early enough to finish before failure.
+  checkpoint_start_time = max(0, crash_time - CHECKPOINT_INTERVAL - 8)
   print(f"Checkpoint start time: {checkpoint_start_time}")
   checkpoint_thread = threading.Thread(
-      target=periodic_checkpoint,
-      args=(CHECKPOINT_INTERVAL, duration + time.time()),
+      target=precrash_checkpoint,
+      args=(checkpoint_start_time,),
   )
-  sleep_for(checkpoint_start_time - time.time())
   checkpoint_thread.start()
 
 time.sleep(crash_time)
