@@ -13,12 +13,26 @@ if [ "$(id -u)" != "0" ]; then
   exit 1
 fi
 
-add-apt-repository ppa:ondrej/php -y
-apt -y install php7.2-cli php7.2-fpm php7.2-curl php7.2-gd php7.2-mysql php7.2-mbstring zip unzip php7.2-memcached
+if ! command -v php-fpm7.2 >/dev/null ||
+   ! command -v nginx >/dev/null ||
+   ! php -m | grep -q memcached ||
+   ! php -m | grep -q mysqli; then
+  apt-get update
+  apt-get install -y software-properties-common
+  add-apt-repository ppa:ondrej/php -y
+  apt-get update
+  apt-get install -y \
+    php7.2-cli php7.2-fpm php7.2-curl php7.2-gd php7.2-mysql \
+    php7.2-mbstring zip unzip php7.2-memcached nginx
+fi
 
-apt -y install nginx
-cp /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bak
-cp ../config_files/default.new /etc/nginx/sites-available/default
+if [ -d /etc/nginx/sites-available ]; then
+  cp /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bak
+  cp ../config_files/default.new /etc/nginx/sites-available/default
+else
+  cp /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.bak
+  cp ../config_files/default.new /etc/nginx/conf.d/default.conf
+fi
 # cp ../config_files/default /etc/nginx/conf.d/default.conf
 
 # curl -sSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb
