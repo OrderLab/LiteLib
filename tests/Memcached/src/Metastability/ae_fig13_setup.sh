@@ -80,7 +80,7 @@ archive_mysql() {
   rm -f "${tmp}"
   fig13_info "stopping MySQL container for a consistent one-time database archive"
   fig13_docker stop mysql >/dev/null
-  if ! sudo -n tar --zstd -C "${source}" -cf "${tmp}" .; then
+  if ! sudo -n tar -I 'zstd -T0 -3' -C "${source}" -cf "${tmp}" .; then
     fig13_docker start mysql >/dev/null || true
     rm -f "${tmp}"
     return 1
@@ -112,7 +112,7 @@ restore_mysql_archive() {
   # This is a dedicated, explicitly resolved Docker volume mount -- never a
   # repository or broad filesystem directory.
   sudo -n find "${source}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
-  sudo -n tar --zstd -C "${source}" -xf "${DB_ARCHIVE}"
+  sudo -n tar -I 'zstd -T0' -C "${source}" -xf "${DB_ARCHIVE}"
   fig13_docker start mysql >/dev/null
   fig13_docker exec mysql test -f /var/lib/mysql/.litelib_ae_initialized ||
     fig13_die "restored database is missing its initialization marker"
