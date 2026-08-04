@@ -17,6 +17,7 @@ OUT=${FIG13_OUTPUT_DIR:-${FIG13_RESULTS_DIR}/${RUN_ID}}
 DB_ENTRIES=${FIG13_DB_ENTRIES:-1400000}
 DB_ARCHIVE=${FIG13_DB_ARCHIVE:-${FIG13_RESULTS_DIR}/database/mysql-${DB_ENTRIES}-rows.tar.zst}
 TYPES=${FIG13_TYPES:-"full lite checkpoint"}
+READ_WRITE_RATIO=${FIG13_RW_RATIO:-0.20}
 mkdir -p "${OUT}"
 
 preflight_database() {
@@ -59,7 +60,8 @@ run_arm() {
   fig13_info "[${type}] running 300-second experiment"
   fig13_docker exec client bash -lc \
     "cd /workspace/LoadGenerator &&
-     python3 run_experiment.py 400 0 300 1.00001 256 60 False 1 0.05 '${type}'"
+     python3 run_experiment.py 400 0 300 1.00001 256 60 False 1 \
+       '${READ_WRITE_RATIO}' '${type}'"
 
   local newest
   newest=$(find "${FIG13_DIR}/LoadGenerator/result_stats" \

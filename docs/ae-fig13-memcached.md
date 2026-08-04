@@ -55,7 +55,6 @@ The evaluator scripts use the paper settings directly:
 | Zipf α | 1.00001 |
 | Threads | 256 |
 | Crash offset | 60 s (observed crash at 57 s) |
-| Read/write ratio | 0.05 |
 | Checkpoint interval | 30 s |
 | Lite cache entries | 256K |
 
