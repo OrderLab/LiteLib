@@ -4,7 +4,7 @@ import os
 
 exp_type = sys.argv[1:][0]
 
-if exp_type != 'full' and exp_type != 'lite':
+if exp_type not in ('full', 'lite', 'checkpoint'):
     print('Invalid experiment type')
     exit(1)
 

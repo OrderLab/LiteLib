@@ -15,6 +15,7 @@ source "${SCRIPT_DIR}/ae_fig13_common.sh"
 RUN_ID=$(fig13_run_id)
 OUT=${FIG13_OUTPUT_DIR:-${FIG13_RESULTS_DIR}/${RUN_ID}}
 DB_ARCHIVE=${FIG13_DB_ARCHIVE:-${FIG13_RESULTS_DIR}/database/mysql-34600000-rows.tar.zst}
+TYPES=${FIG13_TYPES:-"full lite checkpoint"}
 mkdir -p "${OUT}"
 
 preflight_database() {
@@ -70,7 +71,7 @@ run_arm() {
 
 main() {
   preflight_database
-  for type in full lite checkpoint; do
+  for type in ${TYPES}; do
     run_arm "$type"
   done
   fig13_ok "all arms complete"

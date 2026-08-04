@@ -38,6 +38,7 @@ sed -i "/row_nums_in_db =/c\row_nums_in_db = $DB_ENTRIES" ../LoadGenerator/Trace
 mkdir -p ../LoadGenerator/traces
 mkdir -p ../LoadGenerator/result_stats
 mkdir -p ../LoadGenerator/experiment_plots
+mkdir -p ../LoadGenerator/result_plot
 cd ../LoadGenerator && make
 
 ssh-keyscan $NGINX_SERVER_IP  >> $HOME/.ssh/known_hosts
