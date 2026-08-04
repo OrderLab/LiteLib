@@ -156,7 +156,7 @@ setup_memcached() {
   fig13_docker exec memcached bash -lc \
     'cd /workspace/setup_scripts;
      cp ../Memcached_codes/warm_up_cache.py.template ../Memcached_codes/warm_up_cache.py;
-     sed -i "/warm_up_size =/c\warm_up_size = 140000" ../Memcached_codes/warm_up_cache.py;
+     sed -i "/warm_up_size =/c\warm_up_size = 1400000" ../Memcached_codes/warm_up_cache.py;
      sed -i "s/node1:11211/127.0.0.1:11211/" ../Memcached_codes/warm_up_cache.py;
      ln -sfn /workspace/Memcached_codes/warm_up_cache.py /root/warm_up_cache.py;
      ln -sfn /workspace/Memcached_codes/crash.py /root/crash.py;

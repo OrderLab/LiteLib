@@ -4,7 +4,7 @@ set -e
 set -x
 
 NUM_JOBS=${1:-"40"}
-WARM_UP_SIZE=${2:-"140000"}
+WARM_UP_SIZE=${2:-"1400000"}
 
 if [ "$(id -u)" -eq 0 ]; then
   SUDO=""
