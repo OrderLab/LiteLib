@@ -171,11 +171,10 @@ setup_web() {
 }
 
 setup_client() {
-  if fig13_docker exec client test -x /workspace/LoadGenerator/TraceReplay 2>/dev/null; then
-    fig13_ok "load generator already built"
-    return
-  fi
-  fig13_info "building load generator"
+  # Always regenerate run_experiment.py and the trace sources from their
+  # templates. The binary build is incremental, while skipping this stage
+  # would leave an older generated script after an AE branch update.
+  fig13_info "refreshing and building load generator"
   fig13_docker exec client bash -lc \
     "cd /workspace/setup_scripts &&
      ./setup_client.sh web memcached mysql '${DB_ENTRIES}'"
