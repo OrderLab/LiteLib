@@ -6,17 +6,15 @@
 # the LiteLib arm degrades exactly like the vanilla one, because nothing ever
 # takes over from the memcached instance being killed.
 #
-# The binary lives in the *embedded* LiteMemcached build tree
-# (lite-version-ascii-embedded), which is what the DeathStar experiment builds;
-# the non-embedded lite-version-ascii tree is not built here.
+# Figures 1/2 use the separate, non-embedded LiteMemcached process.
 
 set -x
 
 LITE_ROOT=${LITE_ROOT:-/workspace/tests/Memcached/src}
 LITE_CLI=""
 for candidate in \
-  "${LITE_ROOT}/lite-version-ascii-embedded/build/Lite/lite_cli" \
-  "${LITE_ROOT}/lite-version-ascii/build/Lite/lite_cli"; do
+  "${LITE_ROOT}/lite-version-ascii/build/Lite/lite_cli" \
+  "${LITE_ROOT}/lite-version-ascii-embedded/build/Lite/lite_cli"; do
   if [ -x "${candidate}" ]; then
     LITE_CLI=${candidate}
     break

@@ -9,7 +9,7 @@
 # Stages:
 #   deps     install Docker + wrk2 build deps on every node
 #   sync     put this branch's checkout at the same path on every node
-#   build    build vanilla memcached, patch it, build LiteMemcached and wrk2
+#   build    build pristine memcached, non-embedded LiteMemcached and wrk2
 #   images   build the Docker images (lite-memcached, mcrouter, social network)
 #   swarm    initialise the Docker Swarm across the four nodes
 #   deploy   deploy the socialnetwork stack
@@ -135,6 +135,7 @@ stage_sync() {
       --exclude 'logs' --exclude '.venv' \
       --exclude 'build/' \
       --exclude 'tests/Memcached/src/memcached/' \
+      --exclude 'tests/Memcached/src/memcached-vanilla-src/' \
       --exclude 'tests/Memcached/src/memcached-vanilla' \
       --exclude 'tests/Memcached/src/memcached-*.tar.gz' \
       --exclude 'tests/DeathStar/src/wrk2/wrk' \
@@ -148,70 +149,52 @@ stage_sync() {
 }
 
 # ---------------------------------------------------------------------------
-# build -- memcached (vanilla + patched), LiteMemcached, wrk2
+# build -- vanilla memcached, non-embedded LiteMemcached, wrk2
 # ---------------------------------------------------------------------------
 
-# The embedded LiteMemcached build has to happen first: the patched memcached
-# links against libembedded_lite_memcached.so from its build directory.
+# Figures 1/2 use the separate proxy/cache process in lite-version-ascii.  The
+# embedded variant and memcached.1.6.14.patch belong to a different experiment
+# path and must not be used here.
 build_litememcached() {
-  ae_info "building LiteMemcached (lite-version-ascii-embedded)"
+  ae_info "building non-embedded LiteMemcached (lite-version-ascii)"
   ae_rsh node3 "
     set -e
-    cd '${MEMCACHED_SRC}/lite-version-ascii-embedded'
+    cd '${MEMCACHED_SRC}/lite-version-ascii'
     mkdir -p build && cd build
     cmake -DCMAKE_BUILD_TYPE=Release .. >/dev/null
     make -j${NUM_JOBS}
-    ls -l LiteMemcached libembedded_lite_memcached.so
+    ls -l LiteMemcached Lite/lite_cli
   "
 }
 
-# Vanilla memcached first, then the LiteLib patch on top.  The unpatched binary
-# is kept because the 'vanilla' arm of the experiment runs it as-is; the patch
-# turns the same tree into the embedded LiteLib build.
+# Both arms use the exact same pristine memcached 1.6.14 binary.  In the
+# LiteLib arm it listens on /tmp/memcached.sock behind LiteMemcached; in the
+# vanilla arm it listens directly on the public memcached port.  Only this
+# full memcached process is put in the CPU cgroup.
 build_memcached() {
-  ae_info "building memcached ${MEMCACHED_VERSION} (vanilla, then patched)"
+  ae_info "building pristine memcached ${MEMCACHED_VERSION}"
   ae_rsh node3 "
     set -e
     cd '${MEMCACHED_SRC}'
 
-    # 1. fetch and unpack the pristine release
-    if [ ! -d memcached/.pristine ]; then
-      rm -rf memcached
-      mkdir -p memcached
-      cd '${MEMCACHED_SRC}'
+    if [ ! -d memcached-vanilla-src/.pristine ]; then
+      rm -rf memcached-vanilla-src
+      mkdir -p memcached-vanilla-src
       [ -f '${MEMCACHED_TARBALL}' ] || wget -q '${MEMCACHED_URL}'
-      tar -xzf '${MEMCACHED_TARBALL}' --strip-components=1 -C memcached
-      touch memcached/.pristine
+      tar -xzf '${MEMCACHED_TARBALL}' --strip-components=1 \
+        -C memcached-vanilla-src
+      touch memcached-vanilla-src/.pristine
     fi
 
-    cd '${MEMCACHED_SRC}/memcached'
-
-    # 2. build the *unpatched* binary and keep a copy.  The vanilla arm of the
-    #    experiment uses the distro memcached, but having this proves the tree
-    #    builds cleanly before the patch is applied.
-    if [ ! -f ../memcached-vanilla ]; then
+    if [ ! -x memcached-vanilla ]; then
+      cd memcached-vanilla-src
       ./configure --quiet >/dev/null
       make -j${NUM_JOBS} memcached >/dev/null
       cp memcached ../memcached-vanilla
-      make distclean >/dev/null 2>&1 || true
     fi
 
-    # 3. apply the LiteLib patch (idempotent)
-    if [ ! -f .litesys-patched ]; then
-      patch -p1 --forward < '${MEMCACHED_SRC}/memcached.1.6.14.patch'
-      touch .litesys-patched
-    fi
-
-    # 4. the patch adds vendor/LiteSys symlinks into the LiteMemcached build
-    mkdir -p vendor/LiteSys
-    ln -sfn '${MEMCACHED_SRC}/lite-version-ascii-embedded/build' vendor/LiteSys/build
-    ln -sfn '${MEMCACHED_SRC}/lite-version-ascii-embedded/Lite/include/embedded_lite.h' vendor/LiteSys/embedded_lite.h
-
-    # 5. build the patched (LiteLib-enabled) memcached
-    ./autogen.sh >/dev/null 2>&1 || autoreconf -i >/dev/null 2>&1 || true
-    ./configure --quiet >/dev/null
-    make -j${NUM_JOBS} memcached
-    ls -l memcached ../memcached-vanilla
+    ls -l '${MEMCACHED_SRC}/memcached-vanilla'
+    '${MEMCACHED_SRC}/memcached-vanilla' -h | head -1
   "
 }
 

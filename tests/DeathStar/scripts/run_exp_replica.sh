@@ -28,9 +28,76 @@ WARMUP_RATE=${WARMUP_RATE:-3000}
 WORKLOAD_RATE=${WORKLOAD_RATE:-2500}
 WORKLOAD_CONNS=${WORKLOAD_CONNS:-512}
 WORKLOAD_THREADS=${WORKLOAD_THREADS:-80}
+LITE_THREADS=${LITE_THREADS:-8}
+LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-20480}
 DeathStarDir=$(cd "$(dirname "$0")/.." && pwd)
 
+function wait_for_memcached_path() {
+    local deadline=$((SECONDS + 180))
+    local stable=0
+
+    echo "Waiting for both Memcached backends and Mcrouter to become stable..."
+    while [ "$SECONDS" -lt "$deadline" ]; do
+        local cid
+        cid=$(docker ps -q \
+          --filter label=com.docker.swarm.service.name=socialnetwork_post-storage-memcached |
+          head -1)
+
+        if [ -n "$cid" ] &&
+           docker exec post-storage-memcached-1 \
+             pgrep -f '(^|/)(memcached|memcached-vanilla)( |$)' >/dev/null 2>&1 &&
+           docker exec post-storage-memcached-2 \
+             pgrep -f '(^|/)(memcached|memcached-vanilla)( |$)' >/dev/null 2>&1; then
+            local failover
+            failover=$(
+              docker exec "$cid" \
+                cat /var/mcrouter/stats/libmcrouter.mcrouter.11211.stats \
+                2>/dev/null |
+              python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    print(float(d.get("libmcrouter.mcrouter.11211.failover_all", -1)))
+except Exception:
+    print(-1)
+'
+            )
+            if [ "$failover" = "0.0" ]; then
+                stable=$((stable + 1))
+                if [ "$stable" -ge 5 ]; then
+                    echo "Memcached/Mcrouter path stable (failover_all=0 for 10s)."
+                    return 0
+                fi
+            else
+                stable=0
+            fi
+        else
+            stable=0
+        fi
+        sleep 2
+    done
+
+    echo "ERROR: Memcached/Mcrouter path did not stabilize within 180s" >&2
+    return 1
+}
+
+function reset_cache_state() {
+    echo "Resetting both post-storage Memcached caches to an empty state..."
+    for id in 1 2; do
+        docker exec "post-storage-memcached-$id" \
+          /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/stop-all.sh ||
+          return 1
+        docker exec "post-storage-memcached-$id" sh -c \
+          'test ! -e /tmp/memcached.sock &&
+           test ! -e /tmp/lite_memcached &&
+           test ! -e /dev/shm/lite_shared_memory' ||
+          return 1
+    done
+    echo "Both target caches are empty; the 60s warm-up will repopulate them."
+}
+
 function start_memcached() {
+    reset_cache_state || return 1
     ssh node0 "docker exec post-storage-mongodb cgcreate -g cpu:/deathstar_cpulimited"
     docker exec post-storage-memcached-1 cgcreate -g cpu:/deathstar_cpulimited_1
     docker exec post-storage-memcached-1 cgset -r cpu.max="$MEMCACHED_CPU_MAX" deathstar_cpulimited_1
@@ -40,12 +107,21 @@ function start_memcached() {
         docker exec post-storage-memcached-1 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 1 $LOG_PREFIX
         docker exec post-storage-memcached-2 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 2 $LOG_PREFIX
     elif [ "$TYPE" == "litesys" ]; then
-        docker exec post-storage-memcached-1 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-litesys-with-cgroup.sh 1 none
+        docker exec \
+          -e LITE_THREADS="$LITE_THREADS" \
+          -e LITE_CACHE_ITEMS="$LITE_CACHE_ITEMS" \
+          post-storage-memcached-1 \
+          /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-litesys-with-cgroup.sh 1 none
         sleep 3 # restart LiteSys again to prevent some port/shm reuse issues
-        docker exec post-storage-memcached-1 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-litesys-with-cgroup.sh 1 $LOG_PREFIX
+        docker exec \
+          -e LITE_THREADS="$LITE_THREADS" \
+          -e LITE_CACHE_ITEMS="$LITE_CACHE_ITEMS" \
+          post-storage-memcached-1 \
+          /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-litesys-with-cgroup.sh 1 $LOG_PREFIX
         docker exec post-storage-memcached-2 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 2 $LOG_PREFIX
     fi
     ssh node1 "docker service update --force socialnetwork_post-storage-memcached"
+    wait_for_memcached_path
 }
 
 # 200MB for memcached
@@ -59,7 +135,16 @@ function crash_memcached() {
         return 0
     fi
     sleep $CRASH
-    docker exec post-storage-memcached-1 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/crash.sh
+    if [ "$TYPE" == "litesys" ]; then
+        # Switch LiteMemcached to emergency mode before killing its full
+        # memcached backend.
+        docker exec post-storage-memcached-1 \
+          /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/crash.sh
+    else
+        # Vanilla has no LiteMemcached handover; just kill the replica.
+        docker exec post-storage-memcached-1 sh -c \
+          "pgrep -f '(^|/)(memcached|memcached-vanilla)( |$)' | xargs -r kill -15"
+    fi
 }
 
 function logging() {
@@ -123,15 +208,35 @@ function restore_load_shedding() {
 }
 
 # Run the experiment
-start_memcached
-warmup_memcached
+start_memcached || exit 1
+warmup_memcached || exit 1
 sleep 5
-crash_memcached &
-mcrouter_readonly &
-post_storage_service_readonly &
-load_shedding &
+crash_memcached & crash_pid=$!
+mcrouter_readonly & mcrouter_pid=$!
+post_storage_service_readonly & service_pid=$!
+load_shedding & shedding_pid=$!
 logging &
+logging_pid=$!
 run_workload
+workload_rc=$?
+
+# A failed LiteMemcached handover used to be invisible because crash.sh ran in
+# the background and its status was never checked.  Do not accept such a run.
+wait "$crash_pid"; crash_rc=$?
+wait "$mcrouter_pid"; mcrouter_rc=$?
+wait "$service_pid"; service_rc=$?
+wait "$shedding_pid"; shedding_rc=$?
+wait "$logging_pid"; logging_rc=$?
+
 restore_mcrouter
 restore_post_storage_service
 restore_load_shedding
+
+if [ "$workload_rc" -ne 0 ] || [ "$crash_rc" -ne 0 ] ||
+   [ "$mcrouter_rc" -ne 0 ] || [ "$service_rc" -ne 0 ] ||
+   [ "$shedding_rc" -ne 0 ] || [ "$logging_rc" -ne 0 ]; then
+    echo "ERROR: experiment component failed:" >&2
+    echo "  workload=$workload_rc crash=$crash_rc mcrouter=$mcrouter_rc" >&2
+    echo "  service=$service_rc shedding=$shedding_rc logging=$logging_rc" >&2
+    exit 1
+fi

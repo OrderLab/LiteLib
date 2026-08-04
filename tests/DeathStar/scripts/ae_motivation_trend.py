@@ -107,13 +107,22 @@ def main():
     print("\n  --- expected trend ---")
     ok = True
 
-    # Vanilla: latency should keep climbing after the failure.
+    # Vanilla: latency should keep climbing after the failure.  Require a
+    # sustained trend (at least two of the three adjacent windows increase),
+    # not one spike followed by recovery.
     if len(vanilla["windows"]) >= 2:
-        first, last = vanilla["windows"][0][2], vanilla["windows"][-1][2]
-        climbing = last > first * GROWTH_FACTOR
+        means = [w[2] for w in vanilla["windows"]]
+        first, last = means[0], means[-1]
+        increases = sum(b > a * 1.10 for a, b in zip(means, means[1:]))
+        climbing = (
+            last > first * GROWTH_FACTOR
+            and last > vanilla["pre"] * 5
+            and increases >= 2
+        )
         print(
             f"    vanilla keeps degrading: {first:.0f} -> {last:.0f} ms "
-            f"({last / first:.1f}x)  {'OK' if climbing else 'NOT SEEN'}"
+            f"({last / first:.1f}x, {increases}/3 rising windows)  "
+            f"{'OK' if climbing else 'NOT SEEN'}"
         )
         ok &= climbing
     else:
@@ -121,11 +130,13 @@ def main():
         ok = False
 
     # LiteLib: latency should come back down close to its pre-failure level.
-    recovered = litesys["final"] <= litesys["pre"] * RECOVERY_FACTOR
+    litesys_tail = litesys["windows"][-1][2]
+    recovered = litesys_tail <= litesys["pre"] * RECOVERY_FACTOR
     print(
-        f"    litesys recovers:        final {litesys['final']:.0f} ms vs "
+        f"    litesys recovers:        final window {litesys_tail:.0f} ms vs "
         f"pre-failure {litesys['pre']:.0f} ms  "
-        f"({litesys['final'] / litesys['pre']:.1f}x)  {'OK' if recovered else 'NOT SEEN'}"
+        f"({litesys_tail / litesys['pre']:.1f}x)  "
+        f"{'OK' if recovered else 'NOT SEEN'}"
     )
     ok &= recovered
 

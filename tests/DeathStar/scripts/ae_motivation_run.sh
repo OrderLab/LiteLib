@@ -39,14 +39,22 @@ DRIVER_NODE=${AE_DRIVER_NODE:-node3}
 
 REPEATS=3
 ONLY=""
+TYPES=${AE_MOTIVATION_TYPES:-"litesys vanilla"}
+RESET_EVERY_RUN=${AE_RESET_EVERY_RUN:-1}
+INITIAL_COOLDOWN=${AE_INITIAL_COOLDOWN:-30}
+RUN_COOLDOWN=${AE_RUN_COOLDOWN:-0}
 # CPU budget per Memcached instance (cgroup v2 "quota period").  See
 # ae_motivation_calibrate.sh -- this sets the operating point of the experiment.
 MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"100000 100000"}
-WORKLOAD_RATE=${WORKLOAD_RATE:-2500}
+# Calibrated once by the authors for the reference CloudLab c220g5 setup.
+# Evaluators should use this fixed value rather than re-calibrating.
+WORKLOAD_RATE=${WORKLOAD_RATE:-6000}
 # Warm up at the same rate the measurement uses.  The warm-up determines what
 # ends up cached, so warming at a different rate than the run silently changes
 # the operating point -- and the calibration would no longer apply.
 WARMUP_RATE=${WARMUP_RATE:-}
+LITE_THREADS=${LITE_THREADS:-8}
+LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-20480}
 RUN_ID=$(ae_run_id)
 OUT_DIR=""
 
@@ -64,12 +72,35 @@ while [ $# -gt 0 ]; do
     ONLY=$2
     shift
     ;;
+  --types)
+    TYPES=$2
+    shift
+    ;;
+  --initial-cooldown)
+    INITIAL_COOLDOWN=$2
+    shift
+    ;;
+  --run-cooldown)
+    RUN_COOLDOWN=$2
+    shift
+    ;;
+  --reuse-state)
+    RESET_EVERY_RUN=0
+    ;;
   --cpu-max)
     MEMCACHED_CPU_MAX=$2
     shift
     ;;
   --rate)
     WORKLOAD_RATE=$2
+    shift
+    ;;
+  --lite-threads)
+    LITE_THREADS=$2
+    shift
+    ;;
+  --lite-cache-items)
+    LITE_CACHE_ITEMS=$2
     shift
     ;;
   -h | --help)
@@ -87,14 +118,23 @@ RUN_LOG="${OUT_DIR}/run.log"
 
 RUN_TOTAL=0
 RUN_FAILED=0
-MODES=(crash nocrash)
+# Both figures come from the crash runs: Figure 2's "before" values are the
+# t<20s segment of those same logs.  Separate no-crash runs add no information.
+MODES=(crash)
 [ -n "${ONLY}" ] && MODES=("${ONLY}")
 
 ae_info "driver node: ${DRIVER_NODE}"
 ae_info "repeats:     ${REPEATS} per configuration"
 ae_info "modes:       ${MODES[*]}"
+ae_info "arms:        ${TYPES} (LiteLib first avoids inheriting vanilla backlog)"
+if [ "${RESET_EVERY_RUN}" -eq 1 ]; then
+  ae_info "state reset: full redeploy + database prefill before EVERY run"
+else
+  ae_warn "state reset disabled (--reuse-state): debugging only; results are not comparable"
+fi
 ae_info "memcached CPU budget: ${MEMCACHED_CPU_MAX} (quota period)"
 ae_info "offered load:         ${WORKLOAD_RATE} req/s (warm-up at the same rate)"
+ae_info "LiteMemcached:         ${LITE_THREADS} threads, ${LITE_CACHE_ITEMS} cache entries"
 ae_info "results:     ${OUT_DIR}"
 
 # ---------------------------------------------------------------------------
@@ -116,6 +156,23 @@ preflight() {
 # run_one <mode> <type> <iteration>
 run_one() {
   local mode=$1 type=$2 iter=$3
+
+  if [ "${RESET_EVERY_RUN}" -eq 1 ]; then
+    ae_info "[${mode}] ${type} run ${iter}/${REPEATS}: resetting all service, database and cache state"
+    # The DeathStar databases are small enough to recreate for every
+    # repetition.  `deploy` removes/recreates every container (there are no
+    # persistent database volumes in this compose file); `prefill` restores the
+    # same social graph and post corpus.  start_memcached below then empties and
+    # warms the two target caches explicitly.
+    "${SCRIPT_DIR}/ae_motivation_setup.sh" deploy prefill ||
+      return 1
+  fi
+
+  if [ "${INITIAL_COOLDOWN}" -gt 0 ]; then
+    ae_info "waiting ${INITIAL_COOLDOWN}s after reset before warming the target caches"
+    sleep "${INITIAL_COOLDOWN}"
+  fi
+
   local prefix="${type}_$(date '+%Y%m%d_%H%M%S')"
   local no_crash=0
   [ "${mode}" = "nocrash" ] && no_crash=1
@@ -133,6 +190,7 @@ run_one() {
     cd '${DEATHSTAR_DIR}/scripts' &&
     LOG_PREFIX='${prefix}' NO_CRASH='${no_crash}' MEMCACHED_CPU_MAX='${MEMCACHED_CPU_MAX}' \
     WORKLOAD_RATE='${WORKLOAD_RATE}' WARMUP_RATE='${WARMUP_RATE:-${WORKLOAD_RATE}}' \
+    LITE_THREADS='${LITE_THREADS}' LITE_CACHE_ITEMS='${LITE_CACHE_ITEMS}' \
     ./run_exp_replica.sh ${type}
   " >"${OUT_DIR}/${mode}/${prefix}.log" 2>&1
   local rc=$?
@@ -153,8 +211,9 @@ run_one() {
     return 1
   fi
   ae_ok "collected ${n} component log(s) for ${prefix}"
-  # Let the cache and the services settle before the next run.
-  sleep 15
+  if [ "${RUN_COOLDOWN}" -gt 0 ]; then
+    sleep "${RUN_COOLDOWN}"
+  fi
 }
 
 main() {
@@ -162,8 +221,11 @@ main() {
 
   local mode type i rc=0
   for mode in "${MODES[@]}"; do
-    for i in $(seq 1 "${REPEATS}"); do
-      for type in vanilla litesys; do
+    # Run every LiteLib repetition before vanilla.  Vanilla is intentionally
+    # the arm that creates a prolonged cascade, so putting it first poisons the
+    # pre-failure baseline of the next LiteLib run.
+    for type in ${TYPES}; do
+      for i in $(seq 1 "${REPEATS}"); do
         RUN_TOTAL=$((RUN_TOTAL + 1))
         run_one "${mode}" "${type}" "${i}" || {
           RUN_FAILED=$((RUN_FAILED + 1))

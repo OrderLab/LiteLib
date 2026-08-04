@@ -13,6 +13,7 @@ window before and the window after the failure.
 """
 
 import argparse
+import copy
 import glob
 import json
 import os
@@ -125,11 +126,18 @@ def collect_stats(log_files, crash_point):
 def main():
     parser = argparse.ArgumentParser(description="Collect stats from mcrouter logs")
     parser.add_argument("--root", default=".", help="directory holding crash/ and nocrash/")
+    parser.add_argument(
+        "--separate-nocrash",
+        action="store_true",
+        help="use root/nocrash for the before baseline (archived-paper check only)",
+    )
     parser.add_argument("-o", "--output", help="output JSON file")
     args = parser.parse_args()
 
     all_results = {}
     for directory, crash_point in DEFAULT_CRASH_POINTS.items():
+        if directory == "nocrash" and not args.separate_nocrash:
+            continue
         path = os.path.join(args.root, directory)
         log_files = glob.glob(os.path.join(path, "*mcrouter*.log"))
         if not log_files:
@@ -143,6 +151,20 @@ def main():
     if not all_results:
         print("No mcrouter logs found", file=sys.stderr)
         sys.exit(1)
+
+    # Figure 2's "before" bars are the pre-failure (t < 20s) segment of the
+    # same crash runs.  The original analysis used a separate nocrash directory,
+    # but that is redundant and doubles experiment time.  Preserve the JSON
+    # shape expected by the paper's plotting script by aliasing the crash
+    # entries when no separate baseline was collected.  If nocrash/ exists
+    # (e.g. the archived paper data), it remains authoritative and the output
+    # is unchanged/bit-exact.
+    if "crash" in all_results and "nocrash" not in all_results:
+        all_results["nocrash"] = copy.deepcopy(all_results["crash"])
+        print(
+            "No separate nocrash logs: using each crash run's t<20s segment "
+            "as the Figure 2 baseline."
+        )
 
     if args.output:
         with open(args.output, "w") as f:

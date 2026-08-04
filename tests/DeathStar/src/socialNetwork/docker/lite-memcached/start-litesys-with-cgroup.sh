@@ -6,56 +6,67 @@ Dir=$(dirname $0)
 id=$1
 LOG_PREFIX=$2
 
-# Size of LiteMemcached's shared-memory segment, in BYTES.
+# Figure 1/2 use the original, non-embedded architecture:
 #
-# Despite the "-s, --size  Max number of items in cache" help text, this value
-# is used directly as the size of the boost::interprocess managed segment.  The
-# old hard-coded 20480 therefore asked for a 20 KB segment, which aborts at
-# start-up with "exception: boost::interprocess::bad_alloc" -- and because the
-# failure is silent from the experiment's point of view, the LiteLib arm then
-# degrades exactly like the vanilla one.
+#   client -> LiteMemcached -> vanilla memcached (Unix socket)
 #
-# Must fit inside the container's --shm-size (see swarm_helper_replica.sh).
-LITE_SHM_BYTES=${LITE_SHM_BYTES:-2147483648}
-
-# Worker threads for the full memcached replica in the LiteLib arm.
-#
-# The original value is 1, whereas start-vanilla-with-cgroup.sh gives the
-# vanilla instances 8.  Exposed as a knob because that asymmetry is worth
-# checking when the LiteLib arm shows a worse *pre-failure* baseline than the
-# vanilla arm it is compared against.  (Measured on our cluster: raising it to
-# 8 did not close the gap, so the asymmetry is not the explanation -- but the
-# knob makes that easy to re-check.)
-LITE_MEMCACHED_THREADS=${LITE_MEMCACHED_THREADS:-1}
+# LiteMemcached is deliberately outside the CPU cgroup.  Only the full
+# memcached process is constrained; after it fails, LiteMemcached must retain
+# the CPU needed to serve its compact cache.
+LITE_MEMCACHED=${LITE_MEMCACHED:-/workspace/tests/Memcached/src/lite-version-ascii/build/LiteMemcached}
+VANILLA_MEMCACHED=${VANILLA_MEMCACHED:-/workspace/tests/Memcached/src/memcached-vanilla}
+LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-20480}
+LITE_THREADS=${LITE_THREADS:-8}
+MEMCACHED_THREADS=${MEMCACHED_THREADS:-8}
 
 $Dir/stop-all.sh
 
+if [ ! -x "$LITE_MEMCACHED" ]; then
+  echo "ERROR: non-embedded LiteMemcached not found at $LITE_MEMCACHED" >&2
+  echo "       Run ae_motivation_setup.sh build first." >&2
+  exit 1
+fi
+if [ ! -x "$VANILLA_MEMCACHED" ]; then
+  echo "ERROR: vanilla memcached not found at $VANILLA_MEMCACHED" >&2
+  echo "       Run ae_motivation_setup.sh build first." >&2
+  exit 1
+fi
+
 if [ "$id" == "3" ]; then
-  if [ "$LOG_PREFIX" != "none" ]; then
-    GLOG_stderrthreshold=0 GLOG_logtostderr=1 /workspace/tests/Memcached/src/lite-version-ascii-embedded/build/LiteMemcached -t 8 -s ${LITE_SHM_BYTES} > $Dir/logs/$LOG_PREFIX.lite_memcached.log 2>&1 &
-
-    sleep 2
-
-    cgexec -g cpu:deathstar_cpulimited_1 memcached -m 16384 -t 8 -I 32m -c 4096 -u root -s /tmp/memcached.sock > $Dir/logs/$LOG_PREFIX.memcached.log 2>&1 &
-  else
-    GLOG_stderrthreshold=0 GLOG_logtostderr=1 /workspace/tests/Memcached/src/lite-version-ascii-embedded/build/LiteMemcached -t 8 -s ${LITE_SHM_BYTES} &
-
-    sleep 2
-
-    cgexec -g cpu:deathstar_cpulimited_1 memcached -m 16384 -t 8 -I 32m -c 4096 -u root -s /tmp/memcached.sock &
-  fi
+  LITE_LOG_SUFFIX=""
+  MEMCACHED_LOG_SUFFIX=""
+  CGROUP_ID=1
 else
-  if [ "$LOG_PREFIX" != "none" ]; then
-    GLOG_stderrthreshold=0 GLOG_logtostderr=1 LD_LIBRARY_PATH=/workspace/tests/Memcached/src/memcached/vendor/LiteSys/build:$LD_LIBRARY_PATH cgexec -g cpu:deathstar_cpulimited_$id /workspace/tests/Memcached/src/memcached/memcached -m 16384 -t ${LITE_MEMCACHED_THREADS} -I 32m -c 4096 -u root > $Dir/logs/$LOG_PREFIX.memcached.$id.log 2>&1 &
+  LITE_LOG_SUFFIX=".$id"
+  MEMCACHED_LOG_SUFFIX=".$id"
+  CGROUP_ID=$id
+fi
 
-    sleep 2
+if [ "$LOG_PREFIX" != "none" ]; then
+  GLOG_stderrthreshold=0 GLOG_logtostderr=1 \
+    "$LITE_MEMCACHED" -t "$LITE_THREADS" -s "$LITE_CACHE_ITEMS" \
+    > "$Dir/logs/$LOG_PREFIX.lite_memcached$LITE_LOG_SUFFIX.log" 2>&1 &
+else
+  GLOG_stderrthreshold=0 GLOG_logtostderr=1 \
+    "$LITE_MEMCACHED" -t "$LITE_THREADS" -s "$LITE_CACHE_ITEMS" &
+fi
 
-    GLOG_stderrthreshold=0 GLOG_logtostderr=1 /workspace/tests/Memcached/src/lite-version-ascii-embedded/build/LiteMemcached -t 8 -s ${LITE_SHM_BYTES} > $Dir/logs/$LOG_PREFIX.lite_memcached.$id.log 2>&1 &
-  else
-    GLOG_stderrthreshold=0 GLOG_logtostderr=1 LD_LIBRARY_PATH=/workspace/tests/Memcached/src/memcached/vendor/LiteSys/build:$LD_LIBRARY_PATH cgexec -g cpu:deathstar_cpulimited_$id /workspace/tests/Memcached/src/memcached/memcached -m 16384 -t ${LITE_MEMCACHED_THREADS} -I 32m -c 4096 -u root &
+sleep 2
 
-    sleep 2
+if ! pgrep -x LiteMemcached >/dev/null; then
+  echo "ERROR: LiteMemcached exited during startup" >&2
+  [ "$LOG_PREFIX" = "none" ] ||
+    tail -20 "$Dir/logs/$LOG_PREFIX.lite_memcached$LITE_LOG_SUFFIX.log" >&2
+  exit 1
+fi
 
-    GLOG_stderrthreshold=0 GLOG_logtostderr=1 /workspace/tests/Memcached/src/lite-version-ascii-embedded/build/LiteMemcached -t 8 -s ${LITE_SHM_BYTES} &
-  fi
+if [ "$LOG_PREFIX" != "none" ]; then
+  cgexec -g cpu:deathstar_cpulimited_$CGROUP_ID \
+    "$VANILLA_MEMCACHED" -m 16384 -t "$MEMCACHED_THREADS" -I 32m -c 4096 \
+    -u root -s /tmp/memcached.sock \
+    > "$Dir/logs/$LOG_PREFIX.memcached$MEMCACHED_LOG_SUFFIX.log" 2>&1 &
+else
+  cgexec -g cpu:deathstar_cpulimited_$CGROUP_ID \
+    "$VANILLA_MEMCACHED" -m 16384 -t "$MEMCACHED_THREADS" -I 32m -c 4096 \
+    -u root -s /tmp/memcached.sock &
 fi

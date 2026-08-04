@@ -66,24 +66,17 @@ for f in "${PLOT_LATENCY}" "${PLOT_ISOLATION}"; do
 done
 
 # ---------------------------------------------------------------------------
-# Pick the representative crash run for Figure 1
+# Pick representative crash runs for Figure 1
 # ---------------------------------------------------------------------------
-
-pick_client_log() {
-  # <dir> <prefix> -- newest client log for that configuration.  Client logs are
-  # "<type>_<timestamp>.log"; the per-component logs all carry an extra suffix
-  # (.mcrouter.log, .memcached.N.log, ...), which the character class excludes.
-  local dir=$1 prefix=$2
-  find "${dir}" -maxdepth 1 -name "${prefix}_[0-9]*.log" 2>/dev/null |
-    grep -E "/${prefix}_[0-9]{8}_[0-9]{6}\.log$" | sort | tail -1
-}
 
 CRASH_DIR="${RESULTS_DIR}/crash"
 NOCRASH_DIR="${RESULTS_DIR}/nocrash"
 [ -d "${CRASH_DIR}" ] || ae_die "expected ${CRASH_DIR} to exist"
 
-VANILLA_LOG=$(pick_client_log "${CRASH_DIR}" vanilla)
-LITESYS_LOG=$(pick_client_log "${CRASH_DIR}" litesys)
+selection=$(ae_python "${SCRIPT_DIR}/ae_motivation_select.py" "${CRASH_DIR}") ||
+  ae_die "could not select representative Figure 1 runs"
+VANILLA_LOG=$(echo "${selection}" | awk -F '\t' '$1=="vanilla"{print $2}')
+LITESYS_LOG=$(echo "${selection}" | awk -F '\t' '$1=="litesys"{print $2}')
 
 [ -n "${VANILLA_LOG}" ] || ae_die "no vanilla client log in ${CRASH_DIR}"
 [ -n "${LITESYS_LOG}" ] || ae_die "no litesys client log in ${CRASH_DIR}"
@@ -97,11 +90,20 @@ echo "    litesys: $(basename "${LITESYS_LOG}")"
 # ---------------------------------------------------------------------------
 
 FIG1="${AE_FIGURES_DIR}/deathstar_latency.pdf"
+SELECTED_DIR="${RESULTS_DIR}/selected"
+mkdir -p "${SELECTED_DIR}"
+VANILLA_PLOT_LOG="${SELECTED_DIR}/vanilla.log"
+LITESYS_PLOT_LOG="${SELECTED_DIR}/litesys.log"
+ae_python "${SCRIPT_DIR}/ae_motivation_sanitize.py" \
+  "${VANILLA_LOG}" "${VANILLA_PLOT_LOG}"
+ae_python "${SCRIPT_DIR}/ae_motivation_sanitize.py" \
+  "${LITESYS_LOG}" "${LITESYS_PLOT_LOG}"
 # Delete first: otherwise a failed run leaves the previous PDF in place and the
 # existence check below happily reports success on a stale figure.
 rm -f "${FIG1}"
 set -o pipefail
-ae_python "${PLOT_LATENCY}" -o "${FIG1}" "${VANILLA_LOG}" "${LITESYS_LOG}" 2>&1 |
+ae_python "${PLOT_LATENCY}" -o "${FIG1}" \
+  "${VANILLA_PLOT_LOG}" "${LITESYS_PLOT_LOG}" 2>&1 |
   grep -v 'UserWarning\|plt.tight_layout'
 plot_rc=$?
 set +o pipefail
@@ -116,8 +118,12 @@ ae_ok "Figure 1 -> ${FIG1}"
 # ---------------------------------------------------------------------------
 
 STATS="${RESULTS_DIR}/stats.json"
-if [ -n "$(find "${NOCRASH_DIR}" -name '*mcrouter*.log' 2>/dev/null | head -1)" ]; then
-  ae_python "${COLLECT}" --root "${RESULTS_DIR}" -o "${STATS}" >/dev/null ||
+if [ -n "$(find "${CRASH_DIR}" -name '*mcrouter*.log' 2>/dev/null | head -1)" ]; then
+  collect_args=(--root "${RESULTS_DIR}" -o "${STATS}")
+  if [ "${CHECK_MODE}" -eq 1 ]; then
+    collect_args+=(--separate-nocrash)
+  fi
+  ae_python "${COLLECT}" "${collect_args[@]}" >/dev/null ||
     ae_die "failed to collect mcrouter stats"
   FIG2="${AE_FIGURES_DIR}/deathstar_isolation.pdf"
   rm -f "${FIG2}"
@@ -129,7 +135,7 @@ if [ -n "$(find "${NOCRASH_DIR}" -name '*mcrouter*.log' 2>/dev/null | head -1)" 
     ae_ok "Figure 2 -> ${FIG2}"
   fi
 else
-  ae_warn "no ${NOCRASH_DIR}; skipping Figure 2 (it needs the no-crash baseline)"
+  ae_warn "no mcrouter logs in ${CRASH_DIR}; skipping Figure 2"
 fi
 
 # ---------------------------------------------------------------------------
