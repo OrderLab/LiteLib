@@ -17,7 +17,7 @@ switch is required.
 ```bash
 cd ~/LiteLib
 
-# One-time setup: ~5–6 hours. Most of this is the 34.6M-row MySQL load and
+# One-time setup: ~1–2 hours. Most of this is the 1.4M-row MySQL load and
 # linearization; its named Docker volume and archive are preserved afterwards.
 # Subsequent setup runs take ~5–15 min.
 ./scripts/ae_fig13_setup.sh
@@ -34,7 +34,7 @@ cd ~/LiteLib
 Before **every arm**, the runner restarts all four containers and clears every
 transient cache, trace, result, checkpoint and process. The sole exception is
 the MySQL database file in the named `mysql_data` Docker volume: initializing
-34.6M rows takes hours. `run_experiment.py` resets the mutable database column
+1.4M rows is the expensive one-time step. `run_experiment.py` resets the mutable database column
 before each arm, while the immutable initialized table is reused.
 
 Do not run `docker compose down -v`; `-v` deletes the initialized database.

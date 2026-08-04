@@ -11,7 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ae_fig13_common.sh
 source "${SCRIPT_DIR}/ae_fig13_common.sh"
 
-DB_ENTRIES=${FIG13_DB_ENTRIES:-34600000}
+DB_ENTRIES=${FIG13_DB_ENTRIES:-1400000}
 DB_ARCHIVE_DIR=${FIG13_DB_ARCHIVE_DIR:-${FIG13_RESULTS_DIR}/database}
 DB_ARCHIVE=${FIG13_DB_ARCHIVE:-${DB_ARCHIVE_DIR}/mysql-${DB_ENTRIES}-rows.tar.zst}
 STAGES=("$@")

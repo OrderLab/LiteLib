@@ -14,7 +14,8 @@ source "${SCRIPT_DIR}/ae_fig13_common.sh"
 
 RUN_ID=$(fig13_run_id)
 OUT=${FIG13_OUTPUT_DIR:-${FIG13_RESULTS_DIR}/${RUN_ID}}
-DB_ARCHIVE=${FIG13_DB_ARCHIVE:-${FIG13_RESULTS_DIR}/database/mysql-34600000-rows.tar.zst}
+DB_ENTRIES=${FIG13_DB_ENTRIES:-1400000}
+DB_ARCHIVE=${FIG13_DB_ARCHIVE:-${FIG13_RESULTS_DIR}/database/mysql-${DB_ENTRIES}-rows.tar.zst}
 TYPES=${FIG13_TYPES:-"full lite checkpoint"}
 mkdir -p "${OUT}"
 

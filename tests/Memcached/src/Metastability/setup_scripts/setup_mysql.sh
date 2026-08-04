@@ -4,8 +4,7 @@ set -e
 set -x
 
 NGINX_SERVER_IP=${1:-"%"}
-# DB_ENTRIES=${2:-"1504000"}
-DB_ENTRIES=${2:-"34600000"}
+DB_ENTRIES=${2:-"1400000"}
 MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-"hello@123"}
 
 if [ "$(id -u)" != "0" ]; then
