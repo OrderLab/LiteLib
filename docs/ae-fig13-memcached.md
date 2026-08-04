@@ -17,14 +17,15 @@ switch is required.
 ```bash
 cd ~/LiteLib
 
-# One-time setup. The first run builds a 34.6M-row MySQL database and takes
-# several hours; its named Docker volume is preserved afterwards.
+# One-time setup: ~5–6 hours. Most of this is the 34.6M-row MySQL load and
+# linearization; its named Docker volume and archive are preserved afterwards.
+# Subsequent setup runs take ~5–15 min.
 ./scripts/ae_fig13_setup.sh
 
-# Run full, LiteLib and checkpoint arms (about 15–20 min total).
+# Run full, LiteLib and checkpoint arms (~35–45 min total).
 ./scripts/ae_fig13_run.sh
 
-# Generate figures/memcached.pdf.
+# Generate figures/memcached.pdf (<1 min).
 ./scripts/ae_fig13_plot.sh
 ```
 
@@ -76,6 +77,7 @@ The archived raw data is an overlay: `v2` overrides the LiteLib run from `v1`;
 `full` and `checkpoint` remain from `v1` (`v1` itself overrides `v0`).
 
 ```bash
+# <1 min
 ./scripts/ae_fig13_plot.sh --check ~/OriginalRawData/Memcached
 ```
 
