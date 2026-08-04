@@ -81,6 +81,7 @@ cd $CURRENT_DIR
 
 cp ../Memcached_codes/warm_up_cache.py.template ../Memcached_codes/warm_up_cache.py
 sed -i "/warm_up_size =/c\warm_up_size = $WARM_UP_SIZE" ../Memcached_codes/warm_up_cache.py
+sed -i "s/node1:11211/127.0.0.1:11211/" ../Memcached_codes/warm_up_cache.py
 ln -sfn "`pwd`/../Memcached_codes/warm_up_cache.py" ~/warm_up_cache.py
 ln -sfn "`pwd`/../Memcached_codes/crash.py" ~/crash.py
 ln -sfn "`pwd`/../Memcached_codes/monitor.py" ~/monitor.py

@@ -151,6 +151,17 @@ setup_mysql() {
 }
 
 setup_memcached() {
+  # Generated helpers live on the bind mount and must be refreshed even when
+  # CRIU/LiteMemcached binaries are already built.
+  fig13_docker exec memcached bash -lc \
+    'cd /workspace/setup_scripts;
+     cp ../Memcached_codes/warm_up_cache.py.template ../Memcached_codes/warm_up_cache.py;
+     sed -i "/warm_up_size =/c\warm_up_size = 140000" ../Memcached_codes/warm_up_cache.py;
+     sed -i "s/node1:11211/127.0.0.1:11211/" ../Memcached_codes/warm_up_cache.py;
+     ln -sfn /workspace/Memcached_codes/warm_up_cache.py /root/warm_up_cache.py;
+     ln -sfn /workspace/Memcached_codes/crash.py /root/crash.py;
+     ln -sfn /workspace/Memcached_codes/monitor.py /root/monitor.py;
+     ln -sfn /workspace/Memcached_codes/init.py /root/init.py'
   if fig13_docker exec memcached test -x /root/LiteMemcached 2>/dev/null; then
     fig13_ok "Memcached/LiteMemcached environment already built"
     return
