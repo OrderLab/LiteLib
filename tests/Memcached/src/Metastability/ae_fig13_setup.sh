@@ -78,10 +78,10 @@ archive_mysql() {
   mkdir -p "${DB_ARCHIVE_DIR}"
   tmp="${DB_ARCHIVE}.tmp"
   rm -f "${tmp}"
-  fig13_info "stopping MySQL for a consistent one-time database archive"
-  fig13_docker exec mysql service mysql stop
+  fig13_info "stopping MySQL container for a consistent one-time database archive"
+  fig13_docker stop mysql >/dev/null
   if ! sudo -n tar --zstd -C "${source}" -cf "${tmp}" .; then
-    fig13_docker exec mysql service mysql start || true
+    fig13_docker start mysql >/dev/null || true
     rm -f "${tmp}"
     return 1
   fi
@@ -92,7 +92,7 @@ archive_mysql() {
     sha256sum "$(basename "${DB_ARCHIVE}")" \
       > "$(basename "${DB_ARCHIVE}").sha256"
   )
-  fig13_docker exec mysql service mysql start
+  fig13_docker start mysql >/dev/null
   verify_mysql_archive ||
     fig13_die "database archive checksum verification failed"
   fig13_ok "database archived before any experiment: ${DB_ARCHIVE}"
@@ -108,12 +108,12 @@ restore_mysql_archive() {
   esac
 
   fig13_info "restoring initialized database from ${DB_ARCHIVE}"
-  fig13_docker exec mysql service mysql stop || true
+  fig13_docker stop mysql >/dev/null || true
   # This is a dedicated, explicitly resolved Docker volume mount -- never a
   # repository or broad filesystem directory.
   sudo -n find "${source}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
   sudo -n tar --zstd -C "${source}" -xf "${DB_ARCHIVE}"
-  fig13_docker exec mysql service mysql start
+  fig13_docker start mysql >/dev/null
   fig13_docker exec mysql test -f /var/lib/mysql/.litelib_ae_initialized ||
     fig13_die "restored database is missing its initialization marker"
   fig13_ok "database restored from archive"
