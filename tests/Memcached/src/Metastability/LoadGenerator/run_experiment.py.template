@@ -102,14 +102,23 @@ except subprocess.CalledProcessError as e:
     pass
 
 mysql_host = 'node2'
-mysql_command = 'mysql -u root -phello@123 -e "use metastable_test_db; UPDATE large_test_table SET tcol07 = 1 WHERE id <= {};"'.format(row_nums_in_db)
+# Reset the mutable column in bounded autocommit batches. A single UPDATE over
+# all 34.6M rows exceeds InnoDB's lock table before the experiment even starts.
+batch_size = 100000
+updates = [
+    "UPDATE large_test_table SET tcol07 = 1 "
+    "WHERE id > {} AND id <= {}".format(start, min(start + batch_size, row_nums_in_db))
+    for start in range(0, row_nums_in_db, batch_size)
+]
+mysql_sql = "USE metastable_test_db;" + ";".join(updates) + ";"
+mysql_command = 'mysql -u root -phello@123 -e "{}"'.format(mysql_sql)
 try:
     cmd = f"ssh -t -o StrictHostKeyChecking=no {mysql_host} \'{mysql_command}\'"
     out = subprocess.check_output(cmd , shell= True)
     print(out)
 except subprocess.CalledProcessError as e:
     print("error when updating mysql")
-    pass
+    raise
 print("mysql database initialized")
 
 # step 2: generate a new trace, we want new traces even for same config (to reduce bias)  
