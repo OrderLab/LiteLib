@@ -59,7 +59,7 @@ os.system(f'cgset -r cpu.max="{FULL_CPU_MAX}" fig13_full_memcached')
 memcached_prefix = ["cgexec", "-g", "cpu:fig13_full_memcached"]
 
 if exp_type == 'lite':
-  boot_command = memcached_prefix + ["memcached", "-s", "/tmp/memcached.sock", "-d", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32"]
+  boot_command = memcached_prefix + ["memcached", "-s", "/tmp/memcached.sock", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32"]
   # boot_command = ["memcached", "-l", "0.0.0.0", "-p", "60000", "-d", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32"]
   StartBackgroundProcess(boot_command, "/tmp/memcached.log")
 
@@ -67,7 +67,7 @@ if exp_type == 'lite':
   boot_command = [path, '-t', '4', '-s', f"{LITE_SIZE}"]
   StartBackgroundProcess(boot_command, "/tmp/lite_memcached.log", env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"})
 elif exp_type == 'full' or exp_type == 'checkpoint':
-  boot_command = memcached_prefix + ["memcached", "-d", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32", "-l", "0.0.0.0"]
+  boot_command = memcached_prefix + ["memcached", "-d", "-u", "root", "--enable-shutdown", "-m", str(CACHE_MEM_SIZE), "-t", "32", "-l", "0.0.0.0"]
   StartBackgroundProcess(boot_command, "/tmp/memcached.log")
 else:
   print('Invalid experiment type')

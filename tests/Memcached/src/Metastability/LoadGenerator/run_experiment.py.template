@@ -90,7 +90,7 @@ try:
     print(out)
 except subprocess.CalledProcessError as e:
     print("error when start memcached")
-    pass
+    raise
 
 # step 1: warm up cache
 try:
@@ -99,7 +99,7 @@ try:
     print(out)
 except subprocess.CalledProcessError as e:
     print("error when warming up cache")
-    pass
+    raise
 
 mysql_host = 'node2'
 # Reset the mutable column in bounded autocommit batches. A single UPDATE over
@@ -149,7 +149,7 @@ try:
     print(out)
 except subprocess.CalledProcessError as e:
     print("error when trigger failure")
-    pass
+    raise
 
 # for _t in range(0,5):
 #     os.system(trigger_command) 
@@ -195,7 +195,7 @@ with open(stats_file_path) as file:
         # [0] -> compleitions [1]-> cache hit rate [2] -> error rate
         stats_data.append(data_tuple)
 
-prefix = "ARV_RATE_{}_ALPHA_{}_DUR_{}_RW_RATIO_{}_TRIGGER_{}_DATE_TIME_{}_TMOUT_{}_EXP_{}".format(_lambda, zipf_parameter, duration_of_test, read_write_ratio, trigger_time, today_date_time, timeout, exp_type)
+prefix = "ARV_RATE_{}_ALPHA_{}_DUR_{}_RW_RATIO_{}_TRIGGER_{}_DATE_TIME_{}_TMOUT_{}_EXP_{}".format(float(_lambda), zipf_parameter, duration_of_test, read_write_ratio, trigger_time, today_date_time, timeout, exp_type)
 plot_file_command = f"python3 ../Memcached_codes/plot.py {_lambda} {duration_of_test} {trigger_time} 1 {prefix}"
 print(plot_file_command)
 os.system(plot_file_command)
