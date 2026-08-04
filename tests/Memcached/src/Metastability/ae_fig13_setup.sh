@@ -161,11 +161,10 @@ setup_memcached() {
 }
 
 setup_web() {
-  if fig13_docker exec web test -x /usr/sbin/php-fpm7.2 2>/dev/null; then
-    fig13_ok "web environment already configured"
-    return
-  fi
-  fig13_info "configuring nginx/PHP web tier"
+  # Always refresh generated PHP/config/symlinks from the current branch. The
+  # base image already contains php-fpm, so checking only for the binary would
+  # incorrectly skip setup and serve the image's default landing page.
+  fig13_info "refreshing nginx/PHP web tier"
   fig13_docker exec web bash -lc \
     'cd /workspace/setup_scripts && ./setup_server.sh mysql memcached 20000'
 }
