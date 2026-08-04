@@ -101,7 +101,8 @@ void Warmup() {
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteFunction);
   versions = new std::atomic<double>[key_number];
   for (int i = 0; i < key_number; i++) {
-    versions[i] = 0;
+    // setup warms every key with tcol07/version 1 before measurement.
+    versions[i] = 1;
   }
 }
 
