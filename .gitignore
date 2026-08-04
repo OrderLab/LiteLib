@@ -4,3 +4,8 @@ build
 .idea
 cmake-build*
 logs/
+results/
+figures/
+.venv/
+__pycache__/
+.ae-worktrees/

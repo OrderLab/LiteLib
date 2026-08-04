@@ -10,7 +10,9 @@
 ## Artifact evaluation
 
 If you are evaluating this artifact for NSDI '27, start with
-**[docs/ae.md](docs/ae.md)**.
+**[docs/ae.md](docs/ae.md)**. The first paper experiment is
+**[Figures 1 & 2](docs/ae-fig1-2-motivation.md)**; its wrappers automatically
+handle the DeathStar experiment branch without requiring a branch switch.
 
 ## Set up the environment
 
