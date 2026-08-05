@@ -27,6 +27,7 @@ per-experiment guides linked from [Running the experiments](#-running-the-experi
 - [ ] Reproduced LevelDB's [Figures 15/16](./ae-leveldb-overhead.md)
 - [ ] Reproduced Redis's [Figures 15/16](./ae-redis-overhead.md)
 - [ ] Reproduced MySQL's [Figures 15/16](./ae-mysql-overhead.md)
+- [ ] Reproduced [Table 2](./ae-table2.md)
 
 ---
 
@@ -383,6 +384,16 @@ After completing the required memory experiments, regenerate Figure 14 with:
 ```bash
 ./scripts/ae_memory_overhead_plot.sh
 ```
+
+* **Table 2 (service gaps)** —
+  [service-gap guide](./ae-table2.md):
+
+  ```bash
+  ./scripts/ae_table2_setup.sh
+  ./scripts/ae_table2_run.sh
+  ./scripts/ae_table2_collect.sh
+  ./scripts/ae_table2_cleanup.sh
+  ```
 
 ---
 
