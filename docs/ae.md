@@ -24,6 +24,7 @@ per-experiment guides linked from [Running the experiments](#-running-the-experi
 - [ ] Reproduced Memcached's [Figures 14/15/16](./ae-fig14-16-memcached.md)
 - [ ] Reproduced LevelDB's [Figures 15/16](./ae-leveldb-overhead.md)
 - [ ] Reproduced Redis's [Figures 15/16](./ae-redis-overhead.md)
+- [ ] Reproduced MySQL's [Figures 15/16](./ae-mysql-overhead.md)
 
 ---
 
@@ -349,9 +350,18 @@ proxy, and datastore:
   ./scripts/ae_redis_overhead_plot.sh
   ./scripts/ae_redis_overhead_cleanup.sh
   ```
+* **MySQL in Figures 15/16** —
+  [overhead guide](./ae-mysql-overhead.md):
 
-After running the Memcached, LevelDB, and Redis overhead collectors, regenerate
-the combined Figures 15/16 with:
+  ```bash
+  ./scripts/ae_mysql_overhead_setup.sh
+  ./scripts/ae_mysql_overhead_run.sh
+  ./scripts/ae_mysql_overhead_plot.sh
+  ./scripts/ae_mysql_overhead_cleanup.sh
+  ```
+
+After running the overhead collectors, regenerate the combined Figures 15/16
+with:
 
 ```bash
 ./scripts/ae_overhead_plot.sh

@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--base-cpu", required=True)
     parser.add_argument("--leveldb")
     parser.add_argument("--redis")
+    parser.add_argument("--mysql")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
@@ -54,6 +55,23 @@ def main():
             "full": data["cpu"]["vanilla"],
             "embedded": data["cpu"]["embedded"],
             "replica": data["cpu"]["replica"],
+        }
+
+    if args.mysql:
+        data = load(args.mysql)
+        latency["MySQL"] = {
+            "full": data["latency"]["full"],
+            "proxy": data["latency"]["proxy"],
+            "replica": data["latency"]["replica"],
+            "ndb(client)": data["latency"]["ndb-client"],
+            "ndb(proxy)": data["latency"]["ndb-proxy"],
+        }
+        cpu["MySQL"] = {
+            "full": data["cpu"]["full"],
+            "proxy": data["cpu"]["proxy"],
+            "replica": data["cpu"]["replica"],
+            "ndb(client)": data["cpu"]["ndb-client"],
+            "ndb(proxy)": data["cpu"]["ndb-proxy"],
         }
 
     with open(latency_path, "w") as stream:

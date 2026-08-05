@@ -10,6 +10,7 @@ FIGURES="${ROOT}/figures"
 MEMCACHED="${ROOT}/results/memcached-overhead"
 LEVELDB="${ROOT}/results/leveldb-overhead/processed/leveldb.json"
 REDIS="${ROOT}/results/redis-overhead/processed/redis.json"
+MYSQL="${ROOT}/results/mysql-overhead/processed/mysql.json"
 
 base_latency="${MEMCACHED}/latency.json"
 base_cpu="${MEMCACHED}/cpu.json"
@@ -25,6 +26,7 @@ args=(
 )
 [ ! -s "${LEVELDB}" ] || args+=(--leveldb "${LEVELDB}")
 [ ! -s "${REDIS}" ] || args+=(--redis "${REDIS}")
+[ ! -s "${MYSQL}" ] || args+=(--mysql "${MYSQL}")
 
 mkdir -p "${OUT}" "${FIGURES}" "${ROOT}/logs"
 "${PYTHON}" "${ROOT}/scripts/ae_overhead_merge.py" "${args[@]}"
