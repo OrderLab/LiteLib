@@ -15,6 +15,8 @@ if [ ! -f "${ROOT}/tests/LevelDB/src/tests/redis-leveldb/Makefile" ]; then
   git -C "${ROOT}/tests/LevelDB/src/tests/redis-leveldb" checkout -q \
     403cc6eee547a13a4b49b79b30d52bedccc04c84
 fi
+git -C "${ROOT}/tests/LevelDB/src/tests/redis-leveldb" \
+  submodule update --init --recursive
 
 echo "==> Syncing pinned source to node0/node1"
 for node in node0 node1; do
