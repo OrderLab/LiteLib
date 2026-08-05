@@ -24,7 +24,7 @@ ae_prepare_overhead_worktree() {
       ae_overhead_die "managed overhead worktree has local changes"
     git -C "${AE_OVERHEAD_WORKTREE}" checkout -q --detach "${AE_OVERHEAD_COMMIT}"
   fi
-  echo "  [ OK ] Memcached overhead commit: $(git -C "${AE_OVERHEAD_WORKTREE}" rev-parse --short HEAD)"
+  echo "  [ OK ] Memcached overhead source ready"
   export LITELIB_MAIN_DIR="${AE_MAIN_DIR}"
   export LITELIB_WORKTREE_DIR="${AE_OVERHEAD_WORKTREE}"
 }

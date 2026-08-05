@@ -22,7 +22,7 @@ ae_prepare_redis() {
       ae_redis_die "managed Redis worktree has local changes"
     git -C "${AE_REDIS_WORKTREE}" checkout -q --detach "${AE_REDIS_COMMIT}"
   fi
-  echo "  [ OK ] Redis overhead commit: $(git -C "${AE_REDIS_WORKTREE}" rev-parse --short HEAD)"
+  echo "  [ OK ] Redis overhead source ready"
   export LITELIB_MAIN_DIR="${AE_MAIN_DIR}"
   export LITELIB_WORKTREE_DIR="${AE_REDIS_WORKTREE}"
 }

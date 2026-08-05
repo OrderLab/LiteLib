@@ -18,7 +18,7 @@ ae_prepare_leveldb(){
       ae_leveldb_die "managed LevelDB worktree has local changes"
     git -C "${AE_LEVELDB_WORKTREE}" checkout -q --detach "${AE_LEVELDB_COMMIT}"
   fi
-  echo "  [ OK ] LevelDB overhead commit: $(git -C "${AE_LEVELDB_WORKTREE}" rev-parse --short HEAD)"
+  echo "  [ OK ] LevelDB overhead source ready"
   export LITELIB_MAIN_DIR="${AE_MAIN_DIR}"
   export LITELIB_WORKTREE_DIR="${AE_LEVELDB_WORKTREE}"
 }

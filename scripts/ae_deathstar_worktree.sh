@@ -17,7 +17,7 @@ ae_deathstar_die() {
 }
 
 ae_prepare_deathstar_worktree() {
-  echo "==> Fetching pinned DeathStar commit ${AE_DEATHSTAR_COMMIT:0:8}"
+  echo "==> Preparing DeathStar source"
   git -C "${AE_MAIN_DIR}" fetch -q origin nsdi27-ae-deathstar ||
     ae_deathstar_die "could not fetch origin/nsdi27-ae-deathstar"
   git -C "${AE_MAIN_DIR}" cat-file -e "${AE_DEATHSTAR_COMMIT}^{commit}" ||
@@ -41,15 +41,13 @@ ae_prepare_deathstar_worktree() {
         "managed worktree has local changes: ${AE_DEATHSTAR_WORKTREE}
        Move/commit them, then re-run."
     fi
-    echo "==> Updating managed worktree to pinned commit"
+    echo "==> Updating DeathStar source"
     git -C "${AE_DEATHSTAR_WORKTREE}" checkout -q --detach \
       "${AE_DEATHSTAR_COMMIT}" ||
       ae_deathstar_die "could not update the DeathStar worktree"
   fi
 
-  local commit
-  commit=$(git -C "${AE_DEATHSTAR_WORKTREE}" rev-parse --short HEAD)
-  echo "  [ OK ] DeathStar experiment commit: ${commit}"
+  echo "  [ OK ] DeathStar source ready"
 
   export LITELIB_MAIN_DIR="${AE_MAIN_DIR}"
   export LITELIB_WORKTREE_DIR="${AE_DEATHSTAR_WORKTREE}"

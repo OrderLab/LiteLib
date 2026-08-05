@@ -8,7 +8,7 @@ AE_MEMCACHED_WORKTREE=${AE_MEMCACHED_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/memc
 ae_memcached_die() { echo "[FAIL] $*" >&2; exit 1; }
 
 ae_prepare_memcached_worktree() {
-  echo "==> Fetching pinned Memcached commit ${AE_MEMCACHED_COMMIT:0:8}"
+  echo "==> Preparing Memcached source"
   git -C "${AE_MAIN_DIR}" fetch -q origin nsdi27-ae-memcached ||
     ae_memcached_die "could not fetch origin/nsdi27-ae-memcached"
   git -C "${AE_MAIN_DIR}" cat-file -e "${AE_MEMCACHED_COMMIT}^{commit}" ||
@@ -29,7 +29,7 @@ ae_prepare_memcached_worktree() {
       "${AE_MEMCACHED_COMMIT}" ||
       ae_memcached_die "could not update Memcached worktree"
   fi
-  echo "  [ OK ] Memcached experiment commit: $(git -C "${AE_MEMCACHED_WORKTREE}" rev-parse --short HEAD)"
+  echo "  [ OK ] Memcached source ready"
   export LITELIB_MAIN_DIR="${AE_MAIN_DIR}"
   export LITELIB_WORKTREE_DIR="${AE_MEMCACHED_WORKTREE}"
 }
