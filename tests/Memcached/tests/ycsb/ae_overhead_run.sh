@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAIN=${LITELIB_MAIN_DIR:-${HOME}/LiteLib}
-REPEATS=${AE_REPEATS:-10}
+REPEATS=${AE_REPEATS:-3}
 OUT=${AE_OUTPUT_DIR:-${MAIN}/results/memcached-overhead/ycsb-$(date +%Y%m%d-%H%M%S)}
 mkdir -p "${OUT}"
 
