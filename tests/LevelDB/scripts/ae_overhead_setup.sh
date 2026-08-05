@@ -56,8 +56,13 @@ REMOTE_SCRIPT
 
 echo "==> Building Rust client on node1"
 ssh node1 "sudo -n apt-get update -qq &&
-  sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rust-all &&
+  sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl build-essential &&
+  if ! test -x \"\${HOME}/.cargo/bin/cargo\" ||
+     ! \"\${HOME}/.cargo/bin/rustc\" --version | grep -q '1.85.1'; then
+    curl -sSf https://sh.rustup.rs |
+      sh -s -- -y --profile minimal --default-toolchain 1.85.1
+  fi &&
   cd '${REMOTE}/tests/LevelDB/src/tests/client' &&
-  cargo build --release"
+  \"\${HOME}/.cargo/bin/cargo\" build --release"
 
 echo "  [ OK ] LevelDB overhead environment ready"
