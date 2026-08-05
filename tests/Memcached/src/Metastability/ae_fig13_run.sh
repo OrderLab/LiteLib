@@ -69,6 +69,11 @@ run_arm() {
     sort -nr | head -1 | cut -d' ' -f2-)
   [ -s "${newest}" ] || fig13_die "no result file produced for ${type}"
   cp "${newest}" "${OUT}/result_${type}.txt"
+  monitor=$(find "${FIG13_DIR}/LoadGenerator/result_stats" \
+    -name "monitor_*EXP_${type}.txt" -printf '%T@ %p\n' |
+    sort -nr | head -1 | cut -d' ' -f2-)
+  [ -s "${monitor}" ] || fig13_die "no monitor file produced for ${type}"
+  cp "${monitor}" "${OUT}/monitor_${type}.log"
   fig13_ok "${type} -> ${OUT}/result_${type}.txt"
 }
 
