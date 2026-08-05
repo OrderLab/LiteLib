@@ -178,7 +178,7 @@ setup_web() {
   # incorrectly skip setup and serve the image's default landing page.
   fig13_info "refreshing nginx/PHP web tier"
   fig13_docker exec web bash -lc \
-    'cd /workspace/setup_scripts && ./setup_server.sh mysql memcached 10000'
+    'cd /workspace/setup_scripts && ./setup_server.sh mysql memcached 2000'
 }
 
 setup_client() {

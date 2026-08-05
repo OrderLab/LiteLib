@@ -6,7 +6,7 @@ set -x
 # apt -y install software-properties-common
 DATABASE_SERVER_IP=${1:-"node2"}
 MEMCACHED_SERVER_IP=${2:-"node1"}
-DATABASE_QUERY_WEIGHT=${3:-"10000"}
+DATABASE_QUERY_WEIGHT=${3:-"2000"}
 
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2

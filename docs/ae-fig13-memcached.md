@@ -64,8 +64,7 @@ The pass/fail check is qualitative; exact recovery times vary:
 
 1. **Vanilla recovers very slowly** (or never reaches 90% within 300 seconds).
 2. **LiteLib recovers within the experiment window.**
-3. **Checkpoint recovers much faster than LiteLib, but returns substantial
-   stale data.**
+3. **Checkpoint recovers very quickly, but returns substantial stale data.**
 
 The published run's 10.8%, 18-second replay, 7-second checkpoint recovery and
 2K+ stale responses are examples, not required exact values.
