@@ -15,9 +15,6 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 # Find Boost with the components we need
 find_package(Boost 1.87.0 REQUIRED COMPONENTS system thread)
 
-# Manually add stacktrace paths
-set(BOOST_INCLUDE_DIRS "/users/toga/dependencies/boost/boost-1.87.0")
-set(BOOST_LIBRARY_DIRS "/users/toga/dependencies/boost/boost-1.87.0/stage/lib")
 find_package(Libevent REQUIRED)
 find_package (glog 0.4.0 REQUIRED)
 
