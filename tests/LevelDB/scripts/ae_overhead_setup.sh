@@ -55,7 +55,9 @@ test -x redis-leveldb -a -x redis-leveldb-vanilla
 REMOTE_SCRIPT
 
 echo "==> Building Rust client on node1"
-ssh node1 "cd '${REMOTE}/tests/LevelDB/src/tests/client' &&
+ssh node1 "sudo -n apt-get update -qq &&
+  sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rust-all &&
+  cd '${REMOTE}/tests/LevelDB/src/tests/client' &&
   cargo build --release"
 
 echo "  [ OK ] LevelDB overhead environment ready"
