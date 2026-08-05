@@ -1,0 +1,20 @@
+{
+  "Debug": false,
+  "ListenAddress": ":3000",
+  "InstancePollSeconds": 1,
+  "RecoveryPollSeconds": 1,
+  "RecoveryPeriodBlockSeconds": 30,
+  "BackendDB": "sqlite",
+  "SQLite3DataFile": "/var/lib/orchestrator/orchestrator.sqlite3",
+  "MySQLTopologyUser": "orchestrator",
+  "MySQLTopologyPassword": "ORC_PASS",
+  "AutoMasterRecovery": true,
+  "AutoIntermediateMasterRecovery": true,
+  "ApplyMySQLPromotionAfterMasterFailover": true,
+  "RecoverMasterClusterFilters": [".*"],
+  "RecoverIntermediateMasterClusterFilters": [".*"],
+  "DiscoverByShowSlaveHosts": true,
+  "UseMySQLHostname": false,
+  "HostnameResolveMethod": "none",
+  "MySQLHostnameResolveMethod": "none"
+}

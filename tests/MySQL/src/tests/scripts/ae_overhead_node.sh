@@ -58,6 +58,7 @@ wait_mysql() {
 
 start_classic() {
   local prefix=$1 role=$2 server_id=$3 port=$4 socket=$5
+  local report_host=${6:-}
   local dir="${RUNTIME}/${prefix}/classic"
   mkdir -p "${dir}/data" "$(dirname "${socket}")"
   cat >"${dir}/my.cnf" <<EOF
@@ -74,6 +75,12 @@ server_id=${server_id}
 innodb_flush_log_at_trx_commit=1
 sync_binlog=1
 EOF
+  if [ -n "${report_host}" ]; then
+    cat >>"${dir}/my.cnf" <<EOF
+report_host=${report_host}
+report_port=${port}
+EOF
+  fi
   if [ "${role}" != standalone ]; then
     cat >>"${dir}/my.cnf" <<EOF
 log_bin=mysql-bin
@@ -254,7 +261,7 @@ SQL
 
 case "${1:-}" in
 cleanup) cleanup ;;
-start-classic) start_classic "$2" "$3" "$4" "$5" "$6" ;;
+start-classic) start_classic "$2" "$3" "$4" "$5" "$6" "${7:-}" ;;
 setup-primary) setup_primary "$2" "$3" ;;
 setup-replica) setup_replica "$2" "$3" ;;
 start-lite) start_lite "$2" ;;
