@@ -157,7 +157,7 @@ if args.experiment_type == "Full":
         "cgexec",
         "-g",
         "cpu:cpulimited",
-        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb-vanilla",
         "-D",
         args.work_dir + "/full-data",
         "-P",
