@@ -59,7 +59,9 @@ start_process() {
   shift 3
   mkdir -p "${dir}"
   nohup "$@" >"${logfile}" 2>&1 </dev/null &
-  echo "$!" >"${pidfile}"
+  pid=$!
+  echo "${pid}" >"${pidfile}"
+  disown "${pid}" 2>/dev/null || true
 }
 
 start_master() {
@@ -92,6 +94,15 @@ start_master() {
   fi
 }
 
+restart_embedded_full() {
+  local prefix=$1
+  local dir="${RUNTIME_ROOT}/${prefix}/master"
+  export LD_LIBRARY_PATH="${LITE_BUILD}:${LD_LIBRARY_PATH:-}"
+  start_process "${dir}" "${dir}/redis.pid" "${dir}/redis.log" \
+    taskset -c 36,37,38,39 \
+    "${REDIS_DIR}/src/redis-server" "${dir}/redis.conf"
+}
+
 start_replica() {
   local prefix=$1
   local dir="${RUNTIME_ROOT}/${prefix}/replica"
@@ -106,12 +117,14 @@ start_replica() {
 }
 
 start_sentinel() {
-  local prefix=$1
+  local prefix=$1 down_after=${2:-30000}
   local dir="${RUNTIME_ROOT}/${prefix}/sentinel"
   mkdir -p "${dir}"
   cp "${SCRIPT_DIR}/config/sentinel.conf" "${dir}/sentinel.conf"
   printf '\ndir "%s"\npidfile "%s"\n' \
     "${dir}" "${dir}/sentinel.pidfile" >>"${dir}/sentinel.conf"
+  printf 'sentinel down-after-milliseconds vanilla_redis %s\n' \
+    "${down_after}" >>"${dir}/sentinel.conf"
   start_process "${dir}" "${dir}/sentinel.pid" "${dir}/sentinel.log" \
     taskset -c 28,29 \
     "${REDIS_DIR}/src/redis-sentinel-vanilla" "${dir}/sentinel.conf"
@@ -150,12 +163,13 @@ wait_monitor() {
 case "${1:-}" in
 cleanup) cleanup ;;
 start-master) start_master "$2" "$3" ;;
+restart-embedded-full) restart_embedded_full "$2" ;;
 start-replica) start_replica "$2" ;;
-start-sentinel) start_sentinel "$2" ;;
+start-sentinel) start_sentinel "$2" "${3:-30000}" ;;
 start-monitor) start_monitor "$2" "$3" ;;
 wait-monitor) wait_monitor "$2" ;;
 *)
-  echo "usage: $0 {cleanup|start-master MODE PREFIX|start-replica PREFIX|start-sentinel PREFIX|start-monitor SECONDS PREFIX|wait-monitor PREFIX}" >&2
+  echo "usage: $0 {cleanup|start-master MODE PREFIX|restart-embedded-full PREFIX|start-replica PREFIX|start-sentinel PREFIX [DOWN_AFTER_MS]|start-monitor SECONDS PREFIX|wait-monitor PREFIX}" >&2
   exit 2
   ;;
 esac
