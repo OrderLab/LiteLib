@@ -5,6 +5,7 @@
 set -x
 
 SCRIPT_DIR=$(realpath "$(dirname "$0")")
+mkdir -p "$SCRIPT_DIR/logs"
 YCSB_DIR="~/YCSB"
 MASTER_HOST="node3"
 CLIENT_HOST="node2"
@@ -30,7 +31,8 @@ echo "`date '+%Y-%m-%d %H:%M:%S'` YCSB load completed"
 sleep 20
 
 # Start relevant monitoring processes
-python -u $SCRIPT_DIR/monitor.py 120 $SCRIPT_DIR/logs/monitor-$SUFFIX.log 0 &
+python3 -u $SCRIPT_DIR/monitor.py 120 $SCRIPT_DIR/logs/monitor-$SUFFIX.log 0 &
+MONITOR_PID=$!
 echo "Monitoring started"
 
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
@@ -40,3 +42,5 @@ ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run memcached -s -P workloads/memcach
 STATUS=$?
 
 echo "Benchmark completed with status $STATUS"
+wait "$MONITOR_PID"
+exit "$STATUS"
