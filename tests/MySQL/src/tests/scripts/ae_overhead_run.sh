@@ -112,10 +112,6 @@ DELETE FROM mysql_users;
 INSERT INTO mysql_users(username,password,default_hostgroup)
 VALUES('sbtest','password',10);
 DELETE FROM mysql_query_rules;
-INSERT INTO mysql_query_rules(rule_id,active,match_pattern,destination_hostgroup,apply) VALUES
-  (100,1,'^SELECT\\s+.*FOR\\s+UPDATE',10,1),
-  (110,1,'^SELECT',20,1),
-  (120,1,'.*',10,1);
 UPDATE global_variables SET variable_value='monitor'
   WHERE variable_name='mysql-monitor_username';
 UPDATE global_variables SET variable_value='MONITOR_PASS'
