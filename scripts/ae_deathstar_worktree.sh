@@ -8,7 +8,7 @@
 # main checkout's results/, figures/ and logs/ directories.
 
 AE_MAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AE_DEATHSTAR_REF=${AE_DEATHSTAR_REF:-origin/nsdi27-ae-deathstar}
+AE_DEATHSTAR_COMMIT=${AE_DEATHSTAR_COMMIT:-667abd21e753bfe8c7e6f186f472ec4706bed863}
 AE_DEATHSTAR_WORKTREE=${AE_DEATHSTAR_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/deathstar}
 
 ae_deathstar_die() {
@@ -17,9 +17,11 @@ ae_deathstar_die() {
 }
 
 ae_prepare_deathstar_worktree() {
-  echo "==> Fetching the DeathStar AE branch"
+  echo "==> Fetching pinned DeathStar commit ${AE_DEATHSTAR_COMMIT:0:8}"
   git -C "${AE_MAIN_DIR}" fetch -q origin nsdi27-ae-deathstar ||
     ae_deathstar_die "could not fetch origin/nsdi27-ae-deathstar"
+  git -C "${AE_MAIN_DIR}" cat-file -e "${AE_DEATHSTAR_COMMIT}^{commit}" ||
+    ae_deathstar_die "pinned DeathStar commit is unavailable"
 
   mkdir -p "$(dirname "${AE_DEATHSTAR_WORKTREE}")"
   git -C "${AE_MAIN_DIR}" worktree prune
@@ -31,7 +33,7 @@ ae_prepare_deathstar_worktree() {
     fi
     echo "==> Creating managed worktree: ${AE_DEATHSTAR_WORKTREE}"
     git -C "${AE_MAIN_DIR}" worktree add --detach \
-      "${AE_DEATHSTAR_WORKTREE}" "${AE_DEATHSTAR_REF}" ||
+      "${AE_DEATHSTAR_WORKTREE}" "${AE_DEATHSTAR_COMMIT}" ||
       ae_deathstar_die "could not create the DeathStar worktree"
   else
     if [ -n "$(git -C "${AE_DEATHSTAR_WORKTREE}" status --porcelain)" ]; then
@@ -39,9 +41,9 @@ ae_prepare_deathstar_worktree() {
         "managed worktree has local changes: ${AE_DEATHSTAR_WORKTREE}
        Move/commit them, then re-run."
     fi
-    echo "==> Updating managed worktree to ${AE_DEATHSTAR_REF}"
+    echo "==> Updating managed worktree to pinned commit"
     git -C "${AE_DEATHSTAR_WORKTREE}" checkout -q --detach \
-      "${AE_DEATHSTAR_REF}" ||
+      "${AE_DEATHSTAR_COMMIT}" ||
       ae_deathstar_die "could not update the DeathStar worktree"
   fi
 

@@ -2,15 +2,17 @@
 # Managed-worktree helper for Figure 13.
 
 AE_MAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AE_MEMCACHED_REF=${AE_MEMCACHED_REF:-origin/nsdi27-ae-memcached}
+AE_MEMCACHED_COMMIT=${AE_MEMCACHED_COMMIT:-6296ad02f005205c7093e2847db6693c3611602a}
 AE_MEMCACHED_WORKTREE=${AE_MEMCACHED_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/memcached}
 
 ae_memcached_die() { echo "[FAIL] $*" >&2; exit 1; }
 
 ae_prepare_memcached_worktree() {
-  echo "==> Fetching the Memcached AE branch"
+  echo "==> Fetching pinned Memcached commit ${AE_MEMCACHED_COMMIT:0:8}"
   git -C "${AE_MAIN_DIR}" fetch -q origin nsdi27-ae-memcached ||
     ae_memcached_die "could not fetch origin/nsdi27-ae-memcached"
+  git -C "${AE_MAIN_DIR}" cat-file -e "${AE_MEMCACHED_COMMIT}^{commit}" ||
+    ae_memcached_die "pinned Memcached commit is unavailable"
   mkdir -p "$(dirname "${AE_MEMCACHED_WORKTREE}")"
   git -C "${AE_MAIN_DIR}" worktree prune
 
@@ -18,13 +20,13 @@ ae_prepare_memcached_worktree() {
     [ ! -e "${AE_MEMCACHED_WORKTREE}" ] ||
       ae_memcached_die "${AE_MEMCACHED_WORKTREE} exists but is not a worktree"
     git -C "${AE_MAIN_DIR}" worktree add --detach \
-      "${AE_MEMCACHED_WORKTREE}" "${AE_MEMCACHED_REF}" ||
+      "${AE_MEMCACHED_WORKTREE}" "${AE_MEMCACHED_COMMIT}" ||
       ae_memcached_die "could not create Memcached worktree"
   else
     [ -z "$(git -C "${AE_MEMCACHED_WORKTREE}" status --porcelain)" ] ||
       ae_memcached_die "managed Memcached worktree has local changes"
     git -C "${AE_MEMCACHED_WORKTREE}" checkout -q --detach \
-      "${AE_MEMCACHED_REF}" ||
+      "${AE_MEMCACHED_COMMIT}" ||
       ae_memcached_die "could not update Memcached worktree"
   fi
   echo "  [ OK ] Memcached experiment commit: $(git -C "${AE_MEMCACHED_WORKTREE}" rev-parse --short HEAD)"
