@@ -1,6 +1,6 @@
 #!/bin/bash
 AE_MAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AE_LEVELDB_COMMIT=${AE_LEVELDB_COMMIT:-ee2be38deb61598e668299b4429642ba2f797d72}
+AE_LEVELDB_COMMIT=${AE_LEVELDB_COMMIT:-34ccf34de3c6dc751bdef602cf4477af9ed1a31d}
 AE_LEVELDB_WORKTREE=${AE_LEVELDB_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/leveldb-overhead}
 
 ae_leveldb_die(){ echo "[FAIL] $*" >&2; exit 1; }
