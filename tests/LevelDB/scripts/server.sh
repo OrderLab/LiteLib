@@ -1,9 +1,13 @@
 #!/bin/bash
-
-set -e
+set -euo pipefail
 set -x
 
-NUM_JOBS=32
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LEVELDB_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+NUM_JOBS=${AE_JOBS:-32}
+REDIS_LEVELDB_COMMIT=403cc6eee547a13a4b49b79b30d52bedccc04c84
+REDIS_LEVELDB_DIR="${LEVELDB_DIR}/src/tests/redis-leveldb"
+REDIS_LEVELDB_PATCH="${LEVELDB_DIR}/src/tests/scripts/leveldb/redis-leveldb.patch"
 
 check_not_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -13,25 +17,30 @@ check_not_root() {
 }
 
 build_lite_version() {
-  CURRENT_DIR=$(pwd)
-  cd ../src/lite-version
-  mkdir -p build
-  cd build
-  cmake .. -DCMAKE_BUILD_TYPE=Release
-  make -j${NUM_JOBS}
-  cd $CURRENT_DIR
+  cmake -S "${LEVELDB_DIR}/src/lite-version" \
+    -B "${LEVELDB_DIR}/src/lite-version/build" \
+    -DCMAKE_BUILD_TYPE=Release
+  cmake --build "${LEVELDB_DIR}/src/lite-version/build" -j"${NUM_JOBS}"
 }
 
 install_dependencies() {
+  sudo apt-get update -qq
   sudo apt-get install -y --no-install-recommends \
+    build-essential \
+    cgroup-tools \
+    cmake \
+    git \
+    wget \
     libsnappy-dev \
     libev-dev \
     libgmp-dev \
     cpanminus \
     perl \
-    procps
+    procps \
+    python3-pip \
+    redis-tools
   sudo cpanm --quiet --notest --skip-satisfied --force Redis
-  pip3 install psutil redis matplotlib
+  python3 -m pip install --user psutil redis matplotlib
 }
 
 install_criu() {
@@ -53,34 +62,50 @@ install_criu() {
     python3-future \
     asciidoctor
 
-  CURRENT_DIR=$(pwd)
-  sudo chown -R $(whoami):$(id -gn) ${HOME}/dependencies
-  mkdir -p ${HOME}/dependencies/criu
-  cd ${HOME}/dependencies/criu
-  wget http://github.com/checkpoint-restore/criu/archive/v4.0/criu-4.0.tar.gz
-  tar -xazf criu-4.0.tar.gz
-  cd criu-4.0
-  make -j${NUM_JOBS}
-  sudo make install
+  if command -v criu >/dev/null &&
+      criu --version 2>/dev/null | grep -q 'Version: 4.0'; then
+    return
+  fi
 
-  cd $CURRENT_DIR
+  sudo mkdir -p "${HOME}/dependencies"
+  sudo chown -R "$(id -u):$(id -g)" "${HOME}/dependencies"
+  mkdir -p "${HOME}/dependencies/criu"
+  cd "${HOME}/dependencies/criu"
+  wget -q -O criu-4.0.tar.gz \
+    https://github.com/checkpoint-restore/criu/archive/v4.0/criu-4.0.tar.gz
+  rm -rf criu-4.0
+  tar -xzf criu-4.0.tar.gz
+  make -C criu-4.0 -j"${NUM_JOBS}"
+  sudo make -C criu-4.0 install
 }
 
 build_redis_leveldb() {
-  cd ../src/tests/redis-leveldb
-  git apply ../scripts/leveldb/redis-leveldb.patch
-  make -j${NUM_JOBS}
+  # The repository gitlink is the wrong source version on some checkouts.
+  # Always clone and manually check out the version used by the experiment.
+  rm -rf "${REDIS_LEVELDB_DIR}"
+  git clone -q https://github.com/KDr2/redis-leveldb.git \
+    "${REDIS_LEVELDB_DIR}"
+  git -C "${REDIS_LEVELDB_DIR}" checkout -q --detach \
+    "${REDIS_LEVELDB_COMMIT}"
+  git -C "${REDIS_LEVELDB_DIR}" submodule update --init --recursive
+
+  cd "${REDIS_LEVELDB_DIR}"
+  make -j"${NUM_JOBS}"
+  cp -f redis-leveldb redis-leveldb-vanilla
+  git apply "${REDIS_LEVELDB_PATCH}"
+  make clean
+  make -j"${NUM_JOBS}"
   make test
+  test -x redis-leveldb -a -x redis-leveldb-vanilla
 }
 
 main() {
   check_not_root
-  build_lite_version
   install_dependencies
+  build_lite_version
   install_criu
   build_redis_leveldb
 
-  echo "Please do ssh-copy-id to the client node"
   echo "LevelDB server initialization is done."
 }
 

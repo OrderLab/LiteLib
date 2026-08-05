@@ -8,6 +8,8 @@ REMOTE=${LITELIB_WORKTREE_DIR:-${ROOT}}
 MAIN=${LITELIB_MAIN_DIR:-${HOME}/LiteLib}
 OUT=${AE_OUTPUT_DIR:-${MAIN}/results/leveldb-overhead/$(date +%Y%m%d-%H%M%S)}
 REPEATS=${AE_REPEATS:-3}
+DURATION=${AE_DURATION:-3m}
+CRASH_TIME=${AE_CRASH_TIME:-180s}
 mkdir -p "${OUT}"
 
 run_one() {
@@ -25,7 +27,7 @@ benchmark:
   num_keys: 6000000
   key_length: 16
   value_length: 100
-  test_duration: 3m
+  test_duration: ${DURATION}
   rps: 28000
   key_distribution: { zipf: 1.0 }
   write_ratio: 0.2
@@ -43,7 +45,7 @@ ${experiment_yaml}
     remote_addr: node0
     remote_ssh_port: "22"
     write_buffer_size: 536870912
-    crash_time: 180s
+    crash_time: ${CRASH_TIME}
 redis:
   connection:
     addr: { Tcp: [node0, 6379] }
