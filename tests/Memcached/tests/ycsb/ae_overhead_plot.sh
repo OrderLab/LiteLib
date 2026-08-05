@@ -14,11 +14,25 @@ mkdir -p "${OUT}" "${FIGURES}"
 collect_args=(--output "${OUT}")
 [ -z "${YCSB_DIR}" ] || collect_args+=(--ycsb-dir "${YCSB_DIR}")
 "${PYTHON}" "${SCRIPT_DIR}/ae_overhead_collect.py" "${collect_args[@]}"
-"${PYTHON}" "${PAPER}/plot/plot_memory_overhead.py" \
+
+run_plot() {
+  local name=$1
+  shift
+  local log="${MAIN}/logs/${name}.log"
+  if ! "$@" >"${log}" 2>&1; then
+    tail -40 "${log}" >&2
+    exit 1
+  fi
+}
+
+run_plot memory-overhead \
+  "${PYTHON}" "${PAPER}/plot/plot_memory_overhead.py" \
   "${OUT}/memory.json" -o "${FIGURES}/memory_overhead.pdf"
-"${PYTHON}" "${PAPER}/plot/plot_latency_overhead.py" \
+run_plot latency-overhead \
+  "${PYTHON}" "${PAPER}/plot/plot_latency_overhead.py" \
   "${OUT}/latency.json" -o "${FIGURES}/latency_overhead.pdf"
-"${PYTHON}" "${PAPER}/plot/plot_cpu_overhead.py" \
+run_plot cpu-overhead \
+  "${PYTHON}" "${PAPER}/plot/plot_cpu_overhead.py" \
   "${OUT}/cpu.json" -o "${FIGURES}/cpu_overhead.pdf"
 
 echo "  [ OK ] Figure 14 -> ${FIGURES}/memory_overhead.pdf"
