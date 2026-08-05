@@ -48,11 +48,16 @@ fi
 RESULTS_DIR=${RESULTS_DIR%/}
 [ -d "${RESULTS_DIR}" ] || ae_die "no such directory: ${RESULTS_DIR}"
 
+FIGURE_DIR=${AE_FIGURES_DIR}
+if [ "${CHECK_MODE}" -eq 1 ]; then
+  FIGURE_DIR="${AE_FIGURES_DIR}/validation"
+fi
+
 ae_info "results:  ${RESULTS_DIR}"
-ae_info "figures:  ${AE_FIGURES_DIR}"
+ae_info "figures:  ${FIGURE_DIR}"
 
 ae_ensure_venv
-mkdir -p "${AE_FIGURES_DIR}"
+mkdir -p "${FIGURE_DIR}"
 
 # The parsing/plotting code is the paper's own, so the artifact and the paper
 # cannot drift apart.
@@ -89,7 +94,7 @@ echo "    litesys: $(basename "${LITESYS_LOG}")"
 # Figure 1 -- client latency over time
 # ---------------------------------------------------------------------------
 
-FIG1="${AE_FIGURES_DIR}/deathstar_latency.pdf"
+FIG1="${FIGURE_DIR}/deathstar_latency.pdf"
 SELECTED_DIR="${RESULTS_DIR}/selected"
 mkdir -p "${SELECTED_DIR}"
 ae_python - "${SELECTED_DIR}/runs.json" "${VANILLA_LOG}" "${LITESYS_LOG}" <<'PY'
@@ -137,7 +142,7 @@ if [ -n "$(find "${CRASH_DIR}" -name '*mcrouter*.log' 2>/dev/null | head -1)" ];
   fi
   ae_python "${COLLECT}" "${collect_args[@]}" >/dev/null ||
     ae_die "failed to collect mcrouter stats"
-  FIG2="${AE_FIGURES_DIR}/deathstar_isolation.pdf"
+  FIG2="${FIGURE_DIR}/deathstar_isolation.pdf"
   rm -f "${FIG2}"
   ae_python "${PLOT_ISOLATION}" -o "${FIG2}" "${STATS}" 2>&1 |
     grep -v 'UserWarning\|plt.tight_layout' || true
@@ -185,5 +190,5 @@ PY
 fi
 
 echo
-ae_ok "figures written to ${AE_FIGURES_DIR}"
+ae_ok "figures written to ${FIGURE_DIR}"
 exit "${TREND_RC}"
