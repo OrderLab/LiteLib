@@ -57,8 +57,12 @@ done
 
 PLOT="${FIG13_PAPER_DIR}/plot/plot_memcached.py"
 [ -f "${PLOT}" ] || fig13_die "missing paper plot script: ${PLOT}"
-mkdir -p "${FIG13_FIGURES_DIR}"
-FIG="${FIG13_FIGURES_DIR}/memcached.pdf"
+FIGURE_DIR=${FIG13_FIGURES_DIR}
+if [ "${CHECK}" -eq 1 ]; then
+  FIGURE_DIR="${FIG13_FIGURES_DIR}/validation"
+fi
+mkdir -p "${FIGURE_DIR}"
+FIG="${FIGURE_DIR}/memcached.pdf"
 rm -f "${FIG}"
 WINDOW_END=$(
   fig13_python "${SCRIPT_DIR}/ae_fig13_trend.py" --window \
