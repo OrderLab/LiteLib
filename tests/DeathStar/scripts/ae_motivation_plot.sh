@@ -92,6 +92,18 @@ echo "    litesys: $(basename "${LITESYS_LOG}")"
 FIG1="${AE_FIGURES_DIR}/deathstar_latency.pdf"
 SELECTED_DIR="${RESULTS_DIR}/selected"
 mkdir -p "${SELECTED_DIR}"
+ae_python - "${SELECTED_DIR}/runs.json" "${VANILLA_LOG}" "${LITESYS_LOG}" <<'PY'
+import json, os, sys
+with open(sys.argv[1], "w") as f:
+    json.dump(
+        {
+            "vanilla": os.path.abspath(sys.argv[2]),
+            "litesys": os.path.abspath(sys.argv[3]),
+        },
+        f,
+        indent=2,
+    )
+PY
 VANILLA_PLOT_LOG="${SELECTED_DIR}/vanilla.log"
 LITESYS_PLOT_LOG="${SELECTED_DIR}/litesys.log"
 ae_python "${SCRIPT_DIR}/ae_motivation_sanitize.py" \
