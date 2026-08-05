@@ -36,6 +36,9 @@ cleanup() {
       kill "${pid}" 2>/dev/null || true
     done
   done
+  for pid in $(pgrep -f "${SCRIPT_DIR}/monitor/monitor.py" 2>/dev/null || true); do
+    kill "${pid}" 2>/dev/null || true
+  done
   rm -f /tmp/redis.sock /tmp/lite_Redis /dev/shm/lite_shared_memory
   rm -rf "${RUNTIME_ROOT}"
 }
