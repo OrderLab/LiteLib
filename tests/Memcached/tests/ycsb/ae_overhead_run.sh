@@ -8,6 +8,8 @@ REPEATS=${AE_REPEATS:-3}
 OUT=${AE_OUTPUT_DIR:-${MAIN}/results/memcached-overhead/ycsb-$(date +%Y%m%d-%H%M%S)}
 mkdir -p "${OUT}"
 
+ssh node3 "rm -rf '${SCRIPT_DIR}/logs' && mkdir -p '${SCRIPT_DIR}/logs'"
+
 for mode in vanilla embedded proxy; do
   for i in $(seq 1 "${REPEATS}"); do
     echo "==> ${mode} ${i}/${REPEATS}"
