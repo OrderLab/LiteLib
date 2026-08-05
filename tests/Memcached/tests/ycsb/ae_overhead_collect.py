@@ -69,20 +69,47 @@ def resolve_overlay(root, token, kind="monitor"):
     raise FileNotFoundError(f"no overlay file for {kind}/{token}")
 
 
-def memory_values(deathstar_root, metastability_root):
-    d_full = os.path.join(
-        deathstar_root,
-        "crash",
-        "vanilla_20250409_165350.memcached.monitor.1.log",
-    )
-    d_lite = os.path.join(
-        deathstar_root,
-        "crash",
-        "litesys_20250409_164739.memcached.monitor.1.log",
-    )
-    m_full = resolve_overlay(metastability_root, "full")
-    m_lite = resolve_overlay(metastability_root, "lite")
-    m_checkpoint = resolve_overlay(metastability_root, "checkpoint")
+def memory_values(
+    deathstar_root,
+    metastability_root,
+    deathstar_results=None,
+    fig13_results=None,
+):
+    if deathstar_results:
+        with open(os.path.join(deathstar_results, "selected", "runs.json")) as f:
+            selected = json.load(f)
+        d_full = os.path.join(
+            deathstar_results,
+            "crash",
+            os.path.basename(selected["vanilla"]).removesuffix(".log")
+            + ".memcached.monitor.1.log",
+        )
+        d_lite = os.path.join(
+            deathstar_results,
+            "crash",
+            os.path.basename(selected["litesys"]).removesuffix(".log")
+            + ".memcached.monitor.1.log",
+        )
+    else:
+        d_full = os.path.join(
+            deathstar_root,
+            "crash",
+            "vanilla_20250409_165350.memcached.monitor.1.log",
+        )
+        d_lite = os.path.join(
+            deathstar_root,
+            "crash",
+            "litesys_20250409_164739.memcached.monitor.1.log",
+        )
+
+    if fig13_results:
+        m_full = os.path.join(fig13_results, "monitor_full.log")
+        m_lite = os.path.join(fig13_results, "monitor_lite.log")
+        m_checkpoint = os.path.join(fig13_results, "monitor_checkpoint.log")
+    else:
+        m_full = resolve_overlay(metastability_root, "full")
+        m_lite = resolve_overlay(metastability_root, "lite")
+        m_checkpoint = resolve_overlay(metastability_root, "checkpoint")
 
     df = precrash_sample(d_full)
     dl = precrash_sample(d_lite)
@@ -194,6 +221,8 @@ def main():
         "--ycsb-dir",
         help="live YCSB log directory (defaults to OriginalRawData/Memcached/ycsb)",
     )
+    parser.add_argument("--deathstar-results")
+    parser.add_argument("--fig13-results")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     os.makedirs(args.output, exist_ok=True)
@@ -201,6 +230,8 @@ def main():
     memory = memory_values(
         os.path.join(args.raw_root, "DeathStar", "20250409_data_motivation"),
         os.path.join(args.raw_root, "Memcached"),
+        args.deathstar_results,
+        args.fig13_results,
     )
     latency, cpu = ycsb_values(
         args.ycsb_dir or os.path.join(args.raw_root, "Memcached", "ycsb")
