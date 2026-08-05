@@ -10,6 +10,9 @@ OUT=${AE_OUTPUT_DIR:-${MAIN}/results/leveldb-overhead/$(date +%Y%m%d-%H%M%S)}
 REPEATS=${AE_REPEATS:-3}
 DURATION=${AE_DURATION:-3m}
 CRASH_TIME=${AE_CRASH_TIME:-180s}
+NUM_KEYS=${AE_NUM_KEYS:-6000000}
+INIT_RPS=${AE_INIT_RPS:-40000}
+RPS=${AE_RPS:-40000}
 mkdir -p "${OUT}"
 
 run_one() {
@@ -24,11 +27,12 @@ run_one() {
 
   cat > /tmp/leveldb-env.yaml <<EOF
 benchmark:
-  num_keys: 6000000
+  num_keys: ${NUM_KEYS}
   key_length: 16
   value_length: 100
   test_duration: ${DURATION}
-  rps: 40000
+  rps: ${RPS}
+  init_rps: ${INIT_RPS}
   key_distribution: { zipf: 1.0 }
   write_ratio: 0.2
   timeout: 1s
@@ -53,9 +57,19 @@ redis:
   pool: { max_size: 64 }
 EOF
   scp /tmp/leveldb-env.yaml "node1:${REMOTE}/tests/LevelDB/src/tests/client/env.yaml"
-  ssh node1 "cd '${REMOTE}/tests/LevelDB/src/tests/client' &&
-    ./target/release/client"
+  if ! ssh node1 "cd '${REMOTE}/tests/LevelDB/src/tests/client' &&
+      ./target/release/client" >"${OUT}/${prefix}-client.log" 2>&1; then
+    tail -100 "${OUT}/${prefix}-client.log" >&2
+    return 1
+  fi
   sleep 10
+  python3 "${ROOT}/tests/LevelDB/src/tests/scripts/client/plot_preprocess.py" \
+    -f "${OUT}/${prefix}.jsonl" -j 1 \
+    >"${OUT}/${prefix}-preprocess.log" 2>&1
+  python3 "${ROOT}/tests/LevelDB/src/tests/scripts/client/plot_prune.py" \
+    -f "${OUT}/${prefix}.stat.json" \
+    >>"${OUT}/${prefix}-preprocess.log" 2>&1
+  rm -f "${OUT}/${prefix}.stat.json"
 }
 
 for mode in vanilla ebpf checkpoint; do
