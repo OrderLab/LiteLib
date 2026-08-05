@@ -1,0 +1,334 @@
+diff --git a/src/Makefile b/src/Makefile
+index 1d35574..403a4be 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -1,6 +1,7 @@
+-
+ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+ 
++LITESYS_BUILD_PATH := $(shell cd ../vendor/LiteSys/build && pwd)
++
+ ifeq ($(uname_S),Darwin)
+   LIBEV?=/usr/local
+   GMP?=/usr/local
+@@ -13,6 +14,10 @@ CFLAGS += -Wall -I$(LIBEV)/include -I$(GMP)/include -I../vendor/leveldb/include
+ CXXFLAGS += -Wall -I$(LIBEV)/include -I$(GMP)/include -I../vendor/leveldb/include
+ LDFLAGS += ../vendor/libleveldb.a -lm -L$(LIBEV)/lib -lev -L$(GMP)/lib -lgmp -lsnappy
+ 
++CFLAGS := -I../vendor/LiteSys/ $(CFLAGS)
++CXXFLAGS := -I../vendor/LiteSys/ $(CXXFLAGS)
++LDFLAGS := -Wl,-rpath,$(LITESYS_BUILD_PATH) -L$(LITESYS_BUILD_PATH) -lembedded_lite_leveldb -lstdc++ -lglog $(LDFLAGS)
++
+ ifeq ($(uname_S),Linux)
+   LDFLAGS += -lpthread
+ endif
+@@ -24,7 +29,8 @@ endif
+ all: redis-leveldb
+ 
+ OBJS = rl_util.o rl_server.o rl_connection.o rl.o \
+-       rl_request.o rl_kv.o rl_set.o rl_hash.o rl_list.o
++       rl_request.o rl_kv.o rl_set.o rl_hash.o rl_list.o \
++       litesys.o
+ 
+ rl_util.o: rl_util.h rl_server.h rl_util.cpp
+ rl_server.o: rl_util.h rl_server.h rl_connection.h rl_server.cpp
+@@ -35,7 +41,7 @@ rl_set.o: rl.h rl_util.h rl_server.h rl_connection.h rl_compdata.h rl_request.h
+ rl_hash.o: rl.h rl_util.h rl_server.h rl_connection.h rl_compdata.h rl_request.h rl_hash.cpp
+ rl_list.o: rl.h rl_util.h rl_server.h rl_connection.h rl_request.h rl_list.cpp
+ rl.o: rl_util.h rl_server.h rl_connection.h rl_request.h rl.cpp
+-
++litesys.o: litesys.hpp litesys.cpp
+ 
+ redis-leveldb: $(OBJS) ../vendor/libleveldb.a
+ 	$(CXX) $^ $(LIBS) $(LDFLAGS) -o ../$@
+diff --git a/src/rl.cpp b/src/rl.cpp
+index c0a8fd7..c44b790 100644
+--- a/src/rl.cpp
++++ b/src/rl.cpp
+@@ -19,11 +19,15 @@
+ #include "rl_connection.h"
+ #include "rl_request.h"
+ 
++#include <embedded_lite.h>
++#include "litesys.hpp"
++
+ extern char *optarg;
+ 
+ RLServer *server=NULL;
+ 
+ int main(int argc, char** argv) {
++    LiteInit(argv[0], LiteFlushWriteBuffer, LiteReinstallClientEventHandler, LiteReinstallListenerEventHandler);
+     int daemon_flag = 0, ch;
+ 
+     int opt_host=0;
+diff --git a/src/rl_connection.cpp b/src/rl_connection.cpp
+index 9f0baa2..af0e364 100644
+--- a/src/rl_connection.cpp
++++ b/src/rl_connection.cpp
+@@ -20,6 +20,8 @@
+ #include "rl_connection.h"
+ #include "rl_request.h"
+ 
++#include <embedded_lite.h>
++
+ #define CHECK_BUFFER(N) do{                                                      \
+         if(next_idx+(N)>(read_buffer+buffered_data)){                            \
+             next_idx=old_ni;                                                     \
+@@ -33,6 +35,7 @@
+ RLConnection::RLConnection(RLServer *s, int fd):
+     db_index(0), fd(fd), server(s), buffered_data(0),writer_started(false)
+ {
++    LiteRegisterClient(fd, this);
+ 
+     next_idx = read_buffer;
+     ev_init(&read_watcher, RLConnection::on_readable);
+@@ -52,11 +55,15 @@ RLConnection::RLConnection(RLServer *s, int fd):
+     //ip = inet_ntoa(sockaddr.sin_addr);
+ 
+     loop = ev_loop_new(0);
++    ev_async_init(&async_watcher, RLConnection::async_cb);
++    async_watcher.data = this;
++    ev_async_start(loop, &async_watcher);
+ }
+ 
+ RLConnection::~RLConnection()
+ {
+     if(open){
++        LiteUnregisterClient(fd);
+         ev_io_stop(loop, &read_watcher);
+         if(writer_started){
+             ev_io_stop(loop, &write_watcher);
+diff --git a/src/rl_connection.h b/src/rl_connection.h
+index fbc2beb..96d7662 100644
+--- a/src/rl_connection.h
++++ b/src/rl_connection.h
+@@ -16,7 +16,7 @@
+ #include <leveldb/c.h>
+ 
+ #include "rl.h"
+-
++#include <future>
+ class RLServer;
+ class RLRequest;
+ 
+@@ -68,6 +68,20 @@ public:
+     void write_bulk(const char *out, size_t out_size);
+     void write_bulk(const std::string &out);
+     void write_mbulk_header(int n);
++    ev_async async_watcher;
++    std::promise<void> async_done_promise;
++    int install;
++    static void async_cb(EV_P_ ev_async *w, int revents) {
++        RLConnection *c = static_cast<RLConnection *>(w->data);
++        if (c->install) {
++            ev_io_set(&c->write_watcher, c->fd, EV_WRITE);
++            ev_io_set(&c->read_watcher, c->fd, EV_READ);
++            ev_io_start(c->loop, &c->read_watcher);
++        } else {
++            ev_io_stop(c->loop, &c->read_watcher);
++        }
++        c->async_done_promise.set_value();
++    }
+ };
+ 
+ #endif
+diff --git a/src/rl_server.cpp b/src/rl_server.cpp
+index 663b036..df3a273 100644
+--- a/src/rl_server.cpp
++++ b/src/rl_server.cpp
+@@ -25,6 +25,8 @@
+ #include "rl_server.h"
+ #include "rl_connection.h"
+ 
++#include <embedded_lite.h>
++
+ #define EVBACKEND EVFLAG_AUTO
+ 
+ #ifdef __linux
+@@ -91,6 +93,9 @@ RLServer::RLServer(const char *_db_path, const char *_hostaddr, int _port, int d
+     }
+ 
+     loop = ev_loop_new(EVBACKEND);
++    ev_async_init(&async_watcher, RLServer::async_cb);
++    async_watcher.data = this;
++    ev_async_start(loop, &async_watcher);
+     tcp_connection_watcher.data = this;
+     unix_connection_watcher.data = this;
+ }
+@@ -120,6 +125,7 @@ void RLServer::start()
+     struct sockaddr_in addr;
+     int flags = 1;
+ 
++    if (LiteIsNormalMode()) {
+     if((tcp_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+         perror("socket()");
+         exit(1);
+@@ -165,6 +171,12 @@ void RLServer::start()
+ 
+     set_nonblock(tcp_fd);
+ 
++    LiteRegisterListener(tcp_fd, this, 0);
++    } else {
++        tcp_fd = LiteGetDummyListenerFD();
++        LiteRegisterListener(tcp_fd, this, 0);
++    }
++
+     ev_init(&tcp_connection_watcher, RLServer::on_tcp_connection);
+ 
+     ev_io_set(&tcp_connection_watcher, tcp_fd, EV_READ);
+@@ -208,6 +220,8 @@ void RLServer::start()
+     std::cout << "boot time " << std::chrono::duration_cast<std::chrono::nanoseconds>(
+                  now.time_since_epoch()).count() << std::endl;
+ 
++    LiteFullStartListening();
++
+     ev_run(loop, 0);
+ }
+ 
+diff --git a/src/rl_server.h b/src/rl_server.h
+index b4af24a..02df46a 100644
+--- a/src/rl_server.h
++++ b/src/rl_server.h
+@@ -15,7 +15,7 @@
+ #include <ev.h>
+ #include <leveldb/db.h>
+ #include <leveldb/options.h>
+-
++#include <future>
+ class RLServer{
+ 
+ public:
+@@ -38,6 +38,19 @@ public:
+ 
+     static void on_tcp_connection(struct ev_loop *loop, ev_io *watcher, int revents);
+     static void on_unix_connection(struct ev_loop *loop, ev_io *watcher, int revents);
++    ev_async async_watcher;
++    std::promise<void> async_done_promise;
++    int install;
++    static void async_cb(EV_P_ ev_async *w, int revents) {
++        RLServer *s = static_cast<RLServer *>(w->data);
++        if (s->install) {
++            ev_io_set(&s->tcp_connection_watcher, s->tcp_fd, EV_READ);
++            ev_io_start(s->loop, &s->tcp_connection_watcher);
++        } else {
++            ev_io_stop(s->loop, &s->tcp_connection_watcher);
++        }
++        s->async_done_promise.set_value();
++    }
+ };
+ 
+ 
+diff --git a/src/rl_util.cpp b/src/rl_util.cpp
+index 71794e1..b25169a 100644
+--- a/src/rl_util.cpp
++++ b/src/rl_util.cpp
+@@ -24,6 +24,8 @@
+ #include "rl_util.h"
+ #include "rl_server.h"
+ 
++#include <embedded_lite.h>
++
+ void set_nonblock (int fd) {
+     int flags = fcntl(fd, F_GETFL, 0);
+     int r = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+@@ -89,6 +91,7 @@ void sig_term(int signo) {
+         const auto now = std::chrono::system_clock::now();
+         std::cout << "crash time " << std::chrono::duration_cast<std::chrono::nanoseconds>(
+                      now.time_since_epoch()).count() << std::endl;
++        LiteSignalHandler(signo);
+         exit_hook();
+         exit(0);
+     }
+diff --git a/vendor/LiteSys/build b/vendor/LiteSys/build
+new file mode 120000
+index 0000000..0d5f485
+--- /dev/null
++++ b/vendor/LiteSys/build
+@@ -0,0 +1 @@
++../../../../lite-version/build
+\ No newline at end of file
+diff --git a/git_diff_workspace.sh b/git_diff_workspace.sh
+new file mode 100755
+index 0000000..efd7958
+--- /dev/null
++++ b/git_diff_workspace.sh
+@@ -0,0 +1,26 @@
++rm ../scripts/leveldb/redis-leveldb.ebpf.patch
++
++# Get tracked file changes
++git diff > ../scripts/leveldb/redis-leveldb.ebpf.patch
++
++# Append untracked file changes
++(
++    # First handle the build directory specially if it exists
++    if [ -d "vendor/LiteSys/build" ]; then
++        # Temporarily add the build directory to git to get a proper diff
++        git add vendor/LiteSys/build
++        git diff --cached vendor/LiteSys/build
++        git reset vendor/LiteSys/build 2>/dev/null
++    fi
++
++    # Then handle all other untracked files
++    git ls-files --others --exclude-standard -z | tr '\0' '\n' | grep -v "^redis-leveldb-vanilla" | while IFS= read -r path; do
++        if [ -d "$path" ] && [ "$path" != "vendor/LiteSys/build" ]; then
++            find "$path" -type f -o -type l 2>/dev/null
++        elif [ ! -d "$path" ]; then
++            echo "$path"
++        fi
++    done | while IFS= read -r file; do
++        git --no-pager diff --no-index /dev/null "$file" 2>/dev/null || true
++    done
++) | grep -v "^Unstaged changes after reset:" | grep -v "^M	" >> ../scripts/leveldb/redis-leveldb.ebpf.patch
+diff --git a/src/litesys.cpp b/src/litesys.cpp
+new file mode 100644
+index 0000000..68310e7
+--- /dev/null
++++ b/src/litesys.cpp
+@@ -0,0 +1,26 @@
++#include "litesys.hpp"
++#include "rl_connection.h"
++#include "rl_server.h"
++#include <future>
++void LiteFlushWriteBuffer(void *conn) {
++  RLConnection *c = static_cast<RLConnection *>(conn);
++  ev_clear_pending(c->loop, &c->write_watcher);
++}
++
++void LiteReinstallClientEventHandler(void *client, int install) {
++  RLConnection *c = static_cast<RLConnection *>(client);
++  c->async_done_promise = std::promise<void>();
++  std::future<void> fut = c->async_done_promise.get_future();
++  c->install = install;
++  ev_async_send(c->loop, &c->async_watcher);
++  fut.wait();
++}
++
++void LiteReinstallListenerEventHandler(void *listener, int install) {
++  RLServer *s = static_cast<RLServer *>(listener);
++  s->async_done_promise = std::promise<void>();
++  std::future<void> fut = s->async_done_promise.get_future();
++  s->install = install;
++  ev_async_send(s->loop, &s->async_watcher);
++  fut.wait();
++}
+diff --git a/src/litesys.hpp b/src/litesys.hpp
+new file mode 100644
+index 0000000..d502285
+--- /dev/null
++++ b/src/litesys.hpp
+@@ -0,0 +1,7 @@
++#pragma once
++
++void LiteFlushWriteBuffer(void *conn);
++// uninstall is 0 if the event handler is being uninstalled, 1 if it is being
++// installed
++void LiteReinstallClientEventHandler(void *client, int install);
++void LiteReinstallListenerEventHandler(void *listener, int install);
+diff --git a/vendor/LiteSys/embedded_lite.h b/vendor/LiteSys/embedded_lite.h
+new file mode 120000
+index 0000000..37a7123
+--- /dev/null
++++ b/vendor/LiteSys/embedded_lite.h
+@@ -0,0 +1 @@
++../../../../lite-version/Lite/include/embedded_lite.h
+\ No newline at end of file

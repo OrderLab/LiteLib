@@ -31,7 +31,7 @@ parser.add_argument(
 parser.add_argument(
     "-t",
     "--experiment_type",
-    choices=["Full", "Checkpoint", "Lite"],
+    choices=["Full", "Checkpoint", "Lite", "Ebpf"],
     required=True,
     help="The type of the experiment",
 )
@@ -61,11 +61,13 @@ parser.add_argument(
     "-i", "--checkpoint_interval", type=int, help="The interval of checkpointing"
 )
 parser.add_argument(
-    "-u", "--cpu_limit", type=int, required=True, help="The CPU limit of the whole system"
+    "-u", "--cpu_limit", type=float, required=True, help="The CPU limit of the whole system"
 )
 args = parser.parse_args()
 
-os.system(r'cgset -r cpu.max="' + str(args.cpu_limit) + '00000 100000" cpulimited')
+# os.system(r'cgset -r cpuset.cpus="0-' + str(args.cpu_limit-1) + '" cpulimited')
+cpu = int(args.cpu_limit * 100000)
+os.system(r'cgset -r cpu.max="' + str(cpu) + ' 100000" cpulimited')
 os.system(r'cgget -g cpu:cpulimited')
 
 monitor_log_file = args.work_dir + "/monitor." + args.file_prefix + ".jsonl"
@@ -80,7 +82,26 @@ utils.StartBackgroundProcess(
     boot_command, args.work_dir + "/" + args.file_prefix + "-monitor-log.txt"
 )
 
-redis_leveldb_pid = get_pid_by_name("redis-leveldb")
+# boot_command = [
+#     "perf",
+#     "record",
+#     "-F",
+#     "99",
+#     "-a",
+#     "-g",
+#     "-C",
+#     "0-"+str(args.cpu_limit-1),
+#     "-o",
+#     args.work_dir + "/perf.data",
+#     "--",
+#     "sleep",
+#     str(args.total_time - 10),
+# ]
+# utils.StartBackgroundProcess(
+#     boot_command, args.work_dir + "/" + args.file_prefix + "-perf-output.log"
+# )
+
+redis_leveldb_pid = get_pid_by_name("redis-leveldb-vanilla")
 checkpoint_lock = threading.Lock()
 
 
@@ -145,12 +166,30 @@ if args.experiment_type == "Checkpoint":
     )
     sleep_for(checkpoint_start_time - time.time())
     checkpoint_thread.start()
-
+# elif args.experiment_type == "Ebpf":
+#     boot_command = [
+#         "cgexec",
+#         "-g",
+#         "cpu:cpulimited",
+#         args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
+#         "-t",
+#         "5",
+#         "-s",
+#         "536870912",
+#     ]
+#     utils.StartBackgroundProcess(
+#         boot_command,
+#         args.work_dir + "/" + args.file_prefix + ".log",
+#         False,
+#         env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"},
+#     )
 
 sleep_for(crash_time - time.time())
 # ---------------------------------------------------------------- crashes
 
-os.system(r'pgrep "redis-leveldb" | xargs kill -2')
+os.system(r'pgrep "redis-leveldb" | xargs kill -15')
+os.system(r'pgrep "redis-leveldb-vanilla" | xargs kill -15')
+os.system(r'rm /tmp/redis-leveldb.sock')
 
 if args.experiment_type == "Full":
     boot_command = [
@@ -166,7 +205,25 @@ if args.experiment_type == "Full":
         str(args.write_buffer_size),
     ]
     utils.StartBackgroundProcess(
-        boot_command, args.work_dir + "/" + args.file_prefix + ".log", True
+        boot_command, args.work_dir + "/" + args.file_prefix + ".log", True,
+        env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"},
+    )
+elif args.experiment_type == "Ebpf":
+    boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        "-D",
+        args.work_dir + "/ebpf-data",
+        "-P",
+        "6379",
+        "-B",
+        str(args.write_buffer_size),
+    ]
+    utils.StartBackgroundProcess(
+        boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-2.txt",
+        env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1", "LiteEmergencyMode": "1"},
     )
 elif args.experiment_type == "Checkpoint":
     boot_command = [
@@ -216,7 +273,7 @@ elif args.experiment_type == "Lite":
         "cgexec",
         "-g",
         "cpu:cpulimited",
-        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb-vanilla",
         "-D",
         args.work_dir + "/lite-data",
         "-P",

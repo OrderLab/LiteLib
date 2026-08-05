@@ -1,5 +1,6 @@
 #include "network_utils.hpp"
 
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
 #include <sys/un.h>
@@ -50,16 +51,16 @@ evutil_socket_t TryConnectBackend(const std::string& addr,
       return -1;
     }
 
-    // set non-blocking
-    if ((flags = fcntl(backend_fd, F_GETFL)) == -1) {
-      PLOG(ERROR) << "failed to get flags for backend";
-      return -1;
-    }
-    flags |= O_NONBLOCK;
-    if (fcntl(backend_fd, F_SETFL, flags) == -1) {
-      PLOG(ERROR) << "failed to set backend to non-blocking";
-      return -1;
-    }
+    // set non-blocking // TODO: temp disable for leveldb
+    // if ((flags = fcntl(backend_fd, F_GETFL)) == -1) {
+    //   PLOG(ERROR) << "failed to get flags for backend";
+    //   return -1;
+    // }
+    // flags |= O_NONBLOCK;
+    // if (fcntl(backend_fd, F_SETFL, flags) == -1) {
+    //   PLOG(ERROR) << "failed to set backend to non-blocking";
+    //   return -1;
+    // }
 
     if (connect(backend_fd, (struct sockaddr*)&unix_addr, sizeof(unix_addr)) ==
         -1) {
@@ -170,8 +171,9 @@ bool Write(const evutil_socket_t fd, const uint8_t buffer[], size_t len) {
     if (bytes_written <= 0 && errno != EAGAIN) {
       PLOG(ERROR) << "write to " << fd;  // TODO: max tries
       return false;
+    } else if (errno == EAGAIN) {
+      PLOG(WARNING) << "write to " << fd;
     } else {
-      // TODO: how to handle EAGAIN?
       len -= bytes_written;
       begin += bytes_written;
     }
@@ -196,6 +198,115 @@ bool Write(const evutil_socket_t fd,
 bool Write(const evutil_socket_t fd,
            const std::shared_ptr<std::vector<uint8_t>> buffer) {
   return Write(fd, buffer->data(), buffer->size());
+}
+
+TCPID GetTCPID(const evutil_socket_t fd) {
+  struct sockaddr_in local_addr;
+  socklen_t local_len = sizeof(local_addr);
+  if (getsockname(fd, (struct sockaddr*)&local_addr, &local_len) < 0) {
+    PLOG(ERROR) << "Failed to get local address";
+  }
+
+  struct sockaddr_in peer_addr;
+  socklen_t peer_len = sizeof(peer_addr);
+  if (getpeername(fd, (struct sockaddr*)&peer_addr, &peer_len) < 0) {
+    PLOG(ERROR) << "Failed to get peer address";
+  }
+
+  TCPID ret;
+  ret.src_ip = ntohl(local_addr.sin_addr.s_addr);
+  ret.src_port = ntohs(local_addr.sin_port);
+  ret.dst_ip = ntohl(peer_addr.sin_addr.s_addr);
+  ret.dst_port = ntohs(peer_addr.sin_port);
+
+  return ret;
+}
+
+std::pair<std::vector<int>, std::array<int, 2>> ReceiveSockets(
+    const evutil_socket_t fd) {
+  static constexpr size_t kMaxFds = 1024;
+
+  std::array<int, 2> lens;
+  std::vector<char> cmsgBuf(CMSG_SPACE(sizeof(int) * kMaxFds));
+
+  struct iovec iov;
+  iov.iov_base = lens.data();
+  iov.iov_len = sizeof(lens);
+
+  struct msghdr msg;
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = cmsgBuf.data();
+  msg.msg_controllen = cmsgBuf.size();
+
+  ssize_t received = recvmsg(fd, &msg, 0);
+  if (received <= 0) {
+    PLOG(ERROR) << "Error receiving socket message";
+    return {std::vector<int>(), lens};
+  }
+
+  struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+  if (!cmsg || cmsg->cmsg_level != SOL_SOCKET ||
+      cmsg->cmsg_type != SCM_RIGHTS) {
+    LOG(ERROR) << "Invalid control message";
+    return {std::vector<int>(), lens};
+  }
+
+  size_t num_fds = lens[1];
+  if (num_fds > kMaxFds) {
+    LOG(ERROR) << "Too many FDs received";
+    return {std::vector<int>(), lens};
+  }
+
+  std::vector<int> received_fds(num_fds);
+  memcpy(received_fds.data(), CMSG_DATA(cmsg), sizeof(int) * num_fds);
+
+  return {received_fds, lens};
+}
+
+bool SendSockets(const evutil_socket_t fd, std::vector<int>& fds,
+                 std::array<int, 2>& lens) {
+  size_t totalBytes = sizeof(int) * fds.size();
+  std::vector<char> cmsgBuf(CMSG_SPACE(totalBytes), 0);
+
+  struct iovec iov;
+  iov.iov_base = lens.data();
+  iov.iov_len = sizeof(int) * lens.size();
+
+  struct msghdr msg;
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = cmsgBuf.data();
+  msg.msg_controllen = cmsgBuf.size();
+
+  struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+  cmsg->cmsg_len = CMSG_LEN(totalBytes);
+  cmsg->cmsg_level = SOL_SOCKET;
+  cmsg->cmsg_type = SCM_RIGHTS;
+  memcpy(CMSG_DATA(cmsg), fds.data(), totalBytes);
+
+  if (sendmsg(fd, &msg, 0) < 0) {
+    PLOG(ERROR) << "Failed to transfer sockets to the full process";
+    return false;
+  }
+
+  return true;
+}
+
+int CopyAndReplaceSocket(int dst_fd, int src_fd) {
+  int original_fd = dup(dst_fd);
+  if (original_fd == -1) {
+    PLOG(ERROR) << "Failed to duplicate socket " << dst_fd;
+    return -1;
+  }
+  if (dup2(src_fd, dst_fd) != dst_fd) {
+    PLOG(ERROR) << "Failed to hijack socket " << dst_fd;
+    close(original_fd);
+    return -1;
+  }
+  return original_fd;
 }
 
 }  // namespace network

@@ -11,6 +11,10 @@
 
 namespace lite {
 
+#define unreachable __builtin_unreachable()
+#define likely(x) __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+
 enum DeserializeResult { kGood, kBad, kIndeterminate };
 
 template <typename Request, typename CacheKey, typename CacheEntry>

@@ -208,9 +208,14 @@ def process_file(filename):
         process_usage["cpu"] = cpu
         process_usage["mem"] = mem
     ordered_process_usages = {}
-    ordered_process_usages["redis-leveldb"] = process_usages["redis-leveldb"]
+    if "redis-leveldb" in process_usages:
+        ordered_process_usages["redis-leveldb"] = process_usages["redis-leveldb"]
+    elif "redis-leveldb-vanilla" in process_usages:
+        ordered_process_usages["redis-leveldb-vanilla"] = process_usages[
+            "redis-leveldb-vanilla"
+        ]
     for process_name in sorted(process_usages.keys()):
-        if process_name != "redis-leveldb":
+        if process_name != "redis-leveldb" and process_name != "redis-leveldb-vanilla":
             ordered_process_usages[process_name] = process_usages[process_name]
     stat["resource"] = ordered_process_usages
 

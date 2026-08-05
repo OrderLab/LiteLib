@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser(description="Init experiment")
 parser.add_argument(
     "-t",
     "--experiment_type",
-    choices=["Full", "Checkpoint", "Lite"],
+    choices=["Full", "Checkpoint", "Lite", "Ebpf"],
     required=True,
     help="The type of the experiment",
 )
@@ -42,16 +42,21 @@ os.system(r"mkdir -p " + args.work_dir)
 os.system(r"chmod 777 " + args.work_dir)
 
 os.system(r'pgrep "redis-leveldb" | xargs kill -9')
+os.system(r'pgrep "redis-leveldb-vanilla" | xargs kill -9')
 os.system(r'pgrep "LiteLevelDB" | xargs kill -9')
 os.system(r'pgrep "lite_cli" | xargs kill -9')
+os.system(r'pgrep "socket" | xargs kill -9')
 os.system(r'pgrep "redis-server" | xargs kill -9')
 os.system(r"rm dump.rdb")
 os.system(r"rm -rf /tmp/lite_LevelDB")
 os.system(r"rm -rf /tmp/redis-leveldb.sock")
+os.system(r"rm -rf /tmp/lite_leveldb_control_plane.sock")
+os.system(r"rm -rf /tmp/ebpf.dummy.*.sock")
 time.sleep(1)
 
 os.system(r'cgdelete -g cpu:/cpulimited')
 os.system(r'cgcreate -g cpu:/cpulimited')
+# os.system(r'cgset -r cpuset.cpus="0-39" cpulimited') # 40 cores
 os.system(r'cgset -r cpu.max="4000000 100000" cpulimited') # 40 cores
 os.system(r'cgget -g cpu:cpulimited')
 
@@ -74,6 +79,7 @@ if args.experiment_type == "Full":
     utils.StartBackgroundProcess(
         boot_command, args.work_dir + "/" + args.file_prefix + ".log"
     )
+    
 elif args.experiment_type == "Checkpoint":
     os.system(r"rm -rf " + args.work_dir + "/checkpoint-data")
     os.system(r"mkdir -p " + args.work_dir + "/checkpoint-data/foo")
@@ -104,7 +110,7 @@ elif args.experiment_type == "Lite":
         "cgexec",
         "-g",
         "cpu:cpulimited",
-        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb-vanilla",
         "-D",
         args.work_dir + "/lite-data",
         "-P",
@@ -114,6 +120,43 @@ elif args.experiment_type == "Lite":
     ]
     utils.StartBackgroundProcess(
         boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-1.txt"
+    )
+
+    boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
+        args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
+        "-t",
+        str(args.num_threads),
+        "-s",
+        args.memory_size,
+    ]
+    utils.StartBackgroundProcess(
+        boot_command,
+        args.work_dir + "/" + args.file_prefix + ".log",
+        False,
+        env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1"},
+    )
+elif args.experiment_type == "Ebpf":
+    os.system(r"rm -rf " + args.work_dir + "/ebpf-data")
+    os.system(r"mkdir -p " + args.work_dir + "/ebpf-data")
+    # boot_command = ["redis-server", "--port", "60000", "--protected-mode", "no"]
+    boot_command = [
+        "cgexec",
+        "-g",
+        "cpu:cpulimited",
+        args.root_dir + "/tests/LevelDB/src/tests/redis-leveldb/redis-leveldb",
+        "-D",
+        args.work_dir + "/ebpf-data",
+        "-P",
+        "6379",
+        "-B",
+        str(args.write_buffer_size),
+    ]
+    utils.StartBackgroundProcess(
+        boot_command, args.work_dir + "/" + args.file_prefix + "-backend-log-1.txt",
+        env={"GLOG_stderrthreshold": "0", "GLOG_logtostderr": "1", "LiteEmergencyMode": "0"},
     )
 
     boot_command = [

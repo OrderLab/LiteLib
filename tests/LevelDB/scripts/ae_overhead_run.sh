@@ -17,9 +17,9 @@ run_one() {
   local prefix="${mode}-${rep}"
   local experiment_yaml cpu
   case "${mode}" in
-  vanilla) experiment_yaml="    experiment_type: full"; cpu=4 ;;
-  ebpf) experiment_yaml=$'    experiment_type:\n      lite: [6, "87400"]'; cpu=6 ;;
-  checkpoint) experiment_yaml=$'    experiment_type:\n      checkpoint: 60'; cpu=4 ;;
+  vanilla) experiment_yaml="    experiment_type: full"; cpu=3 ;;
+  ebpf) experiment_yaml=$'    experiment_type:\n      ebpf: [3, "131100"]'; cpu=4.5 ;;
+  checkpoint) experiment_yaml=$'    experiment_type:\n      checkpoint: 60'; cpu=3 ;;
   esac
 
   cat > /tmp/leveldb-env.yaml <<EOF
@@ -28,12 +28,12 @@ benchmark:
   key_length: 16
   value_length: 100
   test_duration: ${DURATION}
-  rps: 28000
+  rps: 40000
   key_distribution: { zipf: 1.0 }
   write_ratio: 0.2
   timeout: 1s
   retry_count: 5
-  inital_iter_count: 5
+  inital_iter_count: 1
   enable_connection_pool: true
   check_correctness: false
   work_dir: ${OUT}
@@ -50,7 +50,7 @@ redis:
   connection:
     addr: { Tcp: [node0, 6379] }
     db: 0
-  pool: { max_size: 128 }
+  pool: { max_size: 64 }
 EOF
   scp /tmp/leveldb-env.yaml "node1:${REMOTE}/tests/LevelDB/src/tests/client/env.yaml"
   ssh node1 "cd '${REMOTE}/tests/LevelDB/src/tests/client' &&
