@@ -31,6 +31,11 @@ cleanup() {
       kill "${pid}" 2>/dev/null || true
     done
   done
+  for port in 16379 26379; do
+    for pid in $(lsof -t -iTCP:"${port}" 2>/dev/null || true); do
+      kill "${pid}" 2>/dev/null || true
+    done
+  done
   rm -f /tmp/redis.sock /tmp/lite_Redis /dev/shm/lite_shared_memory
   rm -rf "${RUNTIME_ROOT}"
 }
