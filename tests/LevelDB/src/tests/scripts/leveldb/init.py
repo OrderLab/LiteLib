@@ -2,6 +2,7 @@ import os
 import argparse
 import utils
 import time
+import socket
 
 parser = argparse.ArgumentParser(description="Init experiment")
 parser.add_argument(
@@ -123,9 +124,6 @@ elif args.experiment_type == "Lite":
     )
 
     boot_command = [
-        "cgexec",
-        "-g",
-        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
         "-t",
         str(args.num_threads),
@@ -160,9 +158,6 @@ elif args.experiment_type == "Ebpf":
     )
 
     boot_command = [
-        "cgexec",
-        "-g",
-        "cpu:cpulimited",
         args.root_dir + "/tests/LevelDB/src/lite-version/build/LiteLevelDB",
         "-t",
         str(args.num_threads),
@@ -177,3 +172,12 @@ elif args.experiment_type == "Ebpf":
     )
 else:
     raise ValueError("Invalid experiment type")
+
+for _ in range(300):
+    try:
+        with socket.create_connection(("127.0.0.1", 6379), timeout=0.2):
+            break
+    except OSError:
+        time.sleep(0.1)
+else:
+    raise RuntimeError("LevelDB service did not become ready on port 6379")

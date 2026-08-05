@@ -1,32 +1,55 @@
 #!/bin/bash
-# Run 3 non-crash repetitions of vanilla, eBPF LiteLib and checkpoint.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
 REMOTE=${LITELIB_WORKTREE_DIR:-${ROOT}}
 MAIN=${LITELIB_MAIN_DIR:-${HOME}/LiteLib}
-OUT=${AE_OUTPUT_DIR:-${MAIN}/results/leveldb-overhead/$(date +%Y%m%d-%H%M%S)}
-REPEATS=${AE_REPEATS:-3}
+OUT=${AE_OUTPUT_DIR:-${MAIN}/results/leveldb-recovery/$(date +%Y%m%d-%H%M%S)}
+MODES=${AE_MODES:-"full ebpf checkpoint"}
+REPEATS=${AE_REPEATS:-1}
 DURATION=${AE_DURATION:-3m}
-CRASH_TIME=${AE_CRASH_TIME:-180s}
+CRASH_TIME=${AE_CRASH_TIME:-80s}
+CRASH_SECOND=${CRASH_TIME%s}
 NUM_KEYS=${AE_NUM_KEYS:-6000000}
-INIT_RPS=${AE_INIT_RPS:-40000}
+INIT_RPS=${AE_INIT_RPS:-80000}
 RPS=${AE_RPS:-40000}
-MODES=${AE_MODES:-"vanilla ebpf checkpoint"}
+FULL_CPU=${AE_FULL_CPU:-3}
+EBPF_CPU=${AE_EBPF_CPU:-6}
+CHECKPOINT_CPU=${AE_CHECKPOINT_CPU:-3}
+LITE_THREADS=${AE_LITE_THREADS:-5}
+LITE_SIZE=${AE_LITE_SIZE:-131100}
 mkdir -p "${OUT}"
 
+cleanup_runtime() {
+  "${SCRIPT_DIR}/ae_overhead_cleanup.sh" >/dev/null 2>&1 || true
+}
+trap cleanup_runtime EXIT
+
 run_one() {
-  local mode=$1 rep=$2
-  local prefix="${mode}-${rep}"
-  local experiment_yaml cpu
+  local mode=$1 rep=$2 prefix experiment_yaml cpu
+  prefix=${mode}
+  [ "${REPEATS}" -eq 1 ] || prefix="${mode}-${rep}"
   case "${mode}" in
-  vanilla) experiment_yaml="    experiment_type: full"; cpu=3 ;;
-  ebpf) experiment_yaml=$'    experiment_type:\n      ebpf: [3, "131100"]'; cpu=4.5 ;;
-  checkpoint) experiment_yaml=$'    experiment_type:\n      checkpoint: 60'; cpu=3 ;;
+  full)
+    experiment_yaml="    experiment_type: full"
+    cpu=${FULL_CPU}
+    ;;
+  ebpf)
+    experiment_yaml=$'    experiment_type:\n      ebpf: ['"${LITE_THREADS}"$', "'"${LITE_SIZE}"'"]'
+    cpu=${EBPF_CPU}
+    ;;
+  checkpoint)
+    experiment_yaml=$'    experiment_type:\n      checkpoint: 30'
+    cpu=${CHECKPOINT_CPU}
+    ;;
+  *)
+    echo "unknown mode: ${mode}" >&2
+    return 2
+    ;;
   esac
 
-  cat > /tmp/leveldb-env.yaml <<EOF
+  cat > /tmp/leveldb-recovery-env.yaml <<EOF
 benchmark:
   num_keys: ${NUM_KEYS}
   key_length: 16
@@ -57,7 +80,8 @@ redis:
     db: 0
   pool: { max_size: 64 }
 EOF
-  scp /tmp/leveldb-env.yaml "node1:${REMOTE}/tests/LevelDB/src/tests/client/env.yaml"
+  scp -q /tmp/leveldb-recovery-env.yaml \
+    "node1:${REMOTE}/tests/LevelDB/src/tests/client/env.yaml"
   if ! ssh node1 "cd '${REMOTE}/tests/LevelDB/src/tests/client' &&
       ./target/release/client" >"${OUT}/${prefix}-client.log" 2>&1; then
     tail -100 "${OUT}/${prefix}-client.log" >&2
@@ -73,10 +97,22 @@ EOF
   rm -f "${OUT}/${prefix}.stat.json"
 }
 
+cat >"${OUT}/metadata.json" <<EOF
+{
+  "crash_second": ${CRASH_SECOND},
+  "rps": ${RPS},
+  "full_cpu": ${FULL_CPU},
+  "ebpf_cpu": ${EBPF_CPU},
+  "checkpoint_cpu": ${CHECKPOINT_CPU},
+  "lite_threads": ${LITE_THREADS},
+  "lite_size": ${LITE_SIZE}
+}
+EOF
+
 for mode in ${MODES}; do
   for rep in $(seq 1 "${REPEATS}"); do
     echo "==> ${mode} ${rep}/${REPEATS}"
     run_one "${mode}" "${rep}"
   done
 done
-echo "  [ OK ] LevelDB raw output -> ${OUT}"
+echo "  [ OK ] LevelDB recovery output -> ${OUT}"
