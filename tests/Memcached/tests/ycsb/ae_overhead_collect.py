@@ -37,6 +37,20 @@ def json_rows(path):
 def precrash_sample(path):
     """Return the row immediately before full Memcached loses its RSS."""
     rows = json_rows(path)
+    def normalize(row):
+        full = [
+            info
+            for name, info in row.items()
+            if name.lower().startswith("memcached")
+            and isinstance(info, dict)
+            and info.get("mem", 0) > 0
+        ]
+        normalized = dict(row)
+        if full:
+            normalized["memcached"] = max(full, key=lambda info: info["mem"])
+        return normalized
+
+    rows = [normalize(row) for row in rows]
     samples = [
         (i, r, r.get("memcached", {}).get("mem"))
         for i, r in enumerate(rows)
