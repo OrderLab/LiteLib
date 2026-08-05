@@ -21,6 +21,8 @@ per-experiment guides linked from [Running the experiments](#-running-the-experi
 - [ ] `scripts/setup_cluster.sh check` reports **all 4 nodes initialized**
 - [ ] Reproduced [Figures 1 & 2](./ae-fig1-2-motivation.md)
 - [ ] Reproduced [Figure 13](./ae-fig13-memcached.md)
+- [ ] Reproduced LevelDB [Figure 12](./ae-leveldb-recovery.md)
+- [ ] Reproduced [Figure 14](./ae-fig14-memory.md)
 - [ ] Reproduced Memcached's [Figures 14/15/16](./ae-fig14-16-memcached.md)
 - [ ] Reproduced LevelDB's [Figures 15/16](./ae-leveldb-overhead.md)
 - [ ] Reproduced Redis's [Figures 15/16](./ae-redis-overhead.md)
@@ -323,6 +325,15 @@ proxy, and datastore:
   ./scripts/ae_fig13_plot.sh
   ./scripts/ae_fig13_cleanup.sh
   ```
+* **Figure 12 (LevelDB recovery)** —
+  [recovery guide](./ae-leveldb-recovery.md):
+
+  ```bash
+  ./scripts/ae_leveldb_recovery_setup.sh
+  ./scripts/ae_leveldb_recovery_run.sh
+  ./scripts/ae_leveldb_recovery_plot.sh
+  ./scripts/ae_leveldb_recovery_cleanup.sh
+  ```
 * **Memcached in Figures 14/15/16** —
   [overhead guide](./ae-fig14-16-memcached.md):
 
@@ -365,6 +376,12 @@ with:
 
 ```bash
 ./scripts/ae_overhead_plot.sh
+```
+
+After completing the required memory experiments, regenerate Figure 14 with:
+
+```bash
+./scripts/ae_memory_overhead_plot.sh
 ```
 
 ---
