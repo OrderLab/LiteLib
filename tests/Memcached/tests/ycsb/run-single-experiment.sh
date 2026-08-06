@@ -13,6 +13,8 @@ CLIENT_HOST="node2"
 MODE=$1
 ORIGINAL_SUFFIX=$2
 SUFFIX=${MODE}_${ORIGINAL_SUFFIX}
+TARGET=${AE_TARGET:-40000}
+OPERATION_COUNT=${AE_OPERATION_COUNT:-2400000}
 
 if [ "$MODE" == "vanilla" ] || [ "$MODE" == "embedded" ] || [ "$MODE" == "proxy" ]; then
   echo "Starting Memcached"
@@ -38,7 +40,12 @@ echo "Monitoring started"
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 echo "[$TIMESTAMP] Starting benchmark" >> $SCRIPT_DIR/logs/benchmark-$SUFFIX.log
 
-ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run memcached -s -P workloads/memcached_workload -p memcached.hosts=$MASTER_HOST" >> $SCRIPT_DIR/logs/benchmark-$SUFFIX.log 2>&1
+ssh $CLIENT_HOST "cd $YCSB_DIR; ./bin/ycsb run memcached -s \
+  -P workloads/memcached_workload \
+  -p memcached.hosts=$MASTER_HOST \
+  -p target=$TARGET \
+  -p operationcount=$OPERATION_COUNT" \
+  >> $SCRIPT_DIR/logs/benchmark-$SUFFIX.log 2>&1
 STATUS=$?
 
 echo "Benchmark completed with status $STATUS"
