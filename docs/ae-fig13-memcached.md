@@ -25,7 +25,7 @@ cd ~/LiteLib
 # Run full, LiteLib and checkpoint arms (~35–45 min total).
 ./scripts/ae_fig13_run.sh
 
-# Generate figures/memcached.pdf (<1 min).
+# Generate figures/Figure13.pdf (<1 min).
 ./scripts/ae_fig13_plot.sh
 ```
 
@@ -80,4 +80,4 @@ The archived raw data is an overlay: `v2` overrides the LiteLib run from `v1`;
 ```
 
 The resolved three inputs match `~/litesys-nsdi27/data/memcached/`
-byte-for-byte and regenerate `figures/memcached.pdf`.
+byte-for-byte and regenerate `figures/Figure13.pdf`.

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Figure 13 -- STEP 3 of 3: generate memcached.pdf.
+# Figure 13 -- STEP 3 of 3: generate Figure13.pdf.
 #
 # Usage:
 #   ./ae_fig13_plot.sh [RESULTS_DIR]
@@ -62,7 +62,7 @@ if [ "${CHECK}" -eq 1 ]; then
   FIGURE_DIR="${FIG13_FIGURES_DIR}/validation"
 fi
 mkdir -p "${FIGURE_DIR}"
-FIG="${FIGURE_DIR}/memcached.pdf"
+FIG="${FIGURE_DIR}/Figure13.pdf"
 rm -f "${FIG}"
 WINDOW_END=$(
   fig13_python "${SCRIPT_DIR}/ae_fig13_trend.py" --window \
