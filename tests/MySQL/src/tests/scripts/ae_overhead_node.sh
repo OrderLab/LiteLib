@@ -135,6 +135,21 @@ SET GLOBAL rpl_semi_sync_slave_enabled=ON;
 SQL
 }
 
+enable_semisync_primary() {
+  local socket=$1
+  "${MYSQL_HOME}/bin/mysql" --socket="${socket}" -uroot <<'SQL'
+SET GLOBAL rpl_semi_sync_master_enabled=ON;
+SET GLOBAL rpl_semi_sync_master_timeout=1000;
+SQL
+}
+
+check_semisync_primary() {
+  local socket=$1
+  "${MYSQL_HOME}/bin/mysql" --socket="${socket}" -uroot -Nse \
+    "SHOW STATUS LIKE 'Rpl_semi_sync_master_status'" |
+    grep -q $'\tON$'
+}
+
 start_lite() {
   local prefix=$1
   local dir="${RUNTIME}/${prefix}/lite"
@@ -264,6 +279,8 @@ cleanup) cleanup ;;
 start-classic) start_classic "$2" "$3" "$4" "$5" "$6" "${7:-}" ;;
 setup-primary) setup_primary "$2" "$3" ;;
 setup-replica) setup_replica "$2" "$3" ;;
+enable-semisync-primary) enable_semisync_primary "$3" ;;
+check-semisync-primary) check_semisync_primary "$3" ;;
 start-lite) start_lite "$2" ;;
 start-monitor) start_monitor "$2" "$3" ;;
 wait-monitor) wait_monitor "$2" ;;

@@ -90,6 +90,19 @@ wait_replica() {
   return 1
 }
 
+wait_semisync() {
+  local prefix=$1
+  local socket="${RUNTIME}/${prefix}/classic/mysql.sock"
+  for _ in $(seq 1 600); do
+    if node_cmd node2 check-semisync-primary "${prefix}" "${socket}"; then
+      return
+    fi
+    sleep 0.2
+  done
+  echo "classic MySQL semi-synchronous replication is inactive" >&2
+  return 1
+}
+
 configure_proxysql() {
   local mode=$1
   ssh node0 "sudo -n systemctl restart proxysql"
@@ -168,7 +181,9 @@ start_classic_pair() {
   node_cmd node2 setup-primary "${prefix}" "${socket}"
   node_cmd node3 start-classic "${prefix}" replica 3 60000 "${socket}"
   node_cmd node3 setup-replica "${prefix}" "${socket}"
+  node_cmd node2 enable-semisync-primary "${prefix}" "${socket}"
   wait_replica "${prefix}"
+  wait_semisync "${prefix}"
 }
 
 start_ndb() {
