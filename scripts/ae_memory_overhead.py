@@ -214,7 +214,7 @@ def main():
     parser.add_argument("--mysql", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--redis-second", type=int, default=124)
-    parser.add_argument("--mysql-second", type=int, default=59)
+    parser.add_argument("--mysql-second", type=int, default=19)
     args = parser.parse_args()
 
     data = load(args.base)
