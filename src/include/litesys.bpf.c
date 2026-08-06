@@ -176,7 +176,7 @@ struct socket_data_event_t {
 
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
-  __uint(max_entries, 1 << 22);
+  __uint(max_entries, 1 << 26);
 } msgs_ringbuf SEC(".maps");
 
 static inline bool is_resp_connection(const char *line_buffer,

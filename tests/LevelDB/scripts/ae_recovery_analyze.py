@@ -111,12 +111,21 @@ def main():
         stats["ebpf"]["ServerSuccess"][ebpf_replay + 2 : ebpf_replay + 42],
         dtype=float,
     )
-    ebpf_post_total = ebpf_post_success.copy()
-    for key in ("ServerMiss", "ServerTimeout", "ServerError"):
-        ebpf_post_total += np.asarray(
-            stats["ebpf"][key][ebpf_replay + 2 : ebpf_replay + 42],
-            dtype=float,
-        )
+    ebpf_failure_error = np.asarray(
+        stats["ebpf"]["ServerError"][crash : ebpf_replay + 1], dtype=float
+    )
+    ebpf_post_miss = np.asarray(
+        stats["ebpf"]["ServerMiss"][ebpf_replay + 2 : ebpf_replay + 42],
+        dtype=float,
+    )
+    ebpf_post_timeout = np.asarray(
+        stats["ebpf"]["ServerTimeout"][ebpf_replay + 2 : ebpf_replay + 42],
+        dtype=float,
+    )
+    ebpf_post_error = np.asarray(
+        stats["ebpf"]["ServerError"][ebpf_replay + 2 : ebpf_replay + 42],
+        dtype=float,
+    )
 
     summary = {
         "target_rps": target,
@@ -129,9 +138,12 @@ def main():
         "ebpf": {
             "pre_mean": float(np.nanmean(ebpf_pre)),
             "failure_success": float(np.nansum(ebpf_failure)),
+            "failure_error": float(np.nansum(ebpf_failure_error)),
             "post_success_mean": float(np.nanmean(ebpf_post_success)),
-            "post_total_mean": float(np.nanmean(ebpf_post_total)),
-            "post_cv": cv(ebpf_post_total),
+            "post_miss": float(np.nansum(ebpf_post_miss)),
+            "post_timeout": float(np.nansum(ebpf_post_timeout)),
+            "post_error": float(np.nansum(ebpf_post_error)),
+            "post_cv": cv(ebpf_post_success),
         },
         "memory": {
             "full": memory["full"]["full"],
@@ -149,10 +161,17 @@ def main():
             raise ValueError("baseline throughput is too stable after restart")
         if summary["ebpf"]["failure_success"] <= 0:
             raise ValueError("LiteLib served no successful requests during failure")
+        if summary["ebpf"]["failure_error"] > 0:
+            raise ValueError("LiteLib returned stale data during failure")
         if abs(
-            summary["ebpf"]["post_total_mean"] - summary["ebpf"]["pre_mean"]
+            summary["ebpf"]["post_success_mean"] - summary["ebpf"]["pre_mean"]
         ) > target * 0.1:
             raise ValueError("LiteLib post-replay throughput differs from pre-crash")
+        if any(
+            summary["ebpf"][key] > 0
+            for key in ("post_miss", "post_timeout", "post_error")
+        ):
+            raise ValueError("LiteLib returned unsuccessful responses after replay")
         if summary["ebpf"]["post_cv"] > 0.05:
             raise ValueError("LiteLib post-replay throughput is unstable")
 
