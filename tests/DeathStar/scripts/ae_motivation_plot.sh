@@ -4,9 +4,9 @@
 #
 # Turns the raw logs produced by ae_motivation_run.sh into the two figures:
 #
-#   Figure 1  deathstar_latency.pdf     client latency over time,
+#   Figure 1  Figure1.pdf               client latency over time,
 #                                       (a) Vanilla vs (b) LiteLib
-#   Figure 2  deathstar_isolation.pdf   load/latency/throughput of the healthy
+#   Figure 2  Figure2.pdf               load/latency/throughput of the healthy
 #                                       Memcached instance before vs after the
 #                                       failure
 #
@@ -94,7 +94,7 @@ echo "    litesys: $(basename "${LITESYS_LOG}")"
 # Figure 1 -- client latency over time
 # ---------------------------------------------------------------------------
 
-FIG1="${FIGURE_DIR}/deathstar_latency.pdf"
+FIG1="${FIGURE_DIR}/Figure1.pdf"
 SELECTED_DIR="${RESULTS_DIR}/selected"
 mkdir -p "${SELECTED_DIR}"
 ae_python - "${SELECTED_DIR}/runs.json" "${VANILLA_LOG}" "${LITESYS_LOG}" <<'PY'
@@ -142,7 +142,7 @@ if [ -n "$(find "${CRASH_DIR}" -name '*mcrouter*.log' 2>/dev/null | head -1)" ];
   fi
   ae_python "${COLLECT}" "${collect_args[@]}" >/dev/null ||
     ae_die "failed to collect mcrouter stats"
-  FIG2="${FIGURE_DIR}/deathstar_isolation.pdf"
+  FIG2="${FIGURE_DIR}/Figure2.pdf"
   rm -f "${FIG2}"
   ae_python "${PLOT_ISOLATION}" -o "${FIG2}" "${STATS}" 2>&1 |
     grep -v 'UserWarning\|plt.tight_layout' || true

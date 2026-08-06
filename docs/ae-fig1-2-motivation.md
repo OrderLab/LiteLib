@@ -17,7 +17,7 @@ Run from `~/LiteLib` on node0:
 ```
 
 Raw results are written under `results/motivation/`. The generated PDFs are
-`figures/deathstar_latency.pdf` and `figures/deathstar_isolation.pdf`.
+`figures/Figure1.pdf` and `figures/Figure2.pdf`.
 
 **Interpretation:** after a Memcached failure, the vanilla configuration should
 show continuously increasing latency, while LiteLib should return close to its
