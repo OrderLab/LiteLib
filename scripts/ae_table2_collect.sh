@@ -10,5 +10,5 @@ python3 "${SCRIPT_DIR}/ae_table2_collect.py" \
   "${OUT}/redis/redis.csv" \
   "${OUT}/redis-proxy/redis-proxy.csv" \
   "${OUT}/mysql/mysql.csv" \
-  --output "${ROOT}/figures/table2_service_gap.csv"
-echo "  [ OK ] Table 2 -> ${ROOT}/figures/table2_service_gap.csv"
+  --output "${ROOT}/figures/Table2.csv"
+echo "  [ OK ] Table 2 -> ${ROOT}/figures/Table2.csv"

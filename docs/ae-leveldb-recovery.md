@@ -17,7 +17,7 @@ Run from `~/LiteLib` on node0:
 ```
 
 Raw results are written under `results/leveldb-recovery/`. The generated PDF
-is `figures/leveldb_throughput.pdf`.
+is `figures/Figure12.pdf`.
 
 **Interpretation:** baseline throughput should become unstable after restart.
 LiteLib should serve successful requests during the failure and return to

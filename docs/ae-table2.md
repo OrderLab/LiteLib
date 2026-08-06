@@ -17,7 +17,7 @@ Run from `~/LiteLib` on node0:
 ```
 
 Raw results are written under `results/table2/`. The generated table is
-`figures/table2_service_gap.csv`.
+`figures/Table2.csv`.
 
 **Interpretation:** active-passive configurations should have second-scale
 gaps, active-active configurations should have millisecond-scale gaps, and

@@ -17,7 +17,7 @@ Run from `~/LiteLib` on node0:
 ```
 
 Raw results are written under `results/fig13/`. The generated PDF is
-`figures/memcached.pdf`.
+`figures/Figure13.pdf`.
 
 **Interpretation:** vanilla should remain at very low throughput after the
 failure, LiteLib should recover within the plotted window, and checkpoint

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Figure 13 step 3: generate memcached.pdf.
+# Figure 13 step 3: generate Figure13.pdf.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/ae_memcached_worktree.sh"

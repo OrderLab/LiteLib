@@ -31,11 +31,11 @@ args=(
 mkdir -p "${OUT}" "${FIGURES}" "${ROOT}/logs"
 "${PYTHON}" "${ROOT}/scripts/ae_overhead_merge.py" "${args[@]}"
 "${PYTHON}" "${PAPER}/plot/plot_latency_overhead.py" \
-  "${OUT}/latency.json" -o "${FIGURES}/latency_overhead.pdf" \
+  "${OUT}/latency.json" -o "${FIGURES}/Figure15.pdf" \
   >"${ROOT}/logs/latency-overhead.log" 2>&1
 "${PYTHON}" "${PAPER}/plot/plot_cpu_overhead.py" \
-  "${OUT}/cpu.json" -o "${FIGURES}/cpu_overhead.pdf" \
+  "${OUT}/cpu.json" -o "${FIGURES}/Figure16.pdf" \
   >"${ROOT}/logs/cpu-overhead.log" 2>&1
 
-echo "  [ OK ] Figure 15 -> ${FIGURES}/latency_overhead.pdf"
-echo "  [ OK ] Figure 16 -> ${FIGURES}/cpu_overhead.pdf"
+echo "  [ OK ] Figure 15 -> ${FIGURES}/Figure15.pdf"
+echo "  [ OK ] Figure 16 -> ${FIGURES}/Figure16.pdf"

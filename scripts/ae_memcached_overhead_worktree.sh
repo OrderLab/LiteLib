@@ -2,7 +2,7 @@
 # Managed worktree helper for Memcached's Figures 14/15/16.
 
 AE_MAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AE_OVERHEAD_COMMIT=${AE_OVERHEAD_COMMIT:-c2d380e770f165f916176971eed6f15be7c91007}
+AE_OVERHEAD_COMMIT=${AE_OVERHEAD_COMMIT:-c6e5ebed20481ff1196ffd23e6ae73d7c38187f3}
 AE_OVERHEAD_WORKTREE=${AE_OVERHEAD_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/memcached-overhead}
 
 ae_overhead_die() { echo "[FAIL] $*" >&2; exit 1; }

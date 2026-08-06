@@ -9,7 +9,7 @@ MySQL overhead experiments, run:
 ```
 
 Processed values are written to `results/overhead/memory.json`. The generated
-PDF is `figures/memory_overhead.pdf`.
+PDF is `figures/Figure14.pdf`.
 
 **Interpretation:** each bar reports memory immediately before the configured
 failure point. LiteLib adds compact-replica memory while avoiding a full

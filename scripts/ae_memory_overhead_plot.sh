@@ -11,7 +11,7 @@ REDIS=${AE_REDIS_RESULTS:-$(find "${ROOT}/results/redis-overhead" \
 MYSQL=${AE_MYSQL_RESULTS:-$(find "${ROOT}/results/mysql-overhead" \
   -mindepth 1 -maxdepth 1 -type d -name '20*' | sort | tail -1)}
 OUT="${ROOT}/results/overhead/memory.json"
-FIGURE="${ROOT}/figures/memory_overhead.pdf"
+FIGURE="${ROOT}/figures/Figure14.pdf"
 
 for path in "${BASE}" "${LEVELDB}"; do
   [ -s "${path}" ] || { echo "[FAIL] missing ${path}" >&2; exit 1; }
