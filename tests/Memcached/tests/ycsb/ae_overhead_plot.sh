@@ -31,14 +31,14 @@ run_plot() {
 
 run_plot memory-overhead \
   "${PYTHON}" "${PAPER}/plot/plot_memory_overhead.py" \
-  "${OUT}/memory.json" -o "${FIGURES}/memory_overhead.pdf"
+  "${OUT}/memory.json" -o "${FIGURES}/Figure14.pdf"
 run_plot latency-overhead \
   "${PYTHON}" "${PAPER}/plot/plot_latency_overhead.py" \
-  "${OUT}/latency.json" -o "${FIGURES}/latency_overhead.pdf"
+  "${OUT}/latency.json" -o "${FIGURES}/Figure15.pdf"
 run_plot cpu-overhead \
   "${PYTHON}" "${PAPER}/plot/plot_cpu_overhead.py" \
-  "${OUT}/cpu.json" -o "${FIGURES}/cpu_overhead.pdf"
+  "${OUT}/cpu.json" -o "${FIGURES}/Figure16.pdf"
 
-echo "  [ OK ] Figure 14 -> ${FIGURES}/memory_overhead.pdf"
-echo "  [ OK ] Figure 15 -> ${FIGURES}/latency_overhead.pdf"
-echo "  [ OK ] Figure 16 -> ${FIGURES}/cpu_overhead.pdf"
+echo "  [ OK ] Figure 14 -> ${FIGURES}/Figure14.pdf"
+echo "  [ OK ] Figure 15 -> ${FIGURES}/Figure15.pdf"
+echo "  [ OK ] Figure 16 -> ${FIGURES}/Figure16.pdf"

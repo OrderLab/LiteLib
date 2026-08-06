@@ -17,8 +17,8 @@ Run from `~/LiteLib` on node0:
 ```
 
 Raw results are written under `results/memcached-overhead/`. The generated PDFs
-are `figures/memory_overhead.pdf`, `figures/latency_overhead.pdf`, and
-`figures/cpu_overhead.pdf`.
+are `figures/Figure14.pdf`, `figures/Figure15.pdf`, and
+`figures/Figure16.pdf`.
 
 **Interpretation:** Figure 14 reports memory immediately before failure.
 Figures 15 and 16 compare steady-state latency and CPU overhead; the LiteLib
