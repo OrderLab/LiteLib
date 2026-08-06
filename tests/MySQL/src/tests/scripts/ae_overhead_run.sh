@@ -10,10 +10,24 @@ REPEATS=${AE_REPEATS:-3}
 DURATION=${AE_DURATION:-60}
 TABLE_SIZE=${AE_TABLE_SIZE:-100000}
 RATE=${AE_RATE:-500}
+SEMISYNC=${AE_SEMISYNC:-0}
+REPLICA_CONNECTION=${AE_REPLICA_CONNECTION:-direct}
 MONITOR_SECONDS=$((DURATION + 5))
 MODES=${AE_MODES:-"full proxy replica ndb-client ndb-proxy"}
 RUNTIME=/tmp/litelib-ae-mysql
 mkdir -p "${OUT}"
+cat >"${OUT}/metadata.json" <<EOF
+{
+  "classic_durability": {
+    "innodb_flush_log_at_trx_commit": 0,
+    "sync_binlog": 0,
+    "binlog_format": "STATEMENT"
+  },
+  "replica_connection": "${REPLICA_CONNECTION}",
+  "semisync": ${SEMISYNC},
+  "ndb_proxy_connection": "raw"
+}
+EOF
 
 node_cmd() {
   local node=$1
@@ -26,6 +40,7 @@ cleanup_nodes() {
     node_cmd "${node}" cleanup || true
   done
 }
+
 trap cleanup_nodes EXIT
 
 run_sysbench() {
@@ -149,6 +164,14 @@ DELETE FROM mysql_users;
 INSERT INTO mysql_users(username,password,default_hostgroup)
 VALUES('sbtest','password',10);
 DELETE FROM mysql_query_rules;
+DELETE FROM scheduler;
+UPDATE global_variables SET variable_value='0'
+  WHERE variable_name='mysql-eventslog_default_log';
+UPDATE global_variables SET variable_value='monitor'
+  WHERE variable_name='mysql-monitor_username';
+UPDATE global_variables SET variable_value='MONITOR_PASS'
+  WHERE variable_name='mysql-monitor_password';
+LOAD MYSQL VARIABLES TO RUNTIME; SAVE MYSQL VARIABLES TO DISK;
 LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK;
 LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;
 LOAD MYSQL QUERY RULES TO RUNTIME; SAVE MYSQL QUERY RULES TO DISK;
@@ -177,13 +200,15 @@ collect_monitors() {
 start_classic_pair() {
   local prefix=$1
   local socket="${RUNTIME}/${prefix}/classic/mysql.sock"
-  node_cmd node2 start-classic "${prefix}" primary 2 60000 "${socket}"
+  node_cmd node2 start-classic-overhead "${prefix}" primary 2 60000 "${socket}"
   node_cmd node2 setup-primary "${prefix}" "${socket}"
-  node_cmd node3 start-classic "${prefix}" replica 3 60000 "${socket}"
+  node_cmd node3 start-classic-overhead "${prefix}" replica 3 60000 "${socket}"
   node_cmd node3 setup-replica "${prefix}" "${socket}"
-  node_cmd node2 enable-semisync-primary "${prefix}" "${socket}"
   wait_replica "${prefix}"
-  wait_semisync "${prefix}"
+  if [ "${SEMISYNC}" -eq 1 ]; then
+    node_cmd node2 enable-semisync-primary "${prefix}" "${socket}"
+    wait_semisync "${prefix}"
+  fi
 }
 
 start_ndb() {
@@ -216,7 +241,7 @@ run_one() {
   case "${mode}" in
   full)
     socket="${RUNTIME}/${prefix}/classic/mysql.sock"
-    node_cmd node2 start-classic "${prefix}" standalone 2 60000 "${socket}"
+    node_cmd node2 start-classic-overhead "${prefix}" standalone 2 60000 "${socket}"
     node_cmd node2 setup-primary "${prefix}" "${socket}"
     run_sysbench prepare direct node2 60000 innodb "${OUT}/prepare-${prefix}.log"
     start_monitors "${prefix}" node2
@@ -224,7 +249,7 @@ run_one() {
     collect_monitors "${prefix}" node2
     ;;
   proxy)
-    node_cmd node0 start-classic "${prefix}" standalone 1 60000 /tmp/mysql.sock
+    node_cmd node0 start-classic-overhead "${prefix}" standalone 1 60000 /tmp/mysql.sock
     node_cmd node0 setup-primary "${prefix}" /tmp/mysql.sock
     node_cmd node0 start-lite "${prefix}"
     run_sysbench prepare direct node0 60000 innodb "${OUT}/prepare-${prefix}.log"
@@ -236,9 +261,15 @@ run_one() {
     start_classic_pair "${prefix}"
     run_sysbench prepare direct node2 60000 innodb "${OUT}/prepare-${prefix}.log"
     wait_replica "${prefix}"
-    configure_proxysql replica
+    if [ "${REPLICA_CONNECTION}" = proxy ]; then
+      configure_proxysql replica
+    fi
     start_monitors "${prefix}" node0 node2 node3
-    run_sysbench run direct node0 6033 innodb "${log}"
+    if [ "${REPLICA_CONNECTION}" = proxy ]; then
+      run_sysbench run direct node0 6033 innodb "${log}"
+    else
+      run_sysbench run direct node2 60000 innodb "${log}"
+    fi
     collect_monitors "${prefix}" node0 node2 node3
     ;;
   ndb-client|ndb-proxy)
@@ -251,7 +282,7 @@ run_one() {
       run_sysbench run raw "10.10.1.3:50000,10.10.1.4:50000" 0 \
         ndbcluster "${log}"
     else
-      run_sysbench run direct node0 6033 ndbcluster "${log}"
+      run_sysbench run raw "10.10.1.1:6033" 0 ndbcluster "${log}"
     fi
     collect_monitors "${prefix}" node0 node2 node3
     ;;

@@ -59,6 +59,9 @@ wait_mysql() {
 start_classic() {
   local prefix=$1 role=$2 server_id=$3 port=$4 socket=$5
   local report_host=${6:-}
+  local flush_mode=${7:-1}
+  local sync_binlog_mode=${8:-1}
+  local binlog_format=${9:-ROW}
   local dir="${RUNTIME}/${prefix}/classic"
   mkdir -p "${dir}/data" "$(dirname "${socket}")"
   cat >"${dir}/my.cnf" <<EOF
@@ -72,8 +75,8 @@ bind-address=0.0.0.0
 skip-name-resolve
 query_cache_type=ON
 server_id=${server_id}
-innodb_flush_log_at_trx_commit=1
-sync_binlog=1
+innodb_flush_log_at_trx_commit=${flush_mode}
+sync_binlog=${sync_binlog_mode}
 EOF
   if [ -n "${report_host}" ]; then
     cat >>"${dir}/my.cnf" <<EOF
@@ -84,7 +87,7 @@ EOF
   if [ "${role}" != standalone ]; then
     cat >>"${dir}/my.cnf" <<EOF
 log_bin=mysql-bin
-binlog_format=ROW
+binlog_format=${binlog_format}
 gtid_mode=ON
 enforce_gtid_consistency=ON
 log_slave_updates=ON
@@ -277,6 +280,7 @@ SQL
 case "${1:-}" in
 cleanup) cleanup ;;
 start-classic) start_classic "$2" "$3" "$4" "$5" "$6" "${7:-}" ;;
+start-classic-overhead) start_classic "$2" "$3" "$4" "$5" "$6" "" 0 0 STATEMENT ;;
 setup-primary) setup_primary "$2" "$3" ;;
 setup-replica) setup_replica "$2" "$3" ;;
 enable-semisync-primary) enable_semisync_primary "$3" ;;

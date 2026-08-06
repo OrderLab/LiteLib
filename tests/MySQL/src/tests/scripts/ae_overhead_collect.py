@@ -57,6 +57,15 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--expected-repeats", type=int, default=3)
     args = parser.parse_args()
+    metadata_path = os.path.join(args.root, "metadata.json")
+    if os.path.exists(metadata_path):
+        with open(metadata_path) as stream:
+            metadata = json.load(stream)
+    else:
+        metadata = {"replica_connection": "proxy"}
+    replica_connection = metadata.get("replica_connection", "proxy")
+    if replica_connection not in ("direct", "proxy"):
+        raise ValueError(f"unknown replica connection: {replica_connection}")
 
     latency_data = {}
     for mode in ("full", "proxy", "replica", "ndb-client", "ndb-proxy"):
@@ -87,13 +96,14 @@ def main():
         },
         "replica": {
             "master": mean_for(samples(replica_primary), ("mysqld",)),
-            "other": (
-                mean_for(samples(replica_peer), ("mysqld",))
-                + mean_for(samples(replica_proxy), ("proxysql",))
-                + mean_for(samples(replica_proxy), ("orchestrator",))
-            ),
+            "other": mean_for(samples(replica_peer), ("mysqld",)),
         },
     }
+    if replica_connection == "proxy":
+        cpu_data["replica"]["other"] += (
+            mean_for(samples(replica_proxy), ("proxysql",))
+            + mean_for(samples(replica_proxy), ("orchestrator",))
+        )
 
     for mode in ("ndb-client", "ndb-proxy"):
         node2 = glob.glob(os.path.join(args.root, f"monitor-node2-{mode}-*.jsonl"))
@@ -106,7 +116,7 @@ def main():
             "other": node_total(node0, other_names),
         }
 
-    result = {"latency": latency_data, "cpu": cpu_data}
+    result = {"latency": latency_data, "cpu": cpu_data, "metadata": metadata}
     os.makedirs(args.output, exist_ok=True)
     with open(os.path.join(args.output, "mysql.json"), "w") as stream:
         json.dump(result, stream, indent=2)
