@@ -48,7 +48,7 @@ RUN_COOLDOWN=${AE_RUN_COOLDOWN:-0}
 MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"100000 100000"}
 # Calibrated once by the authors for the reference CloudLab c220g5 setup.
 # Evaluators should use this fixed value rather than re-calibrating.
-WORKLOAD_RATE=${WORKLOAD_RATE:-6000}
+WORKLOAD_RATE=${WORKLOAD_RATE:-5500}
 # Warm up at the same rate the measurement uses.  The warm-up determines what
 # ends up cached, so warming at a different rate than the run silently changes
 # the operating point -- and the calibration would no longer apply.

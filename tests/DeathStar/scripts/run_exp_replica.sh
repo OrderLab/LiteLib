@@ -211,6 +211,7 @@ function restore_load_shedding() {
 start_memcached || exit 1
 warmup_memcached || exit 1
 sleep 5
+wait_for_memcached_path || exit 1
 crash_memcached & crash_pid=$!
 mcrouter_readonly & mcrouter_pid=$!
 post_storage_service_readonly & service_pid=$!

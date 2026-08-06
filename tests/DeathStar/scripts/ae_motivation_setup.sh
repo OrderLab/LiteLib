@@ -148,6 +148,16 @@ stage_sync() {
   done
 }
 
+ensure_remote_source() {
+  local node
+  for node in "${NODES[@]}"; do
+    if ! ae_rsh "${node}" "test -d '${REMOTE_DIR}/tests/DeathStar'"; then
+      stage_sync
+      return
+    fi
+  done
+}
+
 # ---------------------------------------------------------------------------
 # build -- vanilla memcached, non-embedded LiteMemcached, wrk2
 # ---------------------------------------------------------------------------
@@ -311,6 +321,10 @@ main() {
   for stage in "${STAGES[@]}"; do
     echo
     ae_info "=== stage: ${stage} ==="
+    case "${stage}" in
+    deps | sync) ;;
+    *) ensure_remote_source || ae_die "could not synchronize source" ;;
+    esac
     case "${stage}" in
     deps) stage_deps || rc=1 ;;
     sync) stage_sync || rc=1 ;;
