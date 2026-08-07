@@ -15,6 +15,8 @@ INIT_RPS=${AE_INIT_RPS:-40000}
 RPS=${AE_RPS:-40000}
 MODES=${AE_MODES:-"vanilla ebpf checkpoint"}
 mkdir -p "${OUT}"
+ENV_FILE=$(mktemp --tmpdir leveldb-overhead-env.XXXXXX.yaml)
+trap 'rm -f "${ENV_FILE}"' EXIT
 
 run_one() {
   local mode=$1 rep=$2
@@ -26,7 +28,7 @@ run_one() {
   checkpoint) experiment_yaml=$'    experiment_type:\n      checkpoint: 60'; cpu=3 ;;
   esac
 
-  cat > /tmp/leveldb-env.yaml <<EOF
+  cat >"${ENV_FILE}" <<EOF
 benchmark:
   num_keys: ${NUM_KEYS}
   key_length: 16
@@ -57,7 +59,7 @@ redis:
     db: 0
   pool: { max_size: 64 }
 EOF
-  scp /tmp/leveldb-env.yaml "node1:${REMOTE}/tests/LevelDB/src/tests/client/env.yaml"
+  scp "${ENV_FILE}" "node1:${REMOTE}/tests/LevelDB/src/tests/client/env.yaml"
   if ! ssh node1 "cd '${REMOTE}/tests/LevelDB/src/tests/client' &&
       ./target/release/client" >"${OUT}/${prefix}-client.log" 2>&1; then
     tail -100 "${OUT}/${prefix}-client.log" >&2
