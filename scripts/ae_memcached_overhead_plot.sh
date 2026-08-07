@@ -14,14 +14,16 @@ fi
 
 DEATHSTAR_DIR=$(find "${AE_MAIN_DIR}/results/motivation" \
   -mindepth 1 -maxdepth 1 -type d \
-  -exec test -s '{}/selected/runs.json' ';' -print 2>/dev/null |
-  sort | tail -1)
+  -exec test -s '{}/selected/runs.json' ';' \
+  -printf '%T@ %p\n' 2>/dev/null |
+  sort -n | tail -1 | cut -d' ' -f2-)
 FIG13_DIR=$(find "${AE_MAIN_DIR}/results/fig13" \
   -mindepth 1 -maxdepth 1 -type d \
   -exec test -s '{}/monitor_full.log' ';' \
   -exec test -s '{}/monitor_lite.log' ';' \
-  -exec test -s '{}/monitor_checkpoint.log' ';' -print 2>/dev/null |
-  sort | tail -1)
+  -exec test -s '{}/monitor_checkpoint.log' ';' \
+  -printf '%T@ %p\n' 2>/dev/null |
+  sort -n | tail -1 | cut -d' ' -f2-)
 
 [ -z "${DEATHSTAR_DIR}" ] || export AE_DEATHSTAR_RESULTS="${DEATHSTAR_DIR}"
 [ -z "${FIG13_DIR}" ] || export AE_FIG13_RESULTS="${FIG13_DIR}"

@@ -183,9 +183,10 @@ While system setup runs you will see live progress:
   [04:00] still running (4/4): node0: building Boost 1.87.0 ...; node1: ...
 ```
 
-The complete, unabridged output of each node is written to
-`logs/<timestamp>-<stage>-<node>.log`. To watch one node in full detail from a
-second terminal:
+Centralized evaluator logs use
+`logs/<timestamp>-<stage>-<node>.log`. System initialization writes one log per
+node; plotting and single-node setup stages use `node0`. To watch one
+initialization log in full detail from a second terminal:
 
 ```bash
 tail -f ~/LiteLib/logs/*-init-node1.log

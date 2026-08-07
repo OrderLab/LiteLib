@@ -12,6 +12,8 @@ MYSQL=${AE_MYSQL_RESULTS:-$(find "${ROOT}/results/mysql-overhead" \
   -mindepth 1 -maxdepth 1 -type d -name '20*' | sort | tail -1)}
 OUT="${ROOT}/results/overhead/memory.json"
 FIGURE="${ROOT}/figures/Figure14.pdf"
+RUN_ID=$(date +%Y%m%d-%H%M%S)
+LOG="${ROOT}/logs/${RUN_ID}-fig14-plot-$(hostname -s).log"
 
 for path in "${BASE}" "${LEVELDB}"; do
   [ -s "${path}" ] || { echo "[FAIL] missing ${path}" >&2; exit 1; }
@@ -27,5 +29,5 @@ done
   --output "${OUT}"
 "${PYTHON}" "${PAPER}/plot/plot_memory_overhead.py" \
   "${OUT}" -o "${FIGURE}" \
-  >"${ROOT}/logs/memory-overhead.log" 2>&1
+  >"${LOG}" 2>&1
 echo "  [ OK ] Figure 14 -> ${FIGURE}"
