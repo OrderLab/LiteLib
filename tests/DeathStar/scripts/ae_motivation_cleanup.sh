@@ -7,16 +7,34 @@ DEATHSTAR_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 echo "==> Removing DeathStar stack and manual containers"
 ssh node1 "cd '${DEATHSTAR_DIR}/scripts' &&
-  ./swarm_helper_replica.sh down" >/dev/null 2>&1 || true
+  if docker info >/dev/null 2>&1; then
+    ./swarm_helper_replica.sh down
+  else
+    sudo -n ./swarm_helper_replica.sh down
+  fi" >/dev/null 2>&1 || true
 
 ssh node0 '
-  docker rm -f post-storage-mongodb >/dev/null 2>&1 || true
-' || true
+  d() {
+    if docker info >/dev/null 2>&1; then docker "$@"; else sudo -n docker "$@"; fi
+  }
+  d rm -f post-storage-mongodb >/dev/null 2>&1 || true
+  ! d inspect post-storage-mongodb >/dev/null 2>&1
+'
 ssh node3 '
+  d() {
+    if docker info >/dev/null 2>&1; then docker "$@"; else sudo -n docker "$@"; fi
+  }
   for name in post-storage-memcached-1 post-storage-memcached-2; do
-    docker rm -f "$name" >/dev/null 2>&1 || true
+    d rm -f "$name" >/dev/null 2>&1 || true
+    ! d inspect "$name" >/dev/null 2>&1
   done
-' || true
+'
+ssh node1 '
+  d() {
+    if docker info >/dev/null 2>&1; then docker "$@"; else sudo -n docker "$@"; fi
+  }
+  ! d stack ls --format "{{.Name}}" | grep -qx socialnetwork
+'
 
 echo "==> Removing transient component logs/sockets"
 for node in node0 node1 node2 node3; do
