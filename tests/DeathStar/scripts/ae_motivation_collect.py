@@ -127,6 +127,10 @@ def main():
     parser = argparse.ArgumentParser(description="Collect stats from mcrouter logs")
     parser.add_argument("--root", default=".", help="directory holding crash/ and nocrash/")
     parser.add_argument(
+        "--selected-runs",
+        help="JSON mapping vanilla/litesys to selected client logs",
+    )
+    parser.add_argument(
         "--separate-nocrash",
         action="store_true",
         help="use root/nocrash for the before baseline (archived-paper check only)",
@@ -139,7 +143,24 @@ def main():
         if directory == "nocrash" and not args.separate_nocrash:
             continue
         path = os.path.join(args.root, directory)
-        log_files = glob.glob(os.path.join(path, "*mcrouter*.log"))
+        if directory == "crash" and args.selected_runs:
+            with open(args.selected_runs) as stream:
+                selected = json.load(stream)
+            log_files = [
+                os.path.join(
+                    os.path.dirname(selected[arm]),
+                    os.path.basename(selected[arm]).removesuffix(".log")
+                    + ".mcrouter.log",
+                )
+                for arm in ("vanilla", "litesys")
+            ]
+            missing = [log_file for log_file in log_files if not os.path.isfile(log_file)]
+            if missing:
+                raise FileNotFoundError(
+                    f"missing selected Mcrouter log(s): {', '.join(missing)}"
+                )
+        else:
+            log_files = glob.glob(os.path.join(path, "*mcrouter*.log"))
         if not log_files:
             print(f"No mcrouter log files found in {path}")
             continue
@@ -152,13 +173,9 @@ def main():
         print("No mcrouter logs found", file=sys.stderr)
         sys.exit(1)
 
-    # Figure 2's "before" bars are the pre-failure (t < 20s) segment of the
-    # same crash runs.  The original analysis used a separate nocrash directory,
-    # but that is redundant and doubles experiment time.  Preserve the JSON
-    # shape expected by the paper's plotting script by aliasing the crash
-    # entries when no separate baseline was collected.  If nocrash/ exists
-    # (e.g. the archived paper data), it remains authoritative and the output
-    # is unchanged/bit-exact.
+    # Figure 2 uses the same median-trend runs as Figure 1. Its "before" bars
+    # are those runs' pre-failure segments. Preserve the JSON shape expected by
+    # the paper plotter by aliasing crash entries when no no-crash run exists.
     if "crash" in all_results and "nocrash" not in all_results:
         all_results["nocrash"] = copy.deepcopy(all_results["crash"])
         print(

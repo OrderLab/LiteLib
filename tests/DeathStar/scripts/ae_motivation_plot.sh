@@ -71,7 +71,7 @@ for f in "${PLOT_LATENCY}" "${PLOT_ISOLATION}"; do
 done
 
 # ---------------------------------------------------------------------------
-# Pick representative crash runs for Figure 1
+# Pick median-trend crash runs for Figures 1/2 and Figure 14
 # ---------------------------------------------------------------------------
 
 CRASH_DIR="${RESULTS_DIR}/crash"
@@ -79,14 +79,14 @@ NOCRASH_DIR="${RESULTS_DIR}/nocrash"
 [ -d "${CRASH_DIR}" ] || ae_die "expected ${CRASH_DIR} to exist"
 
 selection=$(ae_python "${SCRIPT_DIR}/ae_motivation_select.py" "${CRASH_DIR}") ||
-  ae_die "could not select representative Figure 1 runs"
+  ae_die "could not select median-trend runs"
 VANILLA_LOG=$(echo "${selection}" | awk -F '\t' '$1=="vanilla"{print $2}')
 LITESYS_LOG=$(echo "${selection}" | awk -F '\t' '$1=="litesys"{print $2}')
 
 [ -n "${VANILLA_LOG}" ] || ae_die "no vanilla client log in ${CRASH_DIR}"
 [ -n "${LITESYS_LOG}" ] || ae_die "no litesys client log in ${CRASH_DIR}"
 
-ae_info "Figure 1 inputs:"
+ae_info "Median-trend inputs for Figures 1/2 and Figure 14:"
 echo "    vanilla: $(basename "${VANILLA_LOG}")"
 echo "    litesys: $(basename "${LITESYS_LOG}")"
 
@@ -139,6 +139,8 @@ if [ -n "$(find "${CRASH_DIR}" -name '*mcrouter*.log' 2>/dev/null | head -1)" ];
   collect_args=(--root "${RESULTS_DIR}" -o "${STATS}")
   if [ "${CHECK_MODE}" -eq 1 ]; then
     collect_args+=(--separate-nocrash)
+  else
+    collect_args+=(--selected-runs "${SELECTED_DIR}/runs.json")
   fi
   ae_python "${COLLECT}" "${collect_args[@]}" >/dev/null ||
     ae_die "failed to collect mcrouter stats"

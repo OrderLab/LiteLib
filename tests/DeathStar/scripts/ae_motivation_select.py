@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Select representative Figure 1 runs from a repetition set.
+"""Select median-trend Figure 1 runs from a repetition set.
 
-The paper collected three repetitions and plotted representative runs.  Do
-the same deterministically:
+Rank each arm's repetitions by its trend metric and select the middle run:
 
-* vanilla: prefer a sustained post-failure climb;
-* LiteLib: prefer the run whose final window is closest to (or below) its
-  pre-failure latency.
+* vanilla: score sustained post-failure latency growth;
+* LiteLib: score late recovery and stability.
 
 Prints two tab-separated lines: ``vanilla<TAB>path`` and
 ``litesys<TAB>path``.
@@ -65,6 +63,14 @@ def litesys_score(path):
     return recovery + 0.1 * late_stability
 
 
+def median_by_score(paths, score):
+    ranked = sorted(
+        ((score(path), os.path.basename(path), path) for path in paths),
+        key=lambda item: (item[0], item[1]),
+    )
+    return ranked[len(ranked) // 2][2]
+
+
 def main():
     if len(sys.argv) != 2:
         print("usage: ae_motivation_select.py <crash-results-dir>", file=sys.stderr)
@@ -75,8 +81,8 @@ def main():
     if not vanilla or not litesys:
         print("missing vanilla or litesys client logs", file=sys.stderr)
         return 1
-    print(f"vanilla\t{max(vanilla, key=vanilla_score)}")
-    print(f"litesys\t{min(litesys, key=litesys_score)}")
+    print(f"vanilla\t{median_by_score(vanilla, vanilla_score)}")
+    print(f"litesys\t{median_by_score(litesys, litesys_score)}")
     return 0
 
 
