@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MYSQL_HOME="${HOME}/mysql-ae"
 NDB_HOME=/opt/mysql-ndb
 LITE_BUILD="${SCRIPT_DIR}/../../lite-version/build"
-RUNTIME="/tmp/litelib-ae-mysql-$(id -u)"
+RUNTIME=/tmp/litelib-ae-mysql
 
 kill_pid_file() {
   local file=$1 pid
