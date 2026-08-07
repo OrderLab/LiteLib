@@ -125,14 +125,13 @@ runtime initialization. Do **not** run the system-wise initializer.
 1. Send an SSH **public** key (for example, `~/.ssh/id_ed25519.pub`) to the
    authors through **HotCRP**. Do not send a private key.
 2. The authors create a separate user for each evaluator on all four nodes,
-   authorize that public key, enable passwordless `sudo` (needed by experiments
-   and read-only system checks), and return the username and `node0` login address.
-3. Log in with agent forwarding for the first connection. This lets the
-   user-wise initializer reach the other new accounts before it installs a
-   cluster-local key:
+   authorize that public key, configure passwordless SSH from `node0` to
+   `node1`–`node3`, enable passwordless `sudo`, and return the username and
+   `node0` login address.
+3. Log in to `node0` and run the user-wise initializer:
 
    ```bash
-   ssh -A <evaluator-user>@<provided-node0-address>
+   ssh <evaluator-user>@<provided-node0-address>
    git clone https://github.com/OrderLab/LiteLib.git ~/LiteLib
    cd ~/LiteLib
    ./scripts/user_init.sh
@@ -358,7 +357,7 @@ compatibility and debugging, but rejects literal IP addresses as node targets.
 | A self-reserved node fails during setup | Read `logs/<timestamp>-init-<node>.log`, fix the cause, and re-run `./scripts/system_init.sh`. |
 | Everything passes except `booted into 6.8.0-52-generic` | The self-reserved cluster has not completed the reboot sequence. |
 | `tc`/`iptables`/`cpu governor` checks fail | Run `./scripts/system_init.sh post-reboot`; runtime state is cleared by every reboot. |
-| `user_init.sh` cannot initially reach a peer | On a provided cluster, reconnect to `node0` with `ssh -A`; on a self-reserved cluster, verify CloudLab's account-wide SSH access. |
+| `user_init.sh` cannot reach a peer | On a provided cluster, ask the authors to verify the evaluator's node0-to-peer SSH setup; on a self-reserved cluster, verify CloudLab's account-wide SSH access. |
 
 ---
 
