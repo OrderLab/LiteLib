@@ -20,8 +20,10 @@ CHECKPOINT_CPU=${AE_CHECKPOINT_CPU:-3}
 LITE_THREADS=${AE_LITE_THREADS:-5}
 LITE_SIZE=${AE_LITE_SIZE:-131100}
 mkdir -p "${OUT}"
+ENV_FILE=$(mktemp --tmpdir leveldb-recovery-env.XXXXXX.yaml)
 
 cleanup_runtime() {
+  rm -f "${ENV_FILE}"
   "${SCRIPT_DIR}/ae_overhead_cleanup.sh" >/dev/null 2>&1 || true
 }
 trap cleanup_runtime EXIT
@@ -49,7 +51,7 @@ run_one() {
     ;;
   esac
 
-  cat > /tmp/leveldb-recovery-env.yaml <<EOF
+  cat >"${ENV_FILE}" <<EOF
 benchmark:
   num_keys: ${NUM_KEYS}
   key_length: 16
@@ -80,7 +82,7 @@ redis:
     db: 0
   pool: { max_size: 64 }
 EOF
-  scp -q /tmp/leveldb-recovery-env.yaml \
+  scp -q "${ENV_FILE}" \
     "node1:${REMOTE}/tests/LevelDB/src/tests/client/env.yaml"
   if ! ssh node1 "cd '${REMOTE}/tests/LevelDB/src/tests/client' &&
       ./target/release/client" >"${OUT}/${prefix}-client.log" 2>&1; then
