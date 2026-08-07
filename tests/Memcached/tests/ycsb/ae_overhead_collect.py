@@ -220,8 +220,14 @@ def ycsb_values(root):
 
 
 def update_json(source, output, updates):
-    with open(source) as f:
-        data = json.load(f)
+    if os.path.exists(output):
+        with open(output) as f:
+            data = json.load(f)
+    elif os.path.exists(source):
+        with open(source) as f:
+            data = json.load(f)
+    else:
+        data = {}
     data.update(updates)
     with open(output, "w") as f:
         json.dump(data, f, indent=2)
