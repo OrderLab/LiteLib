@@ -23,7 +23,8 @@ if [ "${1:-}" = "--check" ]; then
 elif [ "$#" -gt 0 ]; then
   ROOT=$1
 else
-  ROOT=$(find "${FIG13_RESULTS_DIR}" -mindepth 1 -maxdepth 1 -type d |
+  ROOT=$(find "${FIG13_RESULTS_DIR}" -mindepth 1 -maxdepth 1 -type d \
+    -name '20*' |
     sort | tail -1)
 fi
 [ -d "${ROOT}" ] || fig13_die "no results directory: ${ROOT}"
