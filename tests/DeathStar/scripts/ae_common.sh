@@ -46,7 +46,7 @@ AE_VENV_DIR=${AE_VENV_DIR:-${LITELIB_MAIN_DIR}/.venv}
 
 # Where the paper's plotting scripts live.  Override if the paper repository is
 # checked out somewhere else.
-AE_PAPER_DIR=${AE_PAPER_DIR:-${HOME}/litesys-nsdi27}
+AE_PAPER_DIR=${AE_PAPER_DIR:-${LITELIB_MAIN_DIR}}
 
 # --- Cluster ----------------------------------------------------------------
 
