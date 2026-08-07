@@ -1,7 +1,7 @@
 # LiteLib Artifact Evaluation Guide
 
 Welcome to the artifact evaluation guide for **LiteLib** (NSDI '27), the
-framework behind *"LiteLib: Containing Failure Impact for Stateful Applications
+library behind *"LiteLib: Containing Failure Impact for Stateful Applications
 with Compact Replicas"*.
 
 This document covers **environment setup**. Choose exactly one access mode:
@@ -15,8 +15,32 @@ Once setup is complete, follow the per-experiment guides linked from
 [Running the experiments](#-running-the-experiments).
 
 > **Note:** we may push fixes to this repository during the evaluation period.
-> Please re-run `./scripts/user_init.sh` to update all four checkouts before
-> you start.
+> Please re-run `./scripts/user_init.sh` to update before you start.
+
+## Overview
+
+This artifact reproduces the paper's eight numbered evaluation results:
+
+- **Figures 1 and 2:** failure amplification in DeathStarBench and LiteLib's
+  isolation of the healthy backend.
+- **Figure 12:** LevelDB service during failure and stable throughput after
+  replay.
+- **Figure 13:** Memcached metastability, LiteLib recovery, and checkpoint
+  staleness.
+- **Figure 14:** memory overhead across Memcached, LevelDB, Redis, and MySQL.
+- **Figure 15:** steady-state latency overhead.
+- **Figure 16:** steady-state CPU overhead.
+- **Table 2:** service gaps for active-passive, active-active, and LiteLib
+  configurations.
+
+Each experiment guide gives the command, expected runtime, output location,
+and qualitative interpretation. Generated artifacts use the names
+`Figure1.pdf`, `Figure2.pdf`, `Figure12.pdf`–`Figure16.pdf`, and `Table2.csv`
+under `figures/`.
+
+> ⚠️ **Self-reserved cluster warning:** Figures **1, 2, 12, and 13** are not
+> stable because the workload that triggers metastable failure is
+> machine-specific, so the reproduced results may differ.
 
 ## ✅ Setup Checklist
 
@@ -37,12 +61,12 @@ Once setup is complete, follow the per-experiment guides linked from
 - [ ] The final setup output reports all four nodes ready
 - [ ] Reproduced [Figures 1 & 2](./ae-fig1-2-motivation.md)
 - [ ] Reproduced [Figure 13](./ae-fig13-memcached.md)
-- [ ] Reproduced LevelDB [Figure 12](./ae-leveldb-recovery.md)
+- [ ] Reproduced LevelDB [Figure 12](./ae-fig12-leveldb.md)
 - [ ] Reproduced [Figure 14](./ae-fig14-memory.md)
 - [ ] Reproduced Memcached's [Figures 14/15/16](./ae-fig14-16-memcached.md)
-- [ ] Reproduced LevelDB's [Figures 15/16](./ae-leveldb-overhead.md)
-- [ ] Reproduced Redis's [Figures 15/16](./ae-redis-overhead.md)
-- [ ] Reproduced MySQL's [Figures 15/16](./ae-mysql-overhead.md)
+- [ ] Reproduced LevelDB's [Figures 15/16](./ae-fig15-16-leveldb.md)
+- [ ] Reproduced Redis's [Figures 15/16](./ae-fig15-16-redis.md)
+- [ ] Reproduced MySQL's [Figures 15/16](./ae-fig15-16-mysql.md)
 - [ ] Reproduced [Table 2](./ae-table2.md)
 
 ---
@@ -59,15 +83,15 @@ single-node setup cannot reproduce the paper's numbers.
 | Nodes     | 4 × CloudLab `c220g5` (`node0` … `node3`)                 |
 | CPU       | 2 × Intel Xeon Silver 4114 (10 cores @ 2.20 GHz each)     |
 | Memory    | 192 GB DDR4 (6 × 32 GB)                                   |
-| Storage   | 480 GB SATA SSD (grown to ~430 GiB usable on `/`) + 1.2 TB HDD |
+| Storage   | 480 GB SATA SSD (grown to ~430 GiB usable on `/`) |
 | Network   | 10 GbE experiment network on `10.10.1.0/24`               |
-| OS image  | `UBUNTU22-64-STD` (Ubuntu 22.04 LTS)                      |
+| OS image  | Ubuntu 22.04 LTS |
 | Kernel    | `6.8.0-52-generic` (installed by the setup scripts)       |
 
 ### Instantiating the cluster on CloudLab
 
 1. Create an experiment with **4 raw PC nodes** of type `c220g5` and the
-   `UBUNTU22-64-STD` image.
+   `Ubuntu 22.04` image.
 2. Put all four nodes on a shared LAN. The scripts expect the nodes to be
    named `node0` … `node3` and reachable by those names — this is what
    CloudLab's default `/etc/hosts` gives you:
@@ -85,10 +109,6 @@ single-node setup cannot reproduce the paper's numbers.
 > SSH and workload traffic. Never substitute public IP addresses.** A public
 > CloudLab hostname/IP is used only to enter `node0` from your own computer;
 > cluster scripts force the four aliases.
-
-> ⚠️ **Self-reserved cluster warning:** Figures **1, 2, 12, and 13** are not
-> stable because the workload that triggers metastable failure is
-> machine-specific, so the reproduced results may differ.
 
 ---
 
@@ -263,6 +283,30 @@ sudo ~/LiteLib/scripts/check_init.sh --system-only --quiet || echo "system not r
 
 ---
 
+## 🚀 Kick-the-Tires
+
+After completing the appropriate setup mode, run:
+
+```bash
+cd ~/LiteLib
+./scripts/kick_the_tires.sh
+```
+
+**Expected duration: 1–3 minutes.** This does not start a paper experiment. It
+checks all four evaluator accounts and system prerequisites, confirms that
+`node0`–`node3` resolve to the dedicated experiment network, validates the
+main experiment wrappers/collectors, and checks writable output directories.
+On the authors' provided cluster it also confirms access to the shared Figure
+13 database snapshot.
+
+The final line should be:
+
+```text
+==> Kick-the-Tires passed
+```
+
+---
+
 ## 🧰 Setup Command Reference
 
 Every stage can be run on its own, and all of them are safe to re-run — the
@@ -349,7 +393,7 @@ datastore:
   ./scripts/ae_fig13_cleanup.sh
   ```
 * **Figure 12 (LevelDB recovery)** —
-  [recovery guide](./ae-leveldb-recovery.md):
+  [recovery guide](./ae-fig12-leveldb.md):
 
   ```bash
   ./scripts/ae_leveldb_recovery_setup.sh
@@ -367,7 +411,7 @@ datastore:
   ./scripts/ae_memcached_overhead_cleanup.sh
   ```
 * **LevelDB in Figures 15/16** —
-  [overhead guide](./ae-leveldb-overhead.md):
+  [overhead guide](./ae-fig15-16-leveldb.md):
 
   ```bash
   ./scripts/ae_leveldb_overhead_setup.sh
@@ -376,7 +420,7 @@ datastore:
   ./scripts/ae_leveldb_overhead_cleanup.sh
   ```
 * **Redis in Figures 15/16** —
-  [overhead guide](./ae-redis-overhead.md):
+  [overhead guide](./ae-fig15-16-redis.md):
 
   ```bash
   ./scripts/ae_redis_overhead_setup.sh
@@ -385,7 +429,7 @@ datastore:
   ./scripts/ae_redis_overhead_cleanup.sh
   ```
 * **MySQL in Figures 15/16** —
-  [overhead guide](./ae-mysql-overhead.md):
+  [overhead guide](./ae-fig15-16-mysql.md):
 
   ```bash
   ./scripts/ae_mysql_overhead_setup.sh
@@ -425,6 +469,7 @@ After completing the required memory experiments, regenerate Figure 14 with:
 * [`scripts/setup_cluster.sh`](../scripts/setup_cluster.sh) — cluster driver
 * [`scripts/system_init.sh`](../scripts/system_init.sh) — system-wise evaluator entry point
 * [`scripts/user_init.sh`](../scripts/user_init.sh) — user-wise evaluator entry point
+* [`scripts/kick_the_tires.sh`](../scripts/kick_the_tires.sh) — fast readiness check
 * [`scripts/init.sh`](../scripts/init.sh) — per-node initialization
 * [`scripts/post_reboot.sh`](../scripts/post_reboot.sh) — re-apply the runtime state a reboot clears
 * [`scripts/check_init.sh`](../scripts/check_init.sh) — per-node verification

@@ -3,7 +3,11 @@
 Run from `~/LiteLib` on node0:
 
 ```bash
-# Initial setup: ~1-2 hours; later runs: ~5-15 min
+# Authors' provided cluster: import the shared snapshot (~10-20 min)
+./scripts/ae_fig13_setup.sh \
+  --import-db /srv/litelib-ae/fig13/mysql-snapshot.tar.zst
+
+# Self-reserved cluster: initialize the database (~1-2 hours)
 ./scripts/ae_fig13_setup.sh
 
 # Experiment: ~35-45 min
