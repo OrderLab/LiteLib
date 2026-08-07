@@ -129,8 +129,11 @@ single-node setup cannot reproduce the paper's numbers.
 
 ## 🔧 Software Setup
 
-All commands below run from **`node0`** and contact peers only as
-`node0`–`node3`.
+Unless a command explicitly names another machine, run every command in this
+guide and its linked experiment guides on **`node0`**. Do not clone the
+repository or run the top-level setup/experiment commands separately on
+`node1`–`node3`; the scripts contact those peers through the `node0`–`node3`
+aliases.
 
 ### Mode A — Authors' provided cluster
 
@@ -147,7 +150,7 @@ runtime initialization. Do **not** run the system-wise initializer.
 
    ```bash
    ssh <evaluator-user>@<provided-node0-address>
-   git clone https://github.com/OrderLab/LiteLib.git ~/LiteLib
+   git clone --branch nsdi27-ae https://github.com/OrderLab/LiteLib.git ~/LiteLib
    cd ~/LiteLib
    ./scripts/user_init.sh
    ```
@@ -167,7 +170,7 @@ CloudLab must provide passwordless `sudo` and passwordless SSH from `node0` to
 the same account on `node1`–`node3`. Then run:
 
 ```bash
-git clone https://github.com/OrderLab/LiteLib.git ~/LiteLib
+git clone --branch nsdi27-ae https://github.com/OrderLab/LiteLib.git ~/LiteLib
 cd ~/LiteLib
 
 ./scripts/system_init.sh

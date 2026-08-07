@@ -52,7 +52,7 @@ LITELIB_SSH_KEY=${LITELIB_SSH_KEY:-${LITELIB_USER_HOME}/.ssh/id_ed25519}
 
 LITELIB_REPO_URL=${LITELIB_REPO_URL:-git@github.com:OrderLab/LiteLib.git}
 LITELIB_REPO_HTTPS_URL=${LITELIB_REPO_HTTPS_URL:-https://github.com/OrderLab/LiteLib.git}
-LITELIB_REPO_BRANCH=${LITELIB_REPO_BRANCH:-master}
+LITELIB_REPO_BRANCH=${LITELIB_REPO_BRANCH:-nsdi27-ae}
 LITELIB_REPO_DIR=${LITELIB_REPO_DIR:-${LITELIB_USER_HOME}/LiteLib}
 
 # --- Hardware (CloudLab c220g5 defaults) -------------------------------------
