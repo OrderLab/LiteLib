@@ -9,17 +9,19 @@ Run from `~/LiteLib` on node0:
 # Experiment: ~90-120 min
 ./scripts/ae_leveldb_overhead_run.sh
 
-# Process results and regenerate Figures 15/16: <1 min
+# Process LevelDB results: <1 min
 ./scripts/ae_leveldb_overhead_plot.sh
-./scripts/ae_overhead_plot.sh
 
 # Cleanup: <1 min
 ./scripts/ae_leveldb_overhead_cleanup.sh
 ```
 
 Raw results are written under `results/leveldb-overhead/`, processed values
-under `results/leveldb-overhead/processed/`, and the generated PDFs under
-`figures/`.
+under `results/leveldb-overhead/processed/`.
+
+This processing step does not have the complete cross-application data for
+Figures 15/16. After processing Memcached, LevelDB, Redis, and MySQL, run
+`./scripts/ae_overhead_plot.sh` once as described in `ae.md`.
 
 **Interpretation:** eBPF LiteLib should have latency close to vanilla with
 modest additional CPU usage. Checkpoint should have substantially higher

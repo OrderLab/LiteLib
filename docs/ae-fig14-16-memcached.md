@@ -9,16 +9,18 @@ Run from `~/LiteLib` on node0:
 # Experiment: ~25-40 min
 ./scripts/ae_memcached_overhead_run.sh
 
-# Plot: <1 min
+# Process Memcached results: <1 min
 ./scripts/ae_memcached_overhead_plot.sh
 
 # Cleanup: <1 min
 ./scripts/ae_memcached_overhead_cleanup.sh
 ```
 
-Raw results are written under `results/memcached-overhead/`. The generated PDFs
-are `figures/Figure14.pdf`, `figures/Figure15.pdf`, and
-`figures/Figure16.pdf`.
+Raw and processed results are written under `results/memcached-overhead/`.
+After processing Memcached, LevelDB, Redis, and MySQL, run
+`./scripts/ae_overhead_plot.sh` to generate the complete `Figure15.pdf` and
+`Figure16.pdf`. Generate `Figure14.pdf` after all memory inputs are ready with
+`./scripts/ae_memory_overhead_plot.sh`.
 
 **Interpretation:** Figure 14 reports memory immediately before failure.
 Figures 15 and 16 compare steady-state latency and CPU overhead; the LiteLib

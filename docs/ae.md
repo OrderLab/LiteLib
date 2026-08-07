@@ -138,7 +138,7 @@ runtime initialization. Do **not** run the system-wise initializer.
    ```
 
 `user_init.sh` configures only the evaluator account: SSH among the
-`node0`–`node3` aliases, host keys, and a checkout/update on every node. It then
+`node0`–`node3` aliases, host keys, and a repository copy/update on every node. It then
 **verifies** the existing system prerequisite; it does not run `apt`, change
 the kernel, resize disks, or reinstall runtime state.
 
@@ -354,7 +354,7 @@ compatibility and debugging, but rejects literal IP addresses as node targets.
 | `cannot reach git@github.com:...` | No GitHub SSH key on the node. The script automatically falls back to HTTPS; if that also fails, check the node's outbound connectivity. |
 | `passwordless sudo is required on every node` | Run `sudo -n true` on the failing node to confirm; CloudLab normally grants this. |
 | `cannot determine the root partition` | Unusual disk layout. Override explicitly: `LITELIB_ROOT_DISK=/dev/nvme0n1 LITELIB_ROOT_PART=3 ./setup_cluster.sh init`. |
-| `[update] working tree has local changes, not touching it` | You edited files on that node. Commit or `git checkout .` there, then re-run the `clone` stage. |
+| `[update] working tree has local changes, not touching it` | You edited files on that node. Commit or `git restore .` there, then re-run the `clone` stage. |
 | A self-reserved node fails during setup | Read `logs/<timestamp>-init-<node>.log`, fix the cause, and re-run `./scripts/system_init.sh`. |
 | Everything passes except `booted into 6.8.0-52-generic` | The self-reserved cluster has not completed the reboot sequence. |
 | `tc`/`iptables`/`cpu governor` checks fail | Run `./scripts/system_init.sh post-reboot`; runtime state is cleared by every reboot. |
@@ -366,16 +366,10 @@ compatibility and debugging, but rejects literal IP addresses as node targets.
 
 When `user_init.sh`'s final system verification (or
 `./scripts/system_init.sh check`) reports all four nodes initialized, you are
-ready to run the workloads. Each experiment has its own driver under `tests/`,
-and different experiments use different nodes as server, client, proxy, and
-datastore:
+ready to run the workloads.
 
-* **LevelDB** — `tests/LevelDB/scripts/{server,client}.sh`
-* **Memcached** — `tests/Memcached/src/Metastability/setup_scripts/`
-* **Redis** — `tests/Redis/`
-* **MySQL** — `tests/MySQL/`
 * **Figures 1 & 2 (DeathStar motivation)** —
-  [step-by-step guide](./ae-fig1-2-motivation.md). Run from this checkout:
+  [step-by-step guide](./ae-fig1-2-motivation.md):
 
   ```bash
   ./scripts/ae_fig1_2_setup.sh
