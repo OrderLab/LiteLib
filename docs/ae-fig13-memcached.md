@@ -43,7 +43,7 @@ Do not run `docker compose down -v`; `-v` deletes the initialized database.
 Immediately after first-time initialization, setup stops MySQL and creates a
 checksummed archive under `~/LiteLib/results/fig13/database/`. On the authors'
 provided cluster, `--import-db` verifies the shared snapshot, restores it into
-the evaluator's Docker volume, and creates a per-user archive reference for
+the Figure 13 Docker volume, and creates a per-user archive reference for
 later runs. The run command refuses to start until its archive verifies.
 
 ## Fixed paper parameters
