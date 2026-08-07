@@ -17,7 +17,10 @@
 # Usage: ./setup_cluster.sh [OPTIONS] [COMMAND]
 #
 # Commands:
-#   setup     (default) ssh bootstrap + clone + init + check on every node
+#   setup     (default) legacy full setup: ssh + clone + system init + check
+#   user-init configure this evaluator's SSH/repository, then verify system state
+#   system-init  install/check persistent system state (requires SSH/repo ready)
+#   system-check verify dependencies, kernel, disk, network, and runtime state
 #   ssh       only bootstrap SSH keys / known_hosts
 #   clone     only clone or update the repository
 #   init      only run init.sh (assumes the repository is already there)
@@ -100,7 +103,7 @@ while [ $# -gt 0 ]; do
     sed -n '2,60p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
     ;;
-  setup | ssh | clone | init | check | reboot | post-reboot) COMMAND=$1 ;;
+  setup | user-init | system-init | system-check | ssh | clone | init | check | reboot | post-reboot) COMMAND=$1 ;;
   *)
     echo "unknown argument: $1 (try --help)" 1>&2
     exit 2
@@ -110,6 +113,12 @@ while [ $# -gt 0 ]; do
 done
 
 read -r -a NODES <<<"${LITELIB_NODES}"
+for node in "${NODES[@]}"; do
+  if [[ "${node}" =~ ^[0-9]+(\.[0-9]+){3}$ || "${node}" == *:* ]]; then
+    echo "node targets must be host aliases (node0-node3), never IP addresses: ${node}" 1>&2
+    exit 2
+  fi
+done
 SELF=$(hostname -s)
 LOG_DIR=${LITELIB_LOG_DIR:-${LITELIB_REPO_DIR}/logs}
 RUN_ID=$(date +%Y%m%d-%H%M%S)
@@ -315,6 +324,7 @@ bootstrap_local_ssh() {
 }
 
 stage_ssh() {
+  local seed_root=${1:-1}
   bootstrap_local_ssh
 
   local keytype keydata
@@ -342,14 +352,17 @@ stage_ssh() {
     fi
     known_hosts_snippet | sed "s|HOSTS_PLACEHOLDER|github.com ${LITELIB_NODES}|" |
       ssh "${SSH_OPTS[@]}" "${LITELIB_SSH_USER}@${node}" bash
-    # root runs network_limit.sh, which SSHes to the peers as well.  `sudo -H`
-    # is required, otherwise HOME still points at the unprivileged account and
-    # the keys land in the wrong known_hosts file.
-    known_hosts_snippet | sed "s|HOSTS_PLACEHOLDER|github.com ${LITELIB_NODES}|" |
-      ssh "${SSH_OPTS[@]}" "${LITELIB_SSH_USER}@${node}" sudo -n -H bash
+    if [ "${seed_root}" -eq 1 ]; then
+      # System initialization runs network_limit.sh as root.  `sudo -H` keeps
+      # root's known_hosts separate from the evaluator account.
+      known_hosts_snippet | sed "s|HOSTS_PLACEHOLDER|github.com ${LITELIB_NODES}|" |
+        ssh "${SSH_OPTS[@]}" "${LITELIB_SSH_USER}@${node}" sudo -n -H bash
+    fi
     ok "[${node}] SSH ready"
   done
-  known_hosts_snippet | sed "s|HOSTS_PLACEHOLDER|github.com ${LITELIB_NODES}|" | sudo -n -H bash
+  if [ "${seed_root}" -eq 1 ]; then
+    known_hosts_snippet | sed "s|HOSTS_PLACEHOLDER|github.com ${LITELIB_NODES}|" | sudo -n -H bash
+  fi
   ok "[${SELF}] SSH ready"
 }
 
@@ -464,7 +477,7 @@ init_node() {
       echo 'passwordless sudo is required on every node' >&2
       exit 1
     }
-    if [ '${FORCE}' -eq 0 ] && sudo -n '${LITELIB_REPO_DIR}/scripts/check_init.sh' --quiet; then
+    if [ '${FORCE}' -eq 0 ] && sudo -n '${LITELIB_REPO_DIR}/scripts/check_init.sh' --system-only --quiet; then
       echo '[init] already initialized, skipping (use --force to re-run)'
       exit 0
     fi
@@ -485,10 +498,11 @@ stage_init() {
 # ---------------------------------------------------------------------------
 
 stage_check() {
+  local check_args=${1:-}
   local node rc=0 failed=() needs_reboot=() runtime_only=() out
   for node in "${NODES[@]}"; do
     echo
-    if out=$(rsh "${node}" "sudo -n '${LITELIB_REPO_DIR}/scripts/check_init.sh'" 2>&1); then
+    if out=$(rsh "${node}" "sudo -n '${LITELIB_REPO_DIR}/scripts/check_init.sh' ${check_args}" 2>&1); then
       echo "${out}"
     else
       echo "${out}"
@@ -499,8 +513,8 @@ stage_check() {
       fi
       # Only runtime state is missing -- a reboot cleared the rate limits and
       # the CPU pinning, and nothing needs to be reinstalled.
-      if ! echo "${out}" | grep -q "^-- persistent state --" ||
-        ! echo "${out}" | sed -n '/-- persistent state --/,/-- runtime state/p' | grep -q "FAIL"; then
+      if ! echo "${out}" | grep -q "^-- system persistent state --" ||
+        ! echo "${out}" | sed -n '/-- system persistent state --/,/-- system runtime state/p' | grep -q "FAIL"; then
         runtime_only+=("${node}")
       fi
     fi
@@ -511,7 +525,9 @@ stage_check() {
     return 0
   fi
   err "not initialized: ${failed[*]}"
-  if [ "${#needs_reboot[@]}" -eq "${#failed[@]}" ]; then
+  if [[ "${check_args}" == *"--user-only"* ]]; then
+    echo "     Re-run: ${SCRIPT_DIR}/user_init.sh" 1>&2
+  elif [ "${#needs_reboot[@]}" -eq "${#failed[@]}" ]; then
     # Everything is installed; the nodes just have not picked up the new kernel.
     echo "     All remaining checks only need a reboot into ${LITELIB_KERNEL_RELEASE}:" 1>&2
     echo "       $0 reboot" 1>&2
@@ -611,6 +627,23 @@ clone)
   ;;
 init) stage_init ;;
 check) stage_check ;;
+system-check) stage_check "--system-only" ;;
+system-init)
+  stage_init
+  stage_check "--system-only --persistent-only"
+  if [ "$(uname -r)" != "${LITELIB_KERNEL_RELEASE}" ]; then
+    echo
+    warn "persistent system setup is complete; reboot into ${LITELIB_KERNEL_RELEASE}:"
+    warn "    ${SCRIPT_DIR}/system_init.sh reboot"
+  fi
+  ;;
+user-init)
+  stage_ssh 0
+  stage_clone
+  stage_check "--user-only"
+  info "verifying the authors' pre-installed system prerequisite (no installation)"
+  stage_check "--system-only"
+  ;;
 post-reboot) stage_post_reboot ;;
 reboot) stage_reboot ;;
 setup)

@@ -2,31 +2,62 @@
 #
 # Verify that scripts/init.sh has completed successfully on *this* node.
 #
-# The checks are split into two groups:
+# The system checks are split into two groups:
 #
 #   [persistent]  survives a reboot -- distro packages, the pinned kernel,
 #                 Boost/libevent under /usr/local, the grown root filesystem.
 #   [runtime]     lives only in kernel state and must be re-applied after every
 #                 reboot -- CPU frequency pinning, tc/iptables rate limits.
 #
+# User checks cover the evaluator account's SSH material and repository
+# checkout.  They never install or modify system state.
+#
 # Exit status:
 #   0  everything required is in place
-#   1  at least one check failed (re-run init.sh)
+#   1  at least one requested check failed
 #   2  usage error
 #
-# Usage: ./check_init.sh [--persistent-only|--runtime-only] [--quiet]
+# Usage: ./check_init.sh [--persistent-only|--runtime-only]
+#                        [--system-only|--user-only] [--quiet]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=config.sh
 source "${SCRIPT_DIR}/config.sh"
 
-MODE=all
+STATE_MODE=all
+SCOPE=all
 QUIET=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  --persistent-only) MODE=persistent ;;
-  --runtime-only) MODE=runtime ;;
+  --persistent-only)
+    [ "${STATE_MODE}" = all ] || {
+      echo "--persistent-only and --runtime-only are mutually exclusive" 1>&2
+      exit 2
+    }
+    STATE_MODE=persistent
+    ;;
+  --runtime-only)
+    [ "${STATE_MODE}" = all ] || {
+      echo "--persistent-only and --runtime-only are mutually exclusive" 1>&2
+      exit 2
+    }
+    STATE_MODE=runtime
+    ;;
+  --system-only)
+    [ "${SCOPE}" = all ] || {
+      echo "--system-only and --user-only are mutually exclusive" 1>&2
+      exit 2
+    }
+    SCOPE=system
+    ;;
+  --user-only)
+    [ "${SCOPE}" = all ] || {
+      echo "--system-only and --user-only are mutually exclusive" 1>&2
+      exit 2
+    }
+    SCOPE=user
+    ;;
   -q | --quiet) QUIET=1 ;;
   -h | --help)
     sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -39,6 +70,11 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+if [ "${SCOPE}" = user ] && [ "${STATE_MODE}" = runtime ]; then
+  echo "--user-only cannot be combined with --runtime-only" 1>&2
+  exit 2
+fi
 
 FAILED=0
 FAILED_CHECKS=()
@@ -150,10 +186,36 @@ check_rootfs() {
 
 check_ssh() {
   local ssh_dir="${LITELIB_USER_HOME}/.ssh"
-  if [ -f "${ssh_dir}/authorized_keys" ] && [ -s "${ssh_dir}/authorized_keys" ]; then
-    report "ssh authorized_keys present" 0
+  if [ -s "${ssh_dir}/authorized_keys" ]; then
+    report "SSH authorized_keys present" 0
   else
-    report "ssh authorized_keys present" 1 "${ssh_dir}/authorized_keys missing or empty"
+    report "SSH authorized_keys present" 1 "${ssh_dir}/authorized_keys missing or empty"
+  fi
+  if [ -s "${LITELIB_SSH_KEY}" ] && [ -s "${LITELIB_SSH_KEY}.pub" ]; then
+    report "cluster SSH keypair present" 0
+  else
+    report "cluster SSH keypair present" 1 "${LITELIB_SSH_KEY}{,.pub} must both exist"
+  fi
+
+  local missing=() node configured_nodes=()
+  read -r -a configured_nodes <<<"${LITELIB_NODES}"
+  for node in "${configured_nodes[@]}"; do
+    if ! ssh-keygen -F "${node}" -f "${ssh_dir}/known_hosts" >/dev/null 2>&1; then
+      missing+=("${node}")
+    fi
+  done
+  if [ "${#missing[@]}" -eq 0 ]; then
+    report "node alias host keys" 0 "${LITELIB_NODES}"
+  else
+    report "node alias host keys" 1 "missing: ${missing[*]}"
+  fi
+}
+
+check_repo() {
+  if [ -d "${LITELIB_REPO_DIR}/.git" ]; then
+    report "LiteLib repository checkout" 0 "${LITELIB_REPO_DIR}"
+  else
+    report "LiteLib repository checkout" 1 "${LITELIB_REPO_DIR}/.git not found"
   fi
 }
 
@@ -229,22 +291,30 @@ check_iptables() {
 
 log "==> LiteLib initialization check on $(hostname -s) ($(date -Is))"
 
-if [ "${MODE}" = all ] || [ "${MODE}" = persistent ]; then
-  log "-- persistent state --"
+if { [ "${SCOPE}" = all ] || [ "${SCOPE}" = system ]; } &&
+  { [ "${STATE_MODE}" = all ] || [ "${STATE_MODE}" = persistent ]; }; then
+  log "-- system persistent state --"
   check_packages
   check_kernel_installed
   check_boost
   check_libevent
   check_rootfs
-  check_ssh
 fi
 
-if [ "${MODE}" = all ] || [ "${MODE}" = runtime ]; then
-  log "-- runtime state (re-apply with post_reboot.sh after every reboot) --"
+if { [ "${SCOPE}" = all ] || [ "${SCOPE}" = system ]; } &&
+  { [ "${STATE_MODE}" = all ] || [ "${STATE_MODE}" = runtime ]; }; then
+  log "-- system runtime state (re-apply with post_reboot.sh after every reboot) --"
   check_kernel_booted
   check_cpu_frequency
   check_tc
   check_iptables
+fi
+
+if { [ "${SCOPE}" = all ] || [ "${SCOPE}" = user ]; } &&
+  [ "${STATE_MODE}" != runtime ]; then
+  log "-- user state --"
+  check_ssh
+  check_repo
 fi
 
 if [ "${FAILED}" -eq 0 ]; then

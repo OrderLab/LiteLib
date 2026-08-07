@@ -4,21 +4,37 @@ Welcome to the artifact evaluation guide for **LiteLib** (NSDI '27), the
 framework behind *"LiteLib: Containing Failure Impact for Stateful Applications
 with Compact Replicas"*.
 
-This document covers **environment setup**. Once the cluster is up, follow the
-per-experiment guides linked from [Running the experiments](#-running-the-experiments).
+This document covers **environment setup**. Choose exactly one access mode:
+
+1. **Authors' provided cluster:** the authors' four nodes are already
+   system-initialized; initialize only your evaluator account.
+2. **Self-reserved cluster:** reserve four CloudLab nodes and run both the
+   system-wise and user-wise initialization.
+
+Once setup is complete, follow the per-experiment guides linked from
+[Running the experiments](#-running-the-experiments).
 
 > **Note:** we may push fixes to this repository during the evaluation period.
-> Please re-run `scripts/setup_cluster.sh clone` to pull the latest version
-> before you start.
+> Please re-run `./scripts/user_init.sh` to update all four checkouts before
+> you start.
 
-## ✅ Checklist
+## ✅ Setup Checklist
 
-- [ ] Instantiated a 4-node CloudLab `c220g5` cluster with Ubuntu 22.04
-- [ ] Confirmed passwordless `sudo` and node-to-node SSH work
-- [ ] Ran `scripts/setup_cluster.sh` from `node0`
-- [ ] Rebooted the cluster into kernel `6.8.0-52-generic`
-- [ ] Re-applied the network rate limits after the reboot (`setup_cluster.sh post-reboot`)
-- [ ] `scripts/setup_cluster.sh check` reports **all 4 nodes initialized**
+**Authors' provided cluster**
+
+- [ ] Sent an SSH public key to the authors through HotCRP
+- [ ] Received a per-evaluator username and `node0` login address
+- [ ] Ran `./scripts/user_init.sh` only
+
+**Self-reserved cluster**
+
+- [ ] Instantiated 4 × CloudLab `c220g5` nodes with Ubuntu 22.04
+- [ ] Ran `./scripts/system_init.sh`, rebooted, and ran its `post-reboot` step
+- [ ] Ran `./scripts/user_init.sh`
+
+**Both modes**
+
+- [ ] The final setup output reports all four nodes ready
 - [ ] Reproduced [Figures 1 & 2](./ae-fig1-2-motivation.md)
 - [ ] Reproduced [Figure 13](./ae-fig13-memcached.md)
 - [ ] Reproduced LevelDB [Figure 12](./ae-leveldb-recovery.md)
@@ -65,61 +81,78 @@ single-node setup cannot reproduce the paper's numbers.
 3. Reserve the nodes for **at least 3 days**. Setup alone takes roughly an
    hour, and a full pass over all experiments takes 1–2 days.
 
-> **Different node names or a different node count?**
-> Nothing is hardcoded. Pass `--nodes "n0 n1 n2 n3"` to the setup script, or
-> export `LITELIB_NODES`. See [`scripts/config.sh`](../scripts/config.sh) for
-> every knob.
+> **Use the aliases `node0`, `node1`, `node2`, and `node3` for all node-to-node
+> SSH and workload traffic. Never substitute public IP addresses.** A public
+> CloudLab hostname/IP is used only to enter `node0` from your own computer;
+> cluster scripts force the four aliases.
+
+> ⚠️ **Self-reserved cluster warning:** Figures **1, 2, 12, and 13** are not
+> stable because the workload that triggers metastable failure is
+> machine-specific, so the reproduced results may differ.
 
 ---
 
 ## 🔧 Software Setup
 
-Everything below is driven from **`node0`**; the script takes care of the other
-three nodes over SSH. The whole process is a single command, but read the
-prerequisites first.
+All commands below run from **`node0`** and contact peers only as
+`node0`–`node3`.
 
-### Prerequisites
+### Mode A — Authors' provided cluster
 
-The setup script needs three things to be true on every node. On a stock
-CloudLab experiment they already are:
+The authors have already completed kernel, dependency, disk, network, and
+runtime initialization. Do **not** run the system-wise initializer.
 
-1. **Passwordless `sudo`** — verify with `sudo -n true`.
-2. **Passwordless SSH from `node0` to the other nodes.** CloudLab installs your
-   account cluster-wide, so `ssh node1` should just work. If it asks for a
-   password, run `ssh-copy-id node1` (and likewise for `node2`/`node3`) once.
-3. **Access to GitHub.** Either add an SSH key to your GitHub account, or let
-   the script fall back to HTTPS for this public repository.
+1. Send an SSH **public** key (for example, `~/.ssh/id_ed25519.pub`) to the
+   authors through **HotCRP**. Do not send a private key.
+2. The authors create a separate user for each evaluator on all four nodes,
+   authorize that public key, enable passwordless `sudo` (needed by experiments
+   and read-only system checks), and return the username and `node0` login address.
+3. Log in with agent forwarding for the first connection. This lets the
+   user-wise initializer reach the other new accounts before it installs a
+   cluster-local key:
 
-The script handles the interactive prompts that would otherwise stall an
-unattended run — SSH host-key fingerprint confirmations are pre-seeded with
-`ssh-keyscan`, and `apt` runs under `DEBIAN_FRONTEND=noninteractive` so it never
-stops on a configuration-file or service-restart question.
+   ```bash
+   ssh -A <evaluator-user>@<provided-node0-address>
+   git clone https://github.com/OrderLab/LiteLib.git ~/LiteLib
+   cd ~/LiteLib
+   ./scripts/user_init.sh
+   ```
 
-### Step 1 — Get the repository onto `node0`
+`user_init.sh` configures only the evaluator account: SSH among the
+`node0`–`node3` aliases, host keys, and a checkout/update on every node. It then
+**verifies** the existing system prerequisite; it does not run `apt`, change
+the kernel, resize disks, or reinstall runtime state.
+
+**Expected duration: 2–10 minutes**, mostly repository/submodule transfer. A
+system-check failure means the provided cluster needs author attention; do not
+replace it with system initialization.
+
+### Mode B — Self-reserved CloudLab cluster
+
+CloudLab must provide passwordless `sudo` and passwordless SSH from `node0` to
+the same account on `node1`–`node3`. Then run:
 
 ```bash
 git clone https://github.com/OrderLab/LiteLib.git ~/LiteLib
 cd ~/LiteLib
+
+./scripts/system_init.sh
+./scripts/system_init.sh reboot
+sudo systemctl reboot
+
+# Reconnect to node0 after it returns:
+cd ~/LiteLib
+./scripts/system_init.sh post-reboot
+./scripts/user_init.sh
 ```
 
-### Step 2 — Set up the whole cluster
+**Expected system setup time: 30–45 minutes**, plus reboot time. The system-wise
+entry point reuses the verified [`setup_cluster.sh`](../scripts/setup_cluster.sh)
+implementation to install dependencies/kernel state, grow the root disk,
+apply network controls and CPU/runtime settings, and check all four nodes. The
+final user-wise step configures the evaluator account and repository.
 
-```bash
-cd ~/LiteLib/scripts
-./setup_cluster.sh
-```
-
-That single command performs, on **all four nodes in parallel**:
-
-| Stage   | What it does                                                                       |
-| ------- | ---------------------------------------------------------------------------------- |
-| `ssh`   | Generates/derives the SSH keypair, authorizes it cluster-wide, and pre-seeds `known_hosts` for GitHub and every node (for both your account and `root`). |
-| `clone` | Clones or fast-forwards this repository into `~/LiteLib` on every node and checks out submodules. |
-| `init`  | Runs [`scripts/init.sh`](../scripts/init.sh): rate-limits the shared control network, grows the root filesystem, and installs all dependencies. |
-| `check` | Runs [`scripts/check_init.sh`](../scripts/check_init.sh) on every node and prints a per-node report. |
-
-**Expected duration: 30–45 minutes**, dominated by building Boost from source.
-While it runs you will see live progress:
+While system setup runs you will see live progress:
 
 ```
 ==> init: running on 4 nodes in parallel
@@ -140,7 +173,7 @@ tail -f ~/LiteLib/logs/*-init-node1.log
 ```
 
 <details>
-<summary>What <code>init.sh</code> actually changes on each node</summary>
+<summary>What system-wise initialization changes on each node</summary>
 
 1. **Control-network rate limiting** ([`network_limit.sh`](../scripts/network_limit.sh)) —
    caps the *shared*, routable CloudLab control interface (`eno1`) at 100 Mbit/s
@@ -162,38 +195,18 @@ tail -f ~/LiteLib/logs/*-init-node1.log
 
 </details>
 
-### Step 3 — Reboot into the LiteLib kernel
-
-`init.sh` installs kernel `6.8.0-52-generic` but cannot activate it. Reboot the
-cluster:
+### Verify and interpret setup
 
 ```bash
-./setup_cluster.sh reboot
-```
-
-This reboots the peer nodes, waits for them to come back, and re-applies the
-settings that a reboot clears (the `tc`/`iptables` rate limits and the CPU
-frequency pinning). It deliberately does **not** reboot the node you are
-logged into. Reboot `node0` yourself afterwards and re-apply its runtime
-configuration:
-
-```bash
-sudo systemctl reboot
-# once it is back up:
-cd ~/LiteLib/scripts && ./setup_cluster.sh post-reboot
-```
-
-### Step 4 — Verify the cluster
-
-```bash
-./setup_cluster.sh check
+cd ~/LiteLib
+./scripts/system_init.sh check
 ```
 
 A fully prepared node reports:
 
 ```
 ==> LiteLib initialization check on node1 (2026-08-03T04:43:25-05:00)
--- persistent state --
+-- system persistent state --
   [ OK ] distro packages (38)
   [ OK ] kernel 6.8.0-52-generic installed
   [ OK ] kernel headers 6.8.0-52-generic
@@ -201,8 +214,7 @@ A fully prepared node reports:
   [ OK ] libevent 2.1.12  (/usr/local)
   [ OK ] root filesystem grown  (432 GiB)
   [ OK ] /mydata removed from /etc/fstab
-  [ OK ] ssh authorized_keys present
--- runtime state (re-apply with post_reboot.sh after every reboot) --
+-- system runtime state (re-apply with post_reboot.sh after every reboot) --
   [ OK ] booted into 6.8.0-52-generic
   [ OK ] cpu governor  (performance)
   [ OK ] cpu frequency pinned to 2.2GHz  (2200000-2200000 kHz)
@@ -228,7 +240,7 @@ wrong later:
 > every node with:
 >
 > ```bash
-> cd ~/LiteLib/scripts && ./setup_cluster.sh post-reboot
+> cd ~/LiteLib && ./scripts/system_init.sh post-reboot
 > ```
 >
 > or, on a single node:
@@ -239,14 +251,14 @@ wrong later:
 > ```
 >
 > This takes seconds — it installs and builds nothing. Re-running the full
-> `./setup_cluster.sh init` is equally correct, just much slower.
+> system initializer is unnecessary.
 > `check_init.sh` will tell you if you forget.
 
 `check_init.sh` exits non-zero when anything is missing, so it can be used in
 your own scripts:
 
 ```bash
-sudo ~/LiteLib/scripts/check_init.sh --persistent-only --quiet || echo "needs init"
+sudo ~/LiteLib/scripts/check_init.sh --system-only --quiet || echo "system not ready"
 ```
 
 ---
@@ -257,7 +269,18 @@ Every stage can be run on its own, and all of them are safe to re-run — the
 script only redoes work that is actually missing.
 
 ```bash
+cd ~/LiteLib/scripts
+
+./system_init.sh                         # self-reserved: persistent system setup
+./system_init.sh reboot                  # reboot peers (then reboot node0)
+./system_init.sh post-reboot             # restore runtime state + system check
+./system_init.sh check                   # system prerequisite only
+./user_init.sh                           # evaluator SSH/repository + system verify
+
 ./setup_cluster.sh                        # ssh + clone + init + check (default)
+./setup_cluster.sh user-init              # implementation used by user_init.sh
+./setup_cluster.sh system-init            # implementation used by system_init.sh
+./setup_cluster.sh system-check           # system state, excluding account files
 ./setup_cluster.sh ssh                    # only bootstrap SSH keys/known_hosts
 ./setup_cluster.sh clone                  # only clone/update the repository
 ./setup_cluster.sh init                   # only run init.sh
@@ -265,7 +288,7 @@ script only redoes work that is actually missing.
 ./setup_cluster.sh post-reboot            # re-apply rate limits + CPU pinning
 ./setup_cluster.sh reboot                 # reboot peers + re-apply runtime config
 
-./setup_cluster.sh -n "node1 node2" init  # operate on a subset of nodes
+./setup_cluster.sh -n "node1 node2" init  # legacy/debug subset operation
 ./setup_cluster.sh -f init                # force a re-run of an initialized node
 ./setup_cluster.sh --serial init          # one node at a time, output inline
 ./setup_cluster.sh --no-progress init     # no live progress, just the summary
@@ -273,12 +296,9 @@ script only redoes work that is actually missing.
 ./setup_cluster.sh --help                 # full option list
 ```
 
-Cluster-wide settings live in [`scripts/config.sh`](../scripts/config.sh) and can
-all be overridden from the environment, e.g.:
-
-```bash
-LITELIB_NODES="n0 n1 n2 n3" LITELIB_CTRL_IFACE=eth0 ./setup_cluster.sh
-```
+The two evaluator entry points intentionally fix the peer aliases to
+`node0 node1 node2 node3`. `setup_cluster.sh` remains available for backward
+compatibility and debugging, but rejects literal IP addresses as node targets.
 
 ---
 
@@ -291,18 +311,20 @@ LITELIB_NODES="n0 n1 n2 n3" LITELIB_CTRL_IFACE=eth0 ./setup_cluster.sh
 | `passwordless sudo is required on every node` | Run `sudo -n true` on the failing node to confirm; CloudLab normally grants this. |
 | `cannot determine the root partition` | Unusual disk layout. Override explicitly: `LITELIB_ROOT_DISK=/dev/nvme0n1 LITELIB_ROOT_PART=3 ./setup_cluster.sh init`. |
 | `[update] working tree has local changes, not touching it` | You edited files on that node. Commit or `git checkout .` there, then re-run the `clone` stage. |
-| A node fails mid-`init` | Read `logs/<timestamp>-init-<node>.log`, fix the cause, and re-run `./setup_cluster.sh -n "<node>" init`. Nothing needs to be undone first. |
-| Everything passes except `booted into 6.8.0-52-generic` | You have not rebooted yet — run `./setup_cluster.sh reboot`. |
-| `tc`/`iptables`/`cpu governor` checks fail | The node was rebooted without re-applying runtime state. Run `./setup_cluster.sh post-reboot`. |
+| A self-reserved node fails during setup | Read `logs/<timestamp>-init-<node>.log`, fix the cause, and re-run `./scripts/system_init.sh`. |
+| Everything passes except `booted into 6.8.0-52-generic` | The self-reserved cluster has not completed the reboot sequence. |
+| `tc`/`iptables`/`cpu governor` checks fail | Run `./scripts/system_init.sh post-reboot`; runtime state is cleared by every reboot. |
+| `user_init.sh` cannot initially reach a peer | On a provided cluster, reconnect to `node0` with `ssh -A`; on a self-reserved cluster, verify CloudLab's account-wide SSH access. |
 
 ---
 
 ## 📊 Running the experiments
 
-With `./setup_cluster.sh check` reporting all four nodes initialized, you are
-ready to run the workloads. Each experiment has its own driver under
-`tests/`, and different experiments use different nodes as server, client,
-proxy, and datastore:
+When `user_init.sh`'s final system verification (or
+`./scripts/system_init.sh check`) reports all four nodes initialized, you are
+ready to run the workloads. Each experiment has its own driver under `tests/`,
+and different experiments use different nodes as server, client, proxy, and
+datastore:
 
 * **LevelDB** — `tests/LevelDB/scripts/{server,client}.sh`
 * **Memcached** — `tests/Memcached/src/Metastability/setup_scripts/`
@@ -401,6 +423,8 @@ After completing the required memory experiments, regenerate Figure 14 with:
 
 * [`scripts/config.sh`](../scripts/config.sh) — every configurable knob
 * [`scripts/setup_cluster.sh`](../scripts/setup_cluster.sh) — cluster driver
+* [`scripts/system_init.sh`](../scripts/system_init.sh) — system-wise evaluator entry point
+* [`scripts/user_init.sh`](../scripts/user_init.sh) — user-wise evaluator entry point
 * [`scripts/init.sh`](../scripts/init.sh) — per-node initialization
 * [`scripts/post_reboot.sh`](../scripts/post_reboot.sh) — re-apply the runtime state a reboot clears
 * [`scripts/check_init.sh`](../scripts/check_init.sh) — per-node verification
