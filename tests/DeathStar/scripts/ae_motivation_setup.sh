@@ -243,6 +243,7 @@ build_wrk2() {
   local node
   for node in ${wrk_nodes}; do
     if [ "${node}" != "$(hostname -s)" ]; then
+      ssh ${AE_SSH_OPTS} "${node}" "mkdir -p '${luajit_dir}'" || return 1
       rsync -az --exclude '.git' -e "ssh ${AE_SSH_OPTS}" \
         "${luajit_dir}/" "${node}:${luajit_dir}/" || return 1
     fi
