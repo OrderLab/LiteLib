@@ -272,5 +272,6 @@ main() {
   fig13_ok "Figure 13 environment ready; MySQL volume will be preserved"
 }
 
-main 2>&1 | tee "${FIG13_LOGS_DIR}/fig13-setup-$(fig13_run_id).log"
+RUN_ID=$(fig13_run_id)
+main 2>&1 | tee "${FIG13_LOGS_DIR}/${RUN_ID}-fig13-setup-$(hostname -s).log"
 exit "${PIPESTATUS[0]}"
