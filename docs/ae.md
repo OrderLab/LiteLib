@@ -42,7 +42,7 @@ under `figures/`.
 > stable because the workload that triggers metastable failure is
 > machine-specific, so the reproduced results may differ.
 
-## ✅ Setup Checklist
+## ✅ Evaluation Checklist
 
 **Authors' provided cluster**
 
@@ -59,14 +59,29 @@ under `figures/`.
 **Both modes**
 
 - [ ] The final setup output reports all four nodes ready
+
+**Independent motivation and recovery results**
+
 - [ ] Reproduced [Figures 1 & 2](./ae-fig1-2-motivation.md)
 - [ ] Reproduced [Figure 13](./ae-fig13-memcached.md)
 - [ ] Reproduced LevelDB [Figure 12](./ae-fig12-leveldb.md)
-- [ ] Reproduced [Figure 14](./ae-fig14-memory.md)
-- [ ] Reproduced Memcached's [Figures 14/15/16](./ae-fig14-16-memcached.md)
-- [ ] Reproduced LevelDB's [Figures 15/16](./ae-fig15-16-leveldb.md)
-- [ ] Reproduced Redis's [Figures 15/16](./ae-fig15-16-redis.md)
-- [ ] Reproduced MySQL's [Figures 15/16](./ae-fig15-16-mysql.md)
+
+**Collected per-application inputs for Figures 14–16**
+
+- [ ] Processed [Memcached inputs](./ae-fig14-16-memcached.md)
+- [ ] Processed [LevelDB inputs](./ae-fig15-16-leveldb.md)
+- [ ] Processed [Redis inputs](./ae-fig15-16-redis.md)
+- [ ] Processed [MySQL inputs](./ae-fig15-16-mysql.md)
+
+**Generated combined outputs after all required inputs**
+
+- [ ] Generated [Figure 14](./ae-fig14-memory.md) after Figures 1/2, 12, 13,
+      Memcached, Redis, and MySQL inputs were ready
+- [ ] Generated Figures 15/16 after all Memcached, LevelDB, Redis, and MySQL
+      overhead inputs were ready
+
+**Service-gap result**
+
 - [ ] Reproduced [Table 2](./ae-table2.md)
 
 ---
@@ -368,92 +383,108 @@ When `user_init.sh`'s final system verification (or
 `./scripts/system_init.sh check`) reports all four nodes initialized, you are
 ready to run the workloads.
 
-* **Figures 1 & 2 (DeathStar motivation)** —
-  [step-by-step guide](./ae-fig1-2-motivation.md):
+### Phase 1 — Motivation and recovery experiments
 
-  ```bash
-  ./scripts/ae_fig1_2_setup.sh
-  ./scripts/ae_fig1_2_run.sh
-  ./scripts/ae_fig1_2_plot.sh
-  ./scripts/ae_fig1_2_cleanup.sh
-  ```
-* **Figure 13 (Memcached recovery)** —
-  [step-by-step guide](./ae-fig13-memcached.md):
+These results are generated independently. They also provide memory inputs
+needed later by Figure 14.
 
-  ```bash
-  ./scripts/ae_fig13_setup.sh
-  ./scripts/ae_fig13_run.sh
-  ./scripts/ae_fig13_plot.sh
-  ./scripts/ae_fig13_cleanup.sh
-  ```
-* **Figure 12 (LevelDB recovery)** —
-  [recovery guide](./ae-fig12-leveldb.md):
+**Figures 1 & 2 (DeathStar motivation)** —
+[step-by-step guide](./ae-fig1-2-motivation.md):
 
-  ```bash
-  ./scripts/ae_leveldb_recovery_setup.sh
-  ./scripts/ae_leveldb_recovery_run.sh
-  ./scripts/ae_leveldb_recovery_plot.sh
-  ./scripts/ae_leveldb_recovery_cleanup.sh
-  ```
-* **Memcached in Figures 14/15/16** —
-  [overhead guide](./ae-fig14-16-memcached.md):
+```bash
+./scripts/ae_fig1_2_setup.sh
+./scripts/ae_fig1_2_run.sh
+./scripts/ae_fig1_2_plot.sh
+./scripts/ae_fig1_2_cleanup.sh
+```
 
-  ```bash
-  ./scripts/ae_memcached_overhead_setup.sh
-  ./scripts/ae_memcached_overhead_run.sh
-  ./scripts/ae_memcached_overhead_plot.sh
-  ./scripts/ae_memcached_overhead_cleanup.sh
-  ```
-* **LevelDB in Figures 15/16** —
-  [overhead guide](./ae-fig15-16-leveldb.md):
+**Figure 12 (LevelDB recovery)** —
+[recovery guide](./ae-fig12-leveldb.md):
 
-  ```bash
-  ./scripts/ae_leveldb_overhead_setup.sh
-  ./scripts/ae_leveldb_overhead_run.sh
-  ./scripts/ae_leveldb_overhead_plot.sh
-  ./scripts/ae_leveldb_overhead_cleanup.sh
-  ```
-* **Redis in Figures 15/16** —
-  [overhead guide](./ae-fig15-16-redis.md):
+```bash
+./scripts/ae_leveldb_recovery_setup.sh
+./scripts/ae_leveldb_recovery_run.sh
+./scripts/ae_leveldb_recovery_plot.sh
+./scripts/ae_leveldb_recovery_cleanup.sh
+```
 
-  ```bash
-  ./scripts/ae_redis_overhead_setup.sh
-  ./scripts/ae_redis_overhead_run.sh
-  ./scripts/ae_redis_overhead_plot.sh
-  ./scripts/ae_redis_overhead_cleanup.sh
-  ```
-* **MySQL in Figures 15/16** —
-  [overhead guide](./ae-fig15-16-mysql.md):
+**Figure 13 (Memcached recovery)** —
+[step-by-step guide](./ae-fig13-memcached.md):
 
-  ```bash
-  ./scripts/ae_mysql_overhead_setup.sh
-  ./scripts/ae_mysql_overhead_run.sh
-  ./scripts/ae_mysql_overhead_plot.sh
-  ./scripts/ae_mysql_overhead_cleanup.sh
-  ```
+```bash
+./scripts/ae_fig13_setup.sh
+./scripts/ae_fig13_run.sh
+./scripts/ae_fig13_plot.sh
+./scripts/ae_fig13_cleanup.sh
+```
 
-After running the overhead collectors, regenerate the combined Figures 15/16
-with:
+### Phase 2 — Collect per-application overhead inputs
+
+The application-specific processing commands below do **not** have all data
+needed for the final combined Figures 14–16.
+
+**Memcached** — [guide](./ae-fig14-16-memcached.md):
+
+```bash
+./scripts/ae_memcached_overhead_setup.sh
+./scripts/ae_memcached_overhead_run.sh
+./scripts/ae_memcached_overhead_plot.sh
+./scripts/ae_memcached_overhead_cleanup.sh
+```
+
+**LevelDB** — [guide](./ae-fig15-16-leveldb.md):
+
+```bash
+./scripts/ae_leveldb_overhead_setup.sh
+./scripts/ae_leveldb_overhead_run.sh
+./scripts/ae_leveldb_overhead_plot.sh
+./scripts/ae_leveldb_overhead_cleanup.sh
+```
+
+**Redis** — [guide](./ae-fig15-16-redis.md):
+
+```bash
+./scripts/ae_redis_overhead_setup.sh
+./scripts/ae_redis_overhead_run.sh
+./scripts/ae_redis_overhead_plot.sh
+./scripts/ae_redis_overhead_cleanup.sh
+```
+
+**MySQL** — [guide](./ae-fig15-16-mysql.md):
+
+```bash
+./scripts/ae_mysql_overhead_setup.sh
+./scripts/ae_mysql_overhead_run.sh
+./scripts/ae_mysql_overhead_plot.sh
+./scripts/ae_mysql_overhead_cleanup.sh
+```
+
+### Phase 3 — Generate the combined overhead figures
+
+Generate **Figures 15 and 16 only after all four Phase 2 processing commands
+have completed**:
 
 ```bash
 ./scripts/ae_overhead_plot.sh
 ```
 
-After completing the required memory experiments, regenerate Figure 14 with:
+Generate **Figure 14 only after Figures 1/2, 12, 13 and the Memcached, Redis,
+and MySQL inputs are ready**:
 
 ```bash
 ./scripts/ae_memory_overhead_plot.sh
 ```
 
-* **Table 2 (service gaps)** —
-  [service-gap guide](./ae-table2.md):
+### Phase 4 — Table 2 service gaps
 
-  ```bash
-  ./scripts/ae_table2_setup.sh
-  ./scripts/ae_table2_run.sh
-  ./scripts/ae_table2_collect.sh
-  ./scripts/ae_table2_cleanup.sh
-  ```
+[Service-gap guide](./ae-table2.md):
+
+```bash
+./scripts/ae_table2_setup.sh
+./scripts/ae_table2_run.sh
+./scripts/ae_table2_collect.sh
+./scripts/ae_table2_cleanup.sh
+```
 
 ---
 
