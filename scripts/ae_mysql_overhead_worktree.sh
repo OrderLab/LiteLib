@@ -1,6 +1,6 @@
 #!/bin/bash
 AE_MAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AE_MYSQL_COMMIT=${AE_MYSQL_COMMIT:-e2a1f823d423db707958f8edead2ea9a391611bc}
+AE_MYSQL_COMMIT=${AE_MYSQL_COMMIT:-be268c34876aff542b959d049de7be018fa6d6a0}
 AE_MYSQL_WORKTREE=${AE_MYSQL_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/mysql-overhead}
 
 ae_mysql_die() { echo "[FAIL] $*" >&2; exit 1; }
