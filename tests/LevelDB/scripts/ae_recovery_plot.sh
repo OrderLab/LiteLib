@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT=${1:-}
 [ -d "${ROOT}" ] || { echo "usage: $0 RESULTS_DIR" >&2; exit 2; }
 MAIN=${LITELIB_MAIN_DIR:-${HOME}/LiteLib}
-PAPER=${AE_PAPER_DIR:-${HOME}/litesys-nsdi27}
+PAPER=${AE_PAPER_DIR:-${MAIN}}
 OUT="${MAIN}/results/leveldb-recovery/processed"
 FIGURES=${AE_FIGURES_DIR:-${MAIN}/figures}
 PYTHON=${MAIN}/.venv/bin/python
