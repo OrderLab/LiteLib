@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MYSQL_HOME="${HOME}/mysql-ae"
 NDB_HOME=/opt/mysql-ndb
 LITE_BUILD="${SCRIPT_DIR}/../../lite-version/build"
-RUNTIME=/tmp/litelib-ae-mysql
+RUNTIME="/tmp/litelib-ae-mysql-$(id -u)"
 
 kill_pid_file() {
   local file=$1 pid
@@ -34,7 +34,8 @@ cleanup() {
     kill "${pid}" 2>/dev/null || true
   done
   sudo -n systemctl stop proxysql orchestrator 2>/dev/null || true
-  rm -rf "${RUNTIME}" /tmp/mysql.sock /tmp/lite_mysql
+  sudo -n rm -rf -- "${RUNTIME}" /tmp/mysql.sock /tmp/lite_mysql \
+    /tmp/mysql_full_to_lite /tmp/mysql_lite_to_full
 }
 
 start_process() {

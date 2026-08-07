@@ -19,7 +19,8 @@ for node in node0 node1 node2 node3; do
         -m comment --comment litelib-table2-ndb -j DROP \
         >/dev/null 2>&1 || true
       rm -rf /tmp/litelib-ae-mysql
-      rm -f /tmp/mysql.sock /tmp/lite_mysql
+      sudo -n rm -f /tmp/mysql.sock /tmp/lite_mysql \
+        /tmp/mysql_full_to_lite /tmp/mysql_lite_to_full
     fi
   " || true
 done
