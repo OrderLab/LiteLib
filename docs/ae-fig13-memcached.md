@@ -17,9 +17,11 @@ switch is required.
 ```bash
 cd ~/LiteLib
 
-# One-time setup: ~1–2 hours. Most of this is the 1.4M-row MySQL load and
-# linearization; its named Docker volume and archive are preserved afterwards.
-# Subsequent setup runs take ~5–15 min.
+# Authors' provided cluster: import the shared database snapshot (~10–20 min).
+./scripts/ae_fig13_setup.sh \
+  --import-db /srv/litelib-ae/fig13/mysql-snapshot.tar.zst
+
+# Self-reserved cluster: initialize and archive the database (~1–2 hours).
 ./scripts/ae_fig13_setup.sh
 
 # Run full, LiteLib and checkpoint arms (~35–45 min total).
@@ -39,10 +41,10 @@ before each arm, while the immutable initialized table is reused.
 
 Do not run `docker compose down -v`; `-v` deletes the initialized database.
 Immediately after first-time initialization, setup stops MySQL and creates a
-checksummed archive under `~/LiteLib/results/fig13/database/`. The run command
-refuses to start until that archive exists and verifies. If the Docker volume
-is later lost, rerunning setup restores it from the archive instead of
-reinitializing the dataset.
+checksummed archive under `~/LiteLib/results/fig13/database/`. On the authors'
+provided cluster, `--import-db` verifies the shared snapshot, restores it into
+the evaluator's Docker volume, and creates a per-user archive reference for
+later runs. The run command refuses to start until its archive verifies.
 
 ## Fixed paper parameters
 

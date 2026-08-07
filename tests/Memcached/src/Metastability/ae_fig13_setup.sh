@@ -14,7 +14,25 @@ source "${SCRIPT_DIR}/ae_fig13_common.sh"
 DB_ENTRIES=${FIG13_DB_ENTRIES:-1400000}
 DB_ARCHIVE_DIR=${FIG13_DB_ARCHIVE_DIR:-${FIG13_RESULTS_DIR}/database}
 DB_ARCHIVE=${FIG13_DB_ARCHIVE:-${DB_ARCHIVE_DIR}/mysql-${DB_ENTRIES}-rows.tar.zst}
-STAGES=("$@")
+IMPORT_ARCHIVE=""
+ARCHIVE_VERIFIED=0
+STAGES=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+  --import-db)
+    [ "$#" -ge 2 ] || fig13_die "--import-db requires an archive path"
+    IMPORT_ARCHIVE=$2
+    shift
+    ;;
+  -h | --help)
+    sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    echo "  --import-db PATH  restore MySQL from a checksummed shared archive"
+    exit 0
+    ;;
+  *) STAGES+=("$1") ;;
+  esac
+  shift
+done
 if [ "${#STAGES[@]}" -eq 0 ]; then
   STAGES=(containers ssh mysql memcached web client)
 fi
@@ -55,11 +73,49 @@ mysql_volume_source() {
 }
 
 verify_mysql_archive() {
+  [ "${ARCHIVE_VERIFIED}" -eq 0 ] || return 0
   [ -s "${DB_ARCHIVE}" ] && [ -s "${DB_ARCHIVE}.sha256" ] || return 1
-  (
+  if (
     cd "$(dirname "${DB_ARCHIVE}")"
     sha256sum -c "$(basename "${DB_ARCHIVE}").sha256" >/dev/null
+  ); then
+    ARCHIVE_VERIFIED=1
+    return 0
+  fi
+  return 1
+}
+
+verify_archive_path() {
+  local archive=$1
+  [ -r "${archive}" ] && [ -r "${archive}.sha256" ] || return 1
+  (
+    cd "$(dirname "${archive}")"
+    sha256sum -c "$(basename "${archive}").sha256" >/dev/null
   )
+}
+
+prepare_import_archive() {
+  local hash
+  [ -n "${IMPORT_ARCHIVE}" ] || return 0
+  case "${IMPORT_ARCHIVE}" in
+  /*) ;;
+  *) fig13_die "--import-db requires an absolute archive path" ;;
+  esac
+  verify_archive_path "${IMPORT_ARCHIVE}" ||
+    fig13_die "shared database archive or checksum is invalid: ${IMPORT_ARCHIVE}"
+
+  mkdir -p "${DB_ARCHIVE_DIR}"
+  if [ -e "${DB_ARCHIVE}" ] || [ -L "${DB_ARCHIVE}" ]; then
+    [ "$(readlink -f "${DB_ARCHIVE}")" = "$(readlink -f "${IMPORT_ARCHIVE}")" ] ||
+      fig13_die "refusing to replace existing database archive: ${DB_ARCHIVE}"
+  else
+    ln -s "${IMPORT_ARCHIVE}" "${DB_ARCHIVE}"
+  fi
+  hash=$(awk 'NR == 1 {print $1}' "${IMPORT_ARCHIVE}.sha256")
+  printf '%s  %s\n' "${hash}" "$(basename "${DB_ARCHIVE}")" \
+    >"${DB_ARCHIVE}.sha256"
+  ARCHIVE_VERIFIED=1
+  fig13_ok "shared database archive ready: ${IMPORT_ARCHIVE}"
 }
 
 archive_mysql() {
@@ -120,6 +176,12 @@ restore_mysql_archive() {
 }
 
 setup_mysql() {
+  if [ -n "${IMPORT_ARCHIVE}" ]; then
+    prepare_import_archive
+    restore_mysql_archive
+    fig13_docker update --cpus 4 mysql >/dev/null
+    return
+  fi
   if fig13_docker exec mysql test -f /var/lib/mysql/.litelib_ae_initialized; then
     fig13_ok "MySQL data volume already initialized; preserving database files"
     archive_mysql
