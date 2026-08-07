@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PAPER=${AE_PAPER_DIR:-${HOME}/litesys-nsdi27}
+PAPER=${AE_PAPER_DIR:-${ROOT}}
 PYTHON="${ROOT}/.venv/bin/python"
 OUT="${ROOT}/results/overhead"
 FIGURES="${ROOT}/figures"
