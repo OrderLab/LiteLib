@@ -27,9 +27,10 @@ fi
 fig13_compose down --remove-orphans
 
 fig13_info "removing generated working files"
-rm -rf "${FIG13_DIR}/LoadGenerator/traces" \
-       "${FIG13_DIR}/LoadGenerator/result_stats" \
-       "${FIG13_DIR}/LoadGenerator/experiment_plots" \
-       "${FIG13_DIR}/LoadGenerator/result_plot"
+sudo -n rm -rf -- \
+  "${FIG13_DIR}/LoadGenerator/traces" \
+  "${FIG13_DIR}/LoadGenerator/result_stats" \
+  "${FIG13_DIR}/LoadGenerator/experiment_plots" \
+  "${FIG13_DIR}/LoadGenerator/result_plot"
 
 fig13_ok "runtime cleaned; mysql_data, database archive, builds and results preserved"
