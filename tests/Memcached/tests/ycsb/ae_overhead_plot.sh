@@ -11,6 +11,8 @@ PYTHON=${MAIN}/.venv/bin/python
 YCSB_DIR=${1:-}
 DEATHSTAR_DIR=${AE_DEATHSTAR_RESULTS:-}
 FIG13_DIR=${AE_FIG13_RESULTS:-}
+RUN_ID=$(date +%Y%m%d-%H%M%S)
+NODE=$(hostname -s)
 
 mkdir -p "${OUT}" "${FIGURES}"
 collect_args=(--output "${OUT}")
@@ -22,20 +24,20 @@ collect_args=(--output "${OUT}")
 run_plot() {
   local name=$1
   shift
-  local log="${MAIN}/logs/${name}.log"
+  local log="${MAIN}/logs/${RUN_ID}-${name}-${NODE}.log"
   if ! "$@" >"${log}" 2>&1; then
     tail -40 "${log}" >&2
     exit 1
   fi
 }
 
-run_plot memory-overhead \
+run_plot fig14-plot \
   "${PYTHON}" "${PAPER}/plot/plot_memory_overhead.py" \
   "${OUT}/memory.json" -o "${FIGURES}/Figure14.pdf"
-run_plot latency-overhead \
+run_plot fig15-plot \
   "${PYTHON}" "${PAPER}/plot/plot_latency_overhead.py" \
   "${OUT}/latency.json" -o "${FIGURES}/Figure15.pdf"
-run_plot cpu-overhead \
+run_plot fig16-plot \
   "${PYTHON}" "${PAPER}/plot/plot_cpu_overhead.py" \
   "${OUT}/cpu.json" -o "${FIGURES}/Figure16.pdf"
 
