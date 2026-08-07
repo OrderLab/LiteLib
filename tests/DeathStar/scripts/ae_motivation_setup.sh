@@ -62,7 +62,8 @@ if [ ${#STAGES[@]} -eq 0 ]; then
 fi
 
 read -r -a NODES <<<"${AE_NODES}"
-RUN_LOG="${AE_LOGS_DIR}/motivation-setup-$(ae_run_id).log"
+RUN_ID=$(ae_run_id)
+RUN_LOG="${AE_LOGS_DIR}/${RUN_ID}-fig1-2-setup-$(hostname -s).log"
 
 ae_info "cluster:  ${AE_NODES}"
 ae_info "checkout: ${REMOTE_DIR} (must be identical on every node)"
@@ -82,7 +83,8 @@ stage_deps() {
       # group.  It is fed over stdin so the node does not need the repo yet.
       ssh ${AE_SSH_OPTS} "${node}" \
         "sudo -n DEBIAN_FRONTEND=noninteractive SUDO_USER=\$(id -un) bash -s" \
-        <"${SCRIPT_DIR}/init.sh" >"${AE_LOGS_DIR}/motivation-deps-${node}.log" 2>&1
+        <"${SCRIPT_DIR}/init.sh" \
+        >"${AE_LOGS_DIR}/${RUN_ID}-fig1-2-deps-${node}.log" 2>&1
       echo "$?" >"${AE_LOGS_DIR}/.deps-${node}.rc"
     ) &
     pids+=("$!")
@@ -94,7 +96,7 @@ stage_deps() {
     if [ "$(cat "${AE_LOGS_DIR}/.deps-${node}.rc" 2>/dev/null)" = "0" ]; then
       ae_ok "[${node}] dependencies installed"
     else
-      ae_err "[${node}] failed, see ${AE_LOGS_DIR}/motivation-deps-${node}.log"
+      ae_err "[${node}] failed, see ${AE_LOGS_DIR}/${RUN_ID}-fig1-2-deps-${node}.log"
       rc=1
     fi
     rm -f "${AE_LOGS_DIR}/.deps-${node}.rc"
