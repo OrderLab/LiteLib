@@ -63,8 +63,8 @@ under `figures/`.
 **Independent motivation and recovery results**
 
 - [ ] Reproduced [Figures 1 & 2](./ae-fig1-2-motivation.md)
-- [ ] Reproduced [Figure 13](./ae-fig13-memcached.md)
 - [ ] Reproduced LevelDB [Figure 12](./ae-fig12-leveldb.md)
+- [ ] Reproduced [Figure 13](./ae-fig13-memcached.md)
 
 **Collected per-application inputs for Figures 14–16**
 
