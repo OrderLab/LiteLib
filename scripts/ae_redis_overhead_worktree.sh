@@ -1,6 +1,6 @@
 #!/bin/bash
 AE_MAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AE_REDIS_COMMIT=${AE_REDIS_COMMIT:-2250ba185c187d025f5ce45f215b2e11e587de3a}
+AE_REDIS_COMMIT=${AE_REDIS_COMMIT:-e0663f2045b4e83ce62d9b5107f3f10e5297122e}
 AE_REDIS_WORKTREE=${AE_REDIS_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/redis-overhead}
 
 ae_redis_die() { echo "[FAIL] $*" >&2; exit 1; }
