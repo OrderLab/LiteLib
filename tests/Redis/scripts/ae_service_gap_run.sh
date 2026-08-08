@@ -14,6 +14,7 @@ TARGET=${AE_TARGET:-30000}
 MODES=${AE_MODES:-"ap-30s ap-5s embedded"}
 YCSB_TIMEOUT_SECONDS=${AE_YCSB_TIMEOUT_SECONDS:-600}
 CRASH_STEP_TIMEOUT_SECONDS=${AE_CRASH_STEP_TIMEOUT_SECONDS:-300}
+CASE_TIMEOUT_SECONDS=${AE_CASE_TIMEOUT_SECONDS:-1200}
 CASE_ATTEMPTS=${AE_CASE_ATTEMPTS:-2}
 YCSB="${HOME}/YCSB-redis-ae"
 WORKLOAD="${REMOTE}/tests/Redis/scripts/config/ycsb_workload"
@@ -30,6 +31,9 @@ node_cmd() {
 }
 
 cleanup_nodes() {
+  ssh node2 "for pid in \$(pgrep -f 'site.ycsb.Client.*${WORKLOAD}' 2>/dev/null || true); do
+    kill \"\${pid}\" 2>/dev/null || true
+  done" || true
   for node in node1 node2 node3; do
     node_cmd "${node}" cleanup || true
   done
@@ -51,7 +55,8 @@ run_case() {
   shift
   local attempt rc
   for attempt in $(seq 1 "${CASE_ATTEMPTS}"); do
-    if "$@"; then
+    if AE_OUTPUT_DIR="${OUT}" timeout --signal=TERM --kill-after=30s \
+        "${CASE_TIMEOUT_SECONDS}s" "$0" --case "$@"; then
       return 0
     else
       rc=$?
@@ -165,7 +170,19 @@ run_embedded() {
   wait "${crash_pid}"
   scp -q "node3:/tmp/litelib-ae-redis/${prefix}/master/lite.log" \
     "${OUT}/lite-${prefix}.log"
+  grep -q 'Replay took' "${OUT}/lite-${prefix}.log" || {
+    echo "Redis embedded replay marker is missing" >&2
+    return 1
+  }
 }
+
+if [ "${1:-}" = "--case" ]; then
+  shift
+  case_function=$1
+  shift
+  "${case_function}" "$@"
+  exit
+fi
 
 for rep in $(seq 1 "${REPEATS}"); do
   for mode in ${MODES}; do
