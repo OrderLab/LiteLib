@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "${AE_RUN_INNER:-0}" -ne 1 ]; then
+  exec "${SCRIPT_DIR}/ae_run_with_retry.sh" \
+    "${AE_RUN_TIMEOUT_SECONDS:-7200}" "${AE_RUN_MAX_ATTEMPTS:-2}" "$0" "$@"
+fi
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 OUT=${AE_OUTPUT_DIR:-${ROOT}/results/table2/$(date +%Y%m%d-%H%M%S)}
 mkdir -p "${OUT}"

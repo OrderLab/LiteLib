@@ -386,6 +386,13 @@ When `user_init.sh`'s final system verification (or
 `./scripts/system_init.sh check`) reports all four nodes initialized, you are
 ready to run the workloads.
 
+Every documented `*_run.sh` command has a conservative timeout and makes up to
+two attempts. If an attempt fails or times out, the wrapper runs that
+experiment's cleanup command before retrying. The timeout covers the complete
+experiment command and is intentionally much longer than the expected runtime;
+Table 2 also bounds each Redis YCSB case so one unresponsive server cannot
+stall the whole evaluation indefinitely.
+
 ### Phase 1 — Motivation and recovery experiments
 
 These results are generated independently. They also provide memory inputs

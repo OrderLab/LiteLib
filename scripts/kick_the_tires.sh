@@ -30,6 +30,7 @@ done
 sudo -n true || fail "passwordless sudo is unavailable"
 
 wrappers=(
+  ae_run_with_retry.sh
   ae_fig1_2_setup.sh ae_fig1_2_run.sh ae_fig1_2_plot.sh
   ae_leveldb_recovery_setup.sh ae_leveldb_recovery_run.sh
   ae_fig13_setup.sh ae_fig13_run.sh ae_fig13_plot.sh

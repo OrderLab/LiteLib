@@ -4,6 +4,10 @@
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "${AE_RUN_INNER:-0}" -ne 1 ]; then
+  exec "${SCRIPT_DIR}/ae_run_with_retry.sh" \
+    "${AE_RUN_TIMEOUT_SECONDS:-10800}" "${AE_RUN_MAX_ATTEMPTS:-2}" "$0" "$@"
+fi
 # shellcheck source=ae_deathstar_worktree.sh
 source "${SCRIPT_DIR}/ae_deathstar_worktree.sh"
 
