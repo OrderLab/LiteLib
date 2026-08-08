@@ -3,10 +3,10 @@
 Run from `~/LiteLib` on node0:
 
 ```bash
-# Setup: ~45-75 min
+# Setup: ~10-30 min
 ./scripts/ae_mysql_overhead_setup.sh
 
-# Experiment: ~30-45 min
+# Experiment: ~20-35 min
 ./scripts/ae_mysql_overhead_run.sh
 
 # Process MySQL results: <1 min

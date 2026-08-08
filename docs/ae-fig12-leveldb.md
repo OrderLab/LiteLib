@@ -3,10 +3,10 @@
 Run from `~/LiteLib` on node0:
 
 ```bash
-# Setup: ~20-40 min
+# Setup: ~5-15 min
 ./scripts/ae_leveldb_recovery_setup.sh
 
-# Experiment: ~35-50 min
+# Experiment: ~30-45 min
 ./scripts/ae_leveldb_recovery_run.sh
 
 # Plot: <1 min

@@ -3,10 +3,10 @@
 Run from `~/LiteLib` on node0:
 
 ```bash
-# Setup: ~60-75 min
+# Setup: ~45-65 min
 ./scripts/ae_fig1_2_setup.sh
 
-# Experiment: ~75-90 min
+# Experiment: ~90-110 min
 ./scripts/ae_fig1_2_run.sh
 
 # Plot: <1 min

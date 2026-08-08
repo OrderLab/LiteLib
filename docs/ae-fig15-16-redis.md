@@ -3,7 +3,7 @@
 Run from `~/LiteLib` on node0:
 
 ```bash
-# Setup: ~15-30 min
+# Setup: ~5-15 min
 ./scripts/ae_redis_overhead_setup.sh
 
 # Experiment: ~35-55 min

@@ -10,7 +10,7 @@ Run from `~/LiteLib` on node0:
 # Self-reserved cluster: initialize the database (~1-2 hours)
 ./scripts/ae_fig13_setup.sh
 
-# Experiment: ~35-45 min
+# Experiment: ~25-35 min
 ./scripts/ae_fig13_run.sh
 
 # Plot: <1 min

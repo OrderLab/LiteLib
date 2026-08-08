@@ -160,7 +160,7 @@ runtime initialization. Do **not** run the system-wise initializer.
 **verifies** the existing system prerequisite; it does not run `apt`, change
 the kernel, resize disks, or reinstall runtime state.
 
-**Expected duration: 2–10 minutes**, mostly repository/submodule transfer. A
+**Expected duration: 1–5 minutes**, mostly repository/submodule transfer. A
 system-check failure means the provided cluster needs author attention; do not
 replace it with system initialization.
 
@@ -310,7 +310,7 @@ cd ~/LiteLib
 ./scripts/kick_the_tires.sh
 ```
 
-**Expected duration: 1–3 minutes.** This does not start a paper experiment. It
+**Expected duration: less than 1 minute.** This does not start a paper experiment. It
 checks all four evaluator accounts and system prerequisites, confirms that
 `node0`–`node3` resolve to the dedicated experiment network, validates the
 main experiment wrappers/collectors, and checks writable output directories.

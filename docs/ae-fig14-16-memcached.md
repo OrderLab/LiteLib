@@ -3,7 +3,7 @@
 Run from `~/LiteLib` on node0:
 
 ```bash
-# Setup: ~20-40 min
+# Setup: ~5-15 min
 ./scripts/ae_memcached_overhead_setup.sh
 
 # Experiment: ~25-40 min

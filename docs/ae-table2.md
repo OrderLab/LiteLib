@@ -3,10 +3,10 @@
 Run from `~/LiteLib` on node0:
 
 ```bash
-# Setup: ~45-75 min
+# Setup: ~10-30 min
 ./scripts/ae_table2_setup.sh
 
-# Experiment: ~60-90 min
+# Experiment: ~45-75 min
 ./scripts/ae_table2_run.sh
 
 # Rebuild the CSV from an existing result directory: <1 min

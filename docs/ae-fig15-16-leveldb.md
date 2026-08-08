@@ -3,7 +3,7 @@
 Run from `~/LiteLib` on node0:
 
 ```bash
-# Setup: ~20-40 min
+# Setup: ~5-15 min
 ./scripts/ae_leveldb_overhead_setup.sh
 
 # Experiment: ~90-120 min
