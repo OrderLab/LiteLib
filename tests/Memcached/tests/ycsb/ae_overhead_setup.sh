@@ -44,15 +44,16 @@ sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
 python3 -m pip install --user -q psutil
 
 if [ ! -f "${GLOG_PREFIX}/lib/libglog.so" ]; then
-  rm -rf /tmp/glog-ae
+  GLOG_BUILD=$(mktemp -d --tmpdir glog-ae.XXXXXX)
+  trap 'rm -rf "${GLOG_BUILD}"' EXIT
   GIT_ADVICE=0 git clone -q --branch v0.4.0 --depth 1 \
-    https://github.com/google/glog.git /tmp/glog-ae
-  cmake -S /tmp/glog-ae -B /tmp/glog-ae/build \
+    https://github.com/google/glog.git "${GLOG_BUILD}"
+  cmake -S "${GLOG_BUILD}" -B "${GLOG_BUILD}/build" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="${GLOG_PREFIX}" \
     -DBUILD_SHARED_LIBS=ON -DWITH_GFLAGS=OFF
-  cmake --build /tmp/glog-ae/build -j"${JOBS}"
-  cmake --install /tmp/glog-ae/build
+  cmake --build "${GLOG_BUILD}/build" -j"${JOBS}"
+  cmake --install "${GLOG_BUILD}/build"
 fi
 
 cd "${SRC}/lite-version-ascii"
