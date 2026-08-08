@@ -14,6 +14,9 @@ AP_RATE=${AE_AP_RATE:-500}
 AP_DETECTION_SECONDS=${AE_AP_DETECTION_SECONDS:-3}
 NDB_RATE=${AE_NDB_RATE:-0}
 MODES=${AE_MODES:-"ap ndb-client ndb-proxy lite-proxy"}
+SYSBENCH_TIMEOUT_SECONDS=${AE_SYSBENCH_TIMEOUT_SECONDS:-$((DURATION + 180))}
+CASE_TIMEOUT_SECONDS=${AE_CASE_TIMEOUT_SECONDS:-1200}
+CASE_ATTEMPTS=${AE_CASE_ATTEMPTS:-2}
 RUNTIME=/tmp/litelib-ae-mysql
 mkdir -p "${OUT}"
 [ "${TABLE_SIZE}" -eq 100000 ] || {
@@ -28,6 +31,9 @@ node_cmd() {
 }
 
 cleanup_nodes() {
+  ssh node1 "for pid in \$(pgrep -f '/usr/local/bin/sysbench.*oltp_read_write.lua' 2>/dev/null || true); do
+    kill \"\${pid}\" 2>/dev/null || true
+  done" || true
   for node in node0 node1 node2 node3; do
     node_cmd "${node}" cleanup || true
   done
@@ -37,10 +43,29 @@ cleanup_nodes() {
 }
 trap cleanup_nodes EXIT
 
+run_case() {
+  local label=$1
+  shift
+  local attempt rc
+  for attempt in $(seq 1 "${CASE_ATTEMPTS}"); do
+    if AE_OUTPUT_DIR="${OUT}" timeout --signal=TERM --kill-after=30s \
+        "${CASE_TIMEOUT_SECONDS}s" "$0" --case "$@"; then
+      return 0
+    else
+      rc=$?
+    fi
+    echo "  [WARN] ${label} attempt ${attempt}/${CASE_ATTEMPTS} failed (exit ${rc})" >&2
+    [ "${attempt}" -lt "${CASE_ATTEMPTS}" ] || return "${rc}"
+    cleanup_nodes
+    sleep 10
+  done
+}
+
 run_sysbench() {
   local action=$1 connection=$2 host=$3 port=$4 engine=$5 rate=$6 log=$7
   ssh node1 bash -s -- "${action}" "${connection}" "${host}" "${port}" \
-    "${engine}" "${DURATION}" "${TABLE_SIZE}" "${rate}" <<'REMOTE_SCRIPT' \
+    "${engine}" "${DURATION}" "${TABLE_SIZE}" "${rate}" \
+    "${SYSBENCH_TIMEOUT_SECONDS}" <<'REMOTE_SCRIPT' \
     >"${log}" 2>&1
 set -euo pipefail
 action=$1
@@ -51,6 +76,7 @@ engine=$5
 duration=$6
 table_size=$7
 rate=$8
+timeout_seconds=$9
 args=(
   /usr/local/bin/sysbench
   /usr/local/share/sysbench/oltp_read_write.lua
@@ -78,7 +104,8 @@ fi
 if [ "${engine}" = ndbcluster ]; then
   args+=(--mysql-storage-engine=ndbcluster)
 fi
-"${args[@]}" "${action}"
+timeout --signal=TERM --kill-after=30s "${timeout_seconds}s" \
+  "${args[@]}" "${action}"
 REMOTE_SCRIPT
 }
 
@@ -303,7 +330,8 @@ run_lite_proxy() {
     "${OUT}/sysbench-${prefix}.log" &
   bench_pid=$!
   sleep "${CRASH_AFTER}"
-  ssh node0 "'${REMOTE}/tests/MySQL/src/lite-version/build/Lite/lite_cli' \
+  timeout --signal=TERM --kill-after=15s 300s \
+    ssh node0 "'${REMOTE}/tests/MySQL/src/lite-version/build/Lite/lite_cli' \
       -t /tmp/lite_mysql -p 60000 -m 1;
     for i in \$(seq 1 300); do
       grep -q 'Entered emergency mode' \
@@ -312,29 +340,37 @@ run_lite_proxy() {
     done;
     pid=\$(cat '${RUNTIME}/${prefix}/classic/mysqld.pid');
     kill -11 \"\${pid}\"; while kill -0 \"\${pid}\" 2>/dev/null; do :; done"
-  wait "${bench_pid}" || true
+  wait "${bench_pid}"
   scp -q "node0:${RUNTIME}/${prefix}/lite/lite.log" \
     "${OUT}/lite-${prefix}.log"
 }
+
+if [ "${1:-}" = "--case" ]; then
+  shift
+  case_function=$1
+  shift
+  "${case_function}" "$@"
+  exit
+fi
 
 for rep in $(seq 1 "${REPEATS}"); do
   for mode in ${MODES}; do
     case "${mode}" in
     ap)
       echo "==> MySQL active-passive ${rep}/${REPEATS}"
-      run_ap "${rep}"
+      run_case "MySQL active-passive ${rep}" run_ap "${rep}"
       ;;
     ndb-client)
       echo "==> MySQL NDB client failover ${rep}/${REPEATS}"
-      run_ndb_client "${rep}"
+      run_case "MySQL NDB client failover ${rep}" run_ndb_client "${rep}"
       ;;
     ndb-proxy)
       echo "==> MySQL NDB proxy failover ${rep}/${REPEATS}"
-      run_ndb_proxy "${rep}"
+      run_case "MySQL NDB proxy failover ${rep}" run_ndb_proxy "${rep}"
       ;;
     lite-proxy)
       echo "==> MySQL LiteLib proxy ${rep}/${REPEATS}"
-      run_lite_proxy "${rep}"
+      run_case "MySQL LiteLib proxy ${rep}" run_lite_proxy "${rep}"
       ;;
     esac
   done
