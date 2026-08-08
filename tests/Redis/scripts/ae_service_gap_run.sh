@@ -12,6 +12,8 @@ RECORD_COUNT=${AE_RECORD_COUNT:-1000000}
 OPERATION_COUNT=${AE_OPERATION_COUNT:-3000000}
 TARGET=${AE_TARGET:-30000}
 MODES=${AE_MODES:-"ap-30s ap-5s embedded"}
+YCSB_TIMEOUT_SECONDS=${AE_YCSB_TIMEOUT_SECONDS:-600}
+CASE_ATTEMPTS=${AE_CASE_ATTEMPTS:-2}
 YCSB="${HOME}/YCSB-redis-ae"
 WORKLOAD="${REMOTE}/tests/Redis/scripts/config/ycsb_workload"
 mkdir -p "${OUT}"
@@ -36,10 +38,28 @@ trap cleanup_nodes EXIT
 run_ycsb() {
   local action=$1 log=$2 connection=$3
   ssh node2 "cd '${YCSB}' &&
-    ./bin/ycsb '${action}' redis -s -P '${WORKLOAD}' ${connection} \
+    timeout --signal=TERM --kill-after=30s '${YCSB_TIMEOUT_SECONDS}s' \
+      ./bin/ycsb '${action}' redis -s -P '${WORKLOAD}' ${connection} \
       -p recordcount='${RECORD_COUNT}' \
       -p operationcount='${OPERATION_COUNT}' \
       -p target='${TARGET}'" >>"${log}" 2>&1
+}
+
+run_case() {
+  local label=$1
+  shift
+  local attempt rc
+  for attempt in $(seq 1 "${CASE_ATTEMPTS}"); do
+    if "$@"; then
+      return 0
+    else
+      rc=$?
+    fi
+    echo "  [WARN] ${label} attempt ${attempt}/${CASE_ATTEMPTS} failed (exit ${rc})" >&2
+    [ "${attempt}" -lt "${CASE_ATTEMPTS}" ] || return "${rc}"
+    cleanup_nodes
+    sleep 10
+  done
 }
 
 wait_ycsb_start() {
@@ -131,15 +151,17 @@ for rep in $(seq 1 "${REPEATS}"); do
     case "${mode}" in
     ap-30s)
       echo "==> Redis active-passive 30s ${rep}/${REPEATS}"
-      run_ap ap-30s 30000 "${rep}"
+      run_case "Redis active-passive 30s ${rep}" \
+        run_ap ap-30s 30000 "${rep}"
       ;;
     ap-5s)
       echo "==> Redis active-passive 5s ${rep}/${REPEATS}"
-      run_ap ap-5s 5000 "${rep}"
+      run_case "Redis active-passive 5s ${rep}" \
+        run_ap ap-5s 5000 "${rep}"
       ;;
     embedded)
       echo "==> Redis embedded ${rep}/${REPEATS}"
-      run_embedded "${rep}"
+      run_case "Redis embedded ${rep}" run_embedded "${rep}"
       ;;
     esac
   done
