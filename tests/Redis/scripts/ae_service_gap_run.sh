@@ -13,6 +13,7 @@ OPERATION_COUNT=${AE_OPERATION_COUNT:-3000000}
 TARGET=${AE_TARGET:-30000}
 MODES=${AE_MODES:-"ap-30s ap-5s embedded"}
 YCSB_TIMEOUT_SECONDS=${AE_YCSB_TIMEOUT_SECONDS:-600}
+CRASH_STEP_TIMEOUT_SECONDS=${AE_CRASH_STEP_TIMEOUT_SECONDS:-300}
 CASE_ATTEMPTS=${AE_CASE_ATTEMPTS:-2}
 YCSB="${HOME}/YCSB-redis-ae"
 WORKLOAD="${REMOTE}/tests/Redis/scripts/config/ycsb_workload"
@@ -122,22 +123,42 @@ run_embedded() {
   wait_ycsb_start "${log}" "${starts}"
   sleep "${CRASH_AFTER}"
   (
-    ssh node3 "pid=\$(lsof -t -iTCP@10.10.1.4:16379 | head -1);
+    timeout --signal=TERM --kill-after=15s "${CRASH_STEP_TIMEOUT_SECONDS}s" \
+      ssh node3 "pid=\$(lsof -t -iTCP@10.10.1.4:16379 | head -1);
       kill -15 \"\${pid}\";
       while kill -0 \"\${pid}\" 2>/dev/null; do sleep 0.01; done"
-    node_cmd node3 restart-embedded-full "${prefix}"
-    for _ in $(seq 1 18000); do
+    timeout --signal=TERM --kill-after=15s "${CRASH_STEP_TIMEOUT_SECONDS}s" \
+      ssh node3 "'${REMOTE}/tests/Redis/scripts/ae_overhead_node.sh' \
+        restart-embedded-full '${prefix}'"
+    ready=0
+    for _ in $(seq 1 3000); do
       ssh node3 "grep -q 'Ready to accept connections' \
-        '/tmp/litelib-ae-redis/${prefix}/master/redis.log'" && break
+        '/tmp/litelib-ae-redis/${prefix}/master/redis.log'" && {
+          ready=1
+          break
+        }
       sleep 0.1
     done
-    ssh node3 "'${REMOTE}/tests/Redis/src/lite-version/build/Lite/lite_cli' \
-      -t /tmp/lite_Redis -p /tmp/redis.sock -m 0"
+    [ "${ready}" -eq 1 ] || {
+      echo "Redis did not become ready after embedded restart" >&2
+      exit 1
+    }
+    timeout --signal=TERM --kill-after=15s "${CRASH_STEP_TIMEOUT_SECONDS}s" \
+      ssh node3 "'${REMOTE}/tests/Redis/src/lite-version/build/Lite/lite_cli' \
+        -t /tmp/lite_Redis -p /tmp/redis.sock -m 0"
+    replayed=0
     for _ in $(seq 1 3000); do
       ssh node3 "grep -q 'Replay took' \
-        '/tmp/litelib-ae-redis/${prefix}/master/lite.log'" && break
+        '/tmp/litelib-ae-redis/${prefix}/master/lite.log'" && {
+          replayed=1
+          break
+        }
       sleep 0.1
     done
+    [ "${replayed}" -eq 1 ] || {
+      echo "Redis replay did not complete" >&2
+      exit 1
+    }
   ) >"${OUT}/crash-${prefix}.log" 2>&1 &
   crash_pid=$!
   wait "${bench_pid}"

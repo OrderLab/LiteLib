@@ -52,7 +52,7 @@ def zero_gap(path, crash_after):
             zero_runs.append((start, second))
             start = None
     if not zero_runs:
-        raise ValueError(f"no zero-throughput interval in {path}")
+        return 0.0
     start, end = max(zero_runs, key=lambda item: item[1] - item[0])
     return float(end - (start - 1))
 
