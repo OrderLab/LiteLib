@@ -35,7 +35,8 @@ cleanup() {
   done
   sudo -n systemctl stop proxysql orchestrator 2>/dev/null || true
   sudo -n rm -rf -- "${RUNTIME}" /tmp/mysql.sock /tmp/mysql.sock.lock \
-    /tmp/lite_mysql /tmp/mysql_full_to_lite /tmp/mysql_lite_to_full
+    /tmp/lite_mysql /tmp/mysql_full_to_lite /tmp/mysql_lite_to_full \
+    /dev/shm/mysql_query_cache
 }
 
 start_process() {
