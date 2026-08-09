@@ -3,9 +3,9 @@ import signal
 import time
 import os
 import utils
-import redis
 import psutil
 import random
+import socket
 import threading
 
 
@@ -288,10 +288,20 @@ elif args.experiment_type == "Lite":
     result = False
     deadline = time.time() + 120
     while not result and time.time() < deadline:
-        r = redis.Redis(unix_socket_path="/tmp/redis-leveldb.sock")
         try:
-            result = r.ping()
-        except redis.exceptions.ConnectionError:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+                probe.settimeout(0.5)
+                probe.connect("/tmp/redis-leveldb.sock")
+                probe.sendall(
+                    b"*2\r\n$3\r\nGET\r\n$16\r\n0000000000000000\r\n"
+                )
+                response = probe.recv(128)
+                if response.startswith(b"-"):
+                    raise RuntimeError(
+                        f"restarted LevelDB backend rejected GET: {response!r}"
+                    )
+                result = bool(response)
+        except OSError:
             time.sleep(0.05)
     if not result:
         raise RuntimeError("restarted LevelDB backend did not become ready")
