@@ -210,6 +210,40 @@ run_one() {
     ae_err "empty client log for ${prefix}"
     return 1
   fi
+  if [ "${type}" = "litesys" ]; then
+    local lite_log="${OUT_DIR}/${mode}/${prefix}.lite_memcached.1.log"
+    local mcrouter_log="${OUT_DIR}/${mode}/${prefix}.mcrouter.log"
+    if ! grep -q "Entered emergency mode" "${lite_log}" 2>/dev/null; then
+      ae_err "LiteMemcached did not enter emergency mode for ${prefix}"
+      return 1
+    fi
+    if [ ! -s "${mcrouter_log}" ]; then
+      ae_err "missing mcrouter statistics for ${prefix}"
+      return 1
+    fi
+    local max_failover
+    max_failover=$(
+      awk -F: '
+        /"libmcrouter\.mcrouter\.11211\.failover_all":/ {
+          gsub(/[ ,]/, "", $2)
+          if ($2 + 0 > max) max = $2 + 0
+          seen = 1
+        }
+        END {
+          if (!seen) exit 1
+          print max + 0
+        }
+      ' "${mcrouter_log}"
+    ) || {
+      ae_err "could not read mcrouter failover statistics for ${prefix}"
+      return 1
+    }
+    if [ "${max_failover}" != "0" ]; then
+      ae_err "LiteLib allowed ${max_failover} mcrouter failover(s) in ${prefix}"
+      return 1
+    fi
+    ae_ok "LiteLib emergency mode served the run with zero mcrouter failover"
+  fi
   ae_ok "collected ${n} component log(s) for ${prefix}"
   if [ "${RUN_COOLDOWN}" -gt 0 ]; then
     sleep "${RUN_COOLDOWN}"
