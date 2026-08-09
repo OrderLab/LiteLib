@@ -1,6 +1,6 @@
 #!/bin/bash
 AE_MAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AE_LEVELDB_RECOVERY_COMMIT=${AE_LEVELDB_RECOVERY_COMMIT:-99b6e0744ebaba43705f057f501f62c7890c976d}
+AE_LEVELDB_RECOVERY_COMMIT=${AE_LEVELDB_RECOVERY_COMMIT:-9035929fdffb74c312eeb045a6b9c8ecb9fe8be6}
 AE_LEVELDB_RECOVERY_WORKTREE=${AE_LEVELDB_RECOVERY_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/leveldb-recovery}
 
 ae_leveldb_recovery_die(){ echo "[FAIL] $*" >&2; exit 1; }
