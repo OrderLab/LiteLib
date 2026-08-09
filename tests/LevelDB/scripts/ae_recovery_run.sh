@@ -6,7 +6,7 @@ ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
 REMOTE=${LITELIB_WORKTREE_DIR:-${ROOT}}
 MAIN=${LITELIB_MAIN_DIR:-${HOME}/LiteLib}
 OUT=${AE_OUTPUT_DIR:-${MAIN}/results/leveldb-recovery/$(date +%Y%m%d-%H%M%S)}
-MODES=${AE_MODES:-"full ebpf checkpoint"}
+MODES=${AE_MODES:-"full lite checkpoint"}
 REPEATS=${AE_REPEATS:-1}
 DURATION=${AE_DURATION:-3m}
 CRASH_TIME=${AE_CRASH_TIME:-80s}
@@ -15,10 +15,10 @@ NUM_KEYS=${AE_NUM_KEYS:-6000000}
 INIT_RPS=${AE_INIT_RPS:-80000}
 RPS=${AE_RPS:-40000}
 FULL_CPU=${AE_FULL_CPU:-3}
-EBPF_CPU=${AE_EBPF_CPU:-6}
+LITE_CPU=${AE_LITE_CPU:-6}
 CHECKPOINT_CPU=${AE_CHECKPOINT_CPU:-3}
-LITE_THREADS=${AE_LITE_THREADS:-5}
-LITE_SIZE=${AE_LITE_SIZE:-131100}
+LITE_THREADS=${AE_LITE_THREADS:-6}
+LITE_SIZE=${AE_LITE_SIZE:-87400}
 mkdir -p "${OUT}"
 ENV_FILE=$(mktemp --tmpdir leveldb-recovery-env.XXXXXX.yaml)
 
@@ -37,9 +37,9 @@ run_one() {
     experiment_yaml="    experiment_type: full"
     cpu=${FULL_CPU}
     ;;
-  ebpf)
-    experiment_yaml=$'    experiment_type:\n      ebpf: ['"${LITE_THREADS}"$', "'"${LITE_SIZE}"'"]'
-    cpu=${EBPF_CPU}
+  lite)
+    experiment_yaml=$'    experiment_type:\n      lite: ['"${LITE_THREADS}"$', "'"${LITE_SIZE}"'"]'
+    cpu=${LITE_CPU}
     ;;
   checkpoint)
     experiment_yaml=$'    experiment_type:\n      checkpoint: 30'
@@ -104,7 +104,7 @@ cat >"${OUT}/metadata.json" <<EOF
   "crash_second": ${CRASH_SECOND},
   "rps": ${RPS},
   "full_cpu": ${FULL_CPU},
-  "ebpf_cpu": ${EBPF_CPU},
+  "lite_cpu": ${LITE_CPU},
   "checkpoint_cpu": ${CHECKPOINT_CPU},
   "lite_threads": ${LITE_THREADS},
   "lite_size": ${LITE_SIZE}

@@ -76,7 +76,8 @@ def main():
     target = float(metadata["rps"])
     stats = {}
     memory = {}
-    for mode in ("full", "ebpf", "checkpoint"):
+    containment = "lite"
+    for mode in ("full", containment, "checkpoint"):
         paths = sorted(
             glob.glob(os.path.join(args.root, f"{mode}*.stat.pruned.json"))
         )
@@ -92,38 +93,38 @@ def main():
         memory[mode] = {
             "full": precrash_memory(monitor, crash),
         }
-        if mode == "ebpf":
+        if mode == containment:
             memory[mode]["lite"] = precrash_memory(monitor, crash, lite=True)
 
     pre = slice(max(10, crash - 50), crash - 10)
     full_restart = int(stats["full"].get("reboot_time", crash + 1))
-    ebpf_replay = int(stats["ebpf"].get("replay_time", crash + 1))
+    lite_replay = int(stats[containment].get("replay_time", crash + 1))
     post_end = min(len(stats["full"]["ServerSuccess"]), full_restart + 50)
     full_pre = np.asarray(stats["full"]["ServerSuccess"][pre], dtype=float)
     full_post = np.asarray(
         stats["full"]["ServerSuccess"][full_restart + 2 : post_end], dtype=float
     )
-    ebpf_pre = np.asarray(stats["ebpf"]["ServerSuccess"][pre], dtype=float)
-    ebpf_failure = np.asarray(
-        stats["ebpf"]["ServerSuccess"][crash : ebpf_replay + 1], dtype=float
+    lite_pre = np.asarray(stats[containment]["ServerSuccess"][pre], dtype=float)
+    lite_failure = np.asarray(
+        stats[containment]["ServerSuccess"][crash : lite_replay + 1], dtype=float
     )
-    ebpf_post_success = np.asarray(
-        stats["ebpf"]["ServerSuccess"][ebpf_replay + 2 : ebpf_replay + 42],
+    lite_post_success = np.asarray(
+        stats[containment]["ServerSuccess"][lite_replay + 2 : lite_replay + 42],
         dtype=float,
     )
-    ebpf_failure_error = np.asarray(
-        stats["ebpf"]["ServerError"][crash : ebpf_replay + 1], dtype=float
+    lite_failure_error = np.asarray(
+        stats[containment]["ServerError"][crash : lite_replay + 1], dtype=float
     )
-    ebpf_post_miss = np.asarray(
-        stats["ebpf"]["ServerMiss"][ebpf_replay + 2 : ebpf_replay + 42],
+    lite_post_miss = np.asarray(
+        stats[containment]["ServerMiss"][lite_replay + 2 : lite_replay + 42],
         dtype=float,
     )
-    ebpf_post_timeout = np.asarray(
-        stats["ebpf"]["ServerTimeout"][ebpf_replay + 2 : ebpf_replay + 42],
+    lite_post_timeout = np.asarray(
+        stats[containment]["ServerTimeout"][lite_replay + 2 : lite_replay + 42],
         dtype=float,
     )
-    ebpf_post_error = np.asarray(
-        stats["ebpf"]["ServerError"][ebpf_replay + 2 : ebpf_replay + 42],
+    lite_post_error = np.asarray(
+        stats[containment]["ServerError"][lite_replay + 2 : lite_replay + 42],
         dtype=float,
     )
 
@@ -135,21 +136,21 @@ def main():
             "post_mean": float(np.nanmean(full_post)),
             "post_cv": cv(full_post),
         },
-        "ebpf": {
-            "pre_mean": float(np.nanmean(ebpf_pre)),
-            "failure_success": float(np.nansum(ebpf_failure)),
-            "failure_error": float(np.nansum(ebpf_failure_error)),
-            "post_success_mean": float(np.nanmean(ebpf_post_success)),
-            "post_miss": float(np.nansum(ebpf_post_miss)),
-            "post_timeout": float(np.nansum(ebpf_post_timeout)),
-            "post_error": float(np.nansum(ebpf_post_error)),
-            "post_cv": cv(ebpf_post_success),
+        "lite": {
+            "pre_mean": float(np.nanmean(lite_pre)),
+            "failure_success": float(np.nansum(lite_failure)),
+            "failure_error": float(np.nansum(lite_failure_error)),
+            "post_success_mean": float(np.nanmean(lite_post_success)),
+            "post_miss": float(np.nansum(lite_post_miss)),
+            "post_timeout": float(np.nansum(lite_post_timeout)),
+            "post_error": float(np.nansum(lite_post_error)),
+            "post_cv": cv(lite_post_success),
         },
         "memory": {
             "full": memory["full"]["full"],
             "lite": {
-                "full+": memory["ebpf"]["full"],
-                "lite": memory["ebpf"]["lite"],
+                "full+": memory[containment]["full"],
+                "lite": memory[containment]["lite"],
             },
             "checkpoint": memory["checkpoint"]["full"],
         },
@@ -159,20 +160,20 @@ def main():
             raise ValueError("baseline is overloaded before the crash")
         if summary["full"]["post_cv"] < 0.04:
             raise ValueError("baseline throughput is too stable after restart")
-        if summary["ebpf"]["failure_success"] <= 0:
+        if summary["lite"]["failure_success"] <= 0:
             raise ValueError("LiteLib served no successful requests during failure")
-        if summary["ebpf"]["failure_error"] > 0:
+        if summary["lite"]["failure_error"] > 0:
             raise ValueError("LiteLib returned stale data during failure")
         if abs(
-            summary["ebpf"]["post_success_mean"] - summary["ebpf"]["pre_mean"]
+            summary["lite"]["post_success_mean"] - summary["lite"]["pre_mean"]
         ) > target * 0.1:
             raise ValueError("LiteLib post-replay throughput differs from pre-crash")
         if any(
-            summary["ebpf"][key] > 0
+            summary["lite"][key] > 0
             for key in ("post_miss", "post_timeout", "post_error")
         ):
             raise ValueError("LiteLib returned unsuccessful responses after replay")
-        if summary["ebpf"]["post_cv"] > 0.05:
+        if summary["lite"]["post_cv"] > 0.05:
             raise ValueError("LiteLib post-replay throughput is unstable")
 
     with open(os.path.join(args.output, "summary.json"), "w") as stream:

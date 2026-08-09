@@ -14,7 +14,7 @@ python3 "$(dirname "$0")/ae_recovery_analyze.py" \
   -t 120 \
   -o "${FIGURES}/Figure12.pdf" \
   "${OUT}/full.stat.json" \
-  "${OUT}/ebpf.stat.json" \
+  "${OUT}/lite.stat.json" \
   "${OUT}/checkpoint.stat.json"
 echo "  [ OK ] Figure 12 -> ${FIGURES}/Figure12.pdf"
 echo "  [ OK ] LevelDB memory -> ${OUT}/memory.json"
