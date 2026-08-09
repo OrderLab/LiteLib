@@ -84,9 +84,15 @@ def main():
         if not paths:
             raise ValueError(f"no {mode} statistics in {args.root}")
         stat = normalize_stat(load(paths[-1]), crash)
+        stat.setdefault("ServerStale", [0.0] * len(stat["ServerSuccess"]))
         stats[mode] = stat
+        plot_stat = dict(stat)
+        plot_stat["ServerError"] = [
+            error + stale
+            for error, stale in zip(stat["ServerError"], stat["ServerStale"])
+        ]
         with open(os.path.join(args.output, f"{mode}.stat.json"), "w") as stream:
-            json.dump(stat, stream)
+            json.dump(plot_stat, stream)
         monitor = sorted(
             glob.glob(os.path.join(args.root, f"monitor.{mode}*.jsonl"))
         )[-1]
@@ -115,6 +121,9 @@ def main():
     lite_failure_error = np.asarray(
         stats[containment]["ServerError"][crash : lite_replay + 1], dtype=float
     )
+    lite_failure_stale = np.asarray(
+        stats[containment]["ServerStale"][crash : lite_replay + 1], dtype=float
+    )
     lite_post_miss = np.asarray(
         stats[containment]["ServerMiss"][lite_replay + 2 : lite_replay + 42],
         dtype=float,
@@ -125,6 +134,10 @@ def main():
     )
     lite_post_error = np.asarray(
         stats[containment]["ServerError"][lite_replay + 2 : lite_replay + 42],
+        dtype=float,
+    )
+    lite_post_stale = np.asarray(
+        stats[containment]["ServerStale"][lite_replay + 2 : lite_replay + 42],
         dtype=float,
     )
 
@@ -139,11 +152,13 @@ def main():
         "lite": {
             "pre_mean": float(np.nanmean(lite_pre)),
             "failure_success": float(np.nansum(lite_failure)),
-            "failure_error": float(np.nansum(lite_failure_error)),
+            "failure_admission": float(np.nansum(lite_failure_error)),
+            "failure_stale": float(np.nansum(lite_failure_stale)),
             "post_success_mean": float(np.nanmean(lite_post_success)),
             "post_miss": float(np.nansum(lite_post_miss)),
             "post_timeout": float(np.nansum(lite_post_timeout)),
             "post_error": float(np.nansum(lite_post_error)),
+            "post_stale": float(np.nansum(lite_post_stale)),
             "post_cv": cv(lite_post_success),
         },
         "memory": {
@@ -162,7 +177,7 @@ def main():
             raise ValueError("baseline throughput is too stable after restart")
         if summary["lite"]["failure_success"] <= 0:
             raise ValueError("LiteLib served no successful requests during failure")
-        if summary["lite"]["failure_error"] > 0:
+        if summary["lite"]["failure_stale"] > 0:
             raise ValueError("LiteLib returned stale data during failure")
         if abs(
             summary["lite"]["post_success_mean"] - summary["lite"]["pre_mean"]
@@ -170,7 +185,7 @@ def main():
             raise ValueError("LiteLib post-replay throughput differs from pre-crash")
         if any(
             summary["lite"][key] > 0
-            for key in ("post_miss", "post_timeout", "post_error")
+            for key in ("post_miss", "post_timeout", "post_error", "post_stale")
         ):
             raise ValueError("LiteLib returned unsuccessful responses after replay")
         if summary["lite"]["post_cv"] > 0.05:

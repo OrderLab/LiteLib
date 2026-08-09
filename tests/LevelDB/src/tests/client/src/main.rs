@@ -82,6 +82,7 @@ enum Status {
     Miss,
     Timeout,
     Error,
+    Stale,
     // TransactionError,
 }
 
@@ -185,7 +186,7 @@ async fn do_query(
                                         get_last_n_char(&old_value_expected, 10),
                                         get_last_n_char(&new_value, 10)
                                     );
-                                    status = Status::Error;
+                                    status = Status::Stale;
                                     stale.store(true, std::sync::atomic::Ordering::SeqCst);
                                 } else {
                                     // timeout comes after the response is sent
@@ -215,7 +216,7 @@ async fn do_query(
                 }
                 true => {
                     QueryRecord {
-                        status: Status::Error, // modification based on stale value is also stale
+                        status: Status::Stale,
                         request: request_time,
                         response: response_time,
                     }
