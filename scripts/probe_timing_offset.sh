@@ -23,7 +23,7 @@ command -v ssh >/dev/null 2>&1 || { echo "ERROR: missing ssh"; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "ERROR: missing python3 locally"; exit 1; }
 
 REMOTE_PID=""
-REMOTE_LOG="/tmp/offset_responder_${PORT}.log"
+REMOTE_LOG="/tmp/offset_responder_$(id -u)_${PORT}.log"
 
 start_remote() {
   ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$REMOTE" "command -v python3 >/dev/null 2>&1" >/dev/null
