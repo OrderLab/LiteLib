@@ -242,6 +242,11 @@ run_one() {
       ae_err "LiteLib allowed ${max_failover} mcrouter failover(s) in ${prefix}"
       return 1
     fi
+    if ! python3 "${SCRIPT_DIR}/ae_motivation_litesys_check.py" \
+      "${OUT_DIR}/${mode}/${prefix}.log"; then
+      ae_err "LiteLib did not recover pre-failure latency in ${prefix}"
+      return 1
+    fi
     ae_ok "LiteLib emergency mode served the run with zero mcrouter failover"
   fi
   ae_ok "collected ${n} component log(s) for ${prefix}"
