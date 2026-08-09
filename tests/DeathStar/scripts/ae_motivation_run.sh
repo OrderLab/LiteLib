@@ -54,7 +54,7 @@ WORKLOAD_RATE=${WORKLOAD_RATE:-5500}
 # the operating point -- and the calibration would no longer apply.
 WARMUP_RATE=${WARMUP_RATE:-}
 LITE_THREADS=${LITE_THREADS:-8}
-LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-20480}
+LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-65536}
 RUN_ID=$(ae_run_id)
 OUT_DIR=""
 
