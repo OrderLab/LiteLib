@@ -18,14 +18,14 @@ NO_CRASH=${NO_CRASH:-0}
 # failover sends it.  If the instances are given more CPU than the workload
 # needs, the failover is absorbed and no cascade appears, so this value has to
 # be matched to the machine (see ae_motivation_calibrate.sh).
-MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"100000 100000"}
+MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"50000 100000"}
 # Offered load, in requests/second, for the warm-up and the measured workload.
 # Together with MEMCACHED_CPU_MAX this fixes the operating point.  The load at
 # which the surviving instance saturates differs measurably between machines of
 # the same type, so it has to be calibrated per cluster; see
 # ae_motivation_calibrate.sh.
-WARMUP_RATE=${WARMUP_RATE:-3000}
-WORKLOAD_RATE=${WORKLOAD_RATE:-2500}
+WARMUP_RATE=${WARMUP_RATE:-2700}
+WORKLOAD_RATE=${WORKLOAD_RATE:-2700}
 WORKLOAD_CONNS=${WORKLOAD_CONNS:-512}
 WORKLOAD_THREADS=${WORKLOAD_THREADS:-80}
 LITE_THREADS=${LITE_THREADS:-8}

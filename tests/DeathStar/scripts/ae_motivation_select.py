@@ -3,7 +3,7 @@
 
 Rank each arm's repetitions by its trend metric and select the middle run:
 
-* vanilla: score sustained post-failure latency growth;
+* vanilla: score sustained post-failure latency degradation;
 * LiteLib: score late recovery and stability.
 
 Prints two tab-separated lines: ``vanilla<TAB>path`` and
@@ -45,11 +45,10 @@ def vanilla_score(path):
     if not m:
         return float("-inf")
     pre, w = m
-    increases = sum(b > a * 1.10 for a, b in zip(w, w[1:]))
-    growth = w[-1] / max(w[0], 1.0)
-    degradation = w[-1] / max(pre, 1.0)
-    # Give sustained increases priority over one isolated spike.
-    return increases * 100 + math.log1p(growth) * 10 + math.log1p(degradation)
+    late_degradation = min(w[-2:]) / max(pre, 1.0)
+    final_degradation = w[-1] / max(pre, 1.0)
+    # Prefer runs that stay degraded across both late windows, not one spike.
+    return math.log1p(late_degradation) * 10 + math.log1p(final_degradation)
 
 
 def litesys_score(path):

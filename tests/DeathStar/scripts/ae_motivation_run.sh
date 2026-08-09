@@ -45,10 +45,10 @@ INITIAL_COOLDOWN=${AE_INITIAL_COOLDOWN:-30}
 RUN_COOLDOWN=${AE_RUN_COOLDOWN:-0}
 # CPU budget per Memcached instance (cgroup v2 "quota period").  See
 # ae_motivation_calibrate.sh -- this sets the operating point of the experiment.
-MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"100000 100000"}
+MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"50000 100000"}
 # Calibrated once by the authors for the reference CloudLab c220g5 setup.
 # Evaluators should use this fixed value rather than re-calibrating.
-WORKLOAD_RATE=${WORKLOAD_RATE:-5500}
+WORKLOAD_RATE=${WORKLOAD_RATE:-2700}
 # Warm up at the same rate the measurement uses.  The warm-up determines what
 # ends up cached, so warming at a different rate than the run silently changes
 # the operating point -- and the calibration would no longer apply.
