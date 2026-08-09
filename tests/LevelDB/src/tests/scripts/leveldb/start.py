@@ -286,12 +286,15 @@ elif args.experiment_type == "Lite":
     )
 
     result = False
-    while not result:
-        r = redis.Redis(host="localhost", port=8324)
+    deadline = time.time() + 120
+    while not result and time.time() < deadline:
+        r = redis.Redis(unix_socket_path="/tmp/redis-leveldb.sock")
         try:
             result = r.ping()
         except redis.exceptions.ConnectionError:
-            result = False
+            time.sleep(0.05)
+    if not result:
+        raise RuntimeError("restarted LevelDB backend did not become ready")
 
     boot_command = [
         "cgexec",
