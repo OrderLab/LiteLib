@@ -215,7 +215,8 @@ run_one() {
   if [ "${type}" = "litesys" ]; then
     local lite_log="${OUT_DIR}/${mode}/${prefix}.lite_memcached.1.log"
     local mcrouter_log="${OUT_DIR}/${mode}/${prefix}.mcrouter.log"
-    if ! grep -q "Entered emergency mode" "${lite_log}" 2>/dev/null; then
+    if [ "${mode}" = "crash" ] &&
+      ! grep -q "Entered emergency mode" "${lite_log}" 2>/dev/null; then
       ae_err "LiteMemcached did not enter emergency mode for ${prefix}"
       return 1
     fi
@@ -249,7 +250,11 @@ run_one() {
       ae_err "LiteLib did not recover pre-failure latency in ${prefix}"
       return 1
     fi
-    ae_ok "LiteLib emergency mode served the run with zero mcrouter failover"
+    if [ "${mode}" = "crash" ]; then
+      ae_ok "LiteLib emergency mode served the run with zero mcrouter failover"
+    else
+      ae_ok "LiteLib no-crash control remained stable with zero mcrouter failover"
+    fi
   fi
   ae_ok "collected ${n} component log(s) for ${prefix}"
   if [ "${RUN_COOLDOWN}" -gt 0 ]; then
