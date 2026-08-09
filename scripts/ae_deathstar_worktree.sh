@@ -8,7 +8,7 @@
 # main checkout's results/, figures/ and logs/ directories.
 
 AE_MAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AE_DEATHSTAR_COMMIT=${AE_DEATHSTAR_COMMIT:-2b04af9e5d9c0d579ead9d2b327d9baf9f2199fd}
+AE_DEATHSTAR_COMMIT=${AE_DEATHSTAR_COMMIT:-0297fb79f197d41e512806c54b8bc8fd61ec0d9f}
 AE_DEATHSTAR_WORKTREE=${AE_DEATHSTAR_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/deathstar}
 
 ae_deathstar_die() {
