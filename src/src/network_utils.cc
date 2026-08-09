@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
+#include <poll.h>
 #include <sys/un.h>
 
 #include <cstring>
@@ -168,15 +169,30 @@ bool Write(const evutil_socket_t fd, const uint8_t buffer[], size_t len) {
   const uint8_t* begin = buffer;
   while (len) {
     ssize_t bytes_written = write(fd, begin, len);
-    if (bytes_written <= 0 && errno != EAGAIN) {
-      PLOG(ERROR) << "write to " << fd;  // TODO: max tries
-      return false;
-    } else if (errno == EAGAIN) {
-      PLOG(WARNING) << "write to " << fd;
-    } else {
+    if (bytes_written > 0) {
       len -= bytes_written;
       begin += bytes_written;
+      continue;
     }
+    if (bytes_written == -1 && errno == EINTR) {
+      continue;
+    }
+    if (bytes_written == -1 &&
+        (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      struct pollfd writable {};
+      writable.fd = fd;
+      writable.events = POLLOUT;
+      int ready;
+      do {
+        ready = poll(&writable, 1, 1000);
+      } while (ready == -1 && errno == EINTR);
+      if (ready > 0 && (writable.revents & POLLOUT)) {
+        continue;
+      }
+      return false;
+    }
+    // NOTE: keep this quiet because Memcached closes a connection for quit.
+    return false;
   }
   return true;
 }
