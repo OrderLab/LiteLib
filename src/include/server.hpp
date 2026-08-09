@@ -8,7 +8,6 @@
 #include "connection.hpp"
 #include "core.hpp"
 #include "worker.hpp"
-#include "ebpf_worker.hpp"
 
 namespace lite {
 
@@ -22,13 +21,10 @@ class LiteServer {
                                     ConnectionInfo, CacheKey, CacheEntry>;
   using WorkerInstance = Worker<Application, Request, Response, ConnectionInfo,
                                 CacheKey, CacheEntry>;
-  using EbpfWorkerInstance = EbpfWorker<Application, Request, Response, ConnectionInfo,
-                                CacheKey, CacheEntry>;
   using CacheInstance = Cache<Application, Request, Response, ConnectionInfo,
                               CacheKey, CacheEntry>;
 
  public:
-  int sfd;
   LiteServer& operator=(const LiteServer&) = delete;
 
   /// Construct the server with the given thread pool size and maximum.
@@ -40,7 +36,7 @@ class LiteServer {
                       const size_t replay_expected_rps,
                       const double flow_control_ratio = 0.9,
                       const size_t n_replay_threads = 1,
-                      const std::string socket_path = "/tmp/lite.sock",
+                      const char pipe_path[] = "/tmp/lite",
                       bool crash_recover = true);
 
   /// Listen on the specified TCP port.
@@ -49,8 +45,6 @@ class LiteServer {
   /// Dispatch a new connection to the next thread in round-robin order.
   void DispatchNewConnection(const evutil_socket_t sfd);
 
-  void DispatchNewConnection(ConnectionInstance* conn);
-
   CacheInstance* GetCacheDecoupledFromAnyConnection();
 
  private:
@@ -58,8 +52,6 @@ class LiteServer {
 
   /// The internal lite server
   LiteCoreInstance lite_core_;
-
-  std::unique_ptr<EbpfWorkerInstance> ebpf_worker_;
 
   /// The worker threads.
   std::vector<std::unique_ptr<WorkerInstance>> workers_;
@@ -79,9 +71,6 @@ class LiteServer {
   /// Handle a new connection.
   static void EventHandler(const evutil_socket_t fd, const short which,
                            void* arg_conn);
-
-
-  friend LiteCoreInstance;
 };
 
 }  // namespace lite

@@ -8,19 +8,18 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "network_utils.hpp"
-
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
+#include "pipe_message_def.hpp"
+
 namespace lite {
 
-Daemon::Daemon(
-    const std::function<bool(const int)> &Replay,
-    const std::function<void(const std::vector<int> &, int)> TakeOver,
-    std::string &backend_port, const std::string socket_path)
+Daemon::Daemon(const std::function<bool()> &Replay,
+               std::function<void()> TakeOver, std::string &backend_port,
+               const std::string pipe_path)
     : Replay_(Replay),
-      socket_path_(socket_path),
+      pipe_path_(pipe_path),
       backend_port_(backend_port),
       TakeOver_(TakeOver) {
   // set up event_base
@@ -30,7 +29,7 @@ Daemon::Daemon(
   base_ = event_base_new_with_config(ev_config);
   event_config_free(ev_config);
 
-  CreateSocketAndRegisterEvent();
+  CreatePipeAndRegisterEvent();
 
   // pthread create
   pthread_attr_t attr;
@@ -41,44 +40,20 @@ Daemon::Daemon(
   pthread_attr_destroy(&attr);
 }
 
-void Daemon::CreateSocketAndRegisterEvent() {
-  // Create and bind Unix domain socket
-  socket_fd_ = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (socket_fd_ == -1) {
-    throw std::runtime_error("failed to create socket");
+void Daemon::CreatePipeAndRegisterEvent() {
+  // create pipe
+  mkfifo(pipe_path_.c_str(), 0666);
+  named_pipe_fd_ = open(pipe_path_.c_str(), O_RDONLY | O_NONBLOCK, 0);
+  if (named_pipe_fd_ == -1) {
+    throw std::runtime_error("failed to open the named pipe");
   }
+  LOG(INFO) << "Deamon listening on " << pipe_path_ << std::endl;
 
-  struct sockaddr_un addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.sun_family = AF_UNIX;
-  strncpy(addr.sun_path, socket_path_.c_str(), sizeof(addr.sun_path) - 1);
-
-  // Remove existing socket file if it exists
-  unlink(socket_path_.c_str());
-
-  if (bind(socket_fd_, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-    close(socket_fd_);
-    throw std::runtime_error("failed to bind socket");
-  }
-
-  if (chmod(socket_path_.c_str(), 0777) == -1) {
-    close(socket_fd_);
-    throw std::runtime_error("failed to chmod socket");
-  }
-
-  if (listen(socket_fd_, 5) == -1) {
-    close(socket_fd_);
-    throw std::runtime_error("failed to listen on socket");
-  }
-
-  LOG(INFO) << "Daemon listening on " << socket_path_ << std::endl;
-
-  event_set(&socket_event_, socket_fd_, EV_READ | EV_PERSIST, SocketHandler,
-            this);
-  event_base_set(base_, &socket_event_);
-  LOG_IF(FATAL, event_add(&socket_event_, 0) == -1)
-      << "Can't monitor libevent socket\n";
-}
+  event_set(&pipe_event_, named_pipe_fd_, EV_READ, PipeHandler, this);
+  event_base_set(base_, &pipe_event_);
+  LOG_IF(FATAL, event_add(&pipe_event_, 0) == -1)
+      << "Can't monitor libevent notify pipe\n";
+};
 
 void *Daemon::ThreadBody(void *arg_self) {
   Daemon *self = static_cast<Daemon *>(arg_self);
@@ -89,33 +64,43 @@ void *Daemon::ThreadBody(void *arg_self) {
   return NULL;
 }
 
-void Daemon::SocketHandler(evutil_socket_t fd, short which, void *arg_self) {
+void Daemon::PipeHandler(evutil_socket_t fd, short which, void *arg_self) {
   Daemon *self = static_cast<Daemon *>(arg_self);
 
-  if (fd == self->socket_fd_) {
-    struct sockaddr_un client_addr;
-    socklen_t client_len = sizeof(client_addr);
-    int full_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
-
-    if (full_fd == -1) {
-      LOG(ERROR) << "Daemon: Error accepting connection";
+  if (fd == self->named_pipe_fd_) {
+    pipe_message_t message;
+    if (!message.read(fd)) {
+      LOG(ERROR) << "Daemon: Error reading pipe";
       return;
     }
-
-    if (!self->emergency_mode_.load()) {
-      auto [received_fds, lens] = network::ReceiveSockets(full_fd);
-      if (received_fds.empty()) {
-        LOG(ERROR) << "Daemon: Error receiving socket message";
-        return;
-      }
-      close(full_fd);
-      LOG(INFO) << "Daemon: Received " << lens[0] << " client FDs and "
-                << (lens[1] - lens[0]) << " listener FDs";
-      self->TakeOver_(received_fds, lens[0]);
-    } else {
-      self->Replay_(full_fd);
+    else {
+      LOG(INFO) << "Daemon: Received message " << magic_enum::enum_name(message.action) << " from " << message.backend_port << std::endl;
     }
-    close(full_fd);
+    // Close Pipe
+    close(self->named_pipe_fd_);
+    unlink(self->pipe_path_.c_str());
+    self->CreatePipeAndRegisterEvent();
+    self->backend_port_ = message.backend_port;
+    switch (message.action) {
+      case PipeMessage::kEnterEmergencyMode:
+        LOG(WARNING) << "Daemon: Entering emergency mode " << GetUNIXTimeStamp()
+                     << std::endl;
+        if (!self->emergency_mode_) {
+          self->TakeOver_();
+        } else {
+          LOG(WARNING) << "Daemon: Already in emergency mode" << std::endl;
+        }
+        break;
+      case PipeMessage::kExitEmergencyMode:
+        LOG(WARNING) << "Daemon: Exiting emergency mode " << GetUNIXTimeStamp()
+                     << std::endl;
+        if (!self->Replay_()) {
+          LOG(ERROR) << "Daemon: Failed to replay" << std::endl;
+          break;
+        }
+        break;
+    }
+  } else {
   }
 }
 

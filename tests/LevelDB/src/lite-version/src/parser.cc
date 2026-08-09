@@ -32,14 +32,7 @@ lite::DeserializeResult RESPTypeParser::Deserialize(InputIterator &begin,
         parser_ = std::make_unique<RESPArrayParser>();
         break;
       default:
-        LOG(ERROR) << "Unknown RESPType: " << *(begin - 1) << "length: " << end - begin << std::endl;
-        for(int i = -1; i < end - begin; i++){
-          if (isprint(*(begin + i))) {
-            LOG(ERROR) << *(begin + i);
-          } else {
-            LOG(ERROR) << "0x" << std::hex << (int)(unsigned char)*(begin + i);
-          }
-        }
+        LOG(ERROR) << "Unknown RESPType: " << *(begin - 1) << std::endl;
         return lite::kBad;
     }
   }

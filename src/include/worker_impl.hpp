@@ -47,12 +47,12 @@ Worker<Application, Request, Response, ConnectionInfo, CacheKey,
   event_base_free(base_);
   close(notify_event_fd);
 
-  // conns_.visit_all([](const auto &conn) { delete conn; });
+  conns_.visit_all([](const auto &conn) { delete conn; });
 }
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-int Worker<Application, Request, Response, ConnectionInfo, CacheKey,
+void Worker<Application, Request, Response, ConnectionInfo, CacheKey,
             CacheEntry>::Run(const char name[]) {
   pthread_attr_t attr;
 
@@ -63,7 +63,6 @@ int Worker<Application, Request, Response, ConnectionInfo, CacheKey,
 
   pthread_setname_np(thread_id_, name);
   pthread_attr_destroy(&attr);
-  return 0;
 }
 
 template <typename Application, typename Request, typename Response,

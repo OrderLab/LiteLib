@@ -20,15 +20,6 @@ class Worker;
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-  requires IsProtocolMessage<Request> && IsProtocolMessage<Response>
-class LiteServer;
-
-template <typename Application, typename Request, typename Response,
-          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
-class EbpfWorker;
-
-template <typename Application, typename Request, typename Response,
-          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
   requires IsApplication<Application, Request, Response, ConnectionInfo,
                          CacheKey, CacheEntry> &&
            IsCacheEntry<Request, CacheKey, CacheEntry>
@@ -45,21 +36,15 @@ class LiteCore : public Daemon {
                                         ConnectionInfo, CacheKey, CacheEntry>;
   using ConnectionInstance = Connection<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>;
-  using LiteServerInstance = LiteServer<Application, Request, Response,
-                                        ConnectionInfo, CacheKey, CacheEntry>;
   using WorkerInstance = Worker<Application, Request, Response, ConnectionInfo,
                                 CacheKey, CacheEntry>;
-  using EbpfWorkerInstance = EbpfWorker<Application, Request, Response,
-                                        ConnectionInfo, CacheKey, CacheEntry>;
   using CacheStateInstance = CacheState<Application, Request, Response,
                                         ConnectionInfo, CacheKey, CacheEntry>;
 
  public:
   LiteCore(Application &app, const size_t &max_item_count,
            std::string &backend_addr, std::string &backend_port,
-           const std::string socket_path, std::barrier<std::function<void()>> &barrier,
-           LiteServerInstance *server_instance_ptr,
-           std::unique_ptr<EbpfWorkerInstance> &ebpf_worker,
+           const char pipe_path[], std::barrier<std::function<void()>> &barrier,
            std::vector<std::unique_ptr<WorkerInstance>> &workers,
            const std::chrono::milliseconds sliding_window_size,
            const size_t replay_expected_rps, const double flow_control_ratio,
@@ -78,11 +63,9 @@ class LiteCore : public Daemon {
                       const evutil_socket_t client_fd, CacheInstance *cache,
                       const bool forwarded);
 
-  std::string &backend_addr_;
+  std::string &backend_addr_, &backend_port_;
 
   bool is_replaying_ = false;
-
-  bool is_ebpf_ = true;
 
   ThreadSafeSet<ConnectionInstance *> live_connections_;
 
@@ -101,13 +84,9 @@ class LiteCore : public Daemon {
 
   std::barrier<std::function<void()>> &barrier_;
 
-  LiteServerInstance *server_instance_ptr_;
-
-  std::unique_ptr<EbpfWorkerInstance> &ebpf_worker_;
-
   std::vector<std::unique_ptr<WorkerInstance>> &workers_;
 
-  void TakeOver(const std::vector<int> &fds, int connection_cnt);
+  void TakeOver();
 
   SlidingWindow replay_rate_;
 
@@ -118,9 +97,7 @@ class LiteCore : public Daemon {
   std::vector<std::unique_ptr<WorkerInstance>> replay_workers_;
   typename decltype(replay_workers_)::iterator next_replay_worker_;
 
-  bool Replay(const int full_fd);
-
-  bool TransferConnectionsToServer(const int full_fd);
+  bool Replay();
 };
 
 }  // namespace lite

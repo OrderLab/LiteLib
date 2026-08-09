@@ -28,8 +28,7 @@ void PrintHelp() {
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   try {
-    // size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
-    size_t thread_pool_size = 8;
+    size_t thread_pool_size = boost::thread::hardware_concurrency() - 1;
     size_t cache_size(1024);
     const char* port = "6379";
 
@@ -75,7 +74,7 @@ int main(int argc, char* argv[]) {
     lite::LiteServer<LevelDB, Packet, Packet, ConnectionInfo, std::string,
                      CacheEntry>
         s(thread_pool_size, cache_size, level_db, backend_addr, backend_port,
-          1000ms, 35000, 0.9, 1, "/tmp/lite_leveldb_control_plane.sock");
+          1000ms, 35000, 0.9, 1, "/tmp/lite_LevelDB");
 
     // Run the server until stopped.
     if (!s.Run(port)) {
