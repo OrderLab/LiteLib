@@ -54,7 +54,9 @@ WORKLOAD_RATE=${WORKLOAD_RATE:-5500}
 # the operating point -- and the calibration would no longer apply.
 WARMUP_RATE=${WARMUP_RATE:-}
 LITE_THREADS=${LITE_THREADS:-8}
-LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-65536}
+# A full-reset probe observed 261,654 live entries at handover. Keep 2x
+# headroom so warm-up randomness cannot evict requests needed after failure.
+LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-524288}
 RUN_ID=$(ae_run_id)
 OUT_DIR=""
 

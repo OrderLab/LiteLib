@@ -15,7 +15,7 @@ LOG_PREFIX=$2
 # the CPU needed to serve its compact cache.
 LITE_MEMCACHED=${LITE_MEMCACHED:-/workspace/tests/Memcached/src/lite-version-ascii/build/LiteMemcached}
 VANILLA_MEMCACHED=${VANILLA_MEMCACHED:-/workspace/tests/Memcached/src/memcached-vanilla}
-LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-65536}
+LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-524288}
 LITE_THREADS=${LITE_THREADS:-8}
 MEMCACHED_THREADS=${MEMCACHED_THREADS:-8}
 
