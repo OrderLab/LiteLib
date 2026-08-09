@@ -126,7 +126,8 @@ function start_memcached() {
 
 # 200MB for memcached
 function warmup_memcached() {
-    ../src/wrk2/wrk -D exp -t ${WORKLOAD_THREADS} -c ${WORKLOAD_CONNS} -d 60 -L -s ../src/socialNetwork/wrk2/scripts/social-network/read-home-timeline.lua http://node1:8080/wrk2-api/home-timeline/read -R ${WARMUP_RATE}
+    # Populate the same cache working set used by the measured workload.
+    ../src/wrk2/wrk -D exp -t ${WORKLOAD_THREADS} -c ${WORKLOAD_CONNS} -d 60 -L -s ../src/socialNetwork/wrk2/scripts/social-network/mixed-workload.lua http://node1:8080 -R ${WARMUP_RATE}
 }
 
 function crash_memcached() {
