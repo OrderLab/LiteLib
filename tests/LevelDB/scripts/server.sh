@@ -9,7 +9,6 @@ REDIS_LEVELDB_COMMIT=403cc6eee547a13a4b49b79b30d52bedccc04c84
 LEVELDB_COMMIT=99b3c03b3284f5886f9ef9a4ef703d57373e61be
 REDIS_LEVELDB_DIR="${LEVELDB_DIR}/src/tests/redis-leveldb"
 REDIS_LEVELDB_PATCH="${LEVELDB_DIR}/src/tests/scripts/leveldb/redis-leveldb.patch"
-REDIS_LEVELDB_EBPF_PATCH="${LEVELDB_DIR}/src/tests/scripts/leveldb/redis-leveldb.ebpf.patch"
 
 check_not_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -101,10 +100,7 @@ build_redis_leveldb() {
   make -j"${NUM_JOBS}"
   make test
   cp -f redis-leveldb redis-leveldb-vanilla
-  git apply "${REDIS_LEVELDB_EBPF_PATCH}"
-  make clean
-  make -j"${NUM_JOBS}"
-  test -x redis-leveldb -a -x redis-leveldb-vanilla
+  test -x redis-leveldb-vanilla
 }
 
 build_libbpf() {
