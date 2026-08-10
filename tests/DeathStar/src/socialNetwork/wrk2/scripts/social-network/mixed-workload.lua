@@ -1,11 +1,24 @@
 local socket = require("socket")
-local time = socket.gettime()*1000
 local start_time = 0
 local read_home_timeline_ratio = 0.60
 local read_user_timeline_ratio = 0.30
 local compose_post_ratio       = 0.10
-math.randomseed(time)
-math.random(); math.random(); math.random()
+local thread_counter = 0
+
+function setup(thread)
+  thread:set("thread_id", thread_counter)
+  thread_counter = thread_counter + 1
+end
+
+function init(args)
+  local seed = tonumber(os.getenv("WORKLOAD_SEED"))
+  if seed then
+    math.randomseed(seed + (thread_id or 0))
+  else
+    math.randomseed(socket.gettime() * 1000 + (thread_id or 0))
+  end
+  math.random(); math.random(); math.random()
+end
 
 local charset = {'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'a', 's',
   'd', 'f', 'g', 'h', 'j', 'k', 'l', 'z', 'x', 'c', 'v', 'b', 'n', 'm', 'Q',

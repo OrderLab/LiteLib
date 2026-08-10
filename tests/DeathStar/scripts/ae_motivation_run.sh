@@ -57,6 +57,7 @@ LITE_THREADS=${LITE_THREADS:-8}
 # A full-reset probe observed 261,654 live entries at handover. Keep 2x
 # headroom so warm-up randomness cannot evict requests needed after failure.
 LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-524288}
+WORKLOAD_SEED=${WORKLOAD_SEED:-20250409}
 RUN_ID=$(ae_run_id)
 OUT_DIR=""
 
@@ -136,6 +137,7 @@ else
 fi
 ae_info "memcached CPU budget: ${MEMCACHED_CPU_MAX} (quota period)"
 ae_info "offered load:         ${WORKLOAD_RATE} req/s (warm-up at the same rate)"
+ae_info "workload seed:        ${WORKLOAD_SEED} (deterministic per thread)"
 ae_info "LiteMemcached:         ${LITE_THREADS} threads, ${LITE_CACHE_ITEMS} cache entries"
 ae_info "results:     ${OUT_DIR}"
 
@@ -192,7 +194,8 @@ run_one() {
     cd '${DEATHSTAR_DIR}/scripts' &&
     LOG_PREFIX='${prefix}' NO_CRASH='${no_crash}' MEMCACHED_CPU_MAX='${MEMCACHED_CPU_MAX}' \
     WORKLOAD_RATE='${WORKLOAD_RATE}' WARMUP_RATE='${WARMUP_RATE:-${WORKLOAD_RATE}}' \
-    LITE_THREADS='${LITE_THREADS}' LITE_CACHE_ITEMS='${LITE_CACHE_ITEMS}' \
+    WORKLOAD_SEED='${WORKLOAD_SEED}' LITE_THREADS='${LITE_THREADS}' \
+    LITE_CACHE_ITEMS='${LITE_CACHE_ITEMS}' \
     ./run_exp_replica.sh ${type}
   " >"${OUT_DIR}/${mode}/${prefix}.log" 2>&1
   local rc=$?

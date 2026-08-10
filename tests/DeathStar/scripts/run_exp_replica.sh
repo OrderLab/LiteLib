@@ -30,6 +30,7 @@ WORKLOAD_CONNS=${WORKLOAD_CONNS:-512}
 WORKLOAD_THREADS=${WORKLOAD_THREADS:-80}
 LITE_THREADS=${LITE_THREADS:-8}
 LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-524288}
+WORKLOAD_SEED=${WORKLOAD_SEED:-20250409}
 DeathStarDir=$(cd "$(dirname "$0")/.." && pwd)
 
 function wait_for_memcached_path() {
@@ -127,7 +128,8 @@ function start_memcached() {
 # 200MB for memcached
 function warmup_memcached() {
     # Populate the same cache working set used by the measured workload.
-    ../src/wrk2/wrk -D exp -t ${WORKLOAD_THREADS} -c ${WORKLOAD_CONNS} -d 60 -L -s ../src/socialNetwork/wrk2/scripts/social-network/mixed-workload.lua http://node1:8080 -R ${WARMUP_RATE}
+    WORKLOAD_SEED=${WORKLOAD_SEED} rps=${WARMUP_RATE} \
+      ../src/wrk2/wrk -D exp -t ${WORKLOAD_THREADS} -c ${WORKLOAD_CONNS} -d 60 -L -s ../src/socialNetwork/wrk2/scripts/social-network/mixed-workload.lua http://node1:8080 -R ${WARMUP_RATE}
 }
 
 function crash_memcached() {
@@ -155,7 +157,8 @@ function logging() {
 }
 
 function run_workload() {
-    ../src/wrk2/wrk -D exp -t ${WORKLOAD_THREADS} -c ${WORKLOAD_CONNS} -d 90 -L -s ../src/socialNetwork/wrk2/scripts/social-network/mixed-workload.lua http://node1:8080 -R ${WORKLOAD_RATE}
+    WORKLOAD_SEED=${WORKLOAD_SEED} rps=${WORKLOAD_RATE} \
+      ../src/wrk2/wrk -D exp -t ${WORKLOAD_THREADS} -c ${WORKLOAD_CONNS} -d 90 -L -s ../src/socialNetwork/wrk2/scripts/social-network/mixed-workload.lua http://node1:8080 -R ${WORKLOAD_RATE}
 }
 
 function mcrouter_readonly() {
