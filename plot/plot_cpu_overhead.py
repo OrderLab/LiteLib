@@ -124,6 +124,9 @@ def compute_bar_values_and_order(system):
             ndb_total = ndb_data.get('node1', 0) / full_value + ndb_data.get('node2', 0) / full_value + ndb_data.get('other', 0) / full_value
             if ndb_total > 0:
                 bar_values[ndb_key] = ndb_total
+    if system == 'MySQL':
+        mysql_order = ['proxy', 'replica', 'ndb(client)', 'ndb(proxy)']
+        return bar_values, [key for key in mysql_order if key in bar_values]
     ndb_like = [k for k in bar_values.keys() if k in ('ndb', 'ndb(client)', 'ndb(proxy)')]
     sorted_bars = sorted(
         [k for k in bar_values.keys() if k not in ['baseline'] and k not in ndb_like],
