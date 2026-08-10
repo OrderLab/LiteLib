@@ -41,7 +41,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "${RESULTS_DIR}" ]; then
-  RESULTS_DIR=$(ls -1d "${AE_RESULTS_DIR}"/motivation/*/ 2>/dev/null | sort | tail -1)
+  RESULTS_DIR=$(ls -1d "${AE_RESULTS_DIR}"/motivation/20*/ 2>/dev/null | sort | tail -1)
   [ -n "${RESULTS_DIR}" ] ||
     ae_die "no results found under ${AE_RESULTS_DIR}/motivation. Run ./ae_motivation_run.sh first."
 fi
