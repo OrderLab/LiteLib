@@ -12,7 +12,7 @@ namespace lite {
 
 template <typename T>
 concept HasGetSize = requires(T self) {
-  { self.GetSize(self) } -> std::convertible_to<size_t>;
+  { self.GetSize() } -> std::convertible_to<size_t>;
 };
 
 template <typename Application, typename Request, typename Response,

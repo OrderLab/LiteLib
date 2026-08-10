@@ -15,7 +15,7 @@ LOG_PREFIX=$2
 # the CPU needed to serve its compact cache.
 LITE_MEMCACHED=${LITE_MEMCACHED:-/workspace/tests/Memcached/src/lite-version-ascii/build/LiteMemcached}
 VANILLA_MEMCACHED=${VANILLA_MEMCACHED:-/workspace/tests/Memcached/src/memcached-vanilla}
-LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-524288}
+LITE_CACHE_SIZE=${LITE_CACHE_SIZE:-${LITE_CACHE_ITEMS:-134217728}}
 LITE_THREADS=${LITE_THREADS:-8}
 MEMCACHED_THREADS=${MEMCACHED_THREADS:-8}
 
@@ -44,11 +44,11 @@ fi
 
 if [ "$LOG_PREFIX" != "none" ]; then
   GLOG_stderrthreshold=0 GLOG_logtostderr=1 \
-    "$LITE_MEMCACHED" -t "$LITE_THREADS" -s "$LITE_CACHE_ITEMS" \
+    "$LITE_MEMCACHED" -t "$LITE_THREADS" -s "$LITE_CACHE_SIZE" \
     > "$Dir/logs/$LOG_PREFIX.lite_memcached$LITE_LOG_SUFFIX.log" 2>&1 &
 else
   GLOG_stderrthreshold=0 GLOG_logtostderr=1 \
-    "$LITE_MEMCACHED" -t "$LITE_THREADS" -s "$LITE_CACHE_ITEMS" &
+    "$LITE_MEMCACHED" -t "$LITE_THREADS" -s "$LITE_CACHE_SIZE" &
 fi
 
 sleep 2

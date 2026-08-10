@@ -159,22 +159,22 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     }
     ret = true;
 
-    std::unique_lock<std::mutex> lru_lock(lru_mutex_, std::try_to_lock);
-    if (lru_lock) {
-      ListNode *lru_node = element.second.lru_node;
-      // The list node may be out of the list if it is in the process of being
-      // inserted or evicted. Doing this check allows us to lock the list for
-      // shorter periods of time.
-      if (lru_node->isInList()) {
-        lru_node->Delink();
-        lru_node->PushFront(lru_head_);
-        if constexpr (HasGetSize<CacheEntry>) {
-          size += new_size - lru_node->size;
-          lru_node->size = new_size;
+    std::unique_lock<std::mutex> lru_lock(lru_mutex_);
+    ListNode *lru_node = element.second.lru_node;
+    if (lru_node->isInList()) {
+      lru_node->Delink();
+      lru_node->PushFront(lru_head_);
+      if constexpr (HasGetSize<CacheEntry>) {
+        const size_t old_size = lru_node->state_->size;
+        if (new_size >= old_size) {
+          size += new_size - old_size;
+        } else {
+          size -= old_size - new_size;
         }
+        lru_node->state_->size = new_size;
       }
-      lru_lock.unlock();
     }
+    lru_lock.unlock();
 
     new_state = element.second.state.get();
   });
@@ -229,7 +229,7 @@ void CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
     }
     moribund->Delink();
     if constexpr (HasGetSize<CacheEntry>) {
-      size -= moribund->size;
+      size -= moribund->state_->size;
     } else {
       size--;
     }

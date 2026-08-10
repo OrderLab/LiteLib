@@ -29,7 +29,7 @@ WORKLOAD_RATE=${WORKLOAD_RATE:-2700}
 WORKLOAD_CONNS=${WORKLOAD_CONNS:-512}
 WORKLOAD_THREADS=${WORKLOAD_THREADS:-80}
 LITE_THREADS=${LITE_THREADS:-8}
-LITE_CACHE_ITEMS=${LITE_CACHE_ITEMS:-524288}
+LITE_CACHE_SIZE=${LITE_CACHE_SIZE:-${LITE_CACHE_ITEMS:-134217728}}
 WORKLOAD_SEED=${WORKLOAD_SEED:-20250409}
 DeathStarDir=$(cd "$(dirname "$0")/.." && pwd)
 
@@ -110,13 +110,13 @@ function start_memcached() {
     elif [ "$TYPE" == "litesys" ]; then
         docker exec \
           -e LITE_THREADS="$LITE_THREADS" \
-          -e LITE_CACHE_ITEMS="$LITE_CACHE_ITEMS" \
+          -e LITE_CACHE_SIZE="$LITE_CACHE_SIZE" \
           post-storage-memcached-1 \
           /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-litesys-with-cgroup.sh 1 none
         sleep 3 # restart LiteSys again to prevent some port/shm reuse issues
         docker exec \
           -e LITE_THREADS="$LITE_THREADS" \
-          -e LITE_CACHE_ITEMS="$LITE_CACHE_ITEMS" \
+          -e LITE_CACHE_SIZE="$LITE_CACHE_SIZE" \
           post-storage-memcached-1 \
           /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-litesys-with-cgroup.sh 1 $LOG_PREFIX
         docker exec post-storage-memcached-2 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 2 $LOG_PREFIX
