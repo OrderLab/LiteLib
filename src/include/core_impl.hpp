@@ -154,10 +154,17 @@ void LiteCore<Application, Request, Response, ConnectionInfo, CacheKey,
       close(c->backend_fd_);
       c->backend_fd_ = -1;
     }
-    if (!c->pending_requests_.empty()) {
-      // TODO: serve them using EmergencyServe
-      // Remaining issue: MULTI -> (switch to emergency) ->
-      // EXEC, service.cc will inject an illegal DISCARD
+    bool close_connection = false;
+    while (!c->pending_requests_.empty()) {
+      auto [request, _] = c->pending_requests_.pop_front();
+      if (!HandleRequest(
+              std::move(request), c->extra_app_info_, c->pending_requests_,
+              c->client_fd_, c->backend_fd_, &c->cache_, &c->logger_, false)) {
+        close_connection = true;
+        break;
+      }
+    }
+    if (close_connection) {
       connections_to_be_closed.insert(c);
     }
   });
