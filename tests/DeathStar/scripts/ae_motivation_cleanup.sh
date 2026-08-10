@@ -5,6 +5,25 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEATHSTAR_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+echo "==> Stopping remote experiment drivers"
+ssh node3 'bash -s' <<'REMOTE_SCRIPT' || true
+kill_tree() {
+  local pid=$1 child
+  for child in $(ps -o pid= --ppid "${pid}" 2>/dev/null); do
+    kill_tree "${child}"
+  done
+  kill -TERM "${pid}" 2>/dev/null || true
+}
+
+for pid in $(pgrep -f '[r]un_exp_replica\.sh' 2>/dev/null || true); do
+  kill_tree "${pid}"
+done
+sleep 1
+for pid in $(pgrep -f '[r]un_exp_replica\.sh' 2>/dev/null || true); do
+  kill -KILL "${pid}" 2>/dev/null || true
+done
+REMOTE_SCRIPT
+
 echo "==> Removing DeathStar stack and manual containers"
 ssh node1 "cd '${DEATHSTAR_DIR}/scripts' &&
   if docker info >/dev/null 2>&1; then
