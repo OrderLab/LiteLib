@@ -18,10 +18,13 @@ ae_deathstar_die() {
 
 ae_prepare_deathstar_worktree() {
   echo "==> Preparing DeathStar source"
-  git -C "${AE_MAIN_DIR}" fetch -q origin nsdi27-ae-deathstar ||
-    ae_deathstar_die "could not fetch origin/nsdi27-ae-deathstar"
-  git -C "${AE_MAIN_DIR}" cat-file -e "${AE_DEATHSTAR_COMMIT}^{commit}" ||
-    ae_deathstar_die "pinned DeathStar commit is unavailable"
+  if ! git -C "${AE_MAIN_DIR}" cat-file -e \
+    "${AE_DEATHSTAR_COMMIT}^{commit}" 2>/dev/null; then
+    git -C "${AE_MAIN_DIR}" fetch -q origin nsdi27-ae-deathstar ||
+      ae_deathstar_die "could not fetch origin/nsdi27-ae-deathstar"
+    git -C "${AE_MAIN_DIR}" cat-file -e "${AE_DEATHSTAR_COMMIT}^{commit}" ||
+      ae_deathstar_die "pinned DeathStar commit is unavailable"
+  fi
 
   mkdir -p "$(dirname "${AE_DEATHSTAR_WORKTREE}")"
   git -C "${AE_MAIN_DIR}" worktree prune
