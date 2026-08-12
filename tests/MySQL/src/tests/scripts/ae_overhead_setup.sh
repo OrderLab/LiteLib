@@ -24,7 +24,7 @@ pids=()
 for node in node0 node1 node2 node3; do
   ssh "${node}" "sudo -n apt-get update -qq &&
     sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-      automake bison build-essential cmake git libaio-dev libevent-dev \
+      automake bison build-essential cmake flex git libaio-dev libevent-dev \
       libgoogle-glog-dev libncurses5 libncurses5-dev libssl-dev libtool \
       default-libmysqlclient-dev numactl pkg-config python3-pip &&
     python3 -m pip install --user -q psutil numpy" &
