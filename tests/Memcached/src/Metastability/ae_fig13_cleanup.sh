@@ -1,5 +1,5 @@
 #!/bin/bash
-# Remove Figure 13 runtime state. Preserve mysql_data and its verified archive.
+# Remove Figure 13 runtime state. The verified archive remains reusable.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,7 +24,11 @@ if fig13_docker inspect mysql >/dev/null 2>&1; then
   fig13_docker update --cpus 4 mysql >/dev/null || true
 fi
 
-fig13_compose down --remove-orphans
+if [ "${FIG13_PRESERVE_DB_VOLUME:-0}" -eq 1 ]; then
+  fig13_compose down --remove-orphans
+else
+  fig13_compose down --volumes --remove-orphans
+fi
 
 fig13_info "removing generated working files"
 sudo -n rm -rf -- \
@@ -33,4 +37,8 @@ sudo -n rm -rf -- \
   "${FIG13_DIR}/LoadGenerator/experiment_plots" \
   "${FIG13_DIR}/LoadGenerator/result_plot"
 
-fig13_ok "runtime cleaned; mysql_data, database archive, builds and results preserved"
+if [ "${FIG13_PRESERVE_DB_VOLUME:-0}" -eq 1 ]; then
+  fig13_ok "runtime cleaned; database volume, archive, builds and results preserved"
+else
+  fig13_ok "runtime and database volume cleaned; archive, builds and results preserved"
+fi
