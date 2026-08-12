@@ -72,6 +72,9 @@ sudo -n make -C "${LITE}/lib/sql-parser" install
 cmake -S "${LITE}" -B "${LITE}/build" -DCMAKE_BUILD_TYPE=Release
 cmake --build "${LITE}/build" -j"${JOBS}"
 test -x "${LITE}/build/LiteMySQL"
+git -C "${ROOT}" restore \
+  tests/MySQL/src/lite-version/lib/sql-parser/src/parser/flex_lexer.cpp \
+  tests/MySQL/src/lite-version/lib/sql-parser/src/parser/flex_lexer.h
 REMOTE_SCRIPT
 
 echo "==> Installing ProxySQL and Orchestrator on node0"
