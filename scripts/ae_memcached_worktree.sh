@@ -2,7 +2,7 @@
 # Managed-worktree helper for Figure 13.
 
 AE_MAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AE_MEMCACHED_COMMIT=${AE_MEMCACHED_COMMIT:-6c7d9e65eaf125d6e71d964d8f275c03b4e768d7}
+AE_MEMCACHED_COMMIT=${AE_MEMCACHED_COMMIT:-abdb9abd96c6eb6dac7876729785d6cc634d069b}
 AE_MEMCACHED_WORKTREE=${AE_MEMCACHED_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/memcached}
 
 ae_memcached_die() { echo "[FAIL] $*" >&2; exit 1; }
