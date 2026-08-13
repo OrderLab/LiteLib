@@ -38,15 +38,14 @@ def process(path):
     }
 
 def recovery_time(data, crash):
-    """Absolute second ending the first sustained 5s >=90% window."""
+    """Absolute second starting the first sustained 5s >=90% window."""
     rolling = np.convolve(
         data["hits"] / ARRIVAL_RATE, np.ones(WINDOW) / WINDOW, mode="valid"
     )
     candidates = np.where(rolling[crash + 1 :] >= 0.9)[0]
     if not len(candidates):
         return None
-    window_start = int(candidates[0] + crash + 1)
-    return window_start + WINDOW - 1
+    return int(candidates[0] + crash + 1)
 
 
 def fmt_recovery(value):
