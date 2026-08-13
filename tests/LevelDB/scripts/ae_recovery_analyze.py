@@ -103,8 +103,14 @@ def main():
             memory[mode]["lite"] = precrash_memory(monitor, crash, lite=True)
 
     pre = slice(max(10, crash - 50), crash - 10)
-    full_restart = int(stats["full"].get("reboot_time", crash + 1))
-    lite_replay = int(stats[containment].get("replay_time", crash + 1))
+    full_restart_value = stats["full"].get("reboot_time", math.nan)
+    if math.isnan(full_restart_value):
+        raise ValueError("baseline restart did not complete")
+    full_restart = int(full_restart_value)
+    lite_replay_value = stats[containment].get("replay_time", math.nan)
+    if math.isnan(lite_replay_value):
+        raise ValueError("LiteLib replay did not complete")
+    lite_replay = int(lite_replay_value)
     post_end = min(len(stats["full"]["ServerSuccess"]), full_restart + 50)
     full_pre = np.asarray(stats["full"]["ServerSuccess"][pre], dtype=float)
     full_post = np.asarray(
