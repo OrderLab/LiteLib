@@ -25,4 +25,7 @@ for node in node0 node1 node2 node3; do
     fi
   " || true
 done
+for node in node0 node1 node2 node3; do
+  ssh "${node}" "sudo -n docker volume prune -f >/dev/null" || true
+done
 echo "  [ OK ] MySQL runtime cleaned; builds/results preserved"
