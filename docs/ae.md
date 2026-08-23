@@ -323,44 +323,9 @@ The final line should be:
 ==> Kick-the-Tires passed
 ```
 
----
-
-## 🧰 Setup Command Reference
-
-Every stage can be run on its own, and all of them are safe to re-run — the
-script only redoes work that is actually missing.
-
-```bash
-cd ~/LiteLib/scripts
-
-./system_init.sh                         # self-reserved: persistent system setup
-./system_init.sh reboot                  # reboot peers (then reboot node0)
-./system_init.sh post-reboot             # restore runtime state + system check
-./system_init.sh check                   # system prerequisite only
-./user_init.sh                           # evaluator SSH/repository + system verify
-
-./setup_cluster.sh                        # ssh + clone + init + check (default)
-./setup_cluster.sh user-init              # implementation used by user_init.sh
-./setup_cluster.sh system-init            # implementation used by system_init.sh
-./setup_cluster.sh system-check           # system state, excluding account files
-./setup_cluster.sh ssh                    # only bootstrap SSH keys/known_hosts
-./setup_cluster.sh clone                  # only clone/update the repository
-./setup_cluster.sh init                   # only run init.sh
-./setup_cluster.sh check                  # only verify
-./setup_cluster.sh post-reboot            # re-apply rate limits + CPU pinning
-./setup_cluster.sh reboot                 # reboot peers + re-apply runtime config
-
-./setup_cluster.sh -n "node1 node2" init  # legacy/debug subset operation
-./setup_cluster.sh -f init                # force a re-run of an initialized node
-./setup_cluster.sh --serial init          # one node at a time, output inline
-./setup_cluster.sh --no-progress init     # no live progress, just the summary
-./setup_cluster.sh --sync-local clone     # push your local tree instead of cloning
-./setup_cluster.sh --help                 # full option list
-```
-
-The two evaluator entry points intentionally fix the peer aliases to
-`node0 node1 node2 node3`. `setup_cluster.sh` remains available for backward
-compatibility and debugging, but rejects literal IP addresses as node targets.
+Setup is complete at this point. For individual stage reruns or debugging, see
+the [Optional Setup Command Reference](#optional-setup-command-reference) at
+the end of this guide.
 
 ---
 
@@ -399,7 +364,7 @@ These results are generated independently. They also provide memory inputs
 needed later by Figure 14.
 
 **Figures 1 & 2 (DeathStar motivation)** —
-[step-by-step guide](./ae-fig1-2-motivation.md):
+[guide](./ae-fig1-2-motivation.md):
 
 ```bash
 ./scripts/ae_fig1_2_setup.sh
@@ -409,7 +374,7 @@ needed later by Figure 14.
 ```
 
 **Figure 12 (LevelDB recovery)** —
-[recovery guide](./ae-fig12-leveldb.md):
+[guide](./ae-fig12-leveldb.md):
 
 ```bash
 ./scripts/ae_leveldb_recovery_setup.sh
@@ -419,7 +384,7 @@ needed later by Figure 14.
 ```
 
 **Figure 13 (Memcached recovery)** —
-[step-by-step guide](./ae-fig13-memcached.md):
+[guide](./ae-fig13-memcached.md):
 
 ```bash
 ./scripts/ae_fig13_setup.sh
@@ -487,7 +452,7 @@ and MySQL inputs are ready**:
 
 ### Phase 4 — Table 2 service gaps
 
-[Service-gap guide](./ae-table2.md):
+**Table 2** — [guide](./ae-table2.md):
 
 ```bash
 ./scripts/ae_table2_setup.sh
@@ -509,3 +474,46 @@ and MySQL inputs are ready**:
 * [`scripts/post_reboot.sh`](../scripts/post_reboot.sh) — re-apply the runtime state a reboot clears
 * [`scripts/check_init.sh`](../scripts/check_init.sh) — per-node verification
 * [`README.md`](../README.md) — repository layout
+
+---
+
+## 🧰 Optional Setup Command Reference
+
+> **Reference only — do not run this block as an additional setup procedure.**
+> Complete exactly one setup mode above, then continue with Kick-the-Tires.
+
+The commands below are standalone entry points for troubleshooting or
+re-running a specific setup stage. They are not a sequence. Each command is
+safe to re-run and only redoes work that is actually missing.
+
+```bash
+cd ~/LiteLib/scripts
+
+./system_init.sh                         # self-reserved: persistent system setup
+./system_init.sh reboot                  # reboot peers (then reboot node0)
+./system_init.sh post-reboot             # restore runtime state + system check
+./system_init.sh check                   # system prerequisite only
+./user_init.sh                           # evaluator SSH/repository + system verify
+
+./setup_cluster.sh                        # ssh + clone + init + check (default)
+./setup_cluster.sh user-init              # implementation used by user_init.sh
+./setup_cluster.sh system-init            # implementation used by system_init.sh
+./setup_cluster.sh system-check           # system state, excluding account files
+./setup_cluster.sh ssh                    # only bootstrap SSH keys/known_hosts
+./setup_cluster.sh clone                  # only clone/update the repository
+./setup_cluster.sh init                   # only run init.sh
+./setup_cluster.sh check                  # only verify
+./setup_cluster.sh post-reboot            # re-apply rate limits + CPU pinning
+./setup_cluster.sh reboot                 # reboot peers + re-apply runtime config
+
+./setup_cluster.sh -n "node1 node2" init  # legacy/debug subset operation
+./setup_cluster.sh -f init                # force a re-run of an initialized node
+./setup_cluster.sh --serial init          # one node at a time, output inline
+./setup_cluster.sh --no-progress init     # no live progress, just the summary
+./setup_cluster.sh --sync-local clone     # push your local tree instead of cloning
+./setup_cluster.sh --help                 # full option list
+```
+
+The two evaluator entry points intentionally fix the peer aliases to
+`node0 node1 node2 node3`. `setup_cluster.sh` remains available for backward
+compatibility and debugging, but rejects literal IP addresses as node targets.
