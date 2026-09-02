@@ -189,6 +189,19 @@ check_rootfs() {
   fi
 }
 
+check_docker() {
+  if ! command -v docker >/dev/null 2>&1; then
+    report "Docker daemon" 1 "docker command not found, run init.sh"
+    return
+  fi
+  if systemctl is-active --quiet docker &&
+    docker info >/dev/null 2>&1; then
+    report "Docker daemon" 0 "$(docker version --format '{{.Server.Version}}' 2>/dev/null)"
+  else
+    report "Docker daemon" 1 "service unavailable, run init.sh"
+  fi
+}
+
 check_ssh() {
   local ssh_dir="${LITELIB_USER_HOME}/.ssh"
   if [ -s "${ssh_dir}/authorized_keys" ]; then
@@ -304,6 +317,7 @@ if { [ "${SCOPE}" = all ] || [ "${SCOPE}" = system ]; } &&
   check_boost
   check_libevent
   check_rootfs
+  check_docker
 fi
 
 if { [ "${SCOPE}" = all ] || [ "${SCOPE}" = system ]; } &&

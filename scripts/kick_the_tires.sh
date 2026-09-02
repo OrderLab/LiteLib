@@ -28,6 +28,8 @@ for command in git docker python3 ssh rsync; do
   command -v "${command}" >/dev/null || fail "missing command: ${command}"
 done
 sudo -n true || fail "passwordless sudo is unavailable"
+sudo -n docker info >/dev/null ||
+  fail "Docker daemon is unavailable"
 
 wrappers=(
   ae_run_with_retry.sh

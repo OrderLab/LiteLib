@@ -29,6 +29,21 @@ install_dependencies() {
     linux-headers-"${KERNEL_RELEASE}"="${KERNEL_PKG_VERSION}"
 }
 
+install_docker() {
+  if ! command -v docker >/dev/null 2>&1; then
+    litelib_phase "installing Docker"
+    apt-get install "${APT_OPTS[@]}" --no-install-recommends docker.io
+  fi
+
+  # Experiment setup may replace docker.io with Docker CE. Reload both units
+  # so either package's socket-activated daemon is usable immediately.
+  systemctl daemon-reload
+  systemctl reset-failed docker.socket docker.service 2>/dev/null || true
+  systemctl enable --now docker.socket
+  systemctl restart docker.service
+  docker info >/dev/null
+}
+
 boost_installed() {
   local header="${PREFIX}/include/boost/version.hpp"
   local expected
@@ -104,6 +119,7 @@ set_cpu_frequency() {
 
 main() {
   install_dependencies
+  install_docker
   set_cpu_frequency
   install_boost
   install_libevent
