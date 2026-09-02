@@ -134,6 +134,11 @@ check_kernel_installed() {
   else
     report "kernel headers ${LITELIB_KERNEL_RELEASE}" 1 "run init.sh"
   fi
+  if dpkg-query -W -f='${Status}' "linux-tools-${LITELIB_KERNEL_RELEASE}" 2>/dev/null | grep -q "ok installed"; then
+    report "kernel tools ${LITELIB_KERNEL_RELEASE}" 0
+  else
+    report "kernel tools ${LITELIB_KERNEL_RELEASE}" 1 "run init.sh"
+  fi
 }
 
 check_boost() {

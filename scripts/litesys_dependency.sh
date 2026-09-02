@@ -24,15 +24,9 @@ install_dependencies() {
   apt-get install "${APT_OPTS[@]}" --no-install-recommends \
     "${LITELIB_APT_PACKAGES[@]}" \
     linux-tools-"$(uname -r)" \
+    linux-tools-"${KERNEL_RELEASE}" \
     linux-image-"${KERNEL_RELEASE}"="${KERNEL_PKG_VERSION}" \
     linux-headers-"${KERNEL_RELEASE}"="${KERNEL_PKG_VERSION}"
-
-  # `perf` is invoked by the profiling experiments; once the node has been
-  # rebooted into ${KERNEL_RELEASE} the matching tools package must be present.
-  if [ "$(uname -r)" = "${KERNEL_RELEASE}" ]; then
-    apt-get install "${APT_OPTS[@]}" --no-install-recommends \
-      linux-tools-"${KERNEL_RELEASE}"
-  fi
 }
 
 boost_installed() {
