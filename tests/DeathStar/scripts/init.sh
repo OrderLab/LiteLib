@@ -22,6 +22,14 @@ apt-get update
 
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
+# Replacing Ubuntu's docker.io package changes the socket unit while it is
+# active. Reload and restart it before any image build uses fd:// activation.
+systemctl daemon-reload
+systemctl reset-failed docker.socket docker.service 2>/dev/null || true
+systemctl enable --now docker.socket
+systemctl restart docker.service
+docker info >/dev/null
+
 pip3 install aiohttp
 
 apt install -y lua5.1 luarocks
