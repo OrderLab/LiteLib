@@ -137,6 +137,7 @@ LITELIB_APT_PACKAGES=(
   iptables
   tcpdump
   cgroup-tools
+  docker.io
   google-perftools
   libgoogle-perftools-dev
   linux-tools-common
