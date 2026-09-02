@@ -282,7 +282,6 @@ SQL
 case "${1:-}" in
 cleanup) cleanup ;;
 start-classic) start_classic "$2" "$3" "$4" "$5" "$6" "${7:-}" ;;
-start-classic-overhead) start_classic "$2" "$3" "$4" "$5" "$6" "" 0 0 STATEMENT ;;
 setup-primary) setup_primary "$2" "$3" ;;
 setup-replica) setup_replica "$2" "$3" ;;
 enable-semisync-primary) enable_semisync_primary "$3" ;;

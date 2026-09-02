@@ -98,7 +98,8 @@ sudo -n systemctl stop proxysql orchestrator 2>/dev/null || true
 REMOTE_SCRIPT
 
 echo "==> Installing NDB Cluster binaries"
-mkdir -p "${HOME}/dependencies"
+sudo -n mkdir -p "${HOME}/dependencies"
+sudo -n chown "$(id -u):$(id -g)" "${HOME}/dependencies"
 if [ ! -s "${HOME}/dependencies/${NDB_TARBALL}" ]; then
   wget -q -O "${HOME}/dependencies/${NDB_TARBALL}" "${NDB_URL}"
 fi

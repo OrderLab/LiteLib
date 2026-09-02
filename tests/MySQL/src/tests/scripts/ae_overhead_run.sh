@@ -8,10 +8,14 @@ MAIN=${LITELIB_MAIN_DIR:-${HOME}/LiteLib}
 OUT=${AE_OUTPUT_DIR:-${MAIN}/results/mysql-overhead/$(date +%Y%m%d-%H%M%S)}
 REPEATS=${AE_REPEATS:-3}
 DURATION=${AE_DURATION:-60}
+WARMUP_DURATION=${AE_WARMUP_DURATION:-60}
 TABLE_SIZE=${AE_TABLE_SIZE:-100000}
-RATE=${AE_RATE:-500}
-SEMISYNC=${AE_SEMISYNC:-0}
-REPLICA_CONNECTION=${AE_REPLICA_CONNECTION:-direct}
+THREADS=${AE_THREADS:-8}
+# The replacement cluster's NDB paths need a higher offered rate to expose
+# the distributed latency visible in the paper without saturating the proxy.
+RATE=${AE_RATE:-1250}
+SEMISYNC=${AE_SEMISYNC:-1}
+REPLICA_CONNECTION=${AE_REPLICA_CONNECTION:-proxy}
 MONITOR_SECONDS=$((DURATION + 5))
 MODES=${AE_MODES:-"full proxy replica ndb-client ndb-proxy"}
 RUNTIME=/tmp/litelib-ae-mysql
@@ -19,13 +23,20 @@ mkdir -p "${OUT}"
 cat >"${OUT}/metadata.json" <<EOF
 {
   "classic_durability": {
-    "innodb_flush_log_at_trx_commit": 0,
-    "sync_binlog": 0,
-    "binlog_format": "STATEMENT"
+    "innodb_flush_log_at_trx_commit": 1,
+    "sync_binlog": 1,
+    "binlog_format": "ROW"
   },
   "replica_connection": "${REPLICA_CONNECTION}",
   "semisync": ${SEMISYNC},
-  "ndb_proxy_connection": "raw"
+  "ndb_proxy_connection": "raw",
+  "workload": {
+    "duration_seconds": ${DURATION},
+    "warmup_seconds": ${WARMUP_DURATION},
+    "table_size": ${TABLE_SIZE},
+    "threads": ${THREADS},
+    "rate": ${RATE}
+  }
 }
 EOF
 
@@ -45,8 +56,9 @@ trap cleanup_nodes EXIT
 
 run_sysbench() {
   local action=$1 connection=$2 host=$3 port=$4 engine=$5 log=$6
+  local run_duration=${7:-${DURATION}}
   ssh node1 bash -s -- "${action}" "${connection}" "${host}" "${port}" \
-    "${engine}" "${DURATION}" "${TABLE_SIZE}" "${RATE}" <<'REMOTE_SCRIPT' \
+    "${engine}" "${run_duration}" "${TABLE_SIZE}" "${RATE}" "${THREADS}" <<'REMOTE_SCRIPT' \
     >"${log}" 2>&1
 set -euo pipefail
 action=$1
@@ -57,6 +69,7 @@ engine=$5
 duration=$6
 table_size=$7
 rate=$8
+threads=$9
 args=(
   /usr/local/bin/sysbench
   /usr/local/share/sysbench/oltp_read_write.lua
@@ -64,7 +77,7 @@ args=(
   --report-interval=1
   --tables=1
   --table-size="${table_size}"
-  --threads=8
+  --threads="${threads}"
   --rate="${rate}"
   --time="${duration}"
   --mysql-user=sbtest
@@ -86,6 +99,13 @@ if [ "${engine}" = ndbcluster ]; then
 fi
 "${args[@]}" "${action}"
 REMOTE_SCRIPT
+}
+
+warmup_sysbench() {
+  local connection=$1 host=$2 port=$3 engine=$4 log=$5
+  [ "${WARMUP_DURATION}" -gt 0 ] || return 0
+  run_sysbench run "${connection}" "${host}" "${port}" "${engine}" \
+    "${log}" "${WARMUP_DURATION}"
 }
 
 wait_replica() {
@@ -200,9 +220,9 @@ collect_monitors() {
 start_classic_pair() {
   local prefix=$1
   local socket="${RUNTIME}/${prefix}/classic/mysql.sock"
-  node_cmd node2 start-classic-overhead "${prefix}" primary 2 60000 "${socket}"
+  node_cmd node2 start-classic "${prefix}" primary 2 60000 "${socket}"
   node_cmd node2 setup-primary "${prefix}" "${socket}"
-  node_cmd node3 start-classic-overhead "${prefix}" replica 3 60000 "${socket}"
+  node_cmd node3 start-classic "${prefix}" replica 3 60000 "${socket}"
   node_cmd node3 setup-replica "${prefix}" "${socket}"
   wait_replica "${prefix}"
   if [ "${SEMISYNC}" -eq 1 ]; then
@@ -241,18 +261,20 @@ run_one() {
   case "${mode}" in
   full)
     socket="${RUNTIME}/${prefix}/classic/mysql.sock"
-    node_cmd node2 start-classic-overhead "${prefix}" standalone 2 60000 "${socket}"
+    node_cmd node2 start-classic "${prefix}" standalone 2 60000 "${socket}"
     node_cmd node2 setup-primary "${prefix}" "${socket}"
     run_sysbench prepare direct node2 60000 innodb "${OUT}/prepare-${prefix}.log"
+    warmup_sysbench direct node2 60000 innodb "${OUT}/warmup-${prefix}.log"
     start_monitors "${prefix}" node2
     run_sysbench run direct node2 60000 innodb "${log}"
     collect_monitors "${prefix}" node2
     ;;
   proxy)
-    node_cmd node0 start-classic-overhead "${prefix}" standalone 1 60000 /tmp/mysql.sock
+    node_cmd node0 start-classic "${prefix}" standalone 1 60000 /tmp/mysql.sock
     node_cmd node0 setup-primary "${prefix}" /tmp/mysql.sock
     node_cmd node0 start-lite "${prefix}"
     run_sysbench prepare direct node0 60000 innodb "${OUT}/prepare-${prefix}.log"
+    warmup_sysbench direct node0 59999 innodb "${OUT}/warmup-${prefix}.log"
     start_monitors "${prefix}" node0
     run_sysbench run direct node0 59999 innodb "${log}"
     collect_monitors "${prefix}" node0
@@ -263,7 +285,11 @@ run_one() {
     wait_replica "${prefix}"
     if [ "${REPLICA_CONNECTION}" = proxy ]; then
       configure_proxysql replica
+      warmup_sysbench direct node0 6033 innodb "${OUT}/warmup-${prefix}.log"
+    else
+      warmup_sysbench direct node2 60000 innodb "${OUT}/warmup-${prefix}.log"
     fi
+    wait_replica "${prefix}"
     start_monitors "${prefix}" node0 node2 node3
     if [ "${REPLICA_CONNECTION}" = proxy ]; then
       run_sysbench run direct node0 6033 innodb "${log}"
@@ -277,6 +303,13 @@ run_one() {
     run_sysbench prepare direct node2 50000 ndbcluster \
       "${OUT}/prepare-${prefix}.log"
     if [ "${mode}" = ndb-proxy ]; then configure_proxysql ndb; fi
+    if [ "${mode}" = ndb-client ]; then
+      warmup_sysbench raw "10.10.1.3:50000,10.10.1.4:50000" 0 \
+        ndbcluster "${OUT}/warmup-${prefix}.log"
+    else
+      warmup_sysbench raw "10.10.1.1:6033" 0 ndbcluster \
+        "${OUT}/warmup-${prefix}.log"
+    fi
     start_monitors "${prefix}" node0 node2 node3
     if [ "${mode}" = ndb-client ]; then
       run_sysbench run raw "10.10.1.3:50000,10.10.1.4:50000" 0 \
@@ -289,8 +322,8 @@ run_one() {
   esac
 }
 
-for mode in ${MODES}; do
-  for rep in $(seq 1 "${REPEATS}"); do
+for rep in $(seq 1 "${REPEATS}"); do
+  for mode in ${MODES}; do
     echo "==> ${mode} ${rep}/${REPEATS}"
     run_one "${mode}" "${rep}"
   done
