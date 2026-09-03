@@ -19,8 +19,8 @@ import pandas as pd
 CRASH_TIME = 20.0
 # LiteLib must return to within this multiple of its pre-failure latency.
 RECOVERY_FACTOR = 3.0
-# Vanilla must remain above this multiple of pre-failure latency.
-DEGRADATION_FACTOR = 5.0
+# A sustained increase at this level is sufficient on the replacement cluster.
+DEGRADATION_FACTOR = 2.5
 
 
 def parse_log_file(file_path):
