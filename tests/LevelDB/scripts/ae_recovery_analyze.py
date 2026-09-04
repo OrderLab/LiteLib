@@ -7,6 +7,8 @@ import os
 
 import numpy as np
 
+MAX_MONITOR_BYTES = 64 * 1024 * 1024
+
 
 def load(path):
     with open(path) as stream:
@@ -34,6 +36,11 @@ def process_memory(row, lite=False):
 
 
 def precrash_memory(path, crash_second, lite=False):
+    size = os.path.getsize(path)
+    if size > MAX_MONITOR_BYTES:
+        raise ValueError(
+            f"monitor file is unexpectedly large: {path} ({size} bytes)"
+        )
     rows = []
     with open(path) as stream:
         for line in stream:
@@ -93,9 +100,12 @@ def main():
         ]
         with open(os.path.join(args.output, f"{mode}.stat.json"), "w") as stream:
             json.dump(plot_stat, stream)
-        monitor = sorted(
+        monitors = sorted(
             glob.glob(os.path.join(args.root, f"monitor.{mode}*.jsonl"))
-        )[-1]
+        )
+        if not monitors:
+            raise ValueError(f"no {mode} monitor data in {args.root}")
+        monitor = monitors[-1]
         memory[mode] = {
             "full": precrash_memory(monitor, crash),
         }

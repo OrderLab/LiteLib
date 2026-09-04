@@ -6,6 +6,7 @@ import utils
 import psutil
 import random
 import socket
+import subprocess
 import threading
 
 
@@ -78,7 +79,7 @@ boot_command = [
     monitor_log_file,
     str(args.start_time),
 ]
-utils.StartBackgroundProcess(
+monitor_process = utils.StartBackgroundProcess(
     boot_command, args.work_dir + "/" + args.file_prefix + "-monitor-log.txt"
 )
 
@@ -323,3 +324,19 @@ elif args.experiment_type == "Lite":
     )
 else:
     raise ValueError("Invalid experiment type")
+
+monitor_timeout = max(
+    1, start_time + args.total_time + 10 - time.time()
+)
+try:
+    monitor_rc = monitor_process.wait(timeout=monitor_timeout)
+except subprocess.TimeoutExpired:
+    monitor_process.terminate()
+    try:
+        monitor_process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        monitor_process.kill()
+        monitor_process.wait()
+    raise RuntimeError("LevelDB monitor did not stop after the experiment")
+if monitor_rc != 0:
+    raise RuntimeError(f"LevelDB monitor exited with status {monitor_rc}")

@@ -16,45 +16,23 @@ class Logger(object):
     # self.terminal.flush()
     self.log.flush()
 
-processes = []
-process_names = []
-
-def get_process():
-  global processes
-  global process_names
-  for i in range(0, len(processes)):
-    if processes[i].is_running() == False:
-      print(f'process not found: {process_names[i]}')
-  processes = []
-  process_names = []
-  for proc in psutil.process_iter():
-    if 'lite' in proc.name() or "Lite" in proc.name() or "leveldb" in proc.name() or "criu" in proc.name() or "socket" in proc.name():
-      processes.append(proc)
-      process_names.append(proc.name())
-
 def do(i):
-  global processes
-  global process_names
-  exception = True
   data = {"time": i}
-  while exception:
+  for proc in psutil.process_iter(["name"]):
     try:
-      get_process()
-      for name in process_names:
-        data[name] = {"cpu": 0.0, "mem": 0.0}
-      for proc in processes:
-        cpu = None
-        mem = None
-        with proc.oneshot():
-          cpu = proc.cpu_percent(interval=None)
-          mem = proc.memory_info().rss
-        data[proc.name()]['cpu'] += cpu
-        data[proc.name()]['mem'] += mem
-    except Exception as error:
-      print("An error occurred:", error)
-      exception = True
-    else:
-      exception = False
+      name = proc.info["name"] or ""
+      if not any(token in name.lower() for token in (
+        "lite", "leveldb", "criu", "socket"
+      )):
+        continue
+      with proc.oneshot():
+        cpu = proc.cpu_percent(interval=None)
+        mem = proc.memory_info().rss
+      info = data.setdefault(name, {"cpu": 0.0, "mem": 0.0})
+      info["cpu"] += cpu
+      info["mem"] += mem
+    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+      continue
   print(json.dumps(data))
 
 if __name__ == '__main__':
