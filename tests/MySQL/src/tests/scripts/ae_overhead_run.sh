@@ -7,6 +7,7 @@ REMOTE=${LITELIB_WORKTREE_DIR:-${ROOT}}
 MAIN=${LITELIB_MAIN_DIR:-${HOME}/LiteLib}
 OUT=${AE_OUTPUT_DIR:-${MAIN}/results/mysql-overhead/$(date +%Y%m%d-%H%M%S)}
 REPEATS=${AE_REPEATS:-3}
+CASE_ATTEMPTS=${AE_CASE_ATTEMPTS:-3}
 DURATION=${AE_DURATION:-60}
 WARMUP_DURATION=${AE_WARMUP_DURATION:-60}
 TABLE_SIZE=${AE_TABLE_SIZE:-100000}
@@ -322,10 +323,32 @@ run_one() {
   esac
 }
 
+if [ -n "${AE_SINGLE_MODE:-}" ]; then
+  echo "==> ${AE_SINGLE_MODE} ${AE_SINGLE_REP}/${REPEATS}"
+  run_one "${AE_SINGLE_MODE}" "${AE_SINGLE_REP}"
+  exit 0
+fi
+
 for rep in $(seq 1 "${REPEATS}"); do
   for mode in ${MODES}; do
-    echo "==> ${mode} ${rep}/${REPEATS}"
-    run_one "${mode}" "${rep}"
+    success=0
+    for attempt in $(seq 1 "${CASE_ATTEMPTS}"); do
+      echo "==> ${mode} ${rep}/${REPEATS}, attempt ${attempt}/${CASE_ATTEMPTS}"
+      if AE_OUTPUT_DIR="${OUT}" \
+        AE_REPEATS="${REPEATS}" AE_CASE_ATTEMPTS="${CASE_ATTEMPTS}" \
+        AE_DURATION="${DURATION}" AE_WARMUP_DURATION="${WARMUP_DURATION}" \
+        AE_TABLE_SIZE="${TABLE_SIZE}" AE_THREADS="${THREADS}" AE_RATE="${RATE}" \
+        AE_SEMISYNC="${SEMISYNC}" AE_REPLICA_CONNECTION="${REPLICA_CONNECTION}" \
+        AE_MODES="${MODES}" AE_SINGLE_MODE="${mode}" AE_SINGLE_REP="${rep}" \
+        "${BASH_SOURCE[0]}"; then
+        success=1
+        break
+      fi
+    done
+    if [ "${success}" -ne 1 ]; then
+      echo "${mode} ${rep}/${REPEATS} failed after ${CASE_ATTEMPTS} attempts" >&2
+      exit 1
+    fi
   done
 done
 echo "  [ OK ] MySQL raw output -> ${OUT}"
