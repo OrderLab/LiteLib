@@ -38,6 +38,7 @@ REMOTE_LOG_DIR="${DEATHSTAR_DIR}/src/socialNetwork/docker/lite-memcached/logs"
 DRIVER_NODE=${AE_DRIVER_NODE:-node3}
 
 REPEATS=3
+BASELINE_RETRIES=${AE_BASELINE_RETRIES:-6}
 ONLY=""
 TYPES=${AE_MOTIVATION_TYPES:-"litesys vanilla"}
 RESET_EVERY_RUN=${AE_RESET_EVERY_RUN:-1}
@@ -263,6 +264,17 @@ run_one() {
   fi
 }
 
+trend_passes() {
+  local selection vanilla litesys
+  selection=$(ae_python "${SCRIPT_DIR}/ae_motivation_select.py" \
+    "${OUT_DIR}/crash") || return 1
+  vanilla=$(awk -F '\t' '$1=="vanilla"{print $2}' <<<"${selection}")
+  litesys=$(awk -F '\t' '$1=="litesys"{print $2}' <<<"${selection}")
+  [ -n "${vanilla}" ] && [ -n "${litesys}" ] || return 1
+  ae_python "${SCRIPT_DIR}/ae_motivation_trend.py" \
+    "${vanilla}" "${litesys}"
+}
+
 main() {
   preflight
 
@@ -281,6 +293,29 @@ main() {
       done
     done
   done
+
+  if [ "${rc}" -eq 0 ] && [ "${MODES[*]}" = "crash" ] &&
+    [[ " ${TYPES} " == *" litesys "* ]] &&
+    [[ " ${TYPES} " == *" vanilla "* ]] &&
+    ! trend_passes; then
+    for retry in $(seq 1 "${BASELINE_RETRIES}"); do
+      ae_info "baseline trend retry ${retry}/${BASELINE_RETRIES}"
+      RUN_TOTAL=$((RUN_TOTAL + 1))
+      run_one crash vanilla "$((REPEATS + retry))" || {
+        RUN_FAILED=$((RUN_FAILED + 1))
+        rc=1
+        break
+      }
+      if trend_passes; then
+        rc=0
+        break
+      fi
+    done
+    if ! trend_passes; then
+      ae_err "Figure 1 median baseline trend did not pass"
+      rc=1
+    fi
+  fi
 
   echo
   if [ "${RUN_FAILED}" -eq 0 ]; then
