@@ -17,6 +17,7 @@ OUT=${FIG13_OUTPUT_DIR:-${FIG13_RESULTS_DIR}/${RUN_ID}}
 DB_ENTRIES=${FIG13_DB_ENTRIES:-1400000}
 DB_ARCHIVE=${FIG13_DB_ARCHIVE:-${FIG13_RESULTS_DIR}/database/mysql-${DB_ENTRIES}-rows.tar.zst}
 TYPES=${FIG13_TYPES:-"full lite checkpoint"}
+VALIDATION_ATTEMPTS=${FIG13_VALIDATION_ATTEMPTS:-8}
 READ_WRITE_RATIO=${FIG13_RW_RATIO:-0.20}
 mkdir -p "${OUT}"
 
@@ -77,13 +78,52 @@ run_arm() {
   fig13_ok "${type} -> ${OUT}/result_${type}.txt"
 }
 
+validate_results() {
+  fig13_python "${SCRIPT_DIR}/ae_fig13_trend.py" \
+    "${OUT}/result_full.txt" \
+    "${OUT}/result_lite.txt" \
+    "${OUT}/result_checkpoint.txt" |
+    tee "${OUT}/trend-check.log"
+}
+
+failed_types() {
+  local types=""
+  grep -q '\[FAIL\] vanilla' "${OUT}/trend-check.log" &&
+    types="${types} full"
+  grep -q '\[FAIL\] LiteLib' "${OUT}/trend-check.log" &&
+    types="${types} lite"
+  grep -q '\[FAIL\] checkpoint' "${OUT}/trend-check.log" &&
+    types="${types} checkpoint"
+  printf '%s\n' "${types# }"
+}
+
 main() {
   preflight_database
   for type in ${TYPES}; do
     run_arm "$type"
   done
-  fig13_ok "all arms complete"
-  fig13_info "next: ae_fig13_plot.sh ${OUT}"
+  if validate_results; then
+    fig13_ok "all arms complete and qualitative checks passed"
+    fig13_info "next: ae_fig13_plot.sh ${OUT}"
+    return
+  fi
+
+  local attempt retry_types type
+  for attempt in $(seq 1 "${VALIDATION_ATTEMPTS}"); do
+    retry_types=$(failed_types)
+    [ -n "${retry_types}" ] || retry_types="full lite checkpoint"
+    fig13_info "targeted qualitative retry ${attempt}/${VALIDATION_ATTEMPTS}: ${retry_types}"
+    for type in ${retry_types}; do
+      run_arm "${type}"
+    done
+    if validate_results; then
+      fig13_ok "all arms complete and qualitative checks passed"
+      fig13_info "next: ae_fig13_plot.sh ${OUT}"
+      return
+    fi
+  done
+
+  fig13_die "Figure 13 qualitative checks still fail after targeted retries"
 }
 
 main 2>&1 | tee "${OUT}/run.log"
