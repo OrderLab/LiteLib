@@ -11,6 +11,7 @@ STATUS = re.compile(
     r"\[UPDATE: Count=(\d+)"
 )
 GLOG = re.compile(r"^[IWE](\d{4})\s+(\d{2}):(\d{2}):(\d{2})\.(\d{6})")
+EMBEDDED_LOG = re.compile(r"lite-embedded-(\d+)\.log$")
 
 
 def zero_gap(path, crash_after):
@@ -99,11 +100,14 @@ def main():
                 "source": path,
             })
     for path in sorted(glob.glob(f"{args.root}/lite-embedded-*.log")):
+        match = EMBEDDED_LOG.search(path)
+        if not match:
+            continue
         rows.append({
             "application": "Redis",
             "solution": "LiteLib",
             "setting": "embedded",
-            "repetition": int(path.rsplit("-", 1)[1].split(".")[0]),
+            "repetition": int(match.group(1)),
             "gap_ms": barrier_gap(path),
             "source": path,
         })
