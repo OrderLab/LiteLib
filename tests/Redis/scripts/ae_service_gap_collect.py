@@ -7,6 +7,7 @@ from datetime import datetime
 
 
 STAMP = re.compile(r"^[IWE](\d{4})\s+(\d{2}):(\d{2}):(\d{2})\.(\d{6})")
+PROXY_LOG = re.compile(r"proxy-(\d+)\.log$")
 
 
 def wall_time(line):
@@ -34,11 +35,14 @@ def main():
     args = parser.parse_args()
     rows = []
     for path in sorted(glob.glob(f"{args.root}/proxy-*.log")):
+        match = PROXY_LOG.search(path)
+        if not match:
+            continue
         rows.append({
             "application": "Redis",
             "solution": "LiteLib",
             "setting": "proxy",
-            "repetition": int(path.rsplit("-", 1)[1].split(".")[0]),
+            "repetition": int(match.group(1)),
             "gap_ms": gap(path),
             "source": path,
         })
