@@ -15,7 +15,7 @@ MODES=${AE_MODES:-"ap-30s ap-5s embedded"}
 YCSB_TIMEOUT_SECONDS=${AE_YCSB_TIMEOUT_SECONDS:-600}
 CRASH_STEP_TIMEOUT_SECONDS=${AE_CRASH_STEP_TIMEOUT_SECONDS:-300}
 CASE_TIMEOUT_SECONDS=${AE_CASE_TIMEOUT_SECONDS:-1200}
-CASE_ATTEMPTS=${AE_CASE_ATTEMPTS:-2}
+CASE_ATTEMPTS=${AE_CASE_ATTEMPTS:-4}
 YCSB="${HOME}/YCSB-redis-ae"
 WORKLOAD="${REMOTE}/tests/Redis/scripts/config/ycsb_workload"
 mkdir -p "${OUT}"
@@ -129,9 +129,8 @@ run_embedded() {
   sleep "${CRASH_AFTER}"
   (
     timeout --signal=TERM --kill-after=15s "${CRASH_STEP_TIMEOUT_SECONDS}s" \
-      ssh node3 "pid=\$(lsof -t -iTCP@10.10.1.4:16379 | head -1);
-      kill -15 \"\${pid}\";
-      while kill -0 \"\${pid}\" 2>/dev/null; do sleep 0.01; done"
+      ssh node3 "'${REMOTE}/tests/Redis/scripts/ae_overhead_node.sh' \
+        stop-embedded-full '${prefix}'"
     timeout --signal=TERM --kill-after=15s "${CRASH_STEP_TIMEOUT_SECONDS}s" \
       ssh node3 "'${REMOTE}/tests/Redis/scripts/ae_overhead_node.sh' \
         restart-embedded-full '${prefix}'"
@@ -166,8 +165,19 @@ run_embedded() {
     }
   ) >"${OUT}/crash-${prefix}.log" 2>&1 &
   crash_pid=$!
-  wait "${bench_pid}"
+  set +e
   wait "${crash_pid}"
+  crash_rc=$?
+  if [ "${crash_rc}" -ne 0 ]; then
+    kill "${bench_pid}" 2>/dev/null || true
+    wait "${bench_pid}" 2>/dev/null || true
+    set -e
+    return "${crash_rc}"
+  fi
+  wait "${bench_pid}"
+  bench_rc=$?
+  set -e
+  [ "${bench_rc}" -eq 0 ] || return "${bench_rc}"
   scp -q "node3:/tmp/litelib-ae-redis/${prefix}/master/lite.log" \
     "${OUT}/lite-${prefix}.log"
   grep -q 'Replay took' "${OUT}/lite-${prefix}.log" || {

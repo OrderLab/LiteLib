@@ -103,6 +103,19 @@ restart_embedded_full() {
     "${REDIS_DIR}/src/redis-server" "${dir}/redis.conf"
 }
 
+stop_embedded_full() {
+  local prefix=$1
+  local dir="${RUNTIME_ROOT}/${prefix}/master"
+  kill_pid_file "${dir}/redis.pid"
+  rm -f "${dir}/redis.pid"
+  for _ in $(seq 1 100); do
+    lsof -t -iTCP@10.10.1.4:16379 >/dev/null 2>&1 || return
+    sleep 0.1
+  done
+  echo "Redis did not stop on port 16379" >&2
+  return 1
+}
+
 start_replica() {
   local prefix=$1
   local dir="${RUNTIME_ROOT}/${prefix}/replica"
@@ -164,12 +177,13 @@ case "${1:-}" in
 cleanup) cleanup ;;
 start-master) start_master "$2" "$3" ;;
 restart-embedded-full) restart_embedded_full "$2" ;;
+stop-embedded-full) stop_embedded_full "$2" ;;
 start-replica) start_replica "$2" ;;
 start-sentinel) start_sentinel "$2" "${3:-30000}" ;;
 start-monitor) start_monitor "$2" "$3" ;;
 wait-monitor) wait_monitor "$2" ;;
 *)
-  echo "usage: $0 {cleanup|start-master MODE PREFIX|restart-embedded-full PREFIX|start-replica PREFIX|start-sentinel PREFIX [DOWN_AFTER_MS]|start-monitor SECONDS PREFIX|wait-monitor PREFIX}" >&2
+  echo "usage: $0 {cleanup|start-master MODE PREFIX|stop-embedded-full PREFIX|restart-embedded-full PREFIX|start-replica PREFIX|start-sentinel PREFIX [DOWN_AFTER_MS]|start-monitor SECONDS PREFIX|wait-monitor PREFIX}" >&2
   exit 2
   ;;
 esac
