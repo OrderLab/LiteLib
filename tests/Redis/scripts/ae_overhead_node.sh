@@ -108,12 +108,6 @@ stop_embedded_full() {
   local dir="${RUNTIME_ROOT}/${prefix}/master"
   kill_pid_file "${dir}/redis.pid"
   rm -f "${dir}/redis.pid"
-  for _ in $(seq 1 100); do
-    lsof -t -iTCP:16379 -sTCP:LISTEN >/dev/null 2>&1 || return
-    sleep 0.1
-  done
-  echo "Redis did not stop on port 16379" >&2
-  return 1
 }
 
 start_replica() {

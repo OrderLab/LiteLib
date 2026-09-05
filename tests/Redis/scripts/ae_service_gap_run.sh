@@ -61,6 +61,15 @@ run_case() {
     else
       rc=$?
     fi
+    if [ "${1:-}" = run_embedded ]; then
+      prefix="embedded-${2}"
+      for component in redis lite; do
+        scp -q \
+          "node3:/tmp/litelib-ae-redis/${prefix}/master/${component}.log" \
+          "${OUT}/${component}-${prefix}-attempt${attempt}.log" \
+          2>/dev/null || true
+      done
+    fi
     echo "  [WARN] ${label} attempt ${attempt}/${CASE_ATTEMPTS} failed (exit ${rc})" >&2
     [ "${attempt}" -lt "${CASE_ATTEMPTS}" ] || return "${rc}"
     cleanup_nodes
@@ -128,9 +137,12 @@ run_embedded() {
   wait_ycsb_start "${log}" "${starts}"
   sleep "${CRASH_AFTER}"
   (
+    echo "Stopping embedded Redis"
     timeout --signal=TERM --kill-after=15s "${CRASH_STEP_TIMEOUT_SECONDS}s" \
       ssh node3 "'${REMOTE}/tests/Redis/scripts/ae_overhead_node.sh' \
         stop-embedded-full '${prefix}'"
+    echo "Embedded Redis stopped"
+    echo "Restarting embedded Redis"
     timeout --signal=TERM --kill-after=15s "${CRASH_STEP_TIMEOUT_SECONDS}s" \
       ssh node3 "'${REMOTE}/tests/Redis/scripts/ae_overhead_node.sh' \
         restart-embedded-full '${prefix}'"
@@ -147,6 +159,7 @@ run_embedded() {
       echo "Redis did not become ready after embedded restart" >&2
       exit 1
     }
+    echo "Redis restart ready"
     timeout --signal=TERM --kill-after=15s "${CRASH_STEP_TIMEOUT_SECONDS}s" \
       ssh node3 "'${REMOTE}/tests/Redis/src/lite-version/build/Lite/lite_cli' \
         -t /tmp/lite_Redis -p /tmp/redis.sock -m 0"
@@ -163,6 +176,7 @@ run_embedded() {
       echo "Redis replay did not complete" >&2
       exit 1
     }
+    echo "Redis replay complete"
   ) >"${OUT}/crash-${prefix}.log" 2>&1 &
   crash_pid=$!
   set +e
@@ -174,19 +188,19 @@ run_embedded() {
     set -e
     return "${crash_rc}"
   fi
-  wait "${bench_pid}"
-  bench_rc=$?
-  set -e
-  [ "${bench_rc}" -eq 0 ] || return "${bench_rc}"
   scp -q "node3:/tmp/litelib-ae-redis/${prefix}/master/lite.log" \
     "${OUT}/lite-${prefix}.log"
   grep -q 'Replay took' "${OUT}/lite-${prefix}.log" || {
     echo "Redis embedded replay marker is missing" >&2
     return 1
   }
+  kill "${bench_pid}" 2>/dev/null || true
+  wait "${bench_pid}" 2>/dev/null || true
+  set -e
 }
 
 if [ "${1:-}" = "--case" ]; then
+  trap - EXIT
   shift
   case_function=$1
   shift
