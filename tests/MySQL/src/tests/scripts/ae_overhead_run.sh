@@ -256,7 +256,8 @@ start_ndb() {
 }
 
 run_one() {
-  local mode=$1 rep=$2 prefix="${mode}-${rep}"
+  local mode=$1 rep=$2 prefix
+  prefix="${mode}-${rep}"
   local log="${OUT}/sysbench-${prefix}.log"
   cleanup_nodes
   case "${mode}" in
