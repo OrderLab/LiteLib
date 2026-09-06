@@ -12,6 +12,8 @@ MAX_ATTEMPTS=$2
 shift 2
 COMMAND=$1
 CLEANUP=${COMMAND%_run.sh}_cleanup.sh
+SETUP=${COMMAND%_run.sh}_setup.sh
+SETUP_TIMEOUT_SECONDS=${AE_RETRY_SETUP_TIMEOUT_SECONDS:-7200}
 
 for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
   echo "==> experiment attempt ${attempt}/${MAX_ATTEMPTS} (timeout ${TIMEOUT_SECONDS}s)"
@@ -35,6 +37,14 @@ for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
     echo "==> cleaning runtime before retry"
     timeout --signal=TERM --kill-after=30s 900s "${CLEANUP}" || {
       echo "  [FAIL] cleanup before retry failed" >&2
+      exit 1
+    }
+  fi
+  if [ -x "${SETUP}" ]; then
+    echo "==> restoring experiment setup before retry"
+    timeout --signal=TERM --kill-after=60s \
+      "${SETUP_TIMEOUT_SECONDS}s" "${SETUP}" || {
+      echo "  [FAIL] setup before retry failed" >&2
       exit 1
     }
   fi
