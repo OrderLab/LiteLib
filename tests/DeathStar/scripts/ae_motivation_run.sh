@@ -39,6 +39,8 @@ DRIVER_NODE=${AE_DRIVER_NODE:-node3}
 
 REPEATS=3
 BASELINE_RETRIES=${AE_BASELINE_RETRIES:-6}
+CASE_ATTEMPTS=${AE_MOTIVATION_CASE_ATTEMPTS:-3}
+CASE_TIMEOUT_SECONDS=${AE_MOTIVATION_CASE_TIMEOUT_SECONDS:-2400}
 ONLY=""
 TYPES=${AE_MOTIVATION_TYPES:-"litesys vanilla"}
 RESET_EVERY_RUN=${AE_RESET_EVERY_RUN:-1}
@@ -157,6 +159,15 @@ preflight() {
 }
 
 # run_one <mode> <type> <iteration>
+quarantine_run() {
+  local mode=$1 prefix=$2 file
+  mkdir -p "${OUT_DIR}/${mode}/failed"
+  for file in "${OUT_DIR}/${mode}/${prefix}."*; do
+    [ -e "${file}" ] || continue
+    mv "${file}" "${OUT_DIR}/${mode}/failed/"
+  done
+}
+
 run_one() {
   local mode=$1 type=$2 iter=$3
 
@@ -208,10 +219,12 @@ run_one() {
   n=$(find "${OUT_DIR}/${mode}" -name "${prefix}.*" | wc -l)
   if [ "${rc}" -ne 0 ]; then
     ae_err "run failed (exit ${rc}); see ${OUT_DIR}/${mode}/${prefix}.log"
+    quarantine_run "${mode}" "${prefix}"
     return 1
   fi
   if [ ! -s "${OUT_DIR}/${mode}/${prefix}.log" ]; then
     ae_err "empty client log for ${prefix}"
+    quarantine_run "${mode}" "${prefix}"
     return 1
   fi
   if [ "${type}" = "litesys" ]; then
@@ -220,10 +233,12 @@ run_one() {
     if [ "${mode}" = "crash" ] &&
       ! grep -q "Entered emergency mode" "${lite_log}" 2>/dev/null; then
       ae_err "LiteMemcached did not enter emergency mode for ${prefix}"
+      quarantine_run "${mode}" "${prefix}"
       return 1
     fi
     if [ ! -s "${mcrouter_log}" ]; then
       ae_err "missing mcrouter statistics for ${prefix}"
+      quarantine_run "${mode}" "${prefix}"
       return 1
     fi
     local max_failover
@@ -241,15 +256,18 @@ run_one() {
       ' "${mcrouter_log}"
     ) || {
       ae_err "could not read mcrouter failover statistics for ${prefix}"
+      quarantine_run "${mode}" "${prefix}"
       return 1
     }
     if [ "${max_failover}" != "0" ]; then
       ae_err "LiteLib allowed ${max_failover} mcrouter failover(s) in ${prefix}"
+      quarantine_run "${mode}" "${prefix}"
       return 1
     fi
     if ! python3 "${SCRIPT_DIR}/ae_motivation_litesys_check.py" \
       "${OUT_DIR}/${mode}/${prefix}.log"; then
       ae_err "LiteLib did not recover pre-failure latency in ${prefix}"
+      quarantine_run "${mode}" "${prefix}"
       return 1
     fi
     if [ "${mode}" = "crash" ]; then
@@ -262,6 +280,36 @@ run_one() {
   if [ "${RUN_COOLDOWN}" -gt 0 ]; then
     sleep "${RUN_COOLDOWN}"
   fi
+}
+
+run_case() {
+  local mode=$1 type=$2 iter=$3
+  local attempt rc
+  for attempt in $(seq 1 "${CASE_ATTEMPTS}"); do
+    if AE_MOTIVATION_SINGLE_CASE=1 \
+      AE_MOTIVATION_CASE_MODE="${mode}" \
+      AE_MOTIVATION_CASE_TYPE="${type}" \
+      AE_MOTIVATION_CASE_ITER="${iter}" \
+      AE_RESET_EVERY_RUN="${RESET_EVERY_RUN}" \
+      WARMUP_RATE="${WARMUP_RATE}" \
+      WORKLOAD_SEED="${WORKLOAD_SEED}" \
+      timeout --signal=TERM --kill-after=60s \
+        "${CASE_TIMEOUT_SECONDS}s" "$0" \
+        -n "${REPEATS}" -o "${OUT_DIR}" \
+        --initial-cooldown "${INITIAL_COOLDOWN}" \
+        --run-cooldown "${RUN_COOLDOWN}" \
+        --cpu-max "${MEMCACHED_CPU_MAX}" \
+        --rate "${WORKLOAD_RATE}" \
+        --lite-threads "${LITE_THREADS}" \
+        --lite-cache-size "${LITE_CACHE_SIZE}"; then
+      return
+    else
+      rc=$?
+    fi
+    ae_warn "${mode} ${type} run ${iter} attempt ${attempt}/${CASE_ATTEMPTS} failed (exit ${rc})"
+    [ "${attempt}" -lt "${CASE_ATTEMPTS}" ] || return "${rc}"
+    sleep 10
+  done
 }
 
 trend_passes() {
@@ -286,7 +334,7 @@ main() {
     for type in ${TYPES}; do
       for i in $(seq 1 "${REPEATS}"); do
         RUN_TOTAL=$((RUN_TOTAL + 1))
-        run_one "${mode}" "${type}" "${i}" || {
+        run_case "${mode}" "${type}" "${i}" || {
           RUN_FAILED=$((RUN_FAILED + 1))
           rc=1
         }
@@ -301,7 +349,7 @@ main() {
     for retry in $(seq 1 "${BASELINE_RETRIES}"); do
       ae_info "baseline trend retry ${retry}/${BASELINE_RETRIES}"
       RUN_TOTAL=$((RUN_TOTAL + 1))
-      run_one crash vanilla "$((REPEATS + retry))" || {
+      run_case crash vanilla "$((REPEATS + retry))" || {
         RUN_FAILED=$((RUN_FAILED + 1))
         rc=1
         break
@@ -327,6 +375,14 @@ main() {
   ae_info "next:     ./ae_motivation_plot.sh"
   return "${rc}"
 }
+
+if [ "${AE_MOTIVATION_SINGLE_CASE:-0}" -eq 1 ]; then
+  run_one \
+    "${AE_MOTIVATION_CASE_MODE:?missing case mode}" \
+    "${AE_MOTIVATION_CASE_TYPE:?missing case type}" \
+    "${AE_MOTIVATION_CASE_ITER:?missing case iteration}"
+  exit
+fi
 
 main 2>&1 | tee -a "${RUN_LOG}"
 exit "${PIPESTATUS[0]}"

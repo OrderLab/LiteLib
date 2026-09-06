@@ -141,7 +141,7 @@ function crash_memcached() {
     if [ "$TYPE" == "litesys" ]; then
         # Switch LiteMemcached to emergency mode before killing its full
         # memcached backend.
-        docker exec post-storage-memcached-1 \
+        docker exec -e LOG_PREFIX="$LOG_PREFIX" post-storage-memcached-1 \
           /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/crash.sh
     else
         # Vanilla has no LiteMemcached handover; just kill the replica.

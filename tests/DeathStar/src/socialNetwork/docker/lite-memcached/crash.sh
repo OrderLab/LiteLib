@@ -10,6 +10,7 @@
 
 set -x
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LITE_ROOT=${LITE_ROOT:-/workspace/tests/Memcached/src}
 LITE_CLI=""
 for candidate in \
@@ -33,6 +34,22 @@ fi
   echo "ERROR: lite_cli failed to hand over to LiteMemcached" 1>&2
   exit 1
 }
+
+if [ -n "${LOG_PREFIX:-}" ]; then
+  LITE_LOG="${SCRIPT_DIR}/logs/${LOG_PREFIX}.lite_memcached.1.log"
+  handover_ready=0
+  for _ in $(seq 1 100); do
+    if grep -q "Entered emergency mode" "${LITE_LOG}" 2>/dev/null; then
+      handover_ready=1
+      break
+    fi
+    sleep 0.1
+  done
+  if [ "${handover_ready}" -ne 1 ]; then
+    echo "ERROR: LiteMemcached did not complete emergency handover" 1>&2
+    exit 1
+  fi
+fi
 
 pgrep "memcached" | xargs kill -15
 rm -rf /tmp/memcached.sock
