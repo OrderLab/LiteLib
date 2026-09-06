@@ -18,6 +18,8 @@ DB_ENTRIES=${FIG13_DB_ENTRIES:-1400000}
 DB_ARCHIVE=${FIG13_DB_ARCHIVE:-${FIG13_RESULTS_DIR}/database/mysql-${DB_ENTRIES}-rows.tar.zst}
 TYPES=${FIG13_TYPES:-"full lite checkpoint"}
 VALIDATION_ATTEMPTS=${FIG13_VALIDATION_ATTEMPTS:-8}
+ARM_ATTEMPTS=${FIG13_ARM_ATTEMPTS:-4}
+ARM_TIMEOUT_SECONDS=${FIG13_ARM_TIMEOUT_SECONDS:-900}
 READ_WRITE_RATIO=${FIG13_RW_RATIO:-0.20}
 mkdir -p "${OUT}"
 
@@ -78,6 +80,22 @@ run_arm() {
   fig13_ok "${type} -> ${OUT}/result_${type}.txt"
 }
 
+run_arm_with_retry() {
+  local type=$1
+  local attempt rc
+  for attempt in $(seq 1 "${ARM_ATTEMPTS}"); do
+    if FIG13_OUTPUT_DIR="${OUT}" timeout --signal=TERM --kill-after=30s \
+        "${ARM_TIMEOUT_SECONDS}s" "$0" --arm "${type}"; then
+      return
+    else
+      rc=$?
+    fi
+    echo "  [WARN] ${type} arm attempt ${attempt}/${ARM_ATTEMPTS} failed (exit ${rc})" >&2
+    [ "${attempt}" -lt "${ARM_ATTEMPTS}" ] || return "${rc}"
+    sleep 10
+  done
+}
+
 validate_results() {
   fig13_python "${SCRIPT_DIR}/ae_fig13_trend.py" \
     "${OUT}/result_full.txt" \
@@ -100,7 +118,8 @@ failed_types() {
 main() {
   preflight_database
   for type in ${TYPES}; do
-    run_arm "$type"
+    run_arm_with_retry "$type" ||
+      fig13_die "${type} arm failed after ${ARM_ATTEMPTS} attempts"
   done
   if validate_results; then
     fig13_ok "all arms complete and qualitative checks passed"
@@ -114,7 +133,8 @@ main() {
     [ -n "${retry_types}" ] || retry_types="full lite checkpoint"
     fig13_info "targeted qualitative retry ${attempt}/${VALIDATION_ATTEMPTS}: ${retry_types}"
     for type in ${retry_types}; do
-      run_arm "${type}"
+      run_arm_with_retry "${type}" ||
+        fig13_die "${type} arm failed after ${ARM_ATTEMPTS} attempts"
     done
     if validate_results; then
       fig13_ok "all arms complete and qualitative checks passed"
@@ -125,6 +145,12 @@ main() {
 
   fig13_die "Figure 13 qualitative checks still fail after targeted retries"
 }
+
+if [ "${1:-}" = "--arm" ]; then
+  [ "$#" -eq 2 ] || fig13_die "usage: $0 --arm TYPE"
+  run_arm "$2"
+  exit
+fi
 
 main 2>&1 | tee "${OUT}/run.log"
 exit "${PIPESTATUS[0]}"

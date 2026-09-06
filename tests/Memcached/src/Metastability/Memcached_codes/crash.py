@@ -32,6 +32,21 @@ def StartBackgroundProcess(boot_command, log_file, append=False, env=dict()):
   return process
 
 
+def RunCommand(boot_command, log_file, append=False, env=dict()):
+  print(boot_command)
+  print(log_file)
+  mode = "a+" if append else "w+"
+  with open(log_file, mode) as log:
+    subprocess.run(
+      boot_command,
+      stdout=log,
+      stderr=log,
+      timeout=30,
+      check=True,
+      env=dict(os.environ) | env,
+    )
+
+
 def sleep_for(seconds):
     if seconds > 0:
         time.sleep(seconds)
@@ -123,7 +138,7 @@ for proc in psutil.process_iter(['pid', 'name']):
 if exp_type == 'lite':
   path = os.path.expanduser('~/lite_cli')
   boot_command = [path, "-t", "/tmp/lite_memcached", "-p", "/tmp/memcached.sock", "-m", "1"]
-  StartBackgroundProcess(boot_command, "/tmp/lite_cli-1.log")
+  RunCommand(boot_command, "/tmp/lite_cli-1.log")
 print('failure triggered')
 
 if exp_type == 'lite':
@@ -147,7 +162,7 @@ if exp_type == 'lite':
   path = os.path.expanduser('~/lite_cli')
   boot_command = [path, "-t", "/tmp/lite_memcached", "-p", "/tmp/memcached.sock", "-m", "0"]
   # boot_command = [path, "-t", "/tmp/lite_memcached", "-p", "60001", "-m", "0"]
-  StartBackgroundProcess(boot_command, "/tmp/lite_cli-2.log")
+  RunCommand(boot_command, "/tmp/lite_cli-2.log")
 
   time.sleep(4)
   client = bmemcached.Client(['/tmp/memcached.sock'])
