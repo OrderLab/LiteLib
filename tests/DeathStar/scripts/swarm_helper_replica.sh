@@ -37,32 +37,36 @@ function down() {
     echo "Cleaning up networks..."
     docker network rm socialnetwork_default || true
     
-    echo "Node0 leaving swarm and rejoining..."
-    JOIN_TOKEN=$(docker swarm join-token worker -q)
-    MANAGER_IP=$(nslookup node1 | grep "Address:" | tail -n1 | awk '{print $2}')
-    ssh node0 "docker swarm leave --force"
-    ssh node0 "docker swarm join --token $JOIN_TOKEN $MANAGER_IP:2377"
-
-    echo "Node3 leaving swarm and rejoining..."
-    JOIN_TOKEN=$(docker swarm join-token worker -q)
-    MANAGER_IP=$(nslookup node1 | grep "Address:" | tail -n1 | awk '{print $2}')
-    ssh node3 "docker swarm leave --force"
-    ssh node3 "docker swarm join --token $JOIN_TOKEN $MANAGER_IP:2377"
-
-    sleep 5
-    
-    # Remove any down nodes from the swarm
-    echo "Removing down nodes from swarm..."
-    # `docker node ls -q` already prints only IDs, so combining it with
-    # --format left the filter expression unevaluated and nothing was ever
-    # removed.  Every leave/rejoin above therefore left a stale Down entry
-    # behind, which later makes `docker node update <hostname>` fail with
-    # "node ... is ambiguous (2 matches found)" -- and that silently skips the
-    # nginx placement label, leaving the front end at half capacity.
-    for node in $(docker node ls --format '{{.ID}} {{.Status}}' | awk '$2!="Ready"{print $1}'); do
-        echo "Removing stale node $node from swarm..."
+    # Swarm membership is initialized once by swarm_init.sh. Rejoining workers
+    # for every experiment reset leaves duplicate Ready records and can stall
+    # the scheduler, so only prune records that do not match each host's
+    # currently active NodeID.
+    echo "Removing stale and duplicate nodes from swarm..."
+    for alias in node0 node1 node2 node3; do
+        host=$(ssh "$alias" hostname)
+        current=$(ssh "$alias" "docker info --format '{{.Swarm.NodeID}}'")
+        for _ in $(seq 1 30); do
+            docker node ls -q | grep -qx "$current" && break
+            sleep 1
+        done
+        for node in $(docker node ls --format '{{.ID}} {{.Hostname}}' |
+            awk -v h="$host" '$2==h{print $1}'); do
+            if [ "$node" != "$current" ]; then
+                echo "Removing stale node $node for $host..."
+                docker node rm --force "$node" || true
+            fi
+        done
+    done
+    for node in $(docker node ls --format '{{.ID}} {{.Status}}' |
+        awk '$2!="Ready"{print $1}'); do
+        echo "Removing non-Ready node $node from swarm..."
         docker node rm --force "$node" || true
     done
+    node_count=$(docker node ls -q | wc -l)
+    [ "$node_count" -eq 4 ] || {
+        echo "ERROR: expected 4 unique swarm nodes, found $node_count" >&2
+        return 1
+    }
     
     echo "Cleanup completed"
 }
