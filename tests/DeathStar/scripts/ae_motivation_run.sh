@@ -48,16 +48,18 @@ INITIAL_COOLDOWN=${AE_INITIAL_COOLDOWN:-30}
 RUN_COOLDOWN=${AE_RUN_COOLDOWN:-0}
 # CPU budget per Memcached instance (cgroup v2 "quota period").  See
 # ae_motivation_calibrate.sh -- this sets the operating point of the experiment.
-MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"47000 100000"}
+MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"50000 100000"}
 # Fixed by the authors for the provided replacement CloudLab c220g5 cluster.
 # Evaluators should use this fixed value rather than re-calibrating.
-WORKLOAD_RATE=${WORKLOAD_RATE:-2550}
+WORKLOAD_RATE=${WORKLOAD_RATE:-2700}
 # Warm up at the same rate the measurement uses.  The warm-up determines what
 # ends up cached, so warming at a different rate than the run silently changes
 # the operating point -- and the calibration would no longer apply.
 WARMUP_RATE=${WARMUP_RATE:-}
 LITE_THREADS=${LITE_THREADS:-8}
 LITE_CACHE_SIZE=${LITE_CACHE_SIZE:-${LITE_CACHE_ITEMS:-201326592}}
+# Avoid a stock-Memcached hash expansion in Figure 2's measured window.
+MEMCACHED_HASHPOWER=${MEMCACHED_HASHPOWER:-22}
 WORKLOAD_SEED=${WORKLOAD_SEED:-20250409}
 RUN_ID=$(ae_run_id)
 OUT_DIR=""
@@ -107,6 +109,10 @@ while [ $# -gt 0 ]; do
     LITE_CACHE_SIZE=$2
     shift
     ;;
+  --memcached-hashpower)
+    MEMCACHED_HASHPOWER=$2
+    shift
+    ;;
   -h | --help)
     sed -n '2,28p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
@@ -140,6 +146,7 @@ ae_info "memcached CPU budget: ${MEMCACHED_CPU_MAX} (quota period)"
 ae_info "offered load:         ${WORKLOAD_RATE} req/s (warm-up at the same rate)"
 ae_info "workload seed:        ${WORKLOAD_SEED} (deterministic per thread)"
 ae_info "LiteMemcached:         ${LITE_THREADS} threads, ${LITE_CACHE_SIZE} cached-value bytes"
+ae_info "Memcached hashpower:   ${MEMCACHED_HASHPOWER}"
 ae_info "results:     ${OUT_DIR}"
 
 # ---------------------------------------------------------------------------
@@ -206,6 +213,7 @@ run_one() {
     WORKLOAD_RATE='${WORKLOAD_RATE}' WARMUP_RATE='${WARMUP_RATE:-${WORKLOAD_RATE}}' \
     WORKLOAD_SEED='${WORKLOAD_SEED}' LITE_THREADS='${LITE_THREADS}' \
     LITE_CACHE_SIZE='${LITE_CACHE_SIZE}' \
+    MEMCACHED_HASHPOWER='${MEMCACHED_HASHPOWER}' \
     ./run_exp_replica.sh ${type}
   " >"${OUT_DIR}/${mode}/${prefix}.log" 2>&1
   local rc=$?
@@ -293,6 +301,7 @@ run_case() {
       AE_RESET_EVERY_RUN="${RESET_EVERY_RUN}" \
       WARMUP_RATE="${WARMUP_RATE}" \
       WORKLOAD_SEED="${WORKLOAD_SEED}" \
+      MEMCACHED_HASHPOWER="${MEMCACHED_HASHPOWER}" \
       timeout --signal=TERM --kill-after=60s \
         "${CASE_TIMEOUT_SECONDS}s" "$0" \
         -n "${REPEATS}" -o "${OUT_DIR}" \
@@ -301,7 +310,8 @@ run_case() {
         --cpu-max "${MEMCACHED_CPU_MAX}" \
         --rate "${WORKLOAD_RATE}" \
         --lite-threads "${LITE_THREADS}" \
-        --lite-cache-size "${LITE_CACHE_SIZE}"; then
+        --lite-cache-size "${LITE_CACHE_SIZE}" \
+        --memcached-hashpower "${MEMCACHED_HASHPOWER}"; then
       return
     else
       rc=$?

@@ -18,18 +18,20 @@ NO_CRASH=${NO_CRASH:-0}
 # failover sends it.  If the instances are given more CPU than the workload
 # needs, the failover is absorbed and no cascade appears, so this value has to
 # be matched to the machine (see ae_motivation_calibrate.sh).
-MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"47000 100000"}
+MEMCACHED_CPU_MAX=${MEMCACHED_CPU_MAX:-"50000 100000"}
 # Offered load, in requests/second, for the warm-up and the measured workload.
 # Together with MEMCACHED_CPU_MAX this fixes the operating point.  The load at
 # which the surviving instance saturates differs measurably between machines of
 # the same type, so it has to be calibrated per cluster; see
 # ae_motivation_calibrate.sh.
-WARMUP_RATE=${WARMUP_RATE:-2550}
-WORKLOAD_RATE=${WORKLOAD_RATE:-2550}
+WARMUP_RATE=${WARMUP_RATE:-2700}
+WORKLOAD_RATE=${WORKLOAD_RATE:-2700}
 WORKLOAD_CONNS=${WORKLOAD_CONNS:-512}
 WORKLOAD_THREADS=${WORKLOAD_THREADS:-80}
 LITE_THREADS=${LITE_THREADS:-8}
 LITE_CACHE_SIZE=${LITE_CACHE_SIZE:-${LITE_CACHE_ITEMS:-201326592}}
+# Preallocate the full backends' hash tables before warm-up and measurement.
+MEMCACHED_HASHPOWER=${MEMCACHED_HASHPOWER:-22}
 WORKLOAD_SEED=${WORKLOAD_SEED:-20250409}
 DeathStarDir=$(cd "$(dirname "$0")/.." && pwd)
 
@@ -105,21 +107,29 @@ function start_memcached() {
     docker exec post-storage-memcached-2 cgcreate -g cpu:/deathstar_cpulimited_2
     docker exec post-storage-memcached-2 cgset -r cpu.max="$MEMCACHED_CPU_MAX" deathstar_cpulimited_2
     if [ "$TYPE" == "vanilla" ]; then
-        docker exec post-storage-memcached-1 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 1 $LOG_PREFIX
-        docker exec post-storage-memcached-2 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 2 $LOG_PREFIX
+        docker exec -e MEMCACHED_HASHPOWER="$MEMCACHED_HASHPOWER" \
+          post-storage-memcached-1 \
+          /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 1 $LOG_PREFIX
+        docker exec -e MEMCACHED_HASHPOWER="$MEMCACHED_HASHPOWER" \
+          post-storage-memcached-2 \
+          /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 2 $LOG_PREFIX
     elif [ "$TYPE" == "litesys" ]; then
         docker exec \
           -e LITE_THREADS="$LITE_THREADS" \
           -e LITE_CACHE_SIZE="$LITE_CACHE_SIZE" \
+          -e MEMCACHED_HASHPOWER="$MEMCACHED_HASHPOWER" \
           post-storage-memcached-1 \
           /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-litesys-with-cgroup.sh 1 none
         sleep 3 # restart LiteSys again to prevent some port/shm reuse issues
         docker exec \
           -e LITE_THREADS="$LITE_THREADS" \
           -e LITE_CACHE_SIZE="$LITE_CACHE_SIZE" \
+          -e MEMCACHED_HASHPOWER="$MEMCACHED_HASHPOWER" \
           post-storage-memcached-1 \
           /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-litesys-with-cgroup.sh 1 $LOG_PREFIX
-        docker exec post-storage-memcached-2 /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 2 $LOG_PREFIX
+        docker exec -e MEMCACHED_HASHPOWER="$MEMCACHED_HASHPOWER" \
+          post-storage-memcached-2 \
+          /workspace/tests/DeathStar/src/socialNetwork/docker/lite-memcached/start-vanilla-with-cgroup.sh 2 $LOG_PREFIX
     fi
     ssh node1 "docker service update --force socialnetwork_post-storage-memcached"
     wait_for_memcached_path

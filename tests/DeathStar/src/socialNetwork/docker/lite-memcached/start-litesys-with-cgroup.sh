@@ -16,6 +16,7 @@ LOG_PREFIX=$2
 LITE_MEMCACHED=${LITE_MEMCACHED:-/workspace/tests/Memcached/src/lite-version-ascii/build/LiteMemcached}
 VANILLA_MEMCACHED=${VANILLA_MEMCACHED:-/workspace/tests/Memcached/src/memcached-vanilla}
 LITE_CACHE_SIZE=${LITE_CACHE_SIZE:-${LITE_CACHE_ITEMS:-201326592}}
+MEMCACHED_HASHPOWER=${MEMCACHED_HASHPOWER:-22}
 LITE_THREADS=${LITE_THREADS:-8}
 MEMCACHED_THREADS=${MEMCACHED_THREADS:-8}
 
@@ -60,13 +61,14 @@ if ! pgrep -x LiteMemcached >/dev/null; then
   exit 1
 fi
 
+FULL_COMMAND=(
+  cgexec -g "cpu:deathstar_cpulimited_$CGROUP_ID"
+  "$VANILLA_MEMCACHED" -m 16384 -t "$MEMCACHED_THREADS" -I 32m -c 4096
+  -u root -s /tmp/memcached.sock -o "hashpower=$MEMCACHED_HASHPOWER"
+)
 if [ "$LOG_PREFIX" != "none" ]; then
-  cgexec -g cpu:deathstar_cpulimited_$CGROUP_ID \
-    "$VANILLA_MEMCACHED" -m 16384 -t "$MEMCACHED_THREADS" -I 32m -c 4096 \
-    -u root -s /tmp/memcached.sock \
+  "${FULL_COMMAND[@]}" \
     > "$Dir/logs/$LOG_PREFIX.memcached$MEMCACHED_LOG_SUFFIX.log" 2>&1 &
 else
-  cgexec -g cpu:deathstar_cpulimited_$CGROUP_ID \
-    "$VANILLA_MEMCACHED" -m 16384 -t "$MEMCACHED_THREADS" -I 32m -c 4096 \
-    -u root -s /tmp/memcached.sock &
+  "${FULL_COMMAND[@]}" &
 fi
