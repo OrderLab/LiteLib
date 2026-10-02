@@ -9,6 +9,8 @@ template <typename Application, typename Request, typename Response,
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Add(const CacheKey &key, const CacheEntry &value,
                             bool in_transaction, bool log) {
+  // Publish the cache state and its replay entry as one emergency mutation.
+  auto mutation_lock = LockEmergencyMutation(in_transaction);
   LogEntryInstance *dirty = nullptr;
   CacheStateInstance *state = nullptr;
   if (cache_inner_.emergency_mode_ && log) {
@@ -40,6 +42,7 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Delete(const CacheKey &key, bool in_transaction) {
+  auto mutation_lock = LockEmergencyMutation(in_transaction);
   LogEntryInstance *dirty = nullptr;
 
   if (!cache_inner_.Delete(key, in_transaction, dirty)) return false;
@@ -67,6 +70,7 @@ template <typename Application, typename Request, typename Response,
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Replace(const CacheKey &key, const CacheEntry &value,
                                 bool in_transaction, bool log) {
+  auto mutation_lock = LockEmergencyMutation(in_transaction);
   LogEntryInstance *old_dirty = nullptr;
   LogEntryInstance *dirty = nullptr;
   CacheStateInstance *state = nullptr;
