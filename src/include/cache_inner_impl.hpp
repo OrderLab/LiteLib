@@ -96,24 +96,24 @@ template <typename Application, typename Request, typename Response,
 bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Delete(const CacheKey &key, bool in_transaction,
                                     LogEntryInstance *&dirty_node) {
-  std::shared_lock<std::shared_mutex> transaction_lock;
+  std::unique_lock<std::shared_mutex> transaction_lock;
   if (!in_transaction) {
-    transaction_lock = std::shared_lock<std::shared_mutex>{transaction_mutex_};
+    transaction_lock = std::unique_lock<std::shared_mutex>{transaction_mutex_};
   }
   ListNode *lru_node = nullptr;
+  size_t removed_size = 1;
   cache_.cvisit(key, [&](auto &element) {
     lru_node = element.second.lru_node;
     dirty_node = element.second.state->dirty_node;
+    if constexpr (HasGetSize<CacheEntry>) {
+      removed_size = element.second.state->size;
+    }
   });
   if (!lru_node || !cache_.erase(key)) return false;
 
   std::unique_lock<std::mutex> lru_lock(lru_mutex_);
   lru_node->Delink();
-  if constexpr (HasGetSize<CacheEntry>) {
-    size -= lru_node->state_->size;
-  } else {
-    size--;
-  }
+  size -= removed_size;
   lru_lock.unlock();
   delete lru_node;
 
