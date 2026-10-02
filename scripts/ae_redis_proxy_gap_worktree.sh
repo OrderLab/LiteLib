@@ -1,6 +1,6 @@
 #!/bin/bash
 AE_MAIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AE_REDIS_PROXY_COMMIT=${AE_REDIS_PROXY_COMMIT:-fbc0808fff79d84a28b4dea8097ec01bd95df418}
+AE_REDIS_PROXY_COMMIT=${AE_REDIS_PROXY_COMMIT:-b448a56548cb5d71705f94df96594e81cafddcc7}
 AE_REDIS_PROXY_WORKTREE=${AE_REDIS_PROXY_WORKTREE:-${AE_MAIN_DIR}/.ae-worktrees/redis-proxy-gap}
 
 ae_redis_proxy_die() { echo "[FAIL] $*" >&2; exit 1; }

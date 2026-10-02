@@ -17,6 +17,14 @@ Once setup is complete, follow the per-experiment guides linked from
 > **Note:** we may push fixes to this repository during the evaluation period.
 > Please re-run `./scripts/user_init.sh` to update before you start.
 
+The current non-embedded source pins include fixes for emergency cache/log
+publication, deletion lifetime, and atomic control-message framing. LevelDB
+recovery retains its existing atomic-framing implementation; embedded Redis
+is unchanged. After updating, rerun the affected experiment's setup before
+starting a new measurement. Do not update an experiment that is in progress.
+The standalone regression tests are documented in
+[`src/tests/README.md`](../src/tests/README.md).
+
 ## Overview
 
 This artifact reproduces the paper's eight numbered evaluation results:
