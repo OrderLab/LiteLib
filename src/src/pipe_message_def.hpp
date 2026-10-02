@@ -1,8 +1,13 @@
 #pragma once
 
 #include <stdint.h>
+#include <errno.h>
+#include <limits.h>
+#include <unistd.h>
 
+#include <cstring>
 #include <string>
+#include <vector>
 
 #include "magic_enum.hpp"
 
@@ -19,17 +24,22 @@ class pipe_message_t {
   std::string backend_port;
 
   bool write(int fd) {
-    if (::write(fd, &action, sizeof(action)) != sizeof(action)) {
+    constexpr size_t header_size = sizeof(action) + sizeof(int);
+    if (backend_port.size() > PIPE_BUF - header_size) {
+      errno = EMSGSIZE;
       return false;
     }
-    int len = backend_port.length();
-    if (::write(fd, &len, sizeof(len)) != sizeof(len)) {
-      return false;
-    }
-    if (::write(fd, backend_port.c_str(), len) != len) {
-      return false;
-    }
-    return true;
+    const int len = static_cast<int>(backend_port.size());
+    std::vector<char> frame(header_size + backend_port.size());
+    std::memcpy(frame.data(), &action, sizeof(action));
+    std::memcpy(frame.data() + sizeof(action), &len, sizeof(len));
+    std::memcpy(frame.data() + header_size, backend_port.data(), backend_port.size());
+    // A nonblocking reader must not observe the action before its payload.
+    ssize_t written;
+    do {
+      written = ::write(fd, frame.data(), frame.size());
+    } while (written == -1 && errno == EINTR);
+    return written == static_cast<ssize_t>(frame.size());
   }
 
   bool read(int fd) {
