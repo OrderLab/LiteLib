@@ -50,6 +50,15 @@ class Cache {  // A wrapper for CacheInner
   }
 
  private:
+  std::unique_lock<std::shared_mutex> LockEmergencyMutation(bool &in_transaction) {
+    if (!in_transaction && cache_inner_.emergency_mode_) {
+      auto lock = cache_inner_.TransactionLock();
+      in_transaction = true;
+      return lock;
+    }
+    return {};
+  }
+
   CacheInnerInstance &cache_inner_;
   LoggerInnerInstance &logger_inner_;
 
