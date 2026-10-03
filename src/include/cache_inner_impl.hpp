@@ -30,15 +30,8 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::~CacheInner() {
-  bip::offset_ptr<ListNode> node = lru_head_.nxt_;
-  bip::offset_ptr<ListNode> nxt;
-
-  while (node != &lru_tail_) {
-    nxt = node->nxt_;
-    node->~ListNode();
-    list_node_allocator_.deallocate_one(node);
-    node = nxt;
-  }
+  // MapEntry owns both allocations; clear while its allocators are still alive.
+  cache_.clear();
 }
 
 template <typename Application, typename Request, typename Response,
@@ -126,31 +119,24 @@ bool CacheInner<Application, Request, Response, ConnectionInfo, CacheKey,
                 CacheEntry>::Delete(const CacheKey &key, bool in_transaction,
                                     bip::offset_ptr<LogEntryInstance>
                                         &dirty_node) {
-  bip::sharable_lock<bip::interprocess_sharable_mutex> transaction_lock;
+  bip::scoped_lock<bip::interprocess_sharable_mutex> transaction_lock;
   if (!in_transaction) {
-    transaction_lock = bip::sharable_lock<bip::interprocess_sharable_mutex>(
+    transaction_lock = bip::scoped_lock<bip::interprocess_sharable_mutex>(
         transaction_mutex_);
   }
 
-  bip::offset_ptr<ListNode> lru_node = nullptr;
-  cache_.cvisit(key, [&](auto &element) {
-    lru_node = element.second.lru_node;
-    dirty_node = element.second.state->dirty_node;
-  });
-  if (!lru_node || !cache_.erase(key)) return false;
-
   bip::scoped_lock<bip::interprocess_mutex> lru_lock(lru_mutex_);
-  lru_node->Delink();
-  if constexpr (HasGetSize<CacheEntry>) {
-    size -= lru_node->state_->size;
-  } else {
-    size--;
-  }
-  lru_lock.unlock();
-  lru_node->~ListNode();
-  list_node_allocator_.deallocate_one(lru_node);
-
-  return true;
+  return cache_.erase_if(key, [&](const auto &element) {
+    auto lru_node = element.second.lru_node;
+    dirty_node = element.second.state->dirty_node;
+    lru_node->Delink();
+    if constexpr (HasGetSize<CacheEntry>) {
+      size -= lru_node->state_->size;
+    } else {
+      size--;
+    }
+    return true;
+  }) != 0;
 }
 
 template <typename Application, typename Request, typename Response,

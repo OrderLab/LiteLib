@@ -52,6 +52,9 @@ class Cache {  // A wrapper for CacheInner
   }
 
  private:
+  bip::scoped_lock<bip::interprocess_sharable_mutex> LockEmergencyMutation(
+      bool &in_transaction);
+
   bip::offset_ptr<CacheInnerInstance> cache_inner_ptr_;
   bip::offset_ptr<LoggerInnerInstance> logger_inner_ptr_;
 

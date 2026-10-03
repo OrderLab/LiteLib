@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.16)
+project(EmbeddedRedisTests LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+find_package(Threads REQUIRED)
+find_package(glog REQUIRED)
+find_package(Boost 1.87 REQUIRED)
+find_package(Libevent REQUIRED)
+option(EMBEDDED_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+
+add_executable(cache_lifetime_test cache_lifetime_test.cc ../src/sliding_window.cc)
+add_executable(redis_hash_test redis_hash_test.cc ../src/sliding_window.cc
+  ../../tests/Redis/src/lite-version/src/service.cc)
+target_include_directories(redis_hash_test PRIVATE
+  ../../tests/Redis/src/lite-version/include)
+target_link_libraries(redis_hash_test PRIVATE libevent::core)
+foreach(target cache_lifetime_test redis_hash_test)
+  target_include_directories(${target} PRIVATE ../include ${Boost_INCLUDE_DIRS})
+  target_link_libraries(${target} PRIVATE Threads::Threads glog::glog)
+  target_compile_options(${target} PRIVATE -UNDEBUG)
+  if(EMBEDDED_SANITIZERS)
+    target_compile_options(${target} PRIVATE
+      -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie)
+    target_link_options(${target} PRIVATE -fsanitize=address,undefined -no-pie)
+  endif()
+endforeach()
+
+enable_testing()
+foreach(mode evict load remap delete destroy emergency emergency-many api-normal api-emergency)
+  add_test(NAME embedded_cache_${mode} COMMAND cache_lifetime_test ${mode})
+  set_tests_properties(embedded_cache_${mode} PROPERTIES TIMEOUT 60)
+endforeach()
+add_test(NAME embedded_redis_hash_commands COMMAND redis_hash_test)
+set_tests_properties(embedded_redis_hash_commands PROPERTIES TIMEOUT 60)

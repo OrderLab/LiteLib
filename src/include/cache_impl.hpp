@@ -6,9 +6,23 @@ namespace lite {
 
 template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
+bip::scoped_lock<bip::interprocess_sharable_mutex>
+Cache<Application, Request, Response, ConnectionInfo, CacheKey,
+      CacheEntry>::LockEmergencyMutation(bool &in_transaction) {
+  bip::scoped_lock<bip::interprocess_sharable_mutex> lock;
+  if (!in_transaction && cache_inner_ptr_->emergency_mode_ptr_->load()) {
+    lock = cache_inner_ptr_->TransactionLock();
+    in_transaction = true;
+  }
+  return lock;
+}
+
+template <typename Application, typename Request, typename Response,
+          typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Add(const CacheKey &key, const CacheEntry &value,
                             bool in_transaction, bool log) {
+  auto mutation_lock = LockEmergencyMutation(in_transaction);
   bip::offset_ptr<LogEntryInstance> dirty = nullptr;
   bip::offset_ptr<CacheStateInstance> state = nullptr;
   if (cache_inner_ptr_->emergency_mode_ptr_->load() && log) {
@@ -44,12 +58,18 @@ template <typename Application, typename Request, typename Response,
           typename ConnectionInfo, typename CacheKey, typename CacheEntry>
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Delete(const CacheKey &key, bool in_transaction) {
+  bip::scoped_lock<bip::interprocess_sharable_mutex> mutation_lock;
+  if (!in_transaction) {
+    mutation_lock = cache_inner_ptr_->TransactionLock();
+    in_transaction = true;
+  }
   bip::offset_ptr<LogEntryInstance> dirty = nullptr;
 
   if (!cache_inner_ptr_->Delete(key, in_transaction, dirty)) return false;
 
   if (dirty) {
-    std::unique_lock<std::mutex> chr_lock(logger_inner_ptr_->chr_mutex_);
+    bip::scoped_lock<bip::interprocess_mutex> chr_lock(
+        logger_inner_ptr_->chr_mutex_);
     dirty->Delink();
     chr_lock.unlock();
     dirty->~LogEntryInstance();
@@ -63,6 +83,7 @@ template <typename Application, typename Request, typename Response,
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Replace(const CacheKey &key, const CacheEntry &value,
                                 bool in_transaction, bool log) {
+  auto mutation_lock = LockEmergencyMutation(in_transaction);
   bip::offset_ptr<LogEntryInstance> dirty = nullptr;
   bip::offset_ptr<CacheStateInstance> state = nullptr;
   if (cache_inner_ptr_->emergency_mode_ptr_->load() && log) {
@@ -95,6 +116,7 @@ template <typename Application, typename Request, typename Response,
 bool Cache<Application, Request, Response, ConnectionInfo, CacheKey,
            CacheEntry>::Set(const CacheKey &key, const CacheEntry &value,
                             bool in_transaction, bool log) {
+  auto mutation_lock = LockEmergencyMutation(in_transaction);
   bip::offset_ptr<LogEntryInstance> dirty = nullptr;
   bip::offset_ptr<CacheStateInstance> state = nullptr;
   if (cache_inner_ptr_->emergency_mode_ptr_->load() && log) {

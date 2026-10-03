@@ -165,13 +165,15 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
   CacheEntry cache_entry(shm->get_segment_manager());
   switch (req->type) {
     case EmbeddedRequestType::kHset: {
+      bip::scoped_lock<bip::interprocess_sharable_mutex> hash_lock;
+      if (!in_transaction) hash_lock = cache->TransactionLock();
       char *key = static_cast<char *>(req->argv[1]->ptr);
       CacheKey cache_key(key, req->argv_len[1], shm->get_segment_manager());
       auto map = ShmSharedPtr<MapType>(
           nullptr, shm->get_segment_manager(),
           ShmDeleter<MapType>(shm->get_segment_manager()));
       // get original value
-      if (likely(cache->Get(cache_key, cache_entry, in_transaction))) {
+      if (likely(cache->Get(cache_key, cache_entry, true))) {
         map = cache_entry.map_value;
       } else {
         map = ShmMakeShared(
@@ -192,7 +194,7 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
       cache_entry.map_value = map;
       // we still need to set the key even if the map is shared, because we need
       // to update the dirty node
-      if (unlikely(!cache->Set(cache_key, cache_entry, in_transaction))) {
+      if (unlikely(!cache->Set(cache_key, cache_entry, true))) {
         LOG(ERROR) << "Failed to set key: " << cache_key << std::endl;
         if (unlikely(in_emergency))
           return std::make_pair(RESPPacket::ResponseError("ERR failed to set"),
@@ -208,9 +210,11 @@ std::optional<std::pair<RESPPacket, bool>> Redis::HandleSingleRequest(
     }
     case EmbeddedRequestType::kHgetall: {
       assert(in_emergency);
+      bip::scoped_lock<bip::interprocess_sharable_mutex> hash_lock;
+      if (!in_transaction) hash_lock = cache->TransactionLock();
       char *key = static_cast<char *>(req->argv[1]->ptr);
       CacheKey cache_key(key, req->argv_len[1], shm->get_segment_manager());
-      if (likely(cache->Get(cache_key, cache_entry, in_transaction) &&
+      if (likely(cache->Get(cache_key, cache_entry, true) &&
                  cache_entry.map_value)) {
         auto resp =
             RESPPacket::ResponseArray(cache_entry.map_value->size() * 2);
