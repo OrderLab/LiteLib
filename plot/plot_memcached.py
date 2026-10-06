@@ -180,7 +180,8 @@ results = []
 for filename in args.filenames:
     results.append(process_file(filename))
 
-crash_time = results[0]['time_points'][results[0]['job_completions'][10:].argmin()] + 10
+# Fixed Figure 13 reference; throughput dips are not reliable crash timestamps.
+crash_time = 55
 print(f"Crash time: {crash_time}")
 
 # Plot results from all files
