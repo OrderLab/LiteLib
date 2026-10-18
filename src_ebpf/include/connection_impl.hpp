@@ -165,6 +165,7 @@ void Connection<Application, Request, Response, ConnectionInfo, CacheKey,
       continue;
     } else if (result == kBad) {
       LOG(ERROR) << "failed to parse request" << std::endl;
+      delete conn;
       return;
     }
   }

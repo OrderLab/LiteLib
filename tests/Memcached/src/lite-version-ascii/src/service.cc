@@ -39,8 +39,9 @@ void Memcached::NormalUpdate(const std::shared_ptr<Packet> &resp,
   for (const auto &req : requests) {
     switch (req->operation) {
       case Packet::Operation::kSet:
-        if ((*resp->buffer)[0] == 'N' && (*resp->buffer)[1] == 'O' &&
-            (*resp->buffer)[2] == 'T')
+        if (!resp->buffer ||
+            std::string_view(reinterpret_cast<const char *>(resp->buffer->data()),
+                             resp->buffer->size()) != "STORED\r\n")
           break;
         EmergencyServeImpl(req, cache, nullptr, false);
         break;
@@ -78,43 +79,26 @@ std::pair<Packet, bool> Memcached::EmergencyServeImpl(std::shared_ptr<Packet> p,
   if (flow_control) {
     return {Packet(nullptr), true};
   }
+  if (!p->buffer || !p->Complete(*p->buffer)) {
+    LOG(ERROR) << "Refusing incomplete Memcached request";
+    return {null_resp, true};
+  }
 
   switch (p->operation) {
     case Packet::Operation::kSet: {
+      if (!p->StorageComplete(*p->buffer)) {
+        LOG(ERROR) << "Invalid Memcached storage bounds";
+        return {null_resp, true};
+      }
       CacheEntry entry;
-      // Parse command line: "set <key> <flags> <exptime> <bytes>\r\n"
-      // size_t pos = 4;                                          // Skip "set "
-      size_t pos = std::find(p->buffer->begin(), p->buffer->end(), ' ') -
-                   p->buffer->begin() + 1;
-      while (pos < p->len && (*p->buffer)[pos] != ' ') pos++;  // Find key end
-      std::vector<uint8_t> key(p->buffer->begin() + 4,
-                               p->buffer->begin() + pos);
-      pos++;  // Skip space
-
-      // Parse flags
-      size_t flags_start = pos;
-      while (pos < p->len && (*p->buffer)[pos] != ' ') pos++;
+      std::vector<uint8_t> key(p->buffer->begin() + p->key_start,
+                              p->buffer->begin() + p->key_start + p->key_size);
       entry.flags = std::make_shared<std::vector<uint8_t>>(
-          p->buffer->begin() + flags_start, p->buffer->begin() + pos);
-      pos++;  // Skip space
-
-      // Skip exptime
-      while (pos < p->len && (*p->buffer)[pos] != ' ') pos++;
-      pos++;  // Skip space
-
-      // Parse bytes length
-      size_t bytes_start = pos;
-      while (pos < p->len && (*p->buffer)[pos] != '\r') pos++;
-      std::string bytes_str(p->buffer->begin() + bytes_start,
-                            p->buffer->begin() + pos);
-      size_t bytes = std::stoul(bytes_str);
-
-      // Skip \r\n
-      pos += 2;
-
-      // Get value
+          p->buffer->begin() + p->flags_start,
+          p->buffer->begin() + p->flags_start + p->flags_size);
       entry.value = std::make_shared<std::vector<uint8_t>>(
-          p->buffer->begin() + pos, p->buffer->begin() + pos + bytes);
+          p->buffer->begin() + p->value_start,
+          p->buffer->begin() + p->value_start + p->value_size);
 
       if (!cache->Add(key, entry) && !cache->Replace(key, entry)) {
         if (!logger) LOG(ERROR) << "Failed to set in normal mode" << std::endl;
@@ -125,12 +109,11 @@ std::pair<Packet, bool> Memcached::EmergencyServeImpl(std::shared_ptr<Packet> p,
     case Packet::Operation::kGet: {
       Packet resp;
       CacheEntry entry;
-      size_t pos = 4;
-      while ((*p->buffer)[pos] != '\n') {
-        size_t key_start = pos;
-        while ((*p->buffer)[pos] != ' ' && (*p->buffer)[pos] != '\r') pos++;
-        std::vector<uint8_t> key(p->buffer->begin() + key_start,
-                                 p->buffer->begin() + pos);
+      memcached_ascii::Tokens tokens(std::string_view(
+          reinterpret_cast<const char *>(p->buffer->data()), p->len - 2));
+      tokens.Next();
+      for (auto token = tokens.Next(); !token.empty(); token = tokens.Next()) {
+        std::vector<uint8_t> key(token.begin(), token.end());
         if (cache->Get(key, entry)) {
           const auto size_str = std::to_string(entry.value->size());
           static const std::vector<uint8_t> get_resp = {'V', 'A', 'L',
@@ -154,7 +137,6 @@ std::pair<Packet, bool> Memcached::EmergencyServeImpl(std::shared_ptr<Packet> p,
           resp.buffer->push_back('\r');
           resp.buffer->push_back('\n');
         }
-        pos++;
       }
       static const std::vector<uint8_t> get_resp = {'E', 'N', 'D', '\r', '\n'};
       resp.buffer->insert(resp.buffer->end(), get_resp.begin(), get_resp.end());

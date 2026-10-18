@@ -39,3 +39,42 @@ add_test(NAME cache_normal_many_keys COMMAND cache_concurrency_test 8 10000 0 64
 set_tests_properties(cache_serial cache_delete cache_emergency_same_key
   cache_emergency_many_keys cache_normal_same_key cache_normal_many_keys
   PROPERTIES TIMEOUT 90)
+
+set(MEMCACHED_ASCII_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/Memcached/src)
+foreach(variant IN ITEMS proxy ebpf embedded)
+  add_executable(ascii_${variant}_test ascii_framing_test.cc)
+  if(variant STREQUAL "embedded")
+    target_compile_definitions(ascii_${variant}_test PRIVATE ASCII_EMBEDDED)
+    target_include_directories(ascii_${variant}_test PRIVATE
+      ../../src_embedded/include
+      ${MEMCACHED_ASCII_DIR}/lite-version-ascii-embedded/include)
+    target_sources(ascii_${variant}_test PRIVATE
+      ${MEMCACHED_ASCII_DIR}/lite-version-ascii-embedded/src/service.cc
+      ../../src_embedded/src/sliding_window.cc)
+  else()
+    if(variant STREQUAL "proxy")
+      set(adapter lite-version-ascii)
+    else()
+      set(adapter lite-version-ascii-ebpf)
+    endif()
+    target_include_directories(ascii_${variant}_test PRIVATE
+      ../include ${MEMCACHED_ASCII_DIR}/${adapter}/include)
+    target_sources(ascii_${variant}_test PRIVATE
+      ${MEMCACHED_ASCII_DIR}/${adapter}/src/service.cc ../src/sliding_window.cc)
+  endif()
+  add_test(NAME ascii_${variant}_adapter COMMAND ascii_${variant}_test adapter)
+  set_tests_properties(ascii_${variant}_adapter PROPERTIES TIMEOUT 30)
+  target_include_directories(ascii_${variant}_test PRIVATE ${Boost_INCLUDE_DIRS})
+  target_link_libraries(ascii_${variant}_test PRIVATE Threads::Threads glog::glog event)
+  target_compile_options(ascii_${variant}_test PRIVATE -UNDEBUG)
+  if(LITE_CACHE_SANITIZERS)
+    target_compile_options(ascii_${variant}_test PRIVATE
+      -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie)
+    target_link_options(ascii_${variant}_test PRIVATE
+      -fsanitize=address,undefined -no-pie)
+  endif()
+  foreach(test IN ITEMS parser randomized)
+    add_test(NAME ascii_${variant}_${test} COMMAND ascii_${variant}_test ${test})
+    set_tests_properties(ascii_${variant}_${test} PROPERTIES TIMEOUT 30)
+  endforeach()
+endforeach()

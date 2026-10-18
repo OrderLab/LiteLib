@@ -35,6 +35,7 @@ struct CacheEntry {
     req->buffer->insert(req->buffer->end(), key.begin(), key.end());
     req->buffer->push_back(' ');
     req->buffer->insert(req->buffer->end(), flags.begin(), flags.end());
+    if (flags.empty() || flags.back() != ' ') req->buffer->push_back(' ');
     req->buffer->push_back('0');
     req->buffer->push_back(' ');
     req->buffer->insert(req->buffer->end(), size_str.begin(), size_str.end());

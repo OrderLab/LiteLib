@@ -35,3 +35,34 @@ both test executables.
 
 These tests establish memory safety for the exercised interleavings, not a
 full application recovery or performance qualification.
+
+## Memcached ASCII framing
+
+The `ascii_*` tests exercise the actual proxy, eBPF-adapter and shared-memory
+Packet types. They cover every two-part split and one-byte delivery, empty
+input, embedded CRLF/NUL bytes, zero-length values, coalesced packets, more
+than 255 VALUE lines, malformed/overflow lengths, exact command names and
+sticky rejection. Seeded randomized tests add 1,000 binary frames per variant.
+The proxy/eBPF service tests use the ordinary in-process cache library (not
+kernel eBPF) to check incomplete-frame rejection, exact values/flags, failed
+storage replies, add/replace key boundaries, replay serialization and queue
+matching. The embedded tests use the actual service and shared-memory cache
+for incomplete/truncated rejection, binary values, GET, add/replace keys and
+replay serialization (including legacy trailing-space flags). That fixture
+keeps logging disabled and reclaims its cache by unmapping the private,
+already-unlinked segment; it does not qualify cache deletion/destruction,
+the embedded full-backend update ABI,
+interprocess concurrency or handover.
+
+Run only these tests with `ctest --test-dir build/cache-tests -R '^ascii_' \
+--output-on-failure`. Libevent is also required. The sanitizer option applies
+to all targets.
+
+All three adapters share `tests/Memcached/src/ascii_protocol.hpp`. Values are
+length-delimited, and GET responses complete only after END. Unsupported
+commands/options, including `noreply` (incompatible with the existing pending
+request queue), are explicitly rejected. Socket handlers close malformed
+connections instead of retaining a poisoned decoder. Passive eBPF update
+decoders remain failed until their connection is retired; kernel capture and
+handover require separate runtime validation. Existing emergency add/replace
+upsert behavior and expiration handling are unchanged.
